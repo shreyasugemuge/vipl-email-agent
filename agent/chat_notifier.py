@@ -69,70 +69,51 @@ class ChatNotifier:
         return result
 
     # ----------------------------------------------------------------
-    # New Email Notification
+    # Poll Summary — one message per poll cycle
     # ----------------------------------------------------------------
 
-    def notify_new_email(self, ticket_number: str, email, triage_result,
-                         sla_deadline_str: str) -> bool:
-        pri = PRIORITY_CONFIG.get(triage_result.priority, PRIORITY_CONFIG["MEDIUM"])
-        assignee = triage_result.suggested_assignee or "Unassigned"
+    def notify_poll_summary(self, processed_items: list) -> bool:
+        """Send ONE card summarising all emails processed in this poll cycle."""
+        if not processed_items:
+            return True
 
-        # Truncate draft reply
-        draft_preview = triage_result.draft_reply[:300]
-        if len(triage_result.draft_reply) > 300:
-            draft_preview += "..."
+        count = len(processed_items)
+        # Count by priority
+        pri_counts = {}
+        for item in processed_items:
+            p = item.get("priority", "MEDIUM")
+            pri_counts[p] = pri_counts.get(p, 0) + 1
+
+        pri_summary = " | ".join(
+            f"{PRIORITY_CONFIG.get(p, PRIORITY_CONFIG['MEDIUM'])['emoji']} {p}: {n}"
+            for p, n in sorted(pri_counts.items(), key=lambda x: ["CRITICAL", "HIGH", "MEDIUM", "LOW"].index(x[0]) if x[0] in ["CRITICAL", "HIGH", "MEDIUM", "LOW"] else 99)
+        )
+
+        # Build per-email line items
+        email_widgets = []
+        for item in processed_items[:10]:  # Cap at 10 to keep card reasonable
+            pri = PRIORITY_CONFIG.get(item["priority"], PRIORITY_CONFIG["MEDIUM"])
+            line = f"{pri['emoji']} <b>{item['ticket']}</b> — {item['subject'][:60]}"
+            email_widgets.append({"decoratedText": {
+                "topLabel": f"{item['category']} → {item['assignee']}",
+                "text": line,
+            }})
+
+        if count > 10:
+            email_widgets.append({"textParagraph": {
+                "text": f"<i>...and {count - 10} more</i>"
+            }})
 
         card = {
             "header": {
-                "title": f"{pri['emoji']} {ticket_number} — {triage_result.priority}",
-                "subtitle": email.subject[:80],
+                "title": f"\U0001f4e8 Poll Summary — {count} new email(s)",
+                "subtitle": pri_summary,
             },
             "sections": [
-                {
-                    "widgets": [
-                        {"decoratedText": {
-                            "topLabel": "From",
-                            "text": f"{email.sender_name} &lt;{email.sender_email}&gt;",
-                        }},
-                        {"decoratedText": {
-                            "topLabel": "Inbox",
-                            "text": email.inbox,
-                        }},
-                        {"decoratedText": {
-                            "topLabel": "Category",
-                            "text": triage_result.category,
-                        }},
-                        {"decoratedText": {
-                            "topLabel": "SLA Deadline",
-                            "text": sla_deadline_str,
-                        }},
-                        {"decoratedText": {
-                            "topLabel": "Assigned To",
-                            "text": assignee,
-                        }},
-                    ]
-                },
-                {
-                    "header": "AI Summary",
-                    "widgets": [
-                        {"textParagraph": {"text": triage_result.summary}},
-                    ]
-                },
-                {
-                    "header": "Draft Reply (preview)",
-                    "collapsible": True,
-                    "uncollapsibleWidgetsCount": 0,
-                    "widgets": [
-                        {"textParagraph": {"text": draft_preview}},
-                    ]
-                },
+                {"widgets": email_widgets},
                 {
                     "widgets": [
                         {"buttonList": {"buttons": [
-                            {
-                                "text": "Open in Gmail",
-                                "onClick": {"openLink": {"url": email.gmail_link}},
-                            },
                             {
                                 "text": "Open Tracker",
                                 "onClick": {"openLink": {"url": self.sheet_url}},
@@ -143,7 +124,7 @@ class ChatNotifier:
             ]
         }
 
-        payload = {"cardsV2": [{"cardId": ticket_number, "card": card}]}
+        payload = {"cardsV2": [{"cardId": f"poll-{count}", "card": card}]}
         return self._post(payload)
 
     # ----------------------------------------------------------------

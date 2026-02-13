@@ -97,10 +97,13 @@ class SheetLogger:
         """
         Log a processed email as a new row in the Email Log tab.
         Returns the generated ticket number.
+
+        Uses RAW valueInputOption to prevent Sheets from mangling
+        timestamps into serial numbers.
         """
         ticket_number = self._next_ticket_number(email.inbox)
 
-        # Use IST-aware timestamps in a format Google Sheets recognizes as dates
+        # Format timestamps as plain text strings (RAW prevents serial number conversion)
         ist_timestamp = email.timestamp.astimezone(IST) if email.timestamp.tzinfo else IST.localize(email.timestamp)
         timestamp_str = ist_timestamp.strftime("%d %b %Y, %I:%M %p")
 
@@ -138,12 +141,12 @@ class SheetLogger:
         ]
 
         try:
-            # Append the row
+            # Append the row using RAW to keep timestamps as plain text
             body = {"values": [row]}
             result = self.sheets.values().append(
                 spreadsheetId=self.spreadsheet_id,
                 range=f"'{self.email_log_tab}'!A:U",
-                valueInputOption="USER_ENTERED",
+                valueInputOption="RAW",
                 insertDataOption="INSERT_ROWS",
                 body=body,
             ).execute()
@@ -153,13 +156,12 @@ class SheetLogger:
             row_num = self._extract_row_number(updated_range)
 
             if row_num:
-                # Add SLA Status formula (column M)
+                # Add SLA Status formula (column M) — needs USER_ENTERED for formulas
                 sla_formula = (
                     f'=IF(K{row_num}="Closed","OK",'
                     f'IF(K{row_num}="Spam","N/A",'
                     f'IF(NOW()>L{row_num},"BREACHED","OK")))'
                 )
-                # Add Resolution Time formula (column Q)
                 res_formula = (
                     f'=IF(P{row_num}<>"",ROUND((P{row_num}-B{row_num})*24,1),"")'
                 )
@@ -398,13 +400,10 @@ class SheetLogger:
         if sheet_id is not None:
             return sheet_id
 
-        # Create the tab
         result = self.sheets.batchUpdate(
             spreadsheetId=self.spreadsheet_id,
             body={"requests": [{
-                "addSheet": {
-                    "properties": {"title": tab_name}
-                }
+                "addSheet": {"properties": {"title": tab_name}}
             }]}
         ).execute()
         new_sheet_id = result["replies"][0]["addSheet"]["properties"]["sheetId"]
@@ -412,34 +411,52 @@ class SheetLogger:
         return new_sheet_id
 
     # ----------------------------------------------------------------
-    # Email Log Column Formatting
+    # Email Log Column Formatting — subtle header, no ugly blue
     # ----------------------------------------------------------------
 
     def format_email_log_columns(self):
-        """Set date format on Timestamp and SLA Deadline columns in Email Log."""
+        """Style the Email Log header row — dark text on light gray, bold, frozen."""
         try:
             sheet_id = self._get_sheet_id(self.email_log_tab)
             if sheet_id is None:
                 return
 
             requests = [
-                # Bold + freeze header row
+                # Light gray header with bold dark text
                 {
                     "repeatCell": {
                         "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1},
-                        "cell": {
-                            "userEnteredFormat": {
-                                "backgroundColor": {"red": 0.10, "green": 0.27, "blue": 0.53},
-                                "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}},
-                            }
-                        },
+                        "cell": {"userEnteredFormat": {
+                            "backgroundColor": {"red": 0.93, "green": 0.93, "blue": 0.93},
+                            "textFormat": {"bold": True, "fontSize": 10,
+                                           "foregroundColor": {"red": 0.2, "green": 0.2, "blue": 0.2}},
+                        }},
                         "fields": "userEnteredFormat(backgroundColor,textFormat)",
                     }
                 },
+                # Freeze header row
                 {
                     "updateSheetProperties": {
                         "properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": 1}},
                         "fields": "gridProperties.frozenRowCount",
+                    }
+                },
+                # Force timestamp columns (B and L) to plain text format
+                # so Sheets never auto-converts them to date serials
+                {
+                    "repeatCell": {
+                        "range": {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000,
+                                  "startColumnIndex": 1, "endColumnIndex": 2},
+                        "cell": {"userEnteredFormat": {"numberFormat": {"type": "TEXT"}}},
+                        "fields": "userEnteredFormat.numberFormat",
+                    }
+                },
+                {
+                    "repeatCell": {
+                        "range": {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 1000,
+                                  "startColumnIndex": 11, "endColumnIndex": 12},
+                        "cell": {"userEnteredFormat": {"numberFormat": {"type": "TEXT"}}},
+                        "fields": "userEnteredFormat.numberFormat",
                     }
                 },
             ]
@@ -456,67 +473,85 @@ class SheetLogger:
     # Agent Config Tab — Google Sheet as Config UI
     # ----------------------------------------------------------------
 
-    # Row layout for Agent Config tab:
-    # Row 1: Title (merged A1:C1)
-    # Row 2: Subtitle
-    # Row 3: blank
-    # Row 4: Column headers (Setting | Value | Instructions)
-    # Row 5-13: Config fields
-    # Row 14: blank
-    # Row 15: Logs section header
-    # Row 16: Log column headers (Time | Level | Message)
-    # Row 17-21: Log entries (5 rows)
+    # Row layout:
+    #  1  Title (merged)
+    #  2  Subtitle (merged)
+    #  3  blank
+    #  4  Setting | Current Value | Instructions   (header)
+    #  5  Poll Interval ...
+    #  6  SLA Cooldown ...
+    #  7  EOD Hour ...
+    #  8  EOD Minute ...
+    #  9  Admin Email ...
+    # 10  EOD Recipients ...
+    # 11  Monitored Inboxes ...
+    # 12  Claude Model ...
+    # 13  Last Updated ...
+    # 14  blank
+    # 15  Agent Status (merged, green)
+    # 16  Label | Value   (header)
+    # 17  Last Polled | <timestamp>
+    # 18  Emails This Cycle | <count>
+    # 19  blank
+    # 20  Recent Errors / Highlights (merged, orange)
+    # 21  Time | Message  (header)
+    # 22-26  5 log rows
 
-    CONFIG_DATA_START_ROW = 5   # 0-indexed: row 5 = row index 4
     CONFIG_FIELDS = [
-        # (setting_name, default_fn, instruction)
         ("Poll Interval (seconds)", lambda c: str(c.get("gmail", {}).get("poll_interval_seconds", 300)),
          "How often to check for new emails. Minimum 60, maximum 3600."),
         ("SLA Alert Cooldown (hours)", lambda c: str(c.get("sla", {}).get("breach_alert_cooldown_hours", 4)),
-         "Hours between repeated SLA breach alerts for same ticket. Range: 1–48."),
+         "Hours between repeated SLA breach alerts for same ticket. Range: 1-48."),
         ("EOD Report Hour (IST)", lambda c: str(c.get("eod", {}).get("send_hour", 19)),
-         "Hour (0–23) in IST when the daily summary email is sent."),
+         "Hour (0-23) in IST when the daily summary email is sent."),
         ("EOD Report Minute", lambda c: str(c.get("eod", {}).get("send_minute", 0)),
-         "Minute (0–59) for the EOD report. Usually 0."),
+         "Minute (0-59) for the EOD report. Usually 0."),
         ("Admin Email", lambda c: c.get("admin", {}).get("email", ""),
          "Primary admin email. Receives escalations and fallback EOD reports."),
         ("EOD Recipients", lambda c: ", ".join(c.get("eod", {}).get("recipients", [])),
          "Comma-separated emails that receive the daily EOD summary."),
         ("Monitored Inboxes", lambda c: ", ".join(c.get("gmail", {}).get("inboxes", [])),
-         "Comma-separated inbox addresses. Changes here need redeployment to take effect."),
+         "Comma-separated inbox addresses. Changes here need redeployment."),
         ("Claude Model", lambda c: c.get("claude", {}).get("model", "claude-sonnet-4-5-20250929"),
-         "AI model used for triage. Do not change unless instructed by admin."),
+         "AI model for triage. Do not change unless instructed by admin."),
         ("Last Updated", lambda c: datetime.now(IST).strftime("%d %b %Y, %I:%M %p IST"),
          "Auto-updated timestamp of last config write."),
     ]
 
-    LOG_HEADER_ROW = 16  # 1-indexed
-    LOG_DATA_START_ROW = 17  # 1-indexed
+    # 1-indexed row numbers for the status and log sections
+    STATUS_HEADER_ROW = 15
+    STATUS_DATA_ROW = 17     # Last Polled row
+    LOG_HEADER_ROW = 20
+    LOG_COL_HEADER_ROW = 21
+    LOG_DATA_START_ROW = 22
 
     def ensure_agent_config_tab(self, config: dict):
-        """Create or update the Agent Config tab with formatted config fields and log area."""
+        """Create or update the Agent Config tab with config, status, and error log."""
         tab_name = self.agent_config_tab
         sheet_id = self._create_tab_if_missing(tab_name)
 
-        # ---- Write data ----
         rows = [
-            ["VIPL Email Agent — Configuration", "", ""],
-            ["Edit values in column B. Agent reads these on every startup.", "", ""],
-            ["", "", ""],
-            ["Setting", "Current Value", "Instructions"],
+            ["VIPL Email Agent — Configuration", "", ""],                    # 1
+            ["Edit values in column B. Agent reads these on startup.", "", ""],  # 2
+            ["", "", ""],                                                    # 3
+            ["Setting", "Current Value", "Instructions"],                   # 4
         ]
 
         for field_name, default_fn, instruction in self.CONFIG_FIELDS:
             rows.append([field_name, default_fn(config), instruction])
+        # rows now has 4 + 9 = 13 entries
 
-        rows.append(["", "", ""])  # Blank separator row
-        rows.append(["Latest Agent Logs", "", ""])
-        rows.append(["Time", "Level", "Message"])
-        # 5 empty log rows
+        rows.append(["", "", ""])                                           # 14
+        rows.append(["Agent Status", "", ""])                               # 15
+        rows.append(["", "Value", ""])                                      # 16 header
+        rows.append(["Last Polled", "Not yet", ""])                         # 17
+        rows.append(["Emails This Cycle", "0", ""])                         # 18
+        rows.append(["", "", ""])                                           # 19
+        rows.append(["Recent Errors & Highlights", "", ""])                 # 20
+        rows.append(["Time", "Message", ""])                                # 21
         for _ in range(5):
-            rows.append(["—", "—", "Waiting for first poll..."])
+            rows.append(["—", "Waiting for first poll...", ""])             # 22-26
 
-        # Write all at once
         self.sheets.values().update(
             spreadsheetId=self.spreadsheet_id,
             range=f"'{tab_name}'!A1:C{len(rows)}",
@@ -524,217 +559,121 @@ class SheetLogger:
             body={"values": rows},
         ).execute()
 
-        # ---- Format with batchUpdate ----
         self._format_agent_config_tab(sheet_id, len(self.CONFIG_FIELDS))
-
         logger.info("Agent Config tab ready")
 
     def _format_agent_config_tab(self, sheet_id: int, num_fields: int):
-        """Apply colors, merges, column widths, and data validation to Agent Config tab."""
-        # Color constants
+        """Apply colors, merges, column widths, and data validation."""
         BLUE = {"red": 0.10, "green": 0.27, "blue": 0.53}
         BLUE_LIGHT = {"red": 0.85, "green": 0.91, "blue": 0.97}
         WHITE = {"red": 1, "green": 1, "blue": 1}
         GRAY_LIGHT = {"red": 0.95, "green": 0.95, "blue": 0.95}
         GREEN_DARK = {"red": 0.06, "green": 0.40, "blue": 0.27}
         GREEN_LIGHT = {"red": 0.85, "green": 0.95, "blue": 0.88}
-        ORANGE = {"red": 0.95, "green": 0.60, "blue": 0.07}
-        ORANGE_LIGHT = {"red": 1, "green": 0.95, "blue": 0.85}
+        ORANGE_DARK = {"red": 0.80, "green": 0.40, "blue": 0.0}
+        ORANGE_LIGHT = {"red": 1.0, "green": 0.93, "blue": 0.80}
 
         requests = [
-            # ---- Column widths ----
-            {"updateDimensionProperties": {
-                "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 1},
-                "properties": {"pixelSize": 240}, "fields": "pixelSize"}},
-            {"updateDimensionProperties": {
-                "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 1, "endIndex": 2},
-                "properties": {"pixelSize": 320}, "fields": "pixelSize"}},
-            {"updateDimensionProperties": {
-                "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 2, "endIndex": 3},
-                "properties": {"pixelSize": 450}, "fields": "pixelSize"}},
+            # Column widths
+            {"updateDimensionProperties": {"range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 1}, "properties": {"pixelSize": 240}, "fields": "pixelSize"}},
+            {"updateDimensionProperties": {"range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 1, "endIndex": 2}, "properties": {"pixelSize": 360}, "fields": "pixelSize"}},
+            {"updateDimensionProperties": {"range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 2, "endIndex": 3}, "properties": {"pixelSize": 420}, "fields": "pixelSize"}},
 
-            # ---- Title row (Row 1) — dark blue bg, white bold text, merge ----
-            {"mergeCells": {
-                "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": 3},
-                "mergeType": "MERGE_ALL"}},
-            {"repeatCell": {
-                "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1},
-                "cell": {"userEnteredFormat": {
-                    "backgroundColor": BLUE,
-                    "textFormat": {"bold": True, "fontSize": 14, "foregroundColor": WHITE},
-                    "horizontalAlignment": "CENTER",
-                    "verticalAlignment": "MIDDLE",
-                }},
-                "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"}},
-            {"updateDimensionProperties": {
-                "range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": 0, "endIndex": 1},
-                "properties": {"pixelSize": 44}, "fields": "pixelSize"}},
+            # Row 1: Title — dark blue, white bold, merged
+            {"mergeCells": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": 3}, "mergeType": "MERGE_ALL"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1}, "cell": {"userEnteredFormat": {"backgroundColor": BLUE, "textFormat": {"bold": True, "fontSize": 14, "foregroundColor": WHITE}, "horizontalAlignment": "CENTER", "verticalAlignment": "MIDDLE"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"}},
+            {"updateDimensionProperties": {"range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": 0, "endIndex": 1}, "properties": {"pixelSize": 44}, "fields": "pixelSize"}},
 
-            # ---- Subtitle row (Row 2) — light blue bg, muted text, merge ----
-            {"mergeCells": {
-                "range": {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 2, "startColumnIndex": 0, "endColumnIndex": 3},
-                "mergeType": "MERGE_ALL"}},
-            {"repeatCell": {
-                "range": {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 2},
-                "cell": {"userEnteredFormat": {
-                    "backgroundColor": BLUE_LIGHT,
-                    "textFormat": {"italic": True, "fontSize": 10, "foregroundColor": BLUE},
-                    "horizontalAlignment": "CENTER",
-                }},
-                "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
+            # Row 2: Subtitle — light blue, italic, merged
+            {"mergeCells": {"range": {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 2, "startColumnIndex": 0, "endColumnIndex": 3}, "mergeType": "MERGE_ALL"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 2}, "cell": {"userEnteredFormat": {"backgroundColor": BLUE_LIGHT, "textFormat": {"italic": True, "fontSize": 10, "foregroundColor": BLUE}, "horizontalAlignment": "CENTER"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
 
-            # ---- Config header row (Row 4) — dark blue bg, white bold text ----
-            {"repeatCell": {
-                "range": {"sheetId": sheet_id, "startRowIndex": 3, "endRowIndex": 4},
-                "cell": {"userEnteredFormat": {
-                    "backgroundColor": BLUE,
-                    "textFormat": {"bold": True, "foregroundColor": WHITE},
-                }},
-                "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+            # Row 4: Config header — dark blue, white bold
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 3, "endRowIndex": 4}, "cell": {"userEnteredFormat": {"backgroundColor": BLUE, "textFormat": {"bold": True, "foregroundColor": WHITE}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
 
-            # ---- Config value cells (Rows 5–13 col B) — light blue bg, editable look ----
-            {"repeatCell": {
-                "range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 1, "endColumnIndex": 2},
-                "cell": {"userEnteredFormat": {
-                    "backgroundColor": BLUE_LIGHT,
-                    "textFormat": {"bold": True},
-                    "borders": {
-                        "bottom": {"style": "SOLID", "color": BLUE},
-                    },
-                }},
-                "fields": "userEnteredFormat(backgroundColor,textFormat,borders)"}},
+            # Config value cells (col B) — light blue bg with underline
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 1, "endColumnIndex": 2}, "cell": {"userEnteredFormat": {"backgroundColor": BLUE_LIGHT, "textFormat": {"bold": True}, "borders": {"bottom": {"style": "SOLID", "color": BLUE}}}}, "fields": "userEnteredFormat(backgroundColor,textFormat,borders)"}},
 
-            # ---- Config setting names (Rows 5–13 col A) — light gray ----
-            {"repeatCell": {
-                "range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 0, "endColumnIndex": 1},
-                "cell": {"userEnteredFormat": {
-                    "backgroundColor": GRAY_LIGHT,
-                    "textFormat": {"bold": True},
-                }},
-                "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+            # Config setting names (col A) — light gray, bold
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 0, "endColumnIndex": 1}, "cell": {"userEnteredFormat": {"backgroundColor": GRAY_LIGHT, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
 
-            # ---- Instructions column (col C) — italic, muted ----
-            {"repeatCell": {
-                "range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 2, "endColumnIndex": 3},
-                "cell": {"userEnteredFormat": {
-                    "textFormat": {"italic": True, "foregroundColor": {"red": 0.37, "green": 0.39, "blue": 0.40}},
-                    "wrapStrategy": "WRAP",
-                }},
-                "fields": "userEnteredFormat(textFormat,wrapStrategy)"}},
+            # Instructions (col C) — italic gray, wrap
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 2, "endColumnIndex": 3}, "cell": {"userEnteredFormat": {"textFormat": {"italic": True, "foregroundColor": {"red": 0.37, "green": 0.39, "blue": 0.40}}, "wrapStrategy": "WRAP"}}, "fields": "userEnteredFormat(textFormat,wrapStrategy)"}},
 
-            # ---- Logs section header (merged, green) ----
-            {"mergeCells": {
-                "range": {"sheetId": sheet_id, "startRowIndex": self.LOG_HEADER_ROW - 2, "endRowIndex": self.LOG_HEADER_ROW - 1,
-                           "startColumnIndex": 0, "endColumnIndex": 3},
-                "mergeType": "MERGE_ALL"}},
-            {"repeatCell": {
-                "range": {"sheetId": sheet_id, "startRowIndex": self.LOG_HEADER_ROW - 2, "endRowIndex": self.LOG_HEADER_ROW - 1},
-                "cell": {"userEnteredFormat": {
-                    "backgroundColor": GREEN_DARK,
-                    "textFormat": {"bold": True, "fontSize": 12, "foregroundColor": WHITE},
-                    "horizontalAlignment": "CENTER",
-                }},
-                "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
+            # Row 15: Agent Status header — green, merged
+            {"mergeCells": {"range": {"sheetId": sheet_id, "startRowIndex": 14, "endRowIndex": 15, "startColumnIndex": 0, "endColumnIndex": 3}, "mergeType": "MERGE_ALL"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 14, "endRowIndex": 15}, "cell": {"userEnteredFormat": {"backgroundColor": GREEN_DARK, "textFormat": {"bold": True, "fontSize": 12, "foregroundColor": WHITE}, "horizontalAlignment": "CENTER"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
 
-            # ---- Logs column header row (green) ----
-            {"repeatCell": {
-                "range": {"sheetId": sheet_id, "startRowIndex": self.LOG_HEADER_ROW - 1, "endRowIndex": self.LOG_HEADER_ROW},
-                "cell": {"userEnteredFormat": {
-                    "backgroundColor": GREEN_LIGHT,
-                    "textFormat": {"bold": True, "foregroundColor": GREEN_DARK},
-                }},
-                "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+            # Row 16: Status column header — light green
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 15, "endRowIndex": 16}, "cell": {"userEnteredFormat": {"backgroundColor": GREEN_LIGHT, "textFormat": {"bold": True, "foregroundColor": GREEN_DARK}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
 
-            # ---- Log data rows — alternate colors ----
-            {"repeatCell": {
-                "range": {"sheetId": sheet_id, "startRowIndex": self.LOG_DATA_START_ROW - 1, "endRowIndex": self.LOG_DATA_START_ROW + 4},
-                "cell": {"userEnteredFormat": {
-                    "backgroundColor": {"red": 0.98, "green": 0.98, "blue": 0.98},
-                    "textFormat": {"fontSize": 10},
-                    "wrapStrategy": "WRAP",
-                }},
-                "fields": "userEnteredFormat(backgroundColor,textFormat,wrapStrategy)"}},
+            # Rows 17-18: Status data — light bg
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 16, "endRowIndex": 18, "startColumnIndex": 0, "endColumnIndex": 1}, "cell": {"userEnteredFormat": {"backgroundColor": GRAY_LIGHT, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 16, "endRowIndex": 18, "startColumnIndex": 1, "endColumnIndex": 2}, "cell": {"userEnteredFormat": {"backgroundColor": GREEN_LIGHT, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
 
-            # ---- Freeze nothing (keep scrollable) ----
-            {"updateSheetProperties": {
-                "properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": 0}},
-                "fields": "gridProperties.frozenRowCount"}},
+            # Row 20: Error log header — orange, merged
+            {"mergeCells": {"range": {"sheetId": sheet_id, "startRowIndex": 19, "endRowIndex": 20, "startColumnIndex": 0, "endColumnIndex": 3}, "mergeType": "MERGE_ALL"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 19, "endRowIndex": 20}, "cell": {"userEnteredFormat": {"backgroundColor": ORANGE_DARK, "textFormat": {"bold": True, "fontSize": 12, "foregroundColor": WHITE}, "horizontalAlignment": "CENTER"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
 
-            # ---- Protect Setting names and Instructions columns ----
-            {"addProtectedRange": {
-                "protectedRange": {
-                    "range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields,
-                              "startColumnIndex": 0, "endColumnIndex": 1},
-                    "description": "Setting names — do not edit",
-                    "warningOnly": True,
-                }}},
-            {"addProtectedRange": {
-                "protectedRange": {
-                    "range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields,
-                              "startColumnIndex": 2, "endColumnIndex": 3},
-                    "description": "Instructions — do not edit",
-                    "warningOnly": True,
-                }}},
+            # Row 21: Error log column headers — light orange
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 20, "endRowIndex": 21}, "cell": {"userEnteredFormat": {"backgroundColor": ORANGE_LIGHT, "textFormat": {"bold": True, "foregroundColor": ORANGE_DARK}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+
+            # Rows 22-26: Log data
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 21, "endRowIndex": 26}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.99, "green": 0.97, "blue": 0.95}, "textFormat": {"fontSize": 10}, "wrapStrategy": "WRAP"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,wrapStrategy)"}},
+
+            # Protect settings names + instructions
+            {"addProtectedRange": {"protectedRange": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 0, "endColumnIndex": 1}, "description": "Setting names", "warningOnly": True}}},
+            {"addProtectedRange": {"protectedRange": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 2, "endColumnIndex": 3}, "description": "Instructions", "warningOnly": True}}},
         ]
 
-        # ---- Data validation for numeric fields ----
+        # Data validation for numeric fields
         validations = [
-            # Poll interval: 60–3600
-            (4, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "60"}, {"userEnteredValue": "3600"}]},
-                 "strict": True, "showCustomUi": True, "inputMessage": "Enter a number between 60 and 3600"}),
-            # SLA cooldown: 1–48
-            (5, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "1"}, {"userEnteredValue": "48"}]},
-                 "strict": True, "showCustomUi": True, "inputMessage": "Enter a number between 1 and 48"}),
-            # EOD hour: 0–23
-            (6, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "0"}, {"userEnteredValue": "23"}]},
-                 "strict": True, "showCustomUi": True, "inputMessage": "Enter hour 0–23 (IST)"}),
-            # EOD minute: 0–59
-            (7, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "0"}, {"userEnteredValue": "59"}]},
-                 "strict": True, "showCustomUi": True, "inputMessage": "Enter minute 0–59"}),
+            (4, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "60"}, {"userEnteredValue": "3600"}]}, "strict": True, "showCustomUi": True, "inputMessage": "Enter 60-3600"}),
+            (5, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "1"}, {"userEnteredValue": "48"}]}, "strict": True, "showCustomUi": True, "inputMessage": "Enter 1-48"}),
+            (6, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "0"}, {"userEnteredValue": "23"}]}, "strict": True, "showCustomUi": True, "inputMessage": "Enter 0-23"}),
+            (7, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "0"}, {"userEnteredValue": "59"}]}, "strict": True, "showCustomUi": True, "inputMessage": "Enter 0-59"}),
         ]
-
         for row_idx, rule in validations:
-            requests.append({
-                "setDataValidation": {
-                    "range": {"sheetId": sheet_id, "startRowIndex": row_idx, "endRowIndex": row_idx + 1,
-                              "startColumnIndex": 1, "endColumnIndex": 2},
-                    "rule": rule,
-                }
-            })
+            requests.append({"setDataValidation": {"range": {"sheetId": sheet_id, "startRowIndex": row_idx, "endRowIndex": row_idx + 1, "startColumnIndex": 1, "endColumnIndex": 2}, "rule": rule}})
 
         try:
-            self.sheets.batchUpdate(
-                spreadsheetId=self.spreadsheet_id,
-                body={"requests": requests},
-            ).execute()
+            self.sheets.batchUpdate(spreadsheetId=self.spreadsheet_id, body={"requests": requests}).execute()
         except Exception as e:
             logger.warning(f"Could not fully format Agent Config tab: {e}")
 
     # ----------------------------------------------------------------
-    # Write Agent Logs to Sheet
+    # Write Agent Status + Logs to Sheet
     # ----------------------------------------------------------------
 
-    def write_agent_logs(self, logs: list[dict]):
-        """Write the latest agent log entries to the Agent Config tab."""
+    def write_agent_status(self, last_polled: str, emails_this_cycle: int, error_logs: list[dict]):
+        """Update the Agent Status section and error/highlight logs."""
         tab_name = self.agent_config_tab
-        rows = []
-        for log in logs:
-            rows.append([
-                log.get("time", "—"),
-                log.get("level", "—"),
-                log.get("message", "—"),
-            ])
 
-        # Pad to exactly 5 rows
-        while len(rows) < 5:
-            rows.insert(0, ["—", "—", "—"])
+        # Update status fields (rows 17-18)
+        status_rows = [
+            ["Last Polled", last_polled, ""],
+            ["Emails This Cycle", str(emails_this_cycle), ""],
+        ]
+
+        # Update error log rows (rows 22-26)
+        log_rows = []
+        for log in error_logs:
+            log_rows.append([log.get("time", "—"), log.get("message", "—"), ""])
+        while len(log_rows) < 5:
+            log_rows.insert(0, ["—", "No errors", ""])
+        log_rows = log_rows[-5:]  # Keep only last 5
 
         try:
-            self.sheets.values().update(
+            # Batch both updates
+            self.sheets.values().batchUpdate(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{tab_name}'!A{self.LOG_DATA_START_ROW}:C{self.LOG_DATA_START_ROW + 4}",
-                valueInputOption="RAW",
-                body={"values": rows},
+                body={
+                    "valueInputOption": "RAW",
+                    "data": [
+                        {"range": f"'{tab_name}'!A{self.STATUS_DATA_ROW}:C{self.STATUS_DATA_ROW + 1}", "values": status_rows},
+                        {"range": f"'{tab_name}'!A{self.LOG_DATA_START_ROW}:C{self.LOG_DATA_START_ROW + 4}", "values": log_rows},
+                    ]
+                }
             ).execute()
         except Exception as e:
-            logger.warning(f"Could not write agent logs to sheet: {e}")
+            logger.warning(f"Could not write agent status to sheet: {e}")

@@ -50,25 +50,27 @@ IST = pytz.timezone("Asia/Kolkata")
 
 
 # ----------------------------------------------------------------
-# In-Memory Log Buffer (written to Google Sheet)
+# In-Memory Log Buffer — errors & highlights only
 # ----------------------------------------------------------------
 
 class AgentLogBuffer:
-    """Keeps the latest N agent log entries for writing to Google Sheet."""
+    """Keeps the latest agent errors and highlights for the Agent Config sheet."""
 
-    def __init__(self, max_size: int = 5):
+    def __init__(self):
         self._logs = []
-        self._max_size = max_size
         self._lock = threading.Lock()
 
     def add(self, level: str, message: str):
+        """Only store ERROR-level or notable highlight entries (✅ ticket logs)."""
+        if level not in ("ERROR", "HIGHLIGHT"):
+            return  # Ignore INFO/DEBUG — only errors and highlights
         with self._lock:
             self._logs.append({
                 "time": datetime.now(IST).strftime("%d %b %Y, %I:%M:%S %p"),
                 "level": level,
                 "message": message[:120],
             })
-            if len(self._logs) > 50:  # Keep more in memory, write latest 5
+            if len(self._logs) > 50:
                 self._logs = self._logs[-50:]
 
     def latest(self, n: int = 5) -> list[dict]:
@@ -280,7 +282,7 @@ def init_components(config: dict) -> dict:
 # ----------------------------------------------------------------
 
 def process_emails(components: dict):
-    """Poll Gmail → Claude triage → Sheet log → Chat notification."""
+    """Poll Gmail → Claude triage → Sheet log → one Chat summary."""
     config = components["config"]
     gmail = components["gmail"]
     ai = components["ai"]
@@ -290,16 +292,17 @@ def process_emails(components: dict):
 
     inboxes = config.get("gmail", {}).get("inboxes", [])
     sla_defaults = config.get("sla", {}).get("defaults", {})
+    last_polled = datetime.now(IST).strftime("%d %b %Y, %I:%M:%S %p")
+    processed_items = []  # Collect all for batch Chat summary
 
     try:
         sla_config = sheet.get_sla_config() or {}
         new_emails = gmail.poll_all(inboxes, state)
 
         if not new_emails:
-            log_buffer.add("INFO", f"Poll complete — no new emails across {len(inboxes)} inbox(es)")
+            logger.info(f"Poll complete — no new emails across {len(inboxes)} inbox(es)")
             state.reset_failures()
         else:
-            log_buffer.add("INFO", f"Found {len(new_emails)} new email(s) to process")
             logger.info(f"Processing {len(new_emails)} new email(s)...")
 
             for email in new_emails:
@@ -315,11 +318,22 @@ def process_emails(components: dict):
                     sla_deadline = email.timestamp + timedelta(hours=sla_hours)
                     sla_deadline_str = sla_deadline.strftime("%d %b %Y, %I:%M %p IST")
 
-                    # Send Chat notification
-                    chat_ok = chat.notify_new_email(ticket_number, email, triage, sla_deadline_str)
+                    # Collect for batch Chat notification
+                    processed_items.append({
+                        "ticket": ticket_number,
+                        "priority": triage.priority,
+                        "category": triage.category,
+                        "subject": email.subject,
+                        "sender": f"{email.sender_name} <{email.sender_email}>",
+                        "inbox": email.inbox,
+                        "summary": triage.summary,
+                        "assignee": triage.suggested_assignee or "Unassigned",
+                        "sla_deadline": sla_deadline_str,
+                        "gmail_link": email.gmail_link,
+                    })
 
-                    log_buffer.add("INFO",
-                        f"✅ {ticket_number} | {triage.priority} | {triage.category} | Chat: {'OK' if chat_ok else 'FAILED'}")
+                    log_buffer.add("HIGHLIGHT",
+                        f"✅ {ticket_number} | {triage.priority} | {triage.category}")
                     logger.info(f"✅ {ticket_number} | {triage.priority} | {triage.category} | {email.subject[:50]}")
 
                 except Exception as e:
@@ -328,16 +342,29 @@ def process_emails(components: dict):
 
             state.reset_failures()
 
-        # Write latest logs to Agent Config sheet
+        # Send ONE summary Chat message for the entire poll (if any emails processed)
+        if processed_items:
+            try:
+                chat.notify_poll_summary(processed_items)
+            except Exception as e:
+                log_buffer.add("ERROR", f"Chat summary failed: {str(e)[:60]}")
+                logger.error(f"Chat poll summary failed: {e}")
+
+        # Write status + error logs to Agent Config sheet
         try:
-            sheet.write_agent_logs(log_buffer.latest(5))
+            sheet.write_agent_status(last_polled, len(processed_items), log_buffer.latest(5))
         except Exception as e:
-            logger.warning(f"Could not write agent logs to sheet: {e}")
+            logger.warning(f"Could not write agent status to sheet: {e}")
 
     except Exception as e:
         log_buffer.add("ERROR", f"Poll cycle failed: {str(e)[:80]}")
         logger.error(f"Email processing cycle failed: {e}")
         state.record_failure()
+        # Still update status even on failure
+        try:
+            sheet.write_agent_status(last_polled, 0, log_buffer.latest(5))
+        except Exception:
+            pass
 
 
 # ----------------------------------------------------------------
@@ -412,7 +439,7 @@ def run_agent(components: dict):
     logger.info(f"  EOD report:  {eod_hour}:{eod_minute:02d} IST")
     logger.info("=" * 60)
 
-    log_buffer.add("INFO", f"Agent started — monitoring {len(inboxes)} inbox(es), polling every {poll_interval}s")
+    log_buffer.add("HIGHLIGHT", f"Agent started — monitoring {len(inboxes)} inbox(es), polling every {poll_interval}s")
 
     # Send startup notification to Chat
     try:
