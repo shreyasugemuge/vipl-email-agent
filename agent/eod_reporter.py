@@ -14,6 +14,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import Optional
 
 import pytz
+from typing import Optional
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -52,6 +53,25 @@ class EODReporter:
             loader=FileSystemLoader(template_dir),
             autoescape=select_autoescape(["html"]),
         )
+
+    @staticmethod
+    def _parse_sheet_datetime(dt_str: str) -> Optional[datetime]:
+        """Parse a datetime string from the Google Sheet into a tz-aware IST datetime."""
+        if not dt_str:
+            return None
+        clean = dt_str.strip()
+        for suffix in (" IST", " ist"):
+            if clean.endswith(suffix):
+                clean = clean[: -len(suffix)]
+        try:
+            dt = datetime.strptime(clean.strip(), "%d %b %Y, %I:%M %p")
+            return IST.localize(dt)
+        except ValueError:
+            try:
+                dt = datetime.strptime(clean.strip(), "%Y-%m-%d %H:%M:%S")
+                return IST.localize(dt)
+            except ValueError:
+                return None
 
     def _get_gmail_service(self):
         """Create a Gmail service for sending the EOD email."""
@@ -103,12 +123,11 @@ class EODReporter:
         # Calculate hours since received for unassigned tickets
         for ticket in unassigned:
             ts_str = ticket.get("Timestamp", "")
-            try:
-                ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
-                ts = IST.localize(ts)
+            ts = self._parse_sheet_datetime(ts_str)
+            if ts:
                 age_hours = (now - ts).total_seconds() / 3600
                 ticket["age_hours"] = round(age_hours, 1)
-            except ValueError:
+            else:
                 ticket["age_hours"] = 0
 
         stats = {

@@ -13,6 +13,7 @@ from datetime import datetime
 from email.utils import parseaddr
 from typing import Optional
 
+import pytz
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
@@ -112,9 +113,9 @@ class GmailPoller:
             # Parse subject
             subject = headers.get("subject", "(no subject)")
 
-            # Parse timestamp
+            # Parse timestamp (timezone-aware UTC — converted to IST in sheet_logger)
             internal_date_ms = int(msg_data.get("internalDate", 0))
-            timestamp = datetime.fromtimestamp(internal_date_ms / 1000)
+            timestamp = datetime.fromtimestamp(internal_date_ms / 1000, tz=pytz.UTC)
 
             # Extract plain text body
             body = self._extract_body(msg_data.get("payload", {}))

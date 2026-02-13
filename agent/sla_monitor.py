@@ -16,6 +16,31 @@ logger = logging.getLogger(__name__)
 
 IST = pytz.timezone("Asia/Kolkata")
 
+# Timestamp formats used in the Google Sheet (written by sheet_logger)
+# e.g. "13 Feb 2026, 02:30 PM"
+SHEET_DATETIME_FORMAT = "%d %b %Y, %I:%M %p"
+
+
+def _parse_sheet_datetime(dt_str: str) -> Optional[datetime]:
+    """Parse a datetime string from the Google Sheet into a tz-aware IST datetime."""
+    if not dt_str:
+        return None
+    # Strip trailing timezone labels like " IST"
+    clean = dt_str.strip()
+    for suffix in (" IST", " ist"):
+        if clean.endswith(suffix):
+            clean = clean[: -len(suffix)]
+    try:
+        dt = datetime.strptime(clean.strip(), SHEET_DATETIME_FORMAT)
+        return IST.localize(dt)
+    except ValueError:
+        # Fallback: try ISO format in case older rows exist
+        try:
+            dt = datetime.strptime(clean.strip(), "%Y-%m-%d %H:%M:%S")
+            return IST.localize(dt)
+        except ValueError:
+            return None
+
 
 class SLAMonitor:
     """Monitors SLA compliance and triggers breach alerts."""
@@ -63,11 +88,9 @@ class SLAMonitor:
                     continue
 
                 # Parse SLA deadline
-                try:
-                    sla_deadline = datetime.strptime(sla_deadline_str, "%Y-%m-%d %H:%M:%S")
-                    sla_deadline = IST.localize(sla_deadline)
-                except ValueError:
-                    logger.warning(f"Invalid SLA deadline format for {ticket_id}: {sla_deadline_str}")
+                sla_deadline = _parse_sheet_datetime(sla_deadline_str)
+                if sla_deadline is None:
+                    logger.warning(f"Cannot parse SLA deadline for {ticket_id}: '{sla_deadline_str}'")
                     continue
 
                 # Check if business hours mode adjusts the effective deadline
@@ -134,10 +157,9 @@ class SLAMonitor:
                 sla_deadline_str = ticket.get("SLA Deadline", "")
                 if not sla_deadline_str:
                     continue
-                try:
-                    sla_deadline = datetime.strptime(sla_deadline_str, "%Y-%m-%d %H:%M:%S")
-                    sla_deadline = IST.localize(sla_deadline)
-                except ValueError:
+
+                sla_deadline = _parse_sheet_datetime(sla_deadline_str)
+                if sla_deadline is None:
                     continue
 
                 if now > sla_deadline:

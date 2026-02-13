@@ -1,287 +1,110 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIPL Email Agent — Daily Summary</title>
-    <style>
-        /* Reset & Base */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 0;
-            color: #333;
-            line-height: 1.5;
-        }
-        .container {
-            max-width: 640px;
-            margin: 20px auto;
-            background: #ffffff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        /* Header */
-        .header {
-            background: linear-gradient(135deg, #1a73e8, #0d47a1);
-            color: white;
-            padding: 24px 32px;
-        }
-        .header h1 {
-            margin: 0 0 4px 0;
-            font-size: 20px;
-            font-weight: 600;
-        }
-        .header .subtitle {
-            font-size: 14px;
-            opacity: 0.85;
-        }
-
-        /* KPI Row */
-        .kpi-row {
-            display: flex;
-            padding: 0;
-            border-bottom: 1px solid #e8e8e8;
-        }
-        .kpi-box {
-            flex: 1;
-            text-align: center;
-            padding: 20px 12px;
-            border-right: 1px solid #e8e8e8;
-        }
-        .kpi-box:last-child {
-            border-right: none;
-        }
-        .kpi-number {
-            font-size: 28px;
-            font-weight: 700;
-            line-height: 1;
-        }
-        .kpi-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #777;
-            margin-top: 6px;
-        }
-        .kpi-green { color: #0f9d58; }
-        .kpi-blue { color: #1a73e8; }
-        .kpi-orange { color: #f9a825; }
-        .kpi-red { color: #d93025; }
-
-        /* Sections */
-        .section {
-            padding: 20px 32px;
-            border-bottom: 1px solid #e8e8e8;
-        }
-        .section:last-child {
-            border-bottom: none;
-        }
-        .section h2 {
-            font-size: 14px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #555;
-            margin: 0 0 12px 0;
-        }
-
-        /* Breakdown list */
-        .breakdown-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            font-size: 14px;
-        }
-        .breakdown-label { color: #555; }
-        .breakdown-value { font-weight: 600; }
-
-        /* Tables */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        th {
-            background: #f8f9fa;
-            text-align: left;
-            padding: 8px 12px;
-            font-weight: 600;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            color: #555;
-            border-bottom: 2px solid #e0e0e0;
-        }
-        td {
-            padding: 8px 12px;
-            border-bottom: 1px solid #eee;
-            vertical-align: top;
-        }
-        tr:last-child td { border-bottom: none; }
-        .overdue { color: #d93025; font-weight: 600; }
-        .unassigned-tag {
-            background: #fce4ec;
-            color: #c62828;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        /* Footer */
-        .footer {
-            padding: 20px 32px;
-            text-align: center;
-            background: #f8f9fa;
-        }
-        .footer a {
-            display: inline-block;
-            background: #1a73e8;
-            color: white;
-            text-decoration: none;
-            padding: 10px 24px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        .footer .note {
-            font-size: 12px;
-            color: #999;
-            margin-top: 12px;
-        }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            color: #999;
-            padding: 12px;
-            font-size: 14px;
-        }
-    </style>
+<meta charset="utf-8">
+<style>
+  body { font-family: Arial, sans-serif; color: #333; max-width: 650px; margin: 0 auto; }
+  .header { background: #1a4587; color: #fff; padding: 18px 24px; border-radius: 6px 6px 0 0; }
+  .header h1 { margin: 0; font-size: 20px; }
+  .header p { margin: 4px 0 0; opacity: 0.85; font-size: 13px; }
+  .body { padding: 20px 24px; background: #f8f9fa; }
+  .stats-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: #fff; border-radius: 6px; padding: 14px 18px; flex: 1 1 140px; border-left: 4px solid #1a4587; }
+  .stat-card .value { font-size: 28px; font-weight: bold; color: #1a4587; }
+  .stat-card .label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card.breach { border-left-color: #d93025; }
+  .stat-card.breach .value { color: #d93025; }
+  .section { margin-top: 20px; }
+  .section h2 { font-size: 15px; color: #1a4587; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #e8edf3; text-align: left; padding: 8px 10px; }
+  td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+  .footer { padding: 16px 24px; font-size: 12px; color: #888; text-align: center; }
+  a.btn { display: inline-block; background: #1a4587; color: #fff; padding: 10px 20px; border-radius: 4px; text-decoration: none; margin-top: 12px; }
+</style>
 </head>
 <body>
-    <div class="container">
-
-        <!-- Header -->
-        <div class="header">
-            <h1>📊 Daily Summary — {{ date }}</h1>
-            <div class="subtitle">VIPL Email Agent — Automated Report</div>
-        </div>
-
-        <!-- KPI Row -->
-        <div class="kpi-row">
-            <div class="kpi-box">
-                <div class="kpi-number kpi-blue">{{ received_today }}</div>
-                <div class="kpi-label">Received Today</div>
-            </div>
-            <div class="kpi-box">
-                <div class="kpi-number kpi-orange">{{ total_open }}</div>
-                <div class="kpi-label">Total Open</div>
-            </div>
-            <div class="kpi-box">
-                <div class="kpi-number kpi-green">{{ closed_today }}</div>
-                <div class="kpi-label">Closed Today</div>
-            </div>
-            <div class="kpi-box">
-                <div class="kpi-number {% if sla_breaches > 0 %}kpi-red{% else %}kpi-green{% endif %}">{{ sla_breaches }}</div>
-                <div class="kpi-label">SLA Breaches</div>
-            </div>
-        </div>
-
-        <!-- Status Breakdown -->
-        {% if status_breakdown %}
-        <div class="section">
-            <h2>Status Breakdown</h2>
-            {% for status, count in status_breakdown.items() %}
-            <div class="breakdown-item">
-                <span class="breakdown-label">{{ status }}</span>
-                <span class="breakdown-value">{{ count }}</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <!-- Inbox Breakdown -->
-        {% if inbox_breakdown %}
-        <div class="section">
-            <h2>Inbox Breakdown (Today)</h2>
-            {% for inbox, count in inbox_breakdown.items() %}
-            <div class="breakdown-item">
-                <span class="breakdown-label">{{ inbox }}</span>
-                <span class="breakdown-value">{{ count }}</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <!-- SLA Breaches -->
-        <div class="section">
-            <h2>⚠️ SLA Breaches ({{ breached_tickets|length }})</h2>
-            {% if breached_tickets %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Ticket</th>
-                        <th>Subject</th>
-                        <th>Assigned To</th>
-                        <th>Overdue</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for t in breached_tickets %}
-                    <tr>
-                        <td><strong>{{ t.get('Ticket #', '') }}</strong></td>
-                        <td>{{ t.get('Subject', '')[:50] }}</td>
-                        <td>{{ t.get('Assigned To', '') or '<span class="unassigned-tag">UNASSIGNED</span>' }}</td>
-                        <td class="overdue">{{ t.get('hours_overdue', 0) }}h</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="empty-state">✅ No SLA breaches — great work!</div>
-            {% endif %}
-        </div>
-
-        <!-- Unassigned Tickets -->
-        <div class="section">
-            <h2>📋 Unassigned Tickets ({{ unassigned_tickets|length }})</h2>
-            {% if unassigned_tickets %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Ticket</th>
-                        <th>Subject</th>
-                        <th>Age</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for t in unassigned_tickets %}
-                    <tr>
-                        <td><strong>{{ t.get('Ticket #', '') }}</strong></td>
-                        <td>{{ t.get('Subject', '')[:60] }}</td>
-                        <td>{{ t.get('age_hours', 0) }}h</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="empty-state">✅ All tickets are assigned</div>
-            {% endif %}
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            <a href="{{ sheet_url }}">Open Email Tracker</a>
-            <div class="note">
-                This report was generated automatically by VIPL Email Agent.<br>
-                Report time: {{ date }} at 7:00 PM IST
-            </div>
-        </div>
-
+  <div class="header">
+    <h1>VIPL Email Agent &mdash; Daily Summary</h1>
+    <p>{{ date }}</p>
+  </div>
+  <div class="body">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="value">{{ received_today }}</div>
+        <div class="label">Received Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">{{ closed_today }}</div>
+        <div class="label">Closed Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">{{ total_open }}</div>
+        <div class="label">Total Open</div>
+      </div>
+      <div class="stat-card {% if sla_breaches > 0 %}breach{% endif %}">
+        <div class="value">{{ sla_breaches }}</div>
+        <div class="label">SLA Breaches</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">{{ unassigned }}</div>
+        <div class="label">Unassigned</div>
+      </div>
     </div>
+
+    {% if breached_tickets %}
+    <div class="section">
+      <h2>SLA Breaches</h2>
+      <table>
+        <tr><th>Ticket</th><th>Subject</th><th>Assigned To</th><th>Overdue</th></tr>
+        {% for t in breached_tickets %}
+        <tr>
+          <td>{{ t['Ticket #'] }}</td>
+          <td>{{ t['Subject'][:50] }}</td>
+          <td>{{ t.get('Assigned To', '') or 'Unassigned' }}</td>
+          <td style="color:#d93025;font-weight:bold;">{{ t.get('hours_overdue', '?') }}h</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    {% if unassigned_tickets %}
+    <div class="section">
+      <h2>Unassigned Tickets</h2>
+      <table>
+        <tr><th>Ticket</th><th>Subject</th><th>Age</th><th>Priority</th></tr>
+        {% for t in unassigned_tickets %}
+        <tr>
+          <td>{{ t['Ticket #'] }}</td>
+          <td>{{ t['Subject'][:50] }}</td>
+          <td>{{ t.get('age_hours', '?') }}h</td>
+          <td>{{ t.get('Priority', '') }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    {% if inbox_breakdown %}
+    <div class="section">
+      <h2>Today by Inbox</h2>
+      <table>
+        <tr><th>Inbox</th><th>Count</th></tr>
+        {% for inbox, count in inbox_breakdown.items() %}
+        <tr><td>{{ inbox }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    <div style="text-align:center;margin-top:24px;">
+      <a class="btn" href="{{ sheet_url }}">Open Email Tracker</a>
+    </div>
+  </div>
+  <div class="footer">
+    VIPL Email Agent &mdash; Automated daily report<br>
+    Vidarbha Infotech Private Limited
+  </div>
 </body>
 </html>

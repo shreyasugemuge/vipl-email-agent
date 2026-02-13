@@ -156,26 +156,14 @@ class SheetLogger:
             row_num = self._extract_row_number(updated_range)
 
             if row_num:
-                # Add SLA Status formula (column M) — needs USER_ENTERED for formulas
-                sla_formula = (
-                    f'=IF(K{row_num}="Closed","OK",'
-                    f'IF(K{row_num}="Spam","N/A",'
-                    f'IF(NOW()>L{row_num},"BREACHED","OK")))'
-                )
-                res_formula = (
-                    f'=IF(P{row_num}<>"",ROUND((P{row_num}-B{row_num})*24,1),"")'
-                )
+                # SLA Status + Resolution Time are set as initial static values.
+                # The SLA monitor (server-side) handles breach detection every 15 min.
+                # Formulas can't compare NOW() to text timestamps, so we use static defaults.
                 self.sheets.values().update(
                     spreadsheetId=self.spreadsheet_id,
                     range=f"'{self.email_log_tab}'!M{row_num}",
-                    valueInputOption="USER_ENTERED",
-                    body={"values": [[sla_formula]]},
-                ).execute()
-                self.sheets.values().update(
-                    spreadsheetId=self.spreadsheet_id,
-                    range=f"'{self.email_log_tab}'!Q{row_num}",
-                    valueInputOption="USER_ENTERED",
-                    body={"values": [[res_formula]]},
+                    valueInputOption="RAW",
+                    body={"values": [["OK"]]},
                 ).execute()
 
             logger.info(f"Logged ticket {ticket_number}: {email.subject[:50]}")
