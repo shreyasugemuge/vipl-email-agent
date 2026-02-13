@@ -83,6 +83,7 @@
     <div class="info-row"><span class="key">Uptime</span><span>{{ uptime }}</span></div>
     <div class="info-row"><span class="key">Started</span><span>{{ start_time }}</span></div>
     <div class="info-row"><span class="key">Current Time</span><span>{{ now }}</span></div>
+    <div class="info-row"><span class="key">Last Polled</span><span>{{ last_polled }} ({{ last_poll_count }} emails found)</span></div>
     <div class="info-row"><span class="key">Poll Interval</span><span>{{ config.gmail.poll_interval_seconds }}s</span></div>
     <div class="info-row"><span class="key">Claude Model</span><span>{{ config.claude.model }}</span></div>
     <div class="info-row">

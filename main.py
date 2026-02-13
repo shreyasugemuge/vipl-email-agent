@@ -186,8 +186,12 @@ def init_components(config: dict) -> dict:
 # Core Processing Pipeline
 # ----------------------------------------------------------------
 
+_last_polled = {"time": None, "emails_found": 0}
+
+
 def process_emails(components: dict):
     """Poll Gmail → Claude triage → Sheet log → Chat notification."""
+    _last_polled["time"] = datetime.now(IST)
     config = components["config"]
     gmail = components["gmail"]
     ai = components["ai"]
@@ -201,6 +205,8 @@ def process_emails(components: dict):
     try:
         sla_config = sheet.get_sla_config() or {}
         new_emails = gmail.poll_all(inboxes, state)
+
+        _last_polled["emails_found"] = len(new_emails) if new_emails else 0
 
         if not new_emails:
             state.reset_failures()
@@ -272,11 +278,16 @@ def create_app(components: dict, scheduler=None):
         h, rem = divmod(int(uptime.total_seconds()), 3600)
         m, _ = divmod(rem, 60)
 
+        last_poll_str = _last_polled["time"].strftime("%d %b %Y, %I:%M:%S %p IST") if _last_polled["time"] else "Not yet"
+        last_poll_count = _last_polled["emails_found"]
+
         return render_template("admin.html",
             page="dashboard", stats=stats, config=cfg,
             uptime=f"{h}h {m}m",
             start_time=app.config["start_time"].strftime("%d %b %Y, %I:%M %p IST"),
             now=now.strftime("%d %b %Y, %I:%M %p IST"),
+            last_polled=last_poll_str,
+            last_poll_count=last_poll_count,
         )
 
     @app.route("/config", methods=["GET"])
