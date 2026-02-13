@@ -25,16 +25,13 @@ gcloud run deploy vipl-email-agent \
   --env-vars-file=/dev/stdin \
   --project=utilities-vipl <<EOF
 GOOGLE_SHEET_ID: "1fV9AZR22WTS8CY7kxniwX-WtWVdnCp1SRlqjCFlXQ9o"
-MONITORED_INBOXES: "info@vidarbhainfotech.com,sales@vidarbhainfotech.com,support@vidarbhainfotech.com"
+MONITORED_INBOXES: "info@vidarbhainfotech.com,sales@vidarbhainfotech.com"
 ADMIN_EMAIL: "shreyas@vidarbhainfotech.com"
 EOD_RECIPIENTS: "shreyas@vidarbhainfotech.com"
 EOF
 
 echo ""
 echo "=== Deployed! ==="
-echo "To access Admin UI, run:"
-echo "  gcloud run services proxy vipl-email-agent --region=asia-south1 --project=utilities-vipl --port=8080"
-echo "Then click Web Preview (top right) → Preview on port 8080"
 echo ""
 echo "=== Recent logs ==="
 sleep 5

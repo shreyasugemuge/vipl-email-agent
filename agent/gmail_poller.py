@@ -48,9 +48,8 @@ class GmailPoller:
         self.sa_key_path = service_account_key_path
         self.processed_label = processed_label
         self._services = {}  # Cache per-inbox Gmail service instances
-        # Record startup time — only process emails received AFTER this
-        self._startup_time = datetime.now()
-        logger.info(f"Gmail poller startup cutoff: {self._startup_time.strftime('%Y/%m/%d %H:%M:%S')}")
+        self._first_poll_done = False  # Track if first poll has completed
+        logger.info("Gmail poller initialized (first poll will fetch latest 5 per inbox)")
 
     def _get_service(self, inbox_email: str):
         """Get or create a Gmail API service impersonating the given inbox."""
@@ -117,7 +116,6 @@ class GmailPoller:
 
             # Extract plain text body
             body = self._extract_body(msg_data.get("payload", {}))
-            # Truncate body to ~4000 chars to keep Claude API costs low
             if len(body) > 4000:
                 body = body[:4000] + "\n\n[... truncated ...]"
 
@@ -150,22 +148,18 @@ class GmailPoller:
         """Recursively extract plain text body from a Gmail message payload."""
         mime_type = payload.get("mimeType", "")
 
-        # Direct text/plain part
         if mime_type == "text/plain" and "body" in payload:
             data = payload["body"].get("data", "")
             if data:
                 return base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
 
-        # Multipart — recurse
         parts = payload.get("parts", [])
-        # Prefer text/plain over text/html
         for part in parts:
             if part.get("mimeType") == "text/plain":
                 result = self._extract_body(part)
                 if result:
                     return result
 
-        # Fall back to text/html (strip tags naively)
         for part in parts:
             if part.get("mimeType") == "text/html":
                 data = part.get("body", {}).get("data", "")
@@ -173,7 +167,6 @@ class GmailPoller:
                     html = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
                     return self._strip_html(html)
 
-        # Recurse into nested multipart
         for part in parts:
             if part.get("mimeType", "").startswith("multipart/"):
                 result = self._extract_body(part)
@@ -203,22 +196,29 @@ class GmailPoller:
         """
         Poll a single inbox for new unprocessed emails.
 
-        Returns a list of EmailMessage objects for emails that haven't
-        been processed yet (based on both Gmail label and state manager).
+        First poll: fetches the latest 5 emails (regardless of label).
+        Subsequent polls: only picks up new unprocessed emails since last poll.
         """
         emails = []
         try:
             service = self._get_service(inbox_email)
             label_id = self._ensure_label(service, inbox_email)
 
-            # Search for emails in INBOX that do NOT have our processed label
-            # Only pick up emails received after the agent started
-            after_epoch = int(self._startup_time.timestamp())
-            query = f"in:inbox -label:{self.processed_label} after:{after_epoch}"
+            if not self._first_poll_done:
+                # FIRST POLL: Get the 5 most recent inbox emails
+                query = "in:inbox"
+                max_results = 5
+                logger.info(f"First poll for {inbox_email}: fetching latest {max_results} emails")
+            else:
+                # SUBSEQUENT POLLS: Only unprocessed emails
+                query = f"in:inbox -label:{self.processed_label}"
+                max_results = 50
+                logger.debug(f"Polling {inbox_email} for new unprocessed emails")
+
             results = service.users().messages().list(
                 userId="me",
                 q=query,
-                maxResults=50,  # Process up to 50 per cycle
+                maxResults=max_results,
             ).execute()
 
             messages = results.get("messages", [])
@@ -226,14 +226,13 @@ class GmailPoller:
                 logger.debug(f"No new emails in {inbox_email}")
                 return emails
 
-            logger.info(f"Found {len(messages)} unprocessed emails in {inbox_email}")
+            logger.info(f"Found {len(messages)} email(s) in {inbox_email}")
 
             for msg_ref in messages:
                 thread_id = msg_ref.get("threadId", msg_ref["id"])
 
-                # Double-check against local state (belt + suspenders)
+                # Skip if already processed (in state or sheet)
                 if state_manager.is_processed(thread_id):
-                    # Label it in Gmail too, in case label was missed
                     if label_id:
                         self._mark_as_processed(service, msg_ref["id"], label_id)
                     continue
@@ -269,6 +268,11 @@ class GmailPoller:
                 all_emails.extend(emails)
             except Exception as e:
                 logger.error(f"Failed to poll {inbox}: {e}")
-                # Continue polling other inboxes even if one fails
                 continue
+
+        # After first successful poll of all inboxes, switch to ongoing mode
+        if not self._first_poll_done:
+            self._first_poll_done = True
+            logger.info("First poll complete — switching to incremental mode")
+
         return all_emails

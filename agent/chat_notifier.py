@@ -1,8 +1,7 @@
 """
 Chat Notifier — Posts formatted cards to Google Chat via webhook.
 
-Uses Google Chat Cards v2 with proper decoratedText widgets
-for clean, structured rendering.
+Uses Google Chat Cards v2 with decoratedText widgets.
 """
 
 import logging
@@ -11,10 +10,10 @@ import httpx
 logger = logging.getLogger(__name__)
 
 PRIORITY_CONFIG = {
-    "CRITICAL": {"emoji": "\U0001f534", "color": "#D93025"},
-    "HIGH":     {"emoji": "\U0001f7e0", "color": "#E37400"},
-    "MEDIUM":   {"emoji": "\U0001f7e1", "color": "#F9AB00"},
-    "LOW":      {"emoji": "\U0001f7e2", "color": "#0F9D58"},
+    "CRITICAL": {"emoji": "\U0001f534"},
+    "HIGH":     {"emoji": "\U0001f7e0"},
+    "MEDIUM":   {"emoji": "\U0001f7e1"},
+    "LOW":      {"emoji": "\U0001f7e2"},
 }
 
 
@@ -22,19 +21,52 @@ class ChatNotifier:
     """Sends formatted notifications to Google Chat via incoming webhook."""
 
     def __init__(self, webhook_url: str, sheet_url: str = ""):
-        self.webhook_url = webhook_url
+        self.webhook_url = webhook_url.strip() if webhook_url else ""
         self.sheet_url = sheet_url or "https://docs.google.com/spreadsheets"
 
+        if not self.webhook_url:
+            logger.warning("Chat webhook URL is empty — notifications will be skipped")
+        elif not self.webhook_url.startswith("https://chat.googleapis.com/"):
+            logger.warning(f"Chat webhook URL looks invalid: {self.webhook_url[:60]}...")
+
     def _post(self, payload: dict) -> bool:
+        """Post a payload to the Google Chat webhook."""
+        if not self.webhook_url:
+            logger.warning("Chat notification skipped — no webhook URL configured")
+            return False
+
         try:
-            response = httpx.post(self.webhook_url, json=payload, timeout=10)
+            response = httpx.post(
+                self.webhook_url,
+                json=payload,
+                timeout=15,
+            )
             if response.status_code == 200:
+                logger.info("Chat notification sent successfully")
                 return True
-            logger.warning(f"Chat webhook returned {response.status_code}: {response.text}")
+            else:
+                logger.warning(f"Chat webhook returned {response.status_code}: {response.text[:200]}")
+                return False
+        except Exception as e:
+            logger.error(f"Chat webhook request failed: {type(e).__name__}: {e}")
             return False
-        except httpx.HTTPError as e:
-            logger.error(f"Chat webhook request failed: {e}")
-            return False
+
+    # ----------------------------------------------------------------
+    # Startup Notification (simple text)
+    # ----------------------------------------------------------------
+
+    def notify_startup(self, inboxes: list[str], poll_interval: int) -> bool:
+        """Send a simple text message on agent startup to verify webhook works."""
+        inbox_list = ", ".join(inboxes)
+        payload = {
+            "text": f"✅ *VIPL Email Agent started*\nMonitoring: {inbox_list}\nPoll interval: {poll_interval}s"
+        }
+        result = self._post(payload)
+        if result:
+            logger.info("Startup notification sent to Chat")
+        else:
+            logger.warning("Startup notification FAILED — check webhook URL")
+        return result
 
     # ----------------------------------------------------------------
     # New Email Notification
@@ -54,8 +86,6 @@ class ChatNotifier:
             "header": {
                 "title": f"{pri['emoji']} {ticket_number} — {triage_result.priority}",
                 "subtitle": email.subject[:80],
-                "imageUrl": "https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/mail/default/48px.svg",
-                "imageType": "CIRCLE",
             },
             "sections": [
                 {
@@ -63,6 +93,10 @@ class ChatNotifier:
                         {"decoratedText": {
                             "topLabel": "From",
                             "text": f"{email.sender_name} &lt;{email.sender_email}&gt;",
+                        }},
+                        {"decoratedText": {
+                            "topLabel": "Inbox",
+                            "text": email.inbox,
                         }},
                         {"decoratedText": {
                             "topLabel": "Category",
@@ -73,7 +107,7 @@ class ChatNotifier:
                             "text": sla_deadline_str,
                         }},
                         {"decoratedText": {
-                            "topLabel": "Suggested Assignee",
+                            "topLabel": "Assigned To",
                             "text": assignee,
                         }},
                     ]
@@ -85,7 +119,7 @@ class ChatNotifier:
                     ]
                 },
                 {
-                    "header": "Draft Reply",
+                    "header": "Draft Reply (preview)",
                     "collapsible": True,
                     "uncollapsibleWidgetsCount": 0,
                     "widgets": [
@@ -98,7 +132,6 @@ class ChatNotifier:
                             {
                                 "text": "Open in Gmail",
                                 "onClick": {"openLink": {"url": email.gmail_link}},
-                                "color": {"red": 0.10, "green": 0.45, "blue": 0.91, "alpha": 1},
                             },
                             {
                                 "text": "Open Tracker",
@@ -127,8 +160,6 @@ class ChatNotifier:
             "header": {
                 "title": f"\u26a0\ufe0f SLA BREACH — {ticket_num}",
                 "subtitle": f"Overdue by {hours_overdue:.1f} hours",
-                "imageUrl": "https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/warning/default/48px.svg",
-                "imageType": "CIRCLE",
             },
             "sections": [
                 {
@@ -162,14 +193,11 @@ class ChatNotifier:
     def notify_eod_summary(self, stats: dict) -> bool:
         date_str = stats.get("date", "Today")
         breaches = stats.get("sla_breaches", 0)
-        breach_color = "#D93025" if breaches > 0 else "#0F9D58"
 
         card = {
             "header": {
                 "title": f"\U0001f4ca Daily Summary — {date_str}",
                 "subtitle": f"{stats.get('received_today', 0)} received | {breaches} breaches",
-                "imageUrl": "https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/analytics/default/48px.svg",
-                "imageType": "CIRCLE",
             },
             "sections": [
                 {
@@ -179,7 +207,7 @@ class ChatNotifier:
                         {"decoratedText": {"topLabel": "Total Open", "text": str(stats.get("total_open", 0))}},
                         {"decoratedText": {
                             "topLabel": "SLA Breaches",
-                            "text": f"<font color=\"{breach_color}\"><b>{breaches}</b></font>",
+                            "text": f"<font color=\"#D93025\"><b>{breaches}</b></font>" if breaches > 0 else "0",
                         }},
                         {"decoratedText": {"topLabel": "Unassigned", "text": str(stats.get("unassigned", 0))}},
                     ]

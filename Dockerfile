@@ -18,7 +18,7 @@ RUN groupadd -r agent && useradd -r -g agent agent
 RUN chown -R agent:agent /app
 USER agent
 
-# Health check uses the Flask /health endpoint
+# Health check uses the minimal HTTP server on /health
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
 

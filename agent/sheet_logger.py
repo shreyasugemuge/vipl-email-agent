@@ -9,10 +9,13 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
+import pytz
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 logger = logging.getLogger(__name__)
+
+IST = pytz.timezone("Asia/Kolkata")
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -32,6 +35,7 @@ class SheetLogger:
         self.sla_config_tab = config.get("sla_config_tab", "SLA Config")
         self.team_tab = config.get("team_tab", "Team")
         self.change_log_tab = config.get("change_log_tab", "Change Log")
+        self.agent_config_tab = config.get("agent_config_tab", "Agent Config")
 
         credentials = service_account.Credentials.from_service_account_file(
             service_account_key_path,
@@ -92,16 +96,16 @@ class SheetLogger:
     def log_email(self, email, triage_result, sla_hours: float) -> str:
         """
         Log a processed email as a new row in the Email Log tab.
-
         Returns the generated ticket number.
         """
         ticket_number = self._next_ticket_number(email.inbox)
-        timestamp_str = email.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-        sla_deadline = email.timestamp + timedelta(hours=sla_hours)
-        sla_deadline_str = sla_deadline.strftime("%Y-%m-%d %H:%M:%S")
 
-        # SLA Status formula (column M, row is dynamic)
-        # We'll insert the formula after appending to get the correct row number
+        # Use IST-aware timestamps in a format Google Sheets recognizes as dates
+        ist_timestamp = email.timestamp.astimezone(IST) if email.timestamp.tzinfo else IST.localize(email.timestamp)
+        timestamp_str = ist_timestamp.strftime("%d %b %Y, %I:%M %p")
+
+        sla_deadline = ist_timestamp + timedelta(hours=sla_hours)
+        sla_deadline_str = sla_deadline.strftime("%d %b %Y, %I:%M %p")
 
         attachments_str = f"{email.attachment_count} file(s)"
         if email.attachment_names:
@@ -182,7 +186,6 @@ class SheetLogger:
     @staticmethod
     def _extract_row_number(updated_range: str) -> Optional[int]:
         """Extract row number from a Sheets API updatedRange string."""
-        # Format: 'Email Log'!A42:U42
         import re
         match = re.search(r"!A(\d+)", updated_range)
         if match:
@@ -202,15 +205,13 @@ class SheetLogger:
             ).execute()
             rows = result.get("values", [])
             if len(rows) < 2:
-                return []  # Only header row or empty
+                return []
 
             header = rows[0]
             tickets = []
             for row in rows[1:]:
-                # Pad row to header length
                 padded = row + [""] * (len(header) - len(row))
                 ticket = dict(zip(header, padded))
-
                 status = ticket.get("Status", "").strip()
                 if status not in ("Closed", "Spam", ""):
                     tickets.append(ticket)
@@ -232,7 +233,7 @@ class SheetLogger:
                 return []
 
             header = rows[0]
-            today_str = datetime.now().strftime("%Y-%m-%d")
+            today_str = datetime.now(IST).strftime("%d %b %Y")
             tickets = []
             for row in rows[1:]:
                 padded = row + [""] * (len(header) - len(row))
@@ -247,7 +248,7 @@ class SheetLogger:
             return []
 
     def get_all_tickets(self) -> list[dict]:
-        """Read ALL tickets from the Email Log (for dashboard stats)."""
+        """Read ALL tickets from the Email Log."""
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.spreadsheet_id,
@@ -276,7 +277,7 @@ class SheetLogger:
             ).execute()
             rows = result.get("values", [])
             config = {}
-            for row in rows[1:]:  # Skip header
+            for row in rows[1:]:
                 if len(row) >= 2:
                     category = row[0].strip()
                     try:
@@ -299,7 +300,7 @@ class SheetLogger:
             ).execute()
             rows = result.get("values", [])
             members = []
-            for row in rows[1:]:  # Skip header
+            for row in rows[1:]:
                 if len(row) >= 2:
                     members.append({
                         "name": row[0].strip(),
@@ -313,7 +314,7 @@ class SheetLogger:
             return []
 
     def is_thread_logged(self, thread_id: str) -> bool:
-        """Check if a Gmail thread ID already exists in the Sheet (deduplication)."""
+        """Check if a Gmail thread ID already exists in the Sheet."""
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.spreadsheet_id,
@@ -351,10 +352,6 @@ class SheetLogger:
 
             if first_cell != "Ticket #":
                 if first_cell:
-                    # Row 1 has data but it's NOT the header — insert a row above
-                    # by shifting everything down first
-                    logger.warning(f"Row 1 contains '{first_cell}' instead of headers. Inserting header row.")
-                    # Use batchUpdate to insert a row at the top
                     sheet_id = self._get_sheet_id(self.email_log_tab)
                     if sheet_id is not None:
                         self.sheets.batchUpdate(
@@ -372,7 +369,6 @@ class SheetLogger:
                             }]},
                         ).execute()
 
-                # Write headers to row 1
                 self.sheets.values().update(
                     spreadsheetId=self.spreadsheet_id,
                     range=f"'{self.email_log_tab}'!A1:U1",
@@ -385,7 +381,7 @@ class SheetLogger:
         except Exception as e:
             logger.error(f"Failed to ensure headers: {e}")
 
-    def _get_sheet_id(self, tab_name: str):
+    def _get_sheet_id(self, tab_name: str) -> Optional[int]:
         """Get the numeric sheet ID for a tab name."""
         try:
             spreadsheet = self.sheets.get(spreadsheetId=self.spreadsheet_id).execute()
@@ -395,3 +391,350 @@ class SheetLogger:
         except Exception:
             pass
         return None
+
+    def _create_tab_if_missing(self, tab_name: str) -> int:
+        """Create a tab if it doesn't exist, return its sheet ID."""
+        sheet_id = self._get_sheet_id(tab_name)
+        if sheet_id is not None:
+            return sheet_id
+
+        # Create the tab
+        result = self.sheets.batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body={"requests": [{
+                "addSheet": {
+                    "properties": {"title": tab_name}
+                }
+            }]}
+        ).execute()
+        new_sheet_id = result["replies"][0]["addSheet"]["properties"]["sheetId"]
+        logger.info(f"Created tab: {tab_name} (sheetId={new_sheet_id})")
+        return new_sheet_id
+
+    # ----------------------------------------------------------------
+    # Email Log Column Formatting
+    # ----------------------------------------------------------------
+
+    def format_email_log_columns(self):
+        """Set date format on Timestamp and SLA Deadline columns in Email Log."""
+        try:
+            sheet_id = self._get_sheet_id(self.email_log_tab)
+            if sheet_id is None:
+                return
+
+            requests = [
+                # Bold + freeze header row
+                {
+                    "repeatCell": {
+                        "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1},
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor": {"red": 0.10, "green": 0.27, "blue": 0.53},
+                                "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}},
+                            }
+                        },
+                        "fields": "userEnteredFormat(backgroundColor,textFormat)",
+                    }
+                },
+                {
+                    "updateSheetProperties": {
+                        "properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": 1}},
+                        "fields": "gridProperties.frozenRowCount",
+                    }
+                },
+            ]
+
+            self.sheets.batchUpdate(
+                spreadsheetId=self.spreadsheet_id,
+                body={"requests": requests},
+            ).execute()
+            logger.info("Formatted Email Log columns")
+        except Exception as e:
+            logger.warning(f"Could not format Email Log columns: {e}")
+
+    # ----------------------------------------------------------------
+    # Agent Config Tab — Google Sheet as Config UI
+    # ----------------------------------------------------------------
+
+    # Row layout for Agent Config tab:
+    # Row 1: Title (merged A1:C1)
+    # Row 2: Subtitle
+    # Row 3: blank
+    # Row 4: Column headers (Setting | Value | Instructions)
+    # Row 5-13: Config fields
+    # Row 14: blank
+    # Row 15: Logs section header
+    # Row 16: Log column headers (Time | Level | Message)
+    # Row 17-21: Log entries (5 rows)
+
+    CONFIG_DATA_START_ROW = 5   # 0-indexed: row 5 = row index 4
+    CONFIG_FIELDS = [
+        # (setting_name, default_fn, instruction)
+        ("Poll Interval (seconds)", lambda c: str(c.get("gmail", {}).get("poll_interval_seconds", 300)),
+         "How often to check for new emails. Minimum 60, maximum 3600."),
+        ("SLA Alert Cooldown (hours)", lambda c: str(c.get("sla", {}).get("breach_alert_cooldown_hours", 4)),
+         "Hours between repeated SLA breach alerts for same ticket. Range: 1–48."),
+        ("EOD Report Hour (IST)", lambda c: str(c.get("eod", {}).get("send_hour", 19)),
+         "Hour (0–23) in IST when the daily summary email is sent."),
+        ("EOD Report Minute", lambda c: str(c.get("eod", {}).get("send_minute", 0)),
+         "Minute (0–59) for the EOD report. Usually 0."),
+        ("Admin Email", lambda c: c.get("admin", {}).get("email", ""),
+         "Primary admin email. Receives escalations and fallback EOD reports."),
+        ("EOD Recipients", lambda c: ", ".join(c.get("eod", {}).get("recipients", [])),
+         "Comma-separated emails that receive the daily EOD summary."),
+        ("Monitored Inboxes", lambda c: ", ".join(c.get("gmail", {}).get("inboxes", [])),
+         "Comma-separated inbox addresses. Changes here need redeployment to take effect."),
+        ("Claude Model", lambda c: c.get("claude", {}).get("model", "claude-sonnet-4-5-20250929"),
+         "AI model used for triage. Do not change unless instructed by admin."),
+        ("Last Updated", lambda c: datetime.now(IST).strftime("%d %b %Y, %I:%M %p IST"),
+         "Auto-updated timestamp of last config write."),
+    ]
+
+    LOG_HEADER_ROW = 16  # 1-indexed
+    LOG_DATA_START_ROW = 17  # 1-indexed
+
+    def ensure_agent_config_tab(self, config: dict):
+        """Create or update the Agent Config tab with formatted config fields and log area."""
+        tab_name = self.agent_config_tab
+        sheet_id = self._create_tab_if_missing(tab_name)
+
+        # ---- Write data ----
+        rows = [
+            ["VIPL Email Agent — Configuration", "", ""],
+            ["Edit values in column B. Agent reads these on every startup.", "", ""],
+            ["", "", ""],
+            ["Setting", "Current Value", "Instructions"],
+        ]
+
+        for field_name, default_fn, instruction in self.CONFIG_FIELDS:
+            rows.append([field_name, default_fn(config), instruction])
+
+        rows.append(["", "", ""])  # Blank separator row
+        rows.append(["Latest Agent Logs", "", ""])
+        rows.append(["Time", "Level", "Message"])
+        # 5 empty log rows
+        for _ in range(5):
+            rows.append(["—", "—", "Waiting for first poll..."])
+
+        # Write all at once
+        self.sheets.values().update(
+            spreadsheetId=self.spreadsheet_id,
+            range=f"'{tab_name}'!A1:C{len(rows)}",
+            valueInputOption="RAW",
+            body={"values": rows},
+        ).execute()
+
+        # ---- Format with batchUpdate ----
+        self._format_agent_config_tab(sheet_id, len(self.CONFIG_FIELDS))
+
+        logger.info("Agent Config tab ready")
+
+    def _format_agent_config_tab(self, sheet_id: int, num_fields: int):
+        """Apply colors, merges, column widths, and data validation to Agent Config tab."""
+        # Color constants
+        BLUE = {"red": 0.10, "green": 0.27, "blue": 0.53}
+        BLUE_LIGHT = {"red": 0.85, "green": 0.91, "blue": 0.97}
+        WHITE = {"red": 1, "green": 1, "blue": 1}
+        GRAY_LIGHT = {"red": 0.95, "green": 0.95, "blue": 0.95}
+        GREEN_DARK = {"red": 0.06, "green": 0.40, "blue": 0.27}
+        GREEN_LIGHT = {"red": 0.85, "green": 0.95, "blue": 0.88}
+        ORANGE = {"red": 0.95, "green": 0.60, "blue": 0.07}
+        ORANGE_LIGHT = {"red": 1, "green": 0.95, "blue": 0.85}
+
+        requests = [
+            # ---- Column widths ----
+            {"updateDimensionProperties": {
+                "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 1},
+                "properties": {"pixelSize": 240}, "fields": "pixelSize"}},
+            {"updateDimensionProperties": {
+                "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 1, "endIndex": 2},
+                "properties": {"pixelSize": 320}, "fields": "pixelSize"}},
+            {"updateDimensionProperties": {
+                "range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 2, "endIndex": 3},
+                "properties": {"pixelSize": 450}, "fields": "pixelSize"}},
+
+            # ---- Title row (Row 1) — dark blue bg, white bold text, merge ----
+            {"mergeCells": {
+                "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": 3},
+                "mergeType": "MERGE_ALL"}},
+            {"repeatCell": {
+                "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1},
+                "cell": {"userEnteredFormat": {
+                    "backgroundColor": BLUE,
+                    "textFormat": {"bold": True, "fontSize": 14, "foregroundColor": WHITE},
+                    "horizontalAlignment": "CENTER",
+                    "verticalAlignment": "MIDDLE",
+                }},
+                "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"}},
+            {"updateDimensionProperties": {
+                "range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": 0, "endIndex": 1},
+                "properties": {"pixelSize": 44}, "fields": "pixelSize"}},
+
+            # ---- Subtitle row (Row 2) — light blue bg, muted text, merge ----
+            {"mergeCells": {
+                "range": {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 2, "startColumnIndex": 0, "endColumnIndex": 3},
+                "mergeType": "MERGE_ALL"}},
+            {"repeatCell": {
+                "range": {"sheetId": sheet_id, "startRowIndex": 1, "endRowIndex": 2},
+                "cell": {"userEnteredFormat": {
+                    "backgroundColor": BLUE_LIGHT,
+                    "textFormat": {"italic": True, "fontSize": 10, "foregroundColor": BLUE},
+                    "horizontalAlignment": "CENTER",
+                }},
+                "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
+
+            # ---- Config header row (Row 4) — dark blue bg, white bold text ----
+            {"repeatCell": {
+                "range": {"sheetId": sheet_id, "startRowIndex": 3, "endRowIndex": 4},
+                "cell": {"userEnteredFormat": {
+                    "backgroundColor": BLUE,
+                    "textFormat": {"bold": True, "foregroundColor": WHITE},
+                }},
+                "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+
+            # ---- Config value cells (Rows 5–13 col B) — light blue bg, editable look ----
+            {"repeatCell": {
+                "range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 1, "endColumnIndex": 2},
+                "cell": {"userEnteredFormat": {
+                    "backgroundColor": BLUE_LIGHT,
+                    "textFormat": {"bold": True},
+                    "borders": {
+                        "bottom": {"style": "SOLID", "color": BLUE},
+                    },
+                }},
+                "fields": "userEnteredFormat(backgroundColor,textFormat,borders)"}},
+
+            # ---- Config setting names (Rows 5–13 col A) — light gray ----
+            {"repeatCell": {
+                "range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 0, "endColumnIndex": 1},
+                "cell": {"userEnteredFormat": {
+                    "backgroundColor": GRAY_LIGHT,
+                    "textFormat": {"bold": True},
+                }},
+                "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+
+            # ---- Instructions column (col C) — italic, muted ----
+            {"repeatCell": {
+                "range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 2, "endColumnIndex": 3},
+                "cell": {"userEnteredFormat": {
+                    "textFormat": {"italic": True, "foregroundColor": {"red": 0.37, "green": 0.39, "blue": 0.40}},
+                    "wrapStrategy": "WRAP",
+                }},
+                "fields": "userEnteredFormat(textFormat,wrapStrategy)"}},
+
+            # ---- Logs section header (merged, green) ----
+            {"mergeCells": {
+                "range": {"sheetId": sheet_id, "startRowIndex": self.LOG_HEADER_ROW - 2, "endRowIndex": self.LOG_HEADER_ROW - 1,
+                           "startColumnIndex": 0, "endColumnIndex": 3},
+                "mergeType": "MERGE_ALL"}},
+            {"repeatCell": {
+                "range": {"sheetId": sheet_id, "startRowIndex": self.LOG_HEADER_ROW - 2, "endRowIndex": self.LOG_HEADER_ROW - 1},
+                "cell": {"userEnteredFormat": {
+                    "backgroundColor": GREEN_DARK,
+                    "textFormat": {"bold": True, "fontSize": 12, "foregroundColor": WHITE},
+                    "horizontalAlignment": "CENTER",
+                }},
+                "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
+
+            # ---- Logs column header row (green) ----
+            {"repeatCell": {
+                "range": {"sheetId": sheet_id, "startRowIndex": self.LOG_HEADER_ROW - 1, "endRowIndex": self.LOG_HEADER_ROW},
+                "cell": {"userEnteredFormat": {
+                    "backgroundColor": GREEN_LIGHT,
+                    "textFormat": {"bold": True, "foregroundColor": GREEN_DARK},
+                }},
+                "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+
+            # ---- Log data rows — alternate colors ----
+            {"repeatCell": {
+                "range": {"sheetId": sheet_id, "startRowIndex": self.LOG_DATA_START_ROW - 1, "endRowIndex": self.LOG_DATA_START_ROW + 4},
+                "cell": {"userEnteredFormat": {
+                    "backgroundColor": {"red": 0.98, "green": 0.98, "blue": 0.98},
+                    "textFormat": {"fontSize": 10},
+                    "wrapStrategy": "WRAP",
+                }},
+                "fields": "userEnteredFormat(backgroundColor,textFormat,wrapStrategy)"}},
+
+            # ---- Freeze nothing (keep scrollable) ----
+            {"updateSheetProperties": {
+                "properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": 0}},
+                "fields": "gridProperties.frozenRowCount"}},
+
+            # ---- Protect Setting names and Instructions columns ----
+            {"addProtectedRange": {
+                "protectedRange": {
+                    "range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields,
+                              "startColumnIndex": 0, "endColumnIndex": 1},
+                    "description": "Setting names — do not edit",
+                    "warningOnly": True,
+                }}},
+            {"addProtectedRange": {
+                "protectedRange": {
+                    "range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields,
+                              "startColumnIndex": 2, "endColumnIndex": 3},
+                    "description": "Instructions — do not edit",
+                    "warningOnly": True,
+                }}},
+        ]
+
+        # ---- Data validation for numeric fields ----
+        validations = [
+            # Poll interval: 60–3600
+            (4, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "60"}, {"userEnteredValue": "3600"}]},
+                 "strict": True, "showCustomUi": True, "inputMessage": "Enter a number between 60 and 3600"}),
+            # SLA cooldown: 1–48
+            (5, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "1"}, {"userEnteredValue": "48"}]},
+                 "strict": True, "showCustomUi": True, "inputMessage": "Enter a number between 1 and 48"}),
+            # EOD hour: 0–23
+            (6, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "0"}, {"userEnteredValue": "23"}]},
+                 "strict": True, "showCustomUi": True, "inputMessage": "Enter hour 0–23 (IST)"}),
+            # EOD minute: 0–59
+            (7, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "0"}, {"userEnteredValue": "59"}]},
+                 "strict": True, "showCustomUi": True, "inputMessage": "Enter minute 0–59"}),
+        ]
+
+        for row_idx, rule in validations:
+            requests.append({
+                "setDataValidation": {
+                    "range": {"sheetId": sheet_id, "startRowIndex": row_idx, "endRowIndex": row_idx + 1,
+                              "startColumnIndex": 1, "endColumnIndex": 2},
+                    "rule": rule,
+                }
+            })
+
+        try:
+            self.sheets.batchUpdate(
+                spreadsheetId=self.spreadsheet_id,
+                body={"requests": requests},
+            ).execute()
+        except Exception as e:
+            logger.warning(f"Could not fully format Agent Config tab: {e}")
+
+    # ----------------------------------------------------------------
+    # Write Agent Logs to Sheet
+    # ----------------------------------------------------------------
+
+    def write_agent_logs(self, logs: list[dict]):
+        """Write the latest agent log entries to the Agent Config tab."""
+        tab_name = self.agent_config_tab
+        rows = []
+        for log in logs:
+            rows.append([
+                log.get("time", "—"),
+                log.get("level", "—"),
+                log.get("message", "—"),
+            ])
+
+        # Pad to exactly 5 rows
+        while len(rows) < 5:
+            rows.insert(0, ["—", "—", "—"])
+
+        try:
+            self.sheets.values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A{self.LOG_DATA_START_ROW}:C{self.LOG_DATA_START_ROW + 4}",
+                valueInputOption="RAW",
+                body={"values": rows},
+            ).execute()
+        except Exception as e:
+            logger.warning(f"Could not write agent logs to sheet: {e}")

@@ -24,7 +24,7 @@ steps:
 
 substitutions:
   _SHEET_ID: '1fV9AZR22WTS8CY7kxniwX-WtWVdnCp1SRlqjCFlXQ9o'
-  _INBOXES: 'info@vidarbhainfotech.com,sales@vidarbhainfotech.com,support@vidarbhainfotech.com'
+  _INBOXES: 'info@vidarbhainfotech.com,sales@vidarbhainfotech.com'
   _ADMIN_EMAIL: 'shreyas@vidarbhainfotech.com'
   _EOD_RECIPIENTS: 'shreyas@vidarbhainfotech.com'
 
