@@ -18,7 +18,7 @@ gcloud run deploy vipl-email-agent \
   --region=asia-south1 \
   --memory=512Mi --cpu=1 \
   --min-instances=1 --max-instances=1 \
-  --allow-unauthenticated \
+  --no-allow-unauthenticated \
   --set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest \
   --set-secrets=GOOGLE_CHAT_WEBHOOK_URL=chat-webhook-url:latest \
   --set-secrets=/secrets/service-account.json=sa-key:latest \
@@ -28,12 +28,13 @@ GOOGLE_SHEET_ID: "1fV9AZR22WTS8CY7kxniwX-WtWVdnCp1SRlqjCFlXQ9o"
 MONITORED_INBOXES: "info@vidarbhainfotech.com,sales@vidarbhainfotech.com,support@vidarbhainfotech.com"
 ADMIN_EMAIL: "shreyas@vidarbhainfotech.com"
 EOD_RECIPIENTS: "shreyas@vidarbhainfotech.com"
-ADMIN_SECRET: "vipl2026"
 EOF
 
 echo ""
 echo "=== Deployed! ==="
-echo "Admin UI: https://vipl-email-agent-352226825348.asia-south1.run.app/?key=vipl2026"
+echo "To access Admin UI, run:"
+echo "  gcloud run services proxy vipl-email-agent --region=asia-south1 --project=utilities-vipl --port=8080"
+echo "Then click Web Preview (top right) → Preview on port 8080"
 echo ""
 echo "=== Recent logs ==="
 sleep 5
