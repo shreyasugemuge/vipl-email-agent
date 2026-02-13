@@ -446,6 +446,13 @@ def run_agent(components: dict):
     # First poll immediately
     process_emails(components)
 
+    # Send a fresh EOD report on every deploy/startup
+    try:
+        logger.info("Sending startup EOD report...")
+        components["eod"].send_report()
+    except Exception as e:
+        logger.warning(f"Startup EOD report failed: {e}")
+
     scheduler.start()
 
     # Health server for Cloud Run (replaces Flask)
