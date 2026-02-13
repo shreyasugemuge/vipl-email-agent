@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIPL Email Agent — Admin</title>
+<style>
+  :root { --primary: #1a73e8; --danger: #d93025; --success: #0f9d58; --warn: #f9ab00; --bg: #f8f9fa; --card: #fff; --text: #202124; --muted: #5f6368; --border: #dadce0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .navbar { background: var(--primary); color: #fff; padding: 16px 24px; display: flex; align-items: center; gap: 24px; }
+  .navbar h1 { font-size: 18px; font-weight: 500; }
+  .navbar a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 14px; padding: 6px 12px; border-radius: 4px; }
+  .navbar a:hover, .navbar a.active { background: rgba(255,255,255,0.15); color: #fff; }
+  .container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+  .card { background: var(--card); border-radius: 8px; border: 1px solid var(--border); padding: 24px; margin-bottom: 16px; }
+  .card h2 { font-size: 16px; font-weight: 500; margin-bottom: 16px; color: var(--muted); }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+  .stat { text-align: center; padding: 16px; background: var(--bg); border-radius: 8px; }
+  .stat .value { font-size: 32px; font-weight: 600; }
+  .stat .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .stat.danger .value { color: var(--danger); }
+  .stat.success .value { color: var(--success); }
+  .stat.warn .value { color: var(--warn); }
+  .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .key { color: var(--muted); }
+  form label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 4px; margin-top: 16px; }
+  form input, form select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
+  form input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
+  .btn { display: inline-block; padding: 10px 24px; background: var(--primary); color: #fff; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; margin-top: 20px; }
+  .btn:hover { background: #1557b0; }
+  .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
+  .alert-success { background: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+  .alert-error { background: #fce8e6; color: #c5221f; border: 1px solid #f5c6cb; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: 1fr 1fr; } }
+  .tag { display: inline-block; background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 12px; font-size: 12px; margin: 2px; }
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <h1>VIPL Email Agent</h1>
+  <a href="/" class="{{ 'active' if page == 'dashboard' }}">Dashboard</a>
+  <a href="/config" class="{{ 'active' if page == 'config' }}">Configuration</a>
+  <a href="/api/status">API</a>
+</div>
+
+<div class="container">
+
+{% if page == 'dashboard' %}
+
+  {% if request.args.get('saved') %}
+  <div class="alert alert-success">Configuration saved successfully. Changes take effect on the next poll cycle.</div>
+  {% endif %}
+
+  <div class="card">
+    <h2>Live Status</h2>
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="value">{{ stats.total_open }}</div>
+        <div class="label">Open Tickets</div>
+      </div>
+      <div class="stat success">
+        <div class="value">{{ stats.received_today }}</div>
+        <div class="label">Received Today</div>
+      </div>
+      <div class="stat {{ 'danger' if stats.sla_breaches > 0 else 'success' }}">
+        <div class="value">{{ stats.sla_breaches }}</div>
+        <div class="label">SLA Breaches</div>
+      </div>
+      <div class="stat {{ 'warn' if stats.unassigned > 0 else 'success' }}">
+        <div class="value">{{ stats.unassigned }}</div>
+        <div class="label">Unassigned</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Agent Info</h2>
+    <div class="info-row"><span class="key">Status</span><span style="color:var(--success)">Running</span></div>
+    <div class="info-row"><span class="key">Uptime</span><span>{{ uptime }}</span></div>
+    <div class="info-row"><span class="key">Started</span><span>{{ start_time }}</span></div>
+    <div class="info-row"><span class="key">Current Time</span><span>{{ now }}</span></div>
+    <div class="info-row"><span class="key">Poll Interval</span><span>{{ config.gmail.poll_interval_seconds }}s</span></div>
+    <div class="info-row"><span class="key">Claude Model</span><span>{{ config.claude.model }}</span></div>
+    <div class="info-row">
+      <span class="key">Monitored Inboxes</span>
+      <span>
+        {% for inbox in config.gmail.inboxes %}
+        <span class="tag">{{ inbox }}</span>
+        {% endfor %}
+      </span>
+    </div>
+    <div class="info-row"><span class="key">EOD Report</span><span>{{ config.eod.send_hour }}:{{ '%02d' | format(config.eod.send_minute) }} IST</span></div>
+  </div>
+
+{% elif page == 'config' %}
+
+  {% if error %}
+  <div class="alert alert-error">Error: {{ error }}</div>
+  {% endif %}
+
+  <div class="card">
+    <h2>Agent Configuration</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">
+      Changes are saved to the Google Sheet "Agent Config" tab and applied to the running agent immediately.
+    </p>
+
+    <form method="POST" action="/config">
+
+      <label for="inboxes">Monitored Inboxes (comma-separated)</label>
+      <input type="text" id="inboxes" name="inboxes"
+        value="{{ config.gmail.inboxes | join(', ') }}"
+        placeholder="info@company.com, sales@company.com">
+
+      <div class="grid-2">
+        <div>
+          <label for="poll_interval">Poll Interval (seconds)</label>
+          <input type="number" id="poll_interval" name="poll_interval"
+            value="{{ config.gmail.poll_interval_seconds }}" min="10" max="3600">
+        </div>
+        <div>
+          <label for="sla_cooldown">SLA Alert Cooldown (hours)</label>
+          <input type="number" id="sla_cooldown" name="sla_cooldown"
+            value="{{ config.sla.breach_alert_cooldown_hours }}" min="1" max="48">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label for="eod_hour">EOD Report Hour (24h, IST)</label>
+          <input type="number" id="eod_hour" name="eod_hour"
+            value="{{ config.eod.send_hour }}" min="0" max="23">
+        </div>
+        <div>
+          <label for="eod_minute">EOD Report Minute</label>
+          <input type="number" id="eod_minute" name="eod_minute"
+            value="{{ config.eod.send_minute }}" min="0" max="59">
+        </div>
+      </div>
+
+      <label for="admin_email">Admin Email</label>
+      <input type="email" id="admin_email" name="admin_email"
+        value="{{ config.admin.email }}">
+
+      <label for="eod_recipients">EOD Report Recipients (comma-separated)</label>
+      <input type="text" id="eod_recipients" name="eod_recipients"
+        value="{{ config.eod.recipients | join(', ') }}"
+        placeholder="admin@company.com, team-lead@company.com">
+
+      <button type="submit" class="btn">Save Configuration</button>
+    </form>
+  </div>
+
+{% endif %}
+
+</div>
+
+<script>
+// Auto-refresh dashboard stats every 60s
+{% if page == 'dashboard' %}
+setTimeout(() => location.reload(), 60000);
+{% endif %}
+</script>
+
+</body>
+</html>

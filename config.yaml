@@ -1,52 +1,51 @@
 # ============================================================
-# VIPL Email Agent — Configuration
+# VIPL Email Agent — Default Configuration
 # ============================================================
-# Copy this file and fill in your actual values.
-# NEVER commit secrets to version control.
+# This file contains ONLY non-sensitive defaults.
+# All secrets and org-specific values come from environment
+# variables set in Cloud Run:
+#
+#   GOOGLE_CHAT_WEBHOOK_URL  (Secret Manager)
+#   ANTHROPIC_API_KEY        (Secret Manager)
+#   GOOGLE_SHEET_ID          (env var)
+#   MONITORED_INBOXES        (env var, comma-separated)
+#   ADMIN_EMAIL              (env var)
+#   EOD_RECIPIENTS           (env var, comma-separated)
+#   /secrets/service-account.json  (Secret Manager file mount)
 # ============================================================
 
-# --- Gmail Inboxes to Monitor ---
+# --- Gmail Polling Defaults ---
 gmail:
-  inboxes:
-    - info@vidarbhainfotech.com
-    - sales@vidarbhainfotech.com
-    - support@vidarbhainfotech.com
-  poll_interval_seconds: 300            # 5 minutes
-  processed_label: "Agent/Processed"  # Gmail label applied to processed threads
+  poll_interval_seconds: 300
+  processed_label: "Agent/Processed"
 
 # --- Claude AI ---
 claude:
   model: "claude-sonnet-4-5-20250929"
   max_tokens: 1024
   temperature: 0.3
-  # API key must be set via env var ANTHROPIC_API_KEY — never here
 
-# --- Google Sheets ---
+# --- Google Sheets Tab Names ---
 google_sheets:
-  spreadsheet_id: "1fV9AZR22WTS8CY7kxniwX-WtWVdnCp1SRlqjCFlXQ9o"
   email_log_tab: "Email Log"
   sla_config_tab: "SLA Config"
   team_tab: "Team"
   change_log_tab: "Change Log"
   dashboard_tab: "Dashboard"
-
-# --- Google Chat ---
-google_chat:
-  webhook_url: "https://chat.googleapis.com/v1/spaces/AAQAEZPQjMw/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=WaDOWaU_i0oiOoO4YDvMivitpkuUJTm0yL4817iPt9U"
+  agent_config_tab: "Agent Config"
 
 # --- Google Auth ---
 google:
-  service_account_key_path: "/secrets/service-account.json"  # Mounted from Secret Manager in Cloud Run
+  service_account_key_path: "/secrets/service-account.json"
 
-# --- SLA Settings ---
+# --- SLA Defaults ---
 sla:
-  check_interval_seconds: 900           # 15 minutes
+  check_interval_seconds: 900
   business_hours_only: false
-  business_hours_start: 9               # 9 AM IST
-  business_hours_end: 18                # 6 PM IST
-  business_days: [0, 1, 2, 3, 4, 5]    # Mon–Sat (0=Mon)
+  business_hours_start: 9
+  business_hours_end: 18
+  business_days: [0, 1, 2, 3, 4, 5]
   breach_alert_cooldown_hours: 4
-  # Default SLA hours per category (overridden by SLA Config tab in Sheet)
   defaults:
     "Government/Tender": 4
     "Complaint": 4
@@ -57,19 +56,16 @@ sla:
     "Internal": 24
     "Vendor": 48
 
-# --- EOD Summary ---
+# --- EOD Summary Defaults ---
 eod:
-  send_hour: 19                         # 7 PM IST (24h format)
+  send_hour: 19
   send_minute: 0
-  recipients:
-    - shreyas@vidarbhainfotech.com
   timezone: "Asia/Kolkata"
 
-# --- Admin / Alerts ---
+# --- Admin Defaults ---
 admin:
-  email: shreyas@vidarbhainfotech.com
-  max_consecutive_failures: 3           # Alert after this many failures
+  max_consecutive_failures: 3
 
 # --- State File ---
 state:
-  file_path: "state.json"               # Tracks processed IDs, alert timestamps
+  file_path: "state.json"

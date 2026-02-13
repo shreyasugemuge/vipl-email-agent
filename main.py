@@ -3,16 +3,13 @@
 VIPL Email Agent — Main Entry Point
 
 AI-powered shared inbox monitoring, triage & response system.
-Polls Gmail inboxes, processes emails with Claude, logs to Google Sheets,
-posts notifications to Google Chat, monitors SLA compliance,
-and sends daily EOD summary reports.
+Serves an admin UI on PORT (default 8080) for Cloud Run,
+runs background scheduler for email polling, SLA checks, and EOD reports.
 
-Usage:
-    python main.py                  # Run the full agent with scheduler
-    python main.py --once           # Run one poll cycle and exit
-    python main.py --eod            # Trigger EOD report manually
-    python main.py --sla            # Run one SLA check and exit
-    python main.py --init-sheet     # Initialize Google Sheet headers
+Configuration priority:
+  1. Environment variables (secrets + org-specific values)
+  2. config.yaml (non-sensitive defaults)
+  3. Admin UI saves runtime overrides to Google Sheet "Agent Config" tab
 """
 
 import argparse
@@ -23,7 +20,6 @@ import sys
 import time
 import threading
 from datetime import datetime, timedelta
-from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import pytz
 import yaml
@@ -47,10 +43,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler("agent.log", mode="a"),
-    ],
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger("vipl-agent")
 
@@ -58,11 +51,11 @@ IST = pytz.timezone("Asia/Kolkata")
 
 
 # ----------------------------------------------------------------
-# Configuration
+# Configuration — env vars override config.yaml
 # ----------------------------------------------------------------
 
 def load_config(config_path: str = "config.yaml") -> dict:
-    """Load configuration from YAML file."""
+    """Load config from YAML, then overlay environment variables."""
     if not os.path.exists(config_path):
         logger.error(f"Config file not found: {config_path}")
         sys.exit(1)
@@ -70,7 +63,54 @@ def load_config(config_path: str = "config.yaml") -> dict:
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
-    logger.info(f"Loaded config from {config_path}")
+    # --- Overlay environment variables ---
+
+    # Inboxes (comma-separated)
+    inboxes_env = os.environ.get("MONITORED_INBOXES")
+    if inboxes_env:
+        config.setdefault("gmail", {})["inboxes"] = [
+            e.strip() for e in inboxes_env.split(",") if e.strip()
+        ]
+
+    # Google Sheet ID
+    sheet_id = os.environ.get("GOOGLE_SHEET_ID")
+    if sheet_id:
+        config.setdefault("google_sheets", {})["spreadsheet_id"] = sheet_id
+
+    # Chat webhook
+    webhook = os.environ.get("GOOGLE_CHAT_WEBHOOK_URL")
+    if webhook:
+        config.setdefault("google_chat", {})["webhook_url"] = webhook
+
+    # Admin email
+    admin_email = os.environ.get("ADMIN_EMAIL")
+    if admin_email:
+        config.setdefault("admin", {})["email"] = admin_email
+
+    # EOD recipients (comma-separated)
+    eod_recipients = os.environ.get("EOD_RECIPIENTS")
+    if eod_recipients:
+        config.setdefault("eod", {})["recipients"] = [
+            e.strip() for e in eod_recipients.split(",") if e.strip()
+        ]
+
+    # Validate required values
+    required = {
+        "MONITORED_INBOXES": config.get("gmail", {}).get("inboxes"),
+        "GOOGLE_SHEET_ID": config.get("google_sheets", {}).get("spreadsheet_id"),
+        "GOOGLE_CHAT_WEBHOOK_URL": config.get("google_chat", {}).get("webhook_url"),
+        "ADMIN_EMAIL": config.get("admin", {}).get("email"),
+    }
+    missing = [k for k, v in required.items() if not v]
+    if missing:
+        logger.error(f"Missing required config (set as env vars): {', '.join(missing)}")
+        sys.exit(1)
+
+    # Ensure EOD recipients defaults to admin email
+    if not config.get("eod", {}).get("recipients"):
+        config.setdefault("eod", {})["recipients"] = [config["admin"]["email"]]
+
+    logger.info(f"Config loaded — {len(config.get('gmail', {}).get('inboxes', []))} inboxes")
     return config
 
 
@@ -91,19 +131,17 @@ def init_components(config: dict) -> dict:
         else:
             logger.error(f"Service account key not found at {sa_key_path} or {fallback}")
             sys.exit(1)
+
     sheet_id = config["google_sheets"]["spreadsheet_id"]
     sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}"
 
-    # State manager
     state = StateManager(config.get("state", {}).get("file_path", "state.json"))
 
-    # Gmail poller
     gmail = GmailPoller(
         service_account_key_path=sa_key_path,
         processed_label=config.get("gmail", {}).get("processed_label", "Agent/Processed"),
     )
 
-    # AI processor
     claude_config = config.get("claude", {})
     ai = AIProcessor(
         model=claude_config.get("model", "claude-sonnet-4-5-20250929"),
@@ -112,20 +150,17 @@ def init_components(config: dict) -> dict:
         system_prompt_path="prompts/triage_prompt.txt",
     )
 
-    # Sheet logger
     sheet = SheetLogger(
         service_account_key_path=sa_key_path,
         spreadsheet_id=sheet_id,
         config=config.get("google_sheets", {}),
     )
 
-    # Chat notifier
     chat = ChatNotifier(
         webhook_url=config.get("google_chat", {}).get("webhook_url", ""),
         sheet_url=sheet_url,
     )
 
-    # SLA monitor
     sla = SLAMonitor(
         sheet_logger=sheet,
         chat_notifier=chat,
@@ -133,7 +168,6 @@ def init_components(config: dict) -> dict:
         config=config,
     )
 
-    # EOD reporter
     eod = EODReporter(
         sheet_logger=sheet,
         sla_monitor=sla,
@@ -143,14 +177,8 @@ def init_components(config: dict) -> dict:
     )
 
     return {
-        "state": state,
-        "gmail": gmail,
-        "ai": ai,
-        "sheet": sheet,
-        "chat": chat,
-        "sla": sla,
-        "eod": eod,
-        "config": config,
+        "state": state, "gmail": gmail, "ai": ai, "sheet": sheet,
+        "chat": chat, "sla": sla, "eod": eod, "config": config,
     }
 
 
@@ -159,13 +187,7 @@ def init_components(config: dict) -> dict:
 # ----------------------------------------------------------------
 
 def process_emails(components: dict):
-    """
-    Main email processing pipeline:
-    1. Poll Gmail for new emails
-    2. Process each through Claude
-    3. Log to Google Sheet
-    4. Post notification to Google Chat
-    """
+    """Poll Gmail → Claude triage → Sheet log → Chat notification."""
     config = components["config"]
     gmail = components["gmail"]
     ai = components["ai"]
@@ -177,14 +199,10 @@ def process_emails(components: dict):
     sla_defaults = config.get("sla", {}).get("defaults", {})
 
     try:
-        # Read SLA config from Sheet (falls back to config.yaml defaults)
         sla_config = sheet.get_sla_config() or {}
-
-        # Poll all inboxes
         new_emails = gmail.poll_all(inboxes, state)
 
         if not new_emails:
-            logger.debug("No new emails this cycle")
             state.reset_failures()
             return
 
@@ -192,44 +210,22 @@ def process_emails(components: dict):
 
         for email in new_emails:
             try:
-                # Double-check deduplication against Sheet
                 if sheet.is_thread_logged(email.thread_id):
-                    logger.info(f"Thread {email.thread_id} already in Sheet, skipping")
                     continue
 
-                # AI triage
                 triage = ai.process(email)
-
-                # Determine SLA hours for this category
                 category = triage.category
-                if category in sla_config:
-                    sla_hours = sla_config[category].get("hours", 24)
-                elif category in sla_defaults:
-                    sla_hours = sla_defaults[category]
-                else:
-                    sla_hours = 24  # Fallback
+                sla_hours = sla_config.get(category, {}).get("hours") or sla_defaults.get(category, 24)
 
-                # Log to Sheet
                 ticket_number = sheet.log_email(email, triage, sla_hours)
-
-                # Calculate SLA deadline string for the notification
                 sla_deadline = email.timestamp + timedelta(hours=sla_hours)
                 sla_deadline_str = sla_deadline.strftime("%d %b %Y, %I:%M %p IST")
-
-                # Post to Google Chat
                 chat.notify_new_email(ticket_number, email, triage, sla_deadline_str)
 
-                priority_emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}.get(
-                    triage.priority, "⚪"
-                )
-                logger.info(
-                    f"✅ {ticket_number} | {priority_emoji} {triage.priority} | "
-                    f"{triage.category} | {email.subject[:50]}"
-                )
+                logger.info(f"\u2705 {ticket_number} | {triage.priority} | {triage.category} | {email.subject[:50]}")
 
             except Exception as e:
                 logger.error(f"Failed to process email '{email.subject[:50]}': {e}")
-                continue
 
         state.reset_failures()
 
@@ -237,126 +233,194 @@ def process_emails(components: dict):
         logger.error(f"Email processing cycle failed: {e}")
         state.record_failure()
 
-        # Alert admin after consecutive failures
-        max_failures = config.get("admin", {}).get("max_consecutive_failures", 3)
-        if state.consecutive_failures >= max_failures:
-            admin_email = config.get("admin", {}).get("email", "")
-            logger.critical(
-                f"⚠️ {state.consecutive_failures} consecutive failures! "
-                f"Admin alert should be sent to {admin_email}"
-            )
-            # Post failure alert to Google Chat
-            chat.notify_eod_summary({
-                "date": datetime.now(IST).strftime("%d %b %Y"),
-                "received_today": 0,
-                "closed_today": 0,
-                "total_open": "?",
-                "sla_breaches": "?",
-                "unassigned": "⚠️ AGENT ERROR — Check logs",
-            })
+
+# ----------------------------------------------------------------
+# Flask Admin UI + Health Check
+# ----------------------------------------------------------------
+
+def create_app(components: dict, scheduler=None):
+    """Create Flask app for admin UI and health check."""
+    from flask import Flask, render_template, request, jsonify, redirect
+
+    app = Flask(__name__, template_folder="templates")
+    app.config["start_time"] = datetime.now(IST)
+
+    @app.route("/health")
+    def health():
+        return "OK", 200
+
+    @app.route("/")
+    def dashboard():
+        cfg = components["config"]
+        now = datetime.now(IST)
+
+        try:
+            open_tickets = components["sheet"].get_open_tickets()
+            today_tickets = components["sheet"].get_all_tickets_today()
+            breached = components["sla"].get_breached_tickets()
+        except Exception:
+            open_tickets, today_tickets, breached = [], [], []
+
+        stats = {
+            "total_open": len(open_tickets),
+            "received_today": len(today_tickets),
+            "sla_breaches": len(breached),
+            "unassigned": sum(1 for t in open_tickets if not t.get("Assigned To", "").strip()),
+        }
+
+        uptime = now - app.config["start_time"]
+        h, rem = divmod(int(uptime.total_seconds()), 3600)
+        m, _ = divmod(rem, 60)
+
+        return render_template("admin.html",
+            page="dashboard", stats=stats, config=cfg,
+            uptime=f"{h}h {m}m",
+            start_time=app.config["start_time"].strftime("%d %b %Y, %I:%M %p IST"),
+            now=now.strftime("%d %b %Y, %I:%M %p IST"),
+        )
+
+    @app.route("/config", methods=["GET"])
+    def config_page():
+        return render_template("admin.html", page="config", config=components["config"])
+
+    @app.route("/config", methods=["POST"])
+    def save_config():
+        cfg = components["config"]
+        sheet = components["sheet"]
+
+        poll_interval = request.form.get("poll_interval", "300")
+        eod_hour = request.form.get("eod_hour", "19")
+        eod_minute = request.form.get("eod_minute", "0")
+        sla_cooldown = request.form.get("sla_cooldown", "4")
+        inboxes_str = request.form.get("inboxes", "")
+        admin_email = request.form.get("admin_email", "")
+        eod_recipients = request.form.get("eod_recipients", "")
+
+        try:
+            # Save to Agent Config tab
+            config_data = [
+                ["Setting", "Value"],
+                ["poll_interval_seconds", poll_interval],
+                ["eod_hour", eod_hour],
+                ["eod_minute", eod_minute],
+                ["sla_cooldown_hours", sla_cooldown],
+                ["inboxes", inboxes_str],
+                ["admin_email", admin_email],
+                ["eod_recipients", eod_recipients],
+                ["last_updated", datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S")],
+            ]
+
+            tab = cfg.get("google_sheets", {}).get("agent_config_tab", "Agent Config")
+            sheet.sheets.values().update(
+                spreadsheetId=sheet.spreadsheet_id,
+                range=f"'{tab}'!A1:B{len(config_data)}",
+                valueInputOption="RAW",
+                body={"values": config_data},
+            ).execute()
+
+            # Apply to running config
+            cfg["gmail"]["poll_interval_seconds"] = int(poll_interval)
+            cfg["eod"]["send_hour"] = int(eod_hour)
+            cfg["eod"]["send_minute"] = int(eod_minute)
+            cfg["sla"]["breach_alert_cooldown_hours"] = int(sla_cooldown)
+            if inboxes_str:
+                cfg["gmail"]["inboxes"] = [e.strip() for e in inboxes_str.split(",") if e.strip()]
+            if admin_email:
+                cfg["admin"]["email"] = admin_email
+            if eod_recipients:
+                cfg["eod"]["recipients"] = [e.strip() for e in eod_recipients.split(",") if e.strip()]
+
+            if scheduler:
+                try:
+                    scheduler.reschedule_job("email_poll",
+                        trigger=IntervalTrigger(seconds=int(poll_interval)))
+                except Exception:
+                    pass
+
+            logger.info("Config saved via admin UI")
+            return redirect("/?saved=1")
+        except Exception as e:
+            logger.error(f"Failed to save config: {e}")
+            return render_template("admin.html", page="config", config=cfg, error=str(e))
+
+    @app.route("/api/status")
+    def api_status():
+        now = datetime.now(IST)
+        state = components["state"]
+        try:
+            open_t = len(components["sheet"].get_open_tickets())
+            today_t = len(components["sheet"].get_all_tickets_today())
+            breach_t = len(components["sla"].get_breached_tickets())
+        except Exception:
+            open_t, today_t, breach_t = 0, 0, 0
+
+        return jsonify({
+            "status": "running",
+            "uptime_seconds": int((now - app.config["start_time"]).total_seconds()),
+            "total_open": open_t,
+            "received_today": today_t,
+            "sla_breaches": breach_t,
+            "failures": state.consecutive_failures,
+        })
+
+    return app
 
 
 # ----------------------------------------------------------------
-# Health Check HTTP Server (required by Cloud Run)
+# Scheduler + Flask
 # ----------------------------------------------------------------
 
-class HealthHandler(BaseHTTPRequestHandler):
-    """Minimal HTTP handler for Cloud Run health checks."""
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/plain")
-        self.end_headers()
-        self.wfile.write(b"VIPL Email Agent is running")
-
-    def log_message(self, format, *args):
-        pass  # Suppress request logs
-
-
-def start_health_server():
-    """Start a background HTTP server on PORT (default 8080) for Cloud Run."""
-    port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(("0.0.0.0", port), HealthHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    logger.info(f"Health check server listening on port {port}")
-
-
-# ----------------------------------------------------------------
-# Scheduler Setup
-# ----------------------------------------------------------------
-
-def run_scheduler(components: dict):
-    """Set up and start the APScheduler with all scheduled tasks."""
+def run_agent(components: dict):
+    """Start scheduler + Flask admin UI."""
     config = components["config"]
-
-    # Start health check server for Cloud Run
-    start_health_server()
-
     scheduler = BackgroundScheduler(timezone=IST)
 
-    # Email polling — every 3 minutes (configurable)
-    poll_interval = config.get("gmail", {}).get("poll_interval_seconds", 180)
-    scheduler.add_job(
-        process_emails,
-        trigger=IntervalTrigger(seconds=poll_interval),
-        args=[components],
-        id="email_poll",
-        name="Email Polling",
-        max_instances=1,
-        coalesce=True,
-    )
+    poll_interval = config.get("gmail", {}).get("poll_interval_seconds", 300)
+    scheduler.add_job(process_emails, trigger=IntervalTrigger(seconds=poll_interval),
+                      args=[components], id="email_poll", name="Email Polling",
+                      max_instances=1, coalesce=True)
 
-    # SLA check — every 15 minutes (configurable)
     sla_interval = config.get("sla", {}).get("check_interval_seconds", 900)
-    scheduler.add_job(
-        components["sla"].check,
-        trigger=IntervalTrigger(seconds=sla_interval),
-        id="sla_check",
-        name="SLA Monitor",
-        max_instances=1,
-        coalesce=True,
-    )
+    scheduler.add_job(components["sla"].check, trigger=IntervalTrigger(seconds=sla_interval),
+                      id="sla_check", name="SLA Monitor", max_instances=1, coalesce=True)
 
-    # EOD report — daily at configured time (default 7 PM IST)
     eod_hour = config.get("eod", {}).get("send_hour", 19)
     eod_minute = config.get("eod", {}).get("send_minute", 0)
-    scheduler.add_job(
-        components["eod"].send_report,
-        trigger=CronTrigger(hour=eod_hour, minute=eod_minute, timezone=IST),
-        id="eod_report",
-        name="EOD Report",
-        max_instances=1,
-    )
+    scheduler.add_job(components["eod"].send_report,
+                      trigger=CronTrigger(hour=eod_hour, minute=eod_minute, timezone=IST),
+                      id="eod_report", name="EOD Report", max_instances=1)
 
-    # Graceful shutdown
     def shutdown(signum, frame):
-        logger.info("Received shutdown signal, stopping scheduler...")
+        logger.info("Shutting down...")
         scheduler.shutdown(wait=False)
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
 
+    inboxes = config.get("gmail", {}).get("inboxes", [])
     logger.info("=" * 60)
     logger.info("VIPL Email Agent — Starting")
-    logger.info(f"  Inboxes:     {', '.join(config.get('gmail', {}).get('inboxes', []))}")
+    logger.info(f"  Inboxes:     {', '.join(inboxes)}")
     logger.info(f"  Poll every:  {poll_interval}s")
     logger.info(f"  SLA check:   every {sla_interval}s")
     logger.info(f"  EOD report:  {eod_hour}:{eod_minute:02d} IST")
-    logger.info(f"  Claude:      {config.get('claude', {}).get('model', 'unknown')}")
     logger.info("=" * 60)
 
-    # Run first poll immediately
+    # First poll immediately
     process_emails(components)
 
-    # Start scheduler and keep main thread alive
     scheduler.start()
-    while True:
-        time.sleep(60)
+
+    # Flask serves admin UI + health check
+    app = create_app(components, scheduler)
+    port = int(os.environ.get("PORT", 8080))
+    logger.info(f"Admin UI on port {port}")
+    app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=False)
 
 
 # ----------------------------------------------------------------
-# CLI Entry Points
+# CLI
 # ----------------------------------------------------------------
 
 def main():
@@ -372,35 +436,20 @@ def main():
     components = init_components(config)
 
     if args.init_sheet:
-        logger.info("Initializing Google Sheet headers...")
         components["sheet"].ensure_headers()
-        logger.info("Done.")
         return
-
     if args.once:
-        logger.info("Running single poll cycle...")
         process_emails(components)
-        logger.info("Done.")
         return
-
     if args.eod:
-        logger.info("Triggering EOD report...")
         components["eod"].send_report()
-        logger.info("Done.")
         return
-
     if args.sla:
-        logger.info("Running SLA check...")
         components["sla"].check()
-        logger.info("Done.")
         return
 
-    # Always ensure Sheet headers exist before running
-    logger.info("Ensuring Sheet headers are initialized...")
     components["sheet"].ensure_headers()
-
-    # Default: run the full scheduler
-    run_scheduler(components)
+    run_agent(components)
 
 
 if __name__ == "__main__":
