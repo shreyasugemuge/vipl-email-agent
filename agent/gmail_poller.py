@@ -195,12 +195,15 @@ class GmailPoller:
         for part in payload.get("parts", []):
             self._find_attachments(part, result)
 
-    def poll(self, inbox_email: str, state_manager) -> list[EmailMessage]:
+    def poll(self, inbox_email: str) -> list[EmailMessage]:
         """
         Poll a single inbox for new unprocessed emails.
 
         First poll: fetches the latest 5 emails (regardless of label).
-        Subsequent polls: only picks up new unprocessed emails since last poll.
+        Subsequent polls: only picks up new emails since agent started + unlabeled.
+
+        Dedup is NOT done here — main.py checks the Sheet thread cache.
+        This method just fetches and labels.
         """
         emails = []
         try:
@@ -208,14 +211,10 @@ class GmailPoller:
             label_id = self._ensure_label(service, inbox_email)
 
             if not self._first_poll_done:
-                # FIRST POLL: Get the 5 most recent inbox emails (ignores label)
                 query = "in:inbox"
                 max_results = 5
-                logger.info(f"First poll for {inbox_email}: fetching ONLY latest {max_results} emails")
+                logger.info(f"First poll for {inbox_email}: fetching latest {max_results} emails")
             else:
-                # SUBSEQUENT POLLS: Only emails received AFTER agent started + not labeled
-                # Gmail after: has day-level precision, but combined with the label filter
-                # and the dedup checks in main.py, old emails can't leak through.
                 query = f"in:inbox after:{self._start_epoch} -label:{self.processed_label}"
                 max_results = 10
                 logger.info(f"Incremental poll for {inbox_email}: new emails after epoch {self._start_epoch}")
@@ -234,14 +233,6 @@ class GmailPoller:
             logger.info(f"Found {len(messages)} email(s) in {inbox_email}")
 
             for msg_ref in messages:
-                thread_id = msg_ref.get("threadId", msg_ref["id"])
-
-                # Skip if already processed (in state or sheet)
-                if state_manager.is_processed(thread_id):
-                    if label_id:
-                        self._mark_as_processed(service, msg_ref["id"], label_id)
-                    continue
-
                 # Fetch full message
                 msg_data = service.users().messages().get(
                     userId="me",
@@ -252,11 +243,9 @@ class GmailPoller:
                 email_msg = self._parse_message(service, msg_data, inbox_email)
                 if email_msg:
                     emails.append(email_msg)
-
-                    # Mark as processed in both Gmail and local state
+                    # Apply Gmail label so it's excluded from future queries
                     if label_id:
                         self._mark_as_processed(service, msg_ref["id"], label_id)
-                    state_manager.mark_processed(thread_id)
 
         except Exception as e:
             logger.error(f"Gmail poll failed for {inbox_email}: {e}")
@@ -264,12 +253,12 @@ class GmailPoller:
 
         return emails
 
-    def poll_all(self, inboxes: list[str], state_manager) -> list[EmailMessage]:
+    def poll_all(self, inboxes: list[str]) -> list[EmailMessage]:
         """Poll all configured inboxes and return combined results."""
         all_emails = []
         for inbox in inboxes:
             try:
-                emails = self.poll(inbox, state_manager)
+                emails = self.poll(inbox)
                 all_emails.extend(emails)
             except Exception as e:
                 logger.error(f"Failed to poll {inbox}: {e}")

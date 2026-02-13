@@ -230,7 +230,7 @@ def init_components(config: dict) -> dict:
     sheet_id = config["google_sheets"]["spreadsheet_id"]
     sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}"
 
-    state = StateManager(config.get("state", {}).get("file_path", "state.json"))
+    state = StateManager()  # Pure in-memory — SLA alert cooldowns + failure tracking only
 
     gmail = GmailPoller(
         service_account_key_path=sa_key_path,
@@ -289,7 +289,6 @@ def process_emails(components: dict):
     ai = components["ai"]
     sheet = components["sheet"]
     chat = components["chat"]
-    state = components["state"]
 
     inboxes = config.get("gmail", {}).get("inboxes", [])
     sla_defaults = config.get("sla", {}).get("defaults", {})
@@ -298,11 +297,10 @@ def process_emails(components: dict):
 
     try:
         sla_config = sheet.get_sla_config() or {}
-        new_emails = gmail.poll_all(inboxes, state)
+        new_emails = gmail.poll_all(inboxes)
 
         if not new_emails:
             logger.info(f"Poll complete — no new emails across {len(inboxes)} inbox(es)")
-            state.reset_failures()
         else:
             logger.info(f"Processing {len(new_emails)} new email(s)...")
 
@@ -341,8 +339,6 @@ def process_emails(components: dict):
                     log_buffer.add("ERROR", f"Failed: {email.subject[:50]} — {str(e)[:60]}")
                     logger.error(f"Failed to process email '{email.subject[:50]}': {e}")
 
-            state.reset_failures()
-
         # Send ONE summary Chat message for the entire poll (if any emails processed)
         if processed_items:
             try:
@@ -360,7 +356,6 @@ def process_emails(components: dict):
     except Exception as e:
         log_buffer.add("ERROR", f"Poll cycle failed: {str(e)[:80]}")
         logger.error(f"Email processing cycle failed: {e}")
-        state.record_failure()
         # Still update status even on failure
         try:
             sheet.write_agent_status(last_polled, 0, log_buffer.latest(5))
