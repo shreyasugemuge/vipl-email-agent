@@ -250,6 +250,28 @@ def create_app(components: dict, scheduler=None):
 
     app = Flask(__name__, template_folder="templates")
     app.config["start_time"] = datetime.now(IST)
+    app.secret_key = os.environ.get("ADMIN_SECRET", "vipl-default-key")
+
+    # Simple auth: /health is open, everything else needs ?key= or session cookie
+    admin_key = os.environ.get("ADMIN_SECRET", "vipl2026")
+
+    @app.before_request
+    def check_auth():
+        from flask import session
+        # Health check is always open
+        if request.path == "/health" or request.path == "/api/status":
+            return None
+        # Check session cookie
+        if session.get("authed"):
+            return None
+        # Check query param ?key=
+        if request.args.get("key") == admin_key:
+            session["authed"] = True
+            return None
+        # Check header
+        if request.headers.get("X-Admin-Key") == admin_key:
+            return None
+        return "Unauthorized. Add ?key=YOUR_KEY to the URL.", 401
 
     @app.route("/health")
     def health():
