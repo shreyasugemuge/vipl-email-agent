@@ -205,15 +205,15 @@ class GmailPoller:
             label_id = self._ensure_label(service, inbox_email)
 
             if not self._first_poll_done:
-                # FIRST POLL: Get the 5 most recent inbox emails
+                # FIRST POLL: Get the 5 most recent inbox emails (ignores label)
                 query = "in:inbox"
                 max_results = 5
-                logger.info(f"First poll for {inbox_email}: fetching latest {max_results} emails")
+                logger.info(f"First poll for {inbox_email}: fetching ONLY latest {max_results} emails")
             else:
-                # SUBSEQUENT POLLS: Only unprocessed emails
+                # SUBSEQUENT POLLS: Only emails WITHOUT our processed label
                 query = f"in:inbox -label:{self.processed_label}"
-                max_results = 50
-                logger.debug(f"Polling {inbox_email} for new unprocessed emails")
+                max_results = 10
+                logger.info(f"Incremental poll for {inbox_email}: unprocessed only")
 
             results = service.users().messages().list(
                 userId="me",
