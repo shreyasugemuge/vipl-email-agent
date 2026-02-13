@@ -1,0 +1,19 @@
+# .gcloudignore — Controls what gcloud builds submit uploads
+# Without this file, gcloud falls back to .gitignore (which excludes *.json)
+
+.git
+.gitignore
+.env
+*.log
+__pycache__
+*.py[cod]
+.vscode
+.idea
+venv
+.venv
+tests/
+README.md
+.dockerignore
+
+# Do NOT exclude service-account.json — it's needed in the Docker build context
+# (Alternatively, mount via Secret Manager for better security)

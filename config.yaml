@@ -1,0 +1,75 @@
+# ============================================================
+# VIPL Email Agent — Configuration
+# ============================================================
+# Copy this file and fill in your actual values.
+# NEVER commit secrets to version control.
+# ============================================================
+
+# --- Gmail Inboxes to Monitor ---
+gmail:
+  inboxes:
+    - info@vidarbhainfotech.com
+    - sales@vidarbhainfotech.com
+    - support@vidarbhainfotech.com
+  poll_interval_seconds: 300            # 5 minutes
+  processed_label: "Agent/Processed"  # Gmail label applied to processed threads
+
+# --- Claude AI ---
+claude:
+  model: "claude-sonnet-4-5-20250929"
+  max_tokens: 1024
+  temperature: 0.3
+  # API key must be set via env var ANTHROPIC_API_KEY — never here
+
+# --- Google Sheets ---
+google_sheets:
+  spreadsheet_id: "1fV9AZR22WTS8CY7kxniwX-WtWVdnCp1SRlqjCFlXQ9o"
+  email_log_tab: "Email Log"
+  sla_config_tab: "SLA Config"
+  team_tab: "Team"
+  change_log_tab: "Change Log"
+  dashboard_tab: "Dashboard"
+
+# --- Google Chat ---
+google_chat:
+  webhook_url: "https://chat.googleapis.com/v1/spaces/AAQAEZPQjMw/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=WaDOWaU_i0oiOoO4YDvMivitpkuUJTm0yL4817iPt9U"
+
+# --- Google Auth ---
+google:
+  service_account_key_path: "/secrets/service-account.json"  # Mounted from Secret Manager in Cloud Run
+
+# --- SLA Settings ---
+sla:
+  check_interval_seconds: 900           # 15 minutes
+  business_hours_only: false
+  business_hours_start: 9               # 9 AM IST
+  business_hours_end: 18                # 6 PM IST
+  business_days: [0, 1, 2, 3, 4, 5]    # Mon–Sat (0=Mon)
+  breach_alert_cooldown_hours: 4
+  # Default SLA hours per category (overridden by SLA Config tab in Sheet)
+  defaults:
+    "Government/Tender": 4
+    "Complaint": 4
+    "Sales Lead": 4
+    "Support Request": 8
+    "General Inquiry": 24
+    "Partnership": 24
+    "Internal": 24
+    "Vendor": 48
+
+# --- EOD Summary ---
+eod:
+  send_hour: 19                         # 7 PM IST (24h format)
+  send_minute: 0
+  recipients:
+    - shreyas@vidarbhainfotech.com
+  timezone: "Asia/Kolkata"
+
+# --- Admin / Alerts ---
+admin:
+  email: shreyas@vidarbhainfotech.com
+  max_consecutive_failures: 3           # Alert after this many failures
+
+# --- State File ---
+state:
+  file_path: "state.json"               # Tracks processed IDs, alert timestamps

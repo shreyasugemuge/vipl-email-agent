@@ -1,0 +1,37 @@
+# Secrets — NEVER commit these
+.env
+*.json
+!tests/sample_emails.json
+!package.json
+service-account*.json
+*-sa-key.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+agent.log
+
+# State file (contains processed IDs)
+state.json
+
+# OS
+.DS_Store
+Thumbs.db

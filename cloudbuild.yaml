@@ -1,0 +1,31 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent:$COMMIT_SHA', '.']
+
+  # Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent:$COMMIT_SHA']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'vipl-email-agent'
+      - '--image=asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent:$COMMIT_SHA'
+      - '--region=asia-south1'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--min-instances=1'
+      - '--max-instances=1'
+      - '--no-allow-unauthenticated'
+      - '--set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest'
+      - '--set-secrets=/secrets/service-account.json=sa-key:latest'
+
+images:
+  - 'asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
