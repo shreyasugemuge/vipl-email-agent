@@ -19,10 +19,11 @@ gmail:
   poll_interval_seconds: 300
   processed_label: "Agent/Processed"
 
-# --- Claude AI ---
+# --- Claude AI (cost-optimized: Haiku default, Sonnet for CRITICAL only) ---
 claude:
-  model: "claude-sonnet-4-5-20250929"
-  max_tokens: 1024
+  model: "claude-haiku-4-5-20251001"                # ~12x cheaper than Sonnet
+  escalation_model: "claude-sonnet-4-5-20250929"     # Used only for CRITICAL emails
+  max_tokens: 512                                    # Haiku: 512, Sonnet: 768 (auto)
   temperature: 0.3
 
 # --- Google Sheets Tab Names ---

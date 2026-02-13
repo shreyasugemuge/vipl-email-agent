@@ -117,10 +117,10 @@ class GmailPoller:
             internal_date_ms = int(msg_data.get("internalDate", 0))
             timestamp = datetime.fromtimestamp(internal_date_ms / 1000, tz=pytz.UTC)
 
-            # Extract plain text body
+            # Extract plain text body (truncate early — AI processor truncates further to 1500)
             body = self._extract_body(msg_data.get("payload", {}))
-            if len(body) > 4000:
-                body = body[:4000] + "\n\n[... truncated ...]"
+            if len(body) > 2000:
+                body = body[:2000] + "\n[...truncated...]"
 
             # Count attachments
             attachments = []

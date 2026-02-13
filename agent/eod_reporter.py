@@ -14,7 +14,6 @@ from email.mime.multipart import MIMEMultipart
 from typing import Optional
 
 import pytz
-from typing import Optional
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader, select_autoescape

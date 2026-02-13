@@ -239,10 +239,11 @@ def init_components(config: dict) -> dict:
 
     claude_config = config.get("claude", {})
     ai = AIProcessor(
-        model=claude_config.get("model", "claude-sonnet-4-5-20250929"),
-        max_tokens=claude_config.get("max_tokens", 1024),
+        model=claude_config.get("model", "claude-haiku-4-5-20251001"),
+        max_tokens=claude_config.get("max_tokens", 512),
         temperature=claude_config.get("temperature", 0.3),
         system_prompt_path="prompts/triage_prompt.txt",
+        escalation_model=claude_config.get("escalation_model", "claude-sonnet-4-5-20250929"),
     )
 
     sheet = SheetLogger(

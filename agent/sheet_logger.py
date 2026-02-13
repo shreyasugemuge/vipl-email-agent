@@ -6,6 +6,8 @@ This module handles all read/write operations to the Sheet.
 """
 
 import logging
+import threading
+import time
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -47,6 +49,15 @@ class SheetLogger:
         # Cache for ticket counter
         self._ticket_counts = {"INF": 0, "SAL": 0, "SUP": 0}
         self._load_ticket_counts()
+
+        # ---- COST OPTIMIZATION: Read caches ----
+        # Avoids redundant Sheets API calls within the same poll cycle.
+        self._thread_id_cache: set[str] = set()      # Known thread IDs from Sheet
+        self._thread_id_cache_time: float = 0         # Last refresh epoch
+        self._sla_config_cache: dict = {}
+        self._sla_config_cache_time: float = 0
+        self._THREAD_CACHE_TTL = 120   # seconds — refresh every 2 min
+        self._SLA_CACHE_TTL = 3600     # seconds — SLA config rarely changes
 
     # ----------------------------------------------------------------
     # Ticket Number Generation
@@ -166,6 +177,9 @@ class SheetLogger:
                     body={"values": [["OK"]]},
                 ).execute()
 
+            # Add to in-memory cache so next dedup check is instant
+            self._add_to_thread_cache(email.thread_id)
+
             logger.info(f"Logged ticket {ticket_number}: {email.subject[:50]}")
             return ticket_number
 
@@ -259,7 +273,11 @@ class SheetLogger:
             return []
 
     def get_sla_config(self) -> dict:
-        """Read SLA configuration from the SLA Config tab."""
+        """Read SLA configuration from the SLA Config tab (cached for 1 hour)."""
+        now = time.time()
+        if self._sla_config_cache and (now - self._sla_config_cache_time) < self._SLA_CACHE_TTL:
+            return self._sla_config_cache
+
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.spreadsheet_id,
@@ -276,10 +294,12 @@ class SheetLogger:
                         hours = 24
                     escalation_email = row[2].strip() if len(row) > 2 else ""
                     config[category] = {"hours": hours, "escalation_email": escalation_email}
+            self._sla_config_cache = config
+            self._sla_config_cache_time = now
             return config
         except Exception as e:
             logger.warning(f"Could not read SLA config from Sheet: {e}")
-            return {}
+            return self._sla_config_cache or {}
 
     def get_team_members(self) -> list[dict]:
         """Read team members from the Team tab."""
@@ -304,20 +324,35 @@ class SheetLogger:
             return []
 
     def is_thread_logged(self, thread_id: str) -> bool:
-        """Check if a Gmail thread ID already exists in the Sheet."""
+        """
+        Check if a Gmail thread ID already exists in the Sheet.
+        COST OPTIMIZATION: Caches all thread IDs in memory, refreshes every 2 min.
+        Before: 1 Sheets API call PER EMAIL (50 emails/day = 50 reads/poll).
+        After: 1 Sheets API call per 2 minutes max.
+        """
+        now = time.time()
+        if (now - self._thread_id_cache_time) > self._THREAD_CACHE_TTL:
+            self._refresh_thread_id_cache()
+
+        return thread_id in self._thread_id_cache
+
+    def _refresh_thread_id_cache(self):
+        """Reload all thread IDs from column T into the in-memory set."""
         try:
             result = self.sheets.values().get(
                 spreadsheetId=self.spreadsheet_id,
                 range=f"'{self.email_log_tab}'!T:T",
             ).execute()
             values = result.get("values", [])
-            for row in values:
-                if row and row[0] == thread_id:
-                    return True
-            return False
+            self._thread_id_cache = {row[0] for row in values if row}
+            self._thread_id_cache_time = time.time()
+            logger.debug(f"Thread ID cache refreshed: {len(self._thread_id_cache)} entries")
         except Exception as e:
-            logger.warning(f"Could not check thread dedup: {e}")
-            return False
+            logger.warning(f"Could not refresh thread ID cache: {e}")
+
+    def _add_to_thread_cache(self, thread_id: str):
+        """Add a newly logged thread ID to the cache (avoid stale reads)."""
+        self._thread_id_cache.add(thread_id)
 
     # ----------------------------------------------------------------
     # Sheet Initialization

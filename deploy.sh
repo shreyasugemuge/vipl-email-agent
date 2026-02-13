@@ -16,7 +16,7 @@ echo "=== Deploying to Cloud Run ==="
 gcloud run deploy vipl-email-agent \
   --image=asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent:latest \
   --region=asia-south1 \
-  --memory=512Mi --cpu=1 \
+  --memory=256Mi --cpu=1 \
   --min-instances=1 --max-instances=1 \
   --no-allow-unauthenticated \
   --set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest \
