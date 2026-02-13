@@ -172,27 +172,33 @@ class EODReporter:
         return "\n".join(lines)
 
     def send_report(self):
-        """Generate stats, render the email, and send it."""
+        """Generate stats, render the email, and send it. Chat always fires."""
         logger.info("Generating EOD report...")
 
         try:
             stats = self.generate_stats()
+        except Exception as e:
+            logger.error(f"Failed to generate EOD stats: {e}")
+            return
 
-            # Send HTML email
+        # Post to Google Chat first (always works, no scope issues)
+        try:
+            self.chat.notify_eod_summary(stats)
+            logger.info("EOD summary posted to Chat")
+        except Exception as e:
+            logger.error(f"EOD Chat notification failed: {e}")
+
+        # Send HTML email (requires gmail.send scope)
+        try:
             html_content = self.render_email(stats)
             self._send_email(
                 subject=f"VIPL Email Agent — Daily Summary ({stats['date']})",
                 html_body=html_content,
                 recipients=self.recipients,
             )
-
-            # Also post summary to Google Chat
-            self.chat.notify_eod_summary(stats)
-
-            logger.info(f"EOD report sent to {len(self.recipients)} recipients")
-
+            logger.info(f"EOD email sent to {len(self.recipients)} recipients")
         except Exception as e:
-            logger.error(f"Failed to send EOD report: {e}")
+            logger.error(f"EOD email failed: {e}")
 
     def _send_email(self, subject: str, html_body: str, recipients: list[str]):
         """Send an HTML email via Gmail API."""
