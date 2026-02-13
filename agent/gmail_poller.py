@@ -49,6 +49,8 @@ class GmailPoller:
         self.processed_label = processed_label
         self._services = {}  # Cache per-inbox Gmail service instances
         self._first_poll_done = False  # Track if first poll has completed
+        # Record start time — subsequent polls only look at emails after this
+        self._start_epoch = int(datetime.now().timestamp())
         logger.info("Gmail poller initialized (first poll will fetch latest 5 per inbox)")
 
     def _get_service(self, inbox_email: str):
@@ -210,10 +212,12 @@ class GmailPoller:
                 max_results = 5
                 logger.info(f"First poll for {inbox_email}: fetching ONLY latest {max_results} emails")
             else:
-                # SUBSEQUENT POLLS: Only emails WITHOUT our processed label
-                query = f"in:inbox -label:{self.processed_label}"
+                # SUBSEQUENT POLLS: Only emails received AFTER agent started + not labeled
+                # Gmail after: has day-level precision, but combined with the label filter
+                # and the dedup checks in main.py, old emails can't leak through.
+                query = f"in:inbox after:{self._start_epoch} -label:{self.processed_label}"
                 max_results = 10
-                logger.info(f"Incremental poll for {inbox_email}: unprocessed only")
+                logger.info(f"Incremental poll for {inbox_email}: new emails after epoch {self._start_epoch}")
 
             results = service.users().messages().list(
                 userId="me",
