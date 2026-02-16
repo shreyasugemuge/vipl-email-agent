@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import anthropic
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 logger = logging.getLogger(__name__)
 
@@ -202,23 +203,34 @@ class AIProcessor:
     # Build User Message — truncated for cost
     # ----------------------------------------------------------------
 
+    @staticmethod
+    def _sanitize(text: str) -> str:
+        """Strip control characters and null bytes that could confuse the model."""
+        if not text:
+            return ""
+        # Remove null bytes and other control chars (keep newlines/tabs)
+        return "".join(c for c in text if c == "\n" or c == "\t" or (ord(c) >= 32))
+
     def _build_user_message(self, email) -> str:
-        """Build the user message with aggressive body truncation."""
+        """Build the user message with aggressive body truncation and input sanitization."""
         attachments_info = ""
         if email.attachment_count > 0:
             names = ", ".join(email.attachment_names[:5])
             attachments_info = f"\nAttachments ({email.attachment_count}): {names}"
 
-        # Truncate body to MAX_BODY_CHARS (1500 default, was 4000)
-        body = email.body
+        # Sanitize + truncate body to MAX_BODY_CHARS (1500 default)
+        body = self._sanitize(email.body)
         if len(body) > MAX_BODY_CHARS:
             body = body[:MAX_BODY_CHARS] + "\n[...truncated...]"
+
+        subject = self._sanitize(email.subject)[:200]
+        sender_name = self._sanitize(email.sender_name)[:100]
 
         return (
             f"--- INCOMING EMAIL ---\n"
             f"Inbox: {email.inbox}\n"
-            f"From: {email.sender_name} <{email.sender_email}>\n"
-            f"Subject: {email.subject}\n"
+            f"From: {sender_name} <{email.sender_email}>\n"
+            f"Subject: {subject}\n"
             f"Received: {email.timestamp.strftime('%Y-%m-%d %H:%M:%S IST')}"
             f"{attachments_info}\n"
             f"\n--- EMAIL BODY ---\n"
@@ -230,8 +242,14 @@ class AIProcessor:
     # Core API Call — with token tracking
     # ----------------------------------------------------------------
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        retry=retry_if_exception_type((anthropic.APIConnectionError, anthropic.RateLimitError, anthropic.InternalServerError)),
+        before_sleep=lambda rs: logger.warning(f"Claude API retry #{rs.attempt_number} after {rs.outcome.exception()}"),
+    )
     def _call_claude(self, user_message: str, model: str, max_tokens: int) -> TriageResult:
-        """Make a single Claude API call and return structured result."""
+        """Make a single Claude API call with automatic retry on transient errors."""
         response = self.client.messages.create(
             model=model,
             max_tokens=max_tokens,

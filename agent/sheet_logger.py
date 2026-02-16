@@ -496,22 +496,14 @@ class SheetLogger:
     # Agent Config Tab — Google Sheet as Config UI
     # ----------------------------------------------------------------
 
-    # Row layout:
+    # Row layout (dynamic — computed from NUM_CONFIG_FIELDS):
     #  1  Title (merged)
     #  2  Subtitle (merged)
     #  3  blank
     #  4  Setting | Current Value | Instructions   (header)
-    #  5  Poll Interval ...
-    #  6  SLA Cooldown ...
-    #  7  EOD Hour ...
-    #  8  EOD Minute ...
-    #  9  Admin Email ...
-    # 10  EOD Recipients ...
-    # 11  Monitored Inboxes ...
-    # 12  Claude Model ...
-    # 13  Last Updated ...
-    # 14  blank
-    # 15  Agent Status (merged, green)
+    #  5..N  Config fields (16 fields currently)
+    # N+1  blank
+    # N+2  Agent Status (merged, green)
     # 16  Label | Value   (header)
     # 17  Last Polled | <timestamp>
     # 18  Emails This Cycle | <count>
@@ -532,21 +524,38 @@ class SheetLogger:
         ("Admin Email", lambda c: c.get("admin", {}).get("email", ""),
          "Primary admin email. Receives escalations and fallback EOD reports."),
         ("EOD Recipients", lambda c: ", ".join(c.get("eod", {}).get("recipients", [])),
-         "Comma-separated emails that receive the daily EOD summary."),
+         "Comma-separated emails. Edit here — no redeploy needed!"),
         ("Monitored Inboxes", lambda c: ", ".join(c.get("gmail", {}).get("inboxes", [])),
          "Comma-separated inbox addresses. Changes here need redeployment."),
-        ("Claude Model", lambda c: c.get("claude", {}).get("model", "claude-sonnet-4-5-20250929"),
+        ("Claude Model", lambda c: c.get("claude", {}).get("model", "claude-haiku-4-5-20251001"),
          "AI model for triage. Do not change unless instructed by admin."),
+        # --- Feature Flags ---
+        ("AI Triage Enabled", lambda c: str(c.get("feature_flags", {}).get("ai_enabled", True)),
+         "TRUE/FALSE. Disable to skip AI triage (emails still logged with defaults)."),
+        ("Chat Notifications Enabled", lambda c: str(c.get("feature_flags", {}).get("chat_enabled", True)),
+         "TRUE/FALSE. Disable to suppress all Google Chat notifications."),
+        ("EOD Email Enabled", lambda c: str(c.get("feature_flags", {}).get("eod_email_enabled", True)),
+         "TRUE/FALSE. Disable to skip the daily EOD email (Chat summary still sent)."),
+        # --- Quiet Hours ---
+        ("Quiet Hours Enabled", lambda c: str(c.get("quiet_hours", {}).get("enabled", True)),
+         "TRUE/FALSE. Suppresses Chat alerts during quiet hours. Sheet logging continues."),
+        ("Quiet Hours Start (IST)", lambda c: str(c.get("quiet_hours", {}).get("start_hour", 20)),
+         "Hour (0-23) when quiet hours begin. Default: 20 (8 PM)."),
+        ("Quiet Hours End (IST)", lambda c: str(c.get("quiet_hours", {}).get("end_hour", 8)),
+         "Hour (0-23) when quiet hours end. Default: 8 (8 AM)."),
+        # --- Meta ---
         ("Last Updated", lambda c: datetime.now(IST).strftime("%d %b %Y, %I:%M %p IST"),
          "Auto-updated timestamp of last config write."),
     ]
 
     # 1-indexed row numbers for the status and log sections
-    STATUS_HEADER_ROW = 15
-    STATUS_DATA_ROW = 17     # Last Polled row
-    LOG_HEADER_ROW = 20
-    LOG_COL_HEADER_ROW = 21
-    LOG_DATA_START_ROW = 22
+    # Updated: config section is now 4 header + 16 fields = row 20 for blank, 21 for status header
+    NUM_CONFIG_FIELDS = 16  # Keep in sync with CONFIG_FIELDS above
+    STATUS_HEADER_ROW = 4 + NUM_CONFIG_FIELDS + 1 + 1  # row 22
+    STATUS_DATA_ROW = STATUS_HEADER_ROW + 2              # row 24
+    LOG_HEADER_ROW = STATUS_DATA_ROW + 2 + 1             # row 27
+    LOG_COL_HEADER_ROW = LOG_HEADER_ROW + 1              # row 28
+    LOG_DATA_START_ROW = LOG_COL_HEADER_ROW + 1          # row 29
 
     def ensure_agent_config_tab(self, config: dict):
         """Create or update the Agent Config tab with config, status, and error log."""
@@ -554,26 +563,26 @@ class SheetLogger:
         sheet_id = self._create_tab_if_missing(tab_name)
 
         rows = [
-            ["VIPL Email Agent — Configuration", "", ""],                    # 1
-            ["Edit values in column B. Agent reads these on startup.", "", ""],  # 2
-            ["", "", ""],                                                    # 3
-            ["Setting", "Current Value", "Instructions"],                   # 4
+            ["VIPL Email Agent — Configuration", "", ""],                                      # 1
+            ["Edit values in column B. Config reloads every poll cycle (no redeploy).", "", ""],  # 2
+            ["", "", ""],                                                                      # 3
+            ["Setting", "Current Value", "Instructions"],                                     # 4
         ]
 
         for field_name, default_fn, instruction in self.CONFIG_FIELDS:
             rows.append([field_name, default_fn(config), instruction])
-        # rows now has 4 + 9 = 13 entries
+        # rows now has 4 + NUM_CONFIG_FIELDS entries
 
-        rows.append(["", "", ""])                                           # 14
-        rows.append(["Agent Status", "", ""])                               # 15
-        rows.append(["", "Value", ""])                                      # 16 header
-        rows.append(["Last Polled", "Not yet", ""])                         # 17
-        rows.append(["Emails This Cycle", "0", ""])                         # 18
-        rows.append(["", "", ""])                                           # 19
-        rows.append(["Recent Errors & Highlights", "", ""])                 # 20
-        rows.append(["Time", "Message", ""])                                # 21
+        rows.append(["", "", ""])                                           # blank
+        rows.append(["Agent Status", "", ""])                               # status header
+        rows.append(["", "Value", ""])                                      # status col header
+        rows.append(["Last Polled", "Not yet", ""])
+        rows.append(["Emails This Cycle", "0", ""])
+        rows.append(["", "", ""])                                           # blank
+        rows.append(["Recent Errors & Highlights", "", ""])                 # log header
+        rows.append(["Time", "Message", ""])                                # log col header
         for _ in range(5):
-            rows.append(["—", "Waiting for first poll...", ""])             # 22-26
+            rows.append(["—", "Waiting for first poll...", ""])
 
         self.sheets.values().update(
             spreadsheetId=self.spreadsheet_id,
@@ -586,7 +595,9 @@ class SheetLogger:
         logger.info("Agent Config tab ready")
 
     def _format_agent_config_tab(self, sheet_id: int, num_fields: int):
-        """Apply colors, merges, column widths, and data validation."""
+        """Apply colors, merges, column widths, and data validation.
+        All row indices are computed from num_fields so adding config fields
+        doesn't break formatting."""
         BLUE = {"red": 0.10, "green": 0.27, "blue": 0.53}
         BLUE_LIGHT = {"red": 0.85, "green": 0.91, "blue": 0.97}
         WHITE = {"red": 1, "green": 1, "blue": 1}
@@ -596,9 +607,20 @@ class SheetLogger:
         ORANGE_DARK = {"red": 0.80, "green": 0.40, "blue": 0.0}
         ORANGE_LIGHT = {"red": 1.0, "green": 0.93, "blue": 0.80}
 
+        # Dynamic row indices (0-based for Sheets API)
+        config_end = 4 + num_fields       # First row after config fields
+        status_header = config_end + 1    # +1 for blank row
+        status_col_hdr = status_header + 1
+        status_data_start = status_col_hdr + 1
+        status_data_end = status_data_start + 2
+        log_header = status_data_end + 1  # +1 for blank row
+        log_col_hdr = log_header + 1
+        log_data_start = log_col_hdr + 1
+        log_data_end = log_data_start + 5
+
         requests = [
             # Column widths
-            {"updateDimensionProperties": {"range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 1}, "properties": {"pixelSize": 240}, "fields": "pixelSize"}},
+            {"updateDimensionProperties": {"range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 1}, "properties": {"pixelSize": 270}, "fields": "pixelSize"}},
             {"updateDimensionProperties": {"range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 1, "endIndex": 2}, "properties": {"pixelSize": 360}, "fields": "pixelSize"}},
             {"updateDimensionProperties": {"range": {"sheetId": sheet_id, "dimension": "COLUMNS", "startIndex": 2, "endIndex": 3}, "properties": {"pixelSize": 420}, "fields": "pixelSize"}},
 
@@ -615,47 +637,56 @@ class SheetLogger:
             {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 3, "endRowIndex": 4}, "cell": {"userEnteredFormat": {"backgroundColor": BLUE, "textFormat": {"bold": True, "foregroundColor": WHITE}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
 
             # Config value cells (col B) — light blue bg with underline
-            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 1, "endColumnIndex": 2}, "cell": {"userEnteredFormat": {"backgroundColor": BLUE_LIGHT, "textFormat": {"bold": True}, "borders": {"bottom": {"style": "SOLID", "color": BLUE}}}}, "fields": "userEnteredFormat(backgroundColor,textFormat,borders)"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": config_end, "startColumnIndex": 1, "endColumnIndex": 2}, "cell": {"userEnteredFormat": {"backgroundColor": BLUE_LIGHT, "textFormat": {"bold": True}, "borders": {"bottom": {"style": "SOLID", "color": BLUE}}}}, "fields": "userEnteredFormat(backgroundColor,textFormat,borders)"}},
 
             # Config setting names (col A) — light gray, bold
-            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 0, "endColumnIndex": 1}, "cell": {"userEnteredFormat": {"backgroundColor": GRAY_LIGHT, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": config_end, "startColumnIndex": 0, "endColumnIndex": 1}, "cell": {"userEnteredFormat": {"backgroundColor": GRAY_LIGHT, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
 
             # Instructions (col C) — italic gray, wrap
-            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 2, "endColumnIndex": 3}, "cell": {"userEnteredFormat": {"textFormat": {"italic": True, "foregroundColor": {"red": 0.37, "green": 0.39, "blue": 0.40}}, "wrapStrategy": "WRAP"}}, "fields": "userEnteredFormat(textFormat,wrapStrategy)"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": config_end, "startColumnIndex": 2, "endColumnIndex": 3}, "cell": {"userEnteredFormat": {"textFormat": {"italic": True, "foregroundColor": {"red": 0.37, "green": 0.39, "blue": 0.40}}, "wrapStrategy": "WRAP"}}, "fields": "userEnteredFormat(textFormat,wrapStrategy)"}},
 
-            # Row 15: Agent Status header — green, merged
-            {"mergeCells": {"range": {"sheetId": sheet_id, "startRowIndex": 14, "endRowIndex": 15, "startColumnIndex": 0, "endColumnIndex": 3}, "mergeType": "MERGE_ALL"}},
-            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 14, "endRowIndex": 15}, "cell": {"userEnteredFormat": {"backgroundColor": GREEN_DARK, "textFormat": {"bold": True, "fontSize": 12, "foregroundColor": WHITE}, "horizontalAlignment": "CENTER"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
+            # Agent Status header — green, merged
+            {"mergeCells": {"range": {"sheetId": sheet_id, "startRowIndex": status_header, "endRowIndex": status_header + 1, "startColumnIndex": 0, "endColumnIndex": 3}, "mergeType": "MERGE_ALL"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": status_header, "endRowIndex": status_header + 1}, "cell": {"userEnteredFormat": {"backgroundColor": GREEN_DARK, "textFormat": {"bold": True, "fontSize": 12, "foregroundColor": WHITE}, "horizontalAlignment": "CENTER"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
 
-            # Row 16: Status column header — light green
-            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 15, "endRowIndex": 16}, "cell": {"userEnteredFormat": {"backgroundColor": GREEN_LIGHT, "textFormat": {"bold": True, "foregroundColor": GREEN_DARK}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+            # Status column header — light green
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": status_col_hdr, "endRowIndex": status_col_hdr + 1}, "cell": {"userEnteredFormat": {"backgroundColor": GREEN_LIGHT, "textFormat": {"bold": True, "foregroundColor": GREEN_DARK}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
 
-            # Rows 17-18: Status data — light bg
-            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 16, "endRowIndex": 18, "startColumnIndex": 0, "endColumnIndex": 1}, "cell": {"userEnteredFormat": {"backgroundColor": GRAY_LIGHT, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
-            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 16, "endRowIndex": 18, "startColumnIndex": 1, "endColumnIndex": 2}, "cell": {"userEnteredFormat": {"backgroundColor": GREEN_LIGHT, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+            # Status data rows — light bg
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": status_data_start, "endRowIndex": status_data_end, "startColumnIndex": 0, "endColumnIndex": 1}, "cell": {"userEnteredFormat": {"backgroundColor": GRAY_LIGHT, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": status_data_start, "endRowIndex": status_data_end, "startColumnIndex": 1, "endColumnIndex": 2}, "cell": {"userEnteredFormat": {"backgroundColor": GREEN_LIGHT, "textFormat": {"bold": True}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
 
-            # Row 20: Error log header — orange, merged
-            {"mergeCells": {"range": {"sheetId": sheet_id, "startRowIndex": 19, "endRowIndex": 20, "startColumnIndex": 0, "endColumnIndex": 3}, "mergeType": "MERGE_ALL"}},
-            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 19, "endRowIndex": 20}, "cell": {"userEnteredFormat": {"backgroundColor": ORANGE_DARK, "textFormat": {"bold": True, "fontSize": 12, "foregroundColor": WHITE}, "horizontalAlignment": "CENTER"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
+            # Error log header — orange, merged
+            {"mergeCells": {"range": {"sheetId": sheet_id, "startRowIndex": log_header, "endRowIndex": log_header + 1, "startColumnIndex": 0, "endColumnIndex": 3}, "mergeType": "MERGE_ALL"}},
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": log_header, "endRowIndex": log_header + 1}, "cell": {"userEnteredFormat": {"backgroundColor": ORANGE_DARK, "textFormat": {"bold": True, "fontSize": 12, "foregroundColor": WHITE}, "horizontalAlignment": "CENTER"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"}},
 
-            # Row 21: Error log column headers — light orange
-            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 20, "endRowIndex": 21}, "cell": {"userEnteredFormat": {"backgroundColor": ORANGE_LIGHT, "textFormat": {"bold": True, "foregroundColor": ORANGE_DARK}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
+            # Error log column headers — light orange
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": log_col_hdr, "endRowIndex": log_col_hdr + 1}, "cell": {"userEnteredFormat": {"backgroundColor": ORANGE_LIGHT, "textFormat": {"bold": True, "foregroundColor": ORANGE_DARK}}}, "fields": "userEnteredFormat(backgroundColor,textFormat)"}},
 
-            # Rows 22-26: Log data
-            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": 21, "endRowIndex": 26}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.99, "green": 0.97, "blue": 0.95}, "textFormat": {"fontSize": 10}, "wrapStrategy": "WRAP"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,wrapStrategy)"}},
+            # Log data rows
+            {"repeatCell": {"range": {"sheetId": sheet_id, "startRowIndex": log_data_start, "endRowIndex": log_data_end}, "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.99, "green": 0.97, "blue": 0.95}, "textFormat": {"fontSize": 10}, "wrapStrategy": "WRAP"}}, "fields": "userEnteredFormat(backgroundColor,textFormat,wrapStrategy)"}},
 
             # Protect settings names + instructions
-            {"addProtectedRange": {"protectedRange": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 0, "endColumnIndex": 1}, "description": "Setting names", "warningOnly": True}}},
-            {"addProtectedRange": {"protectedRange": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": 4 + num_fields, "startColumnIndex": 2, "endColumnIndex": 3}, "description": "Instructions", "warningOnly": True}}},
+            {"addProtectedRange": {"protectedRange": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": config_end, "startColumnIndex": 0, "endColumnIndex": 1}, "description": "Setting names", "warningOnly": True}}},
+            {"addProtectedRange": {"protectedRange": {"range": {"sheetId": sheet_id, "startRowIndex": 4, "endRowIndex": config_end, "startColumnIndex": 2, "endColumnIndex": 3}, "description": "Instructions", "warningOnly": True}}},
         ]
 
-        # Data validation for numeric fields
+        # Data validation for numeric fields (0-based row indices, starting at row 5 = index 4)
         validations = [
             (4, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "60"}, {"userEnteredValue": "3600"}]}, "strict": True, "showCustomUi": True, "inputMessage": "Enter 60-3600"}),
             (5, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "1"}, {"userEnteredValue": "48"}]}, "strict": True, "showCustomUi": True, "inputMessage": "Enter 1-48"}),
             (6, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "0"}, {"userEnteredValue": "23"}]}, "strict": True, "showCustomUi": True, "inputMessage": "Enter 0-23"}),
             (7, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "0"}, {"userEnteredValue": "59"}]}, "strict": True, "showCustomUi": True, "inputMessage": "Enter 0-59"}),
         ]
+        # Quiet hours start/end also need 0-23 validation
+        qh_start_row = 4 + num_fields - 2  # Second-to-last config field (Quiet Hours Start)
+        qh_end_row = 4 + num_fields - 1    # Last config field before "Last Updated" is actually -1
+        # Actually, compute from field names to be safe
+        for i, (name, _, _) in enumerate(self.CONFIG_FIELDS):
+            row_idx = 4 + i
+            if name == "Quiet Hours Start (IST)" or name == "Quiet Hours End (IST)":
+                validations.append((row_idx, {"condition": {"type": "NUMBER_BETWEEN", "values": [{"userEnteredValue": "0"}, {"userEnteredValue": "23"}]}, "strict": True, "showCustomUi": True, "inputMessage": "Enter 0-23"}))
+
         for row_idx, rule in validations:
             requests.append({"setDataValidation": {"range": {"sheetId": sheet_id, "startRowIndex": row_idx, "endRowIndex": row_idx + 1, "startColumnIndex": 1, "endColumnIndex": 2}, "rule": rule}})
 
@@ -667,6 +698,59 @@ class SheetLogger:
     # ----------------------------------------------------------------
     # Write Agent Status + Logs to Sheet
     # ----------------------------------------------------------------
+
+    # ----------------------------------------------------------------
+    # Cost Tracker — Daily AI usage stats
+    # ----------------------------------------------------------------
+
+    def log_daily_cost(self, usage_stats: dict):
+        """Append a row to the Cost Tracker tab with today's AI usage stats."""
+        tab_name = "Cost Tracker"
+        try:
+            self._create_tab_if_missing(tab_name)
+
+            # Ensure header exists
+            result = self.sheets.values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A1:A1",
+            ).execute()
+            existing = result.get("values", [[]])
+            first_cell = existing[0][0] if existing and existing[0] else ""
+
+            if first_cell != "Date":
+                self.sheets.values().update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"'{tab_name}'!A1:G1",
+                    valueInputOption="RAW",
+                    body={"values": [["Date", "API Calls", "Input Tokens", "Output Tokens",
+                                      "Cache Hit Rate %", "Est. Cost (USD)", "Notes"]]},
+                ).execute()
+
+            # Calculate estimated cost
+            input_cost = usage_stats.get("total_input_tokens", 0) / 1_000_000 * 0.25   # Haiku rate
+            output_cost = usage_stats.get("total_output_tokens", 0) / 1_000_000 * 1.25  # Haiku rate
+            est_cost = round(input_cost + output_cost, 4)
+
+            row = [
+                datetime.now(IST).strftime("%d %b %Y"),
+                usage_stats.get("total_calls", 0),
+                usage_stats.get("total_input_tokens", 0),
+                usage_stats.get("total_output_tokens", 0),
+                round(usage_stats.get("cache_hit_rate", 0), 1),
+                est_cost,
+                "",
+            ]
+
+            self.sheets.values().append(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A:G",
+                valueInputOption="RAW",
+                insertDataOption="INSERT_ROWS",
+                body={"values": [row]},
+            ).execute()
+            logger.info(f"Cost tracker: {usage_stats.get('total_calls', 0)} calls, ~${est_cost}")
+        except Exception as e:
+            logger.warning(f"Could not log daily cost: {e}")
 
     def write_agent_status(self, last_polled: str, emails_this_cycle: int, error_logs: list[dict]):
         """Update the Agent Status section and error/highlight logs."""
@@ -700,3 +784,50 @@ class SheetLogger:
             ).execute()
         except Exception as e:
             logger.warning(f"Could not write agent status to sheet: {e}")
+
+    # ----------------------------------------------------------------
+    # Dead Letter Tab — Failed triages for manual review
+    # ----------------------------------------------------------------
+
+    def log_failed_triage(self, email, error_msg: str):
+        """Log a failed email triage to the 'Failed Triage' tab for manual review."""
+        tab_name = "Failed Triage"
+        try:
+            self._create_tab_if_missing(tab_name)
+
+            # Ensure header
+            result = self.sheets.values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A1:A1",
+            ).execute()
+            existing = result.get("values", [[]])
+            first_cell = existing[0][0] if existing and existing[0] else ""
+
+            if first_cell != "Timestamp":
+                self.sheets.values().update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"'{tab_name}'!A1:F1",
+                    valueInputOption="RAW",
+                    body={"values": [["Timestamp", "Inbox", "From", "Subject", "Error", "Thread ID"]]},
+                ).execute()
+
+            ist_now = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
+            row = [
+                ist_now,
+                getattr(email, "inbox", ""),
+                f"{getattr(email, 'sender_name', '')} <{getattr(email, 'sender_email', '')}>",
+                getattr(email, "subject", "")[:100],
+                str(error_msg)[:200],
+                getattr(email, "thread_id", ""),
+            ]
+
+            self.sheets.values().append(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A:F",
+                valueInputOption="RAW",
+                insertDataOption="INSERT_ROWS",
+                body={"values": [row]},
+            ).execute()
+            logger.info(f"Logged failed triage to '{tab_name}': {getattr(email, 'subject', '')[:50]}")
+        except Exception as e:
+            logger.warning(f"Could not log failed triage: {e}")

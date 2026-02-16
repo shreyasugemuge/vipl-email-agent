@@ -47,6 +47,7 @@ sla:
   business_hours_end: 18
   business_days: [0, 1, 2, 3, 4, 5]
   breach_alert_cooldown_hours: 4
+  summary_hours: [9, 13, 17]       # SLA breach summary at 9AM, 1PM, 5PM IST
   defaults:
     "Government/Tender": 4
     "Complaint": 4
@@ -56,6 +57,14 @@ sla:
     "Partnership": 24
     "Internal": 24
     "Vendor": 48
+
+# --- Quiet Hours (suppress Chat alerts during off-hours) ---
+quiet_hours:
+  enabled: true
+  start_hour: 20    # 8 PM IST — stop sending Chat alerts
+  end_hour: 8       # 8 AM IST — resume Chat alerts
+  # Note: EOD email + Sheet logging still work during quiet hours.
+  # Only Chat webhook notifications are suppressed.
 
 # --- EOD Summary Defaults ---
 eod:

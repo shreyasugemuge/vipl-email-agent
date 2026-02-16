@@ -12,6 +12,7 @@ Configuration priority:
   3. Google Sheet "Agent Config" tab (runtime overrides)
 """
 
+import json
 import logging
 import os
 import signal
@@ -35,15 +36,29 @@ from agent.eod_reporter import EODReporter
 from agent.state import StateManager
 
 # ----------------------------------------------------------------
-# Logging Setup
+# Logging Setup — JSON structured logging for Cloud Logging
 # ----------------------------------------------------------------
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
+class JSONFormatter(logging.Formatter):
+    """Structured JSON log format for Cloud Run / Cloud Logging."""
+    def format(self, record):
+        log_entry = {
+            "timestamp": datetime.now(pytz.timezone("Asia/Kolkata")).isoformat(),
+            "severity": record.levelname,
+            "component": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info and record.exc_info[0]:
+            log_entry["exception"] = self.formatException(record.exc_info)
+        # Add extra fields if present (e.g. inbox, thread_id, cost_usd)
+        for key in ("inbox", "thread_id", "cost_usd", "model", "tokens", "ticket"):
+            if hasattr(record, key):
+                log_entry[key] = getattr(record, key)
+        return json.dumps(log_entry, default=str)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(JSONFormatter())
+logging.basicConfig(level=logging.INFO, handlers=[handler])
 logger = logging.getLogger("vipl-agent")
 
 IST = pytz.timezone("Asia/Kolkata")
@@ -146,7 +161,8 @@ def load_config(config_path: str = "config.yaml") -> dict:
 
 
 def load_sheet_config_overrides(sheet_logger, config: dict) -> dict:
-    """Read runtime config overrides from the Agent Config sheet tab."""
+    """Read runtime config overrides from the Agent Config sheet tab.
+    Called at startup AND before every poll cycle for hot-reload."""
     try:
         tab_name = config.get("google_sheets", {}).get("agent_config_tab", "Agent Config")
         result = sheet_logger.sheets.values().get(
@@ -201,12 +217,59 @@ def load_sheet_config_overrides(sheet_logger, config: dict) -> dict:
             if recipients:
                 config["eod"]["recipients"] = recipients
 
-        logger.info("Applied config overrides from Agent Config sheet")
+        # --- Feature flags ---
+        def _bool(val: str) -> bool:
+            return val.strip().upper() in ("TRUE", "YES", "1", "ON")
+
+        if overrides.get("Chat Notifications Enabled"):
+            config.setdefault("feature_flags", {})["chat_enabled"] = _bool(overrides["Chat Notifications Enabled"])
+        if overrides.get("AI Triage Enabled"):
+            config.setdefault("feature_flags", {})["ai_enabled"] = _bool(overrides["AI Triage Enabled"])
+        if overrides.get("EOD Email Enabled"):
+            config.setdefault("feature_flags", {})["eod_email_enabled"] = _bool(overrides["EOD Email Enabled"])
+
+        # --- Quiet hours ---
+        if overrides.get("Quiet Hours Enabled"):
+            config.setdefault("quiet_hours", {})["enabled"] = _bool(overrides["Quiet Hours Enabled"])
+        if overrides.get("Quiet Hours Start (IST)"):
+            try:
+                val = int(overrides["Quiet Hours Start (IST)"])
+                if 0 <= val <= 23:
+                    config.setdefault("quiet_hours", {})["start_hour"] = val
+            except ValueError:
+                pass
+        if overrides.get("Quiet Hours End (IST)"):
+            try:
+                val = int(overrides["Quiet Hours End (IST)"])
+                if 0 <= val <= 23:
+                    config.setdefault("quiet_hours", {})["end_hour"] = val
+            except ValueError:
+                pass
+
+        logger.debug("Applied config overrides from Agent Config sheet")
         return config
 
     except Exception as e:
         logger.info(f"No sheet config overrides (first run?): {e}")
         return config
+
+
+def is_quiet_hours(config: dict) -> bool:
+    """Check if current time falls within quiet hours (no Chat alerts)."""
+    qh = config.get("quiet_hours", {})
+    if not qh.get("enabled", False):
+        return False
+
+    now = datetime.now(IST)
+    current_hour = now.hour
+    start = qh.get("start_hour", 20)
+    end = qh.get("end_hour", 8)
+
+    # Handle overnight ranges (e.g. 20:00 → 08:00)
+    if start > end:
+        return current_hour >= start or current_hour < end
+    else:
+        return start <= current_hour < end
 
 
 # ----------------------------------------------------------------
@@ -283,12 +346,22 @@ def init_components(config: dict) -> dict:
 # ----------------------------------------------------------------
 
 def process_emails(components: dict):
-    """Poll Gmail → Claude triage → Sheet log → one Chat summary."""
-    config = components["config"]
+    """Poll Gmail → Claude triage → Sheet log → one Chat summary.
+    Reloads config from Sheet each cycle for hot-reload of settings."""
+    # Hot-reload config from Sheet every poll cycle (no redeploy needed)
+    config = load_sheet_config_overrides(components["sheet"], components["config"])
+    components["config"] = config
+
     gmail = components["gmail"]
     ai = components["ai"]
     sheet = components["sheet"]
     chat = components["chat"]
+
+    # Feature flags (default: all enabled)
+    flags = config.get("feature_flags", {})
+    ai_enabled = flags.get("ai_enabled", True)
+    chat_enabled = flags.get("chat_enabled", True)
+    quiet = is_quiet_hours(config)
 
     inboxes = config.get("gmail", {}).get("inboxes", [])
     sla_defaults = config.get("sla", {}).get("defaults", {})
@@ -302,14 +375,27 @@ def process_emails(components: dict):
         if not new_emails:
             logger.info(f"Poll complete — no new emails across {len(inboxes)} inbox(es)")
         else:
-            logger.info(f"Processing {len(new_emails)} new email(s)...")
+            logger.info(f"Processing {len(new_emails)} new email(s)..."
+                        f"{' [AI disabled]' if not ai_enabled else ''}"
+                        f"{' [quiet hours]' if quiet else ''}")
 
             for email in new_emails:
                 try:
                     if sheet.is_thread_logged(email.thread_id):
                         continue
 
-                    triage = ai.process(email)
+                    if ai_enabled:
+                        triage = ai.process(email)
+                    else:
+                        # Fallback when AI is disabled — log with defaults
+                        from agent.ai_processor import TriageResult
+                        triage = TriageResult(
+                            category="General Inquiry", priority="MEDIUM",
+                            summary="[AI triage disabled — manual review required]",
+                            draft_reply="", reasoning="AI disabled via feature flag",
+                            tags=["ai-disabled"], model_used="disabled",
+                        )
+
                     category = triage.category
                     sla_hours = sla_config.get(category, {}).get("hours") or sla_defaults.get(category, 24)
 
@@ -338,14 +424,22 @@ def process_emails(components: dict):
                 except Exception as e:
                     log_buffer.add("ERROR", f"Failed: {email.subject[:50]} — {str(e)[:60]}")
                     logger.error(f"Failed to process email '{email.subject[:50]}': {e}")
+                    # Log to dead letter tab for manual review
+                    try:
+                        sheet.log_failed_triage(email, str(e))
+                    except Exception:
+                        pass
 
         # Send ONE summary Chat message for the entire poll (if any emails processed)
-        if processed_items:
+        # Respect quiet hours + feature flag
+        if processed_items and chat_enabled and not quiet:
             try:
                 chat.notify_poll_summary(processed_items)
             except Exception as e:
                 log_buffer.add("ERROR", f"Chat summary failed: {str(e)[:60]}")
                 logger.error(f"Chat poll summary failed: {e}")
+        elif processed_items and quiet:
+            logger.info(f"Quiet hours — suppressed Chat notification for {len(processed_items)} email(s)")
 
         # Write status + error logs to Agent Config sheet
         try:
@@ -364,24 +458,53 @@ def process_emails(components: dict):
 
 
 # ----------------------------------------------------------------
-# Minimal Health Check Server (replaces Flask)
+# Health Check Server — JSON status endpoint
 # ----------------------------------------------------------------
 
+_agent_start_time = datetime.now(IST)
+_agent_components = {}  # Set by run_agent() for health endpoint access
+
+
 class HealthHandler(BaseHTTPRequestHandler):
-    """Minimal HTTP handler for Cloud Run health checks."""
+    """HTTP handler returning JSON health status with operational metrics."""
 
     def do_GET(self):
         if self.path == "/health" or self.path == "/":
+            status = self._build_status()
+            body = json.dumps(status, default=str).encode()
             self.send_response(200)
-            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(b"OK")
+            self.wfile.write(body)
         else:
             self.send_response(404)
             self.end_headers()
 
+    def _build_status(self) -> dict:
+        now = datetime.now(IST)
+        uptime = now - _agent_start_time
+        uptime_str = f"{uptime.days}d {uptime.seconds // 3600}h {(uptime.seconds % 3600) // 60}m"
+
+        status = {
+            "status": "healthy",
+            "uptime": uptime_str,
+            "started_at": _agent_start_time.isoformat(),
+            "current_time": now.isoformat(),
+        }
+
+        # Add AI usage stats if available
+        try:
+            status["ai_usage"] = AIProcessor.get_usage_stats()
+        except Exception:
+            pass
+
+        # Add failure count if available
+        if "state" in _agent_components:
+            status["consecutive_failures"] = _agent_components["state"].consecutive_failures
+
+        return status
+
     def log_message(self, format, *args):
-        # Suppress access logs to avoid clutter
         pass
 
 
@@ -398,8 +521,66 @@ def start_health_server(port: int):
 # Scheduler + Health Server
 # ----------------------------------------------------------------
 
+def startup_self_test(components: dict) -> bool:
+    """Verify all integrations work before starting the scheduler.
+    Fail fast with clear error if any integration is broken."""
+    checks = {}
+
+    # 1. Google Sheets API
+    try:
+        components["sheet"].sheets.get(
+            spreadsheetId=components["sheet"].spreadsheet_id,
+            fields="spreadsheetId",
+        ).execute()
+        checks["sheets_api"] = "OK"
+    except Exception as e:
+        checks["sheets_api"] = f"FAIL: {e}"
+
+    # 2. Gmail API (test first inbox)
+    try:
+        inboxes = components["config"].get("gmail", {}).get("inboxes", [])
+        if inboxes:
+            service = components["gmail"]._get_service(inboxes[0])
+            service.users().getProfile(userId="me").execute()
+            checks["gmail_api"] = "OK"
+        else:
+            checks["gmail_api"] = "SKIP: no inboxes"
+    except Exception as e:
+        checks["gmail_api"] = f"FAIL: {e}"
+
+    # 3. Claude API
+    try:
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        checks["claude_api"] = "OK" if api_key else "FAIL: no ANTHROPIC_API_KEY"
+    except Exception as e:
+        checks["claude_api"] = f"FAIL: {e}"
+
+    # 4. Chat webhook
+    try:
+        webhook = components["config"].get("google_chat", {}).get("webhook_url", "")
+        checks["chat_webhook"] = "OK" if webhook.startswith("https://chat.googleapis.com/") else f"WARN: {webhook[:40]}"
+    except Exception as e:
+        checks["chat_webhook"] = f"FAIL: {e}"
+
+    # Report
+    all_ok = all(v == "OK" for v in checks.values())
+    for name, result in checks.items():
+        level = logging.INFO if result == "OK" else logging.WARNING
+        logger.log(level, f"Self-test {name}: {result}")
+
+    if not all_ok:
+        logger.warning("Startup self-test: some checks failed — agent will start but may have issues")
+    else:
+        logger.info("Startup self-test: all integrations OK")
+
+    return all_ok
+
+
 def run_agent(components: dict):
     """Start scheduler + health server."""
+    global _agent_components
+    _agent_components = components
+
     config = components["config"]
     scheduler = BackgroundScheduler(timezone=IST)
 
@@ -436,6 +617,9 @@ def run_agent(components: dict):
     logger.info("=" * 60)
 
     log_buffer.add("HIGHLIGHT", f"Agent started — monitoring {len(inboxes)} inbox(es), polling every {poll_interval}s")
+
+    # Startup self-test — verify all integrations before starting
+    startup_self_test(components)
 
     # Send startup notification to Chat
     try:

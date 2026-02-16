@@ -18,9 +18,9 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-logger = logging.getLogger(__name__)
+from agent.utils import parse_sheet_datetime, IST
 
-IST = pytz.timezone("Asia/Kolkata")
+logger = logging.getLogger(__name__)
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.send",
@@ -51,25 +51,6 @@ class EODReporter:
             loader=FileSystemLoader(template_dir),
             autoescape=select_autoescape(["html"]),
         )
-
-    @staticmethod
-    def _parse_sheet_datetime(dt_str: str) -> Optional[datetime]:
-        """Parse a datetime string from the Google Sheet into a tz-aware IST datetime."""
-        if not dt_str:
-            return None
-        clean = dt_str.strip()
-        for suffix in (" IST", " ist"):
-            if clean.endswith(suffix):
-                clean = clean[: -len(suffix)]
-        try:
-            dt = datetime.strptime(clean.strip(), "%d %b %Y, %I:%M %p")
-            return IST.localize(dt)
-        except ValueError:
-            try:
-                dt = datetime.strptime(clean.strip(), "%Y-%m-%d %H:%M:%S")
-                return IST.localize(dt)
-            except ValueError:
-                return None
 
     def _get_gmail_service(self):
         """Create a Gmail service for sending the EOD email."""
@@ -121,7 +102,7 @@ class EODReporter:
         # Calculate hours since received for unassigned tickets
         for ticket in unassigned:
             ts_str = ticket.get("Timestamp", "")
-            ts = self._parse_sheet_datetime(ts_str)
+            ts = parse_sheet_datetime(ts_str)
             if ts:
                 age_hours = (now - ts).total_seconds() / 3600
                 ticket["age_hours"] = round(age_hours, 1)
@@ -170,9 +151,35 @@ class EODReporter:
         ]
         return "\n".join(lines)
 
+    def _get_fresh_recipients(self) -> list[str]:
+        """Re-read EOD recipients from Agent Config sheet at send time.
+        This allows adding recipients without redeployment."""
+        try:
+            tab_name = self.config.get("google_sheets", {}).get("agent_config_tab", "Agent Config")
+            result = self.sheet.sheets.values().get(
+                spreadsheetId=self.sheet.spreadsheet_id,
+                range=f"'{tab_name}'!A:B",
+            ).execute()
+            rows = result.get("values", [])
+            for row in rows:
+                if len(row) >= 2 and row[0].strip() == "EOD Recipients":
+                    fresh = [e.strip() for e in row[1].split(",") if e.strip()]
+                    if fresh:
+                        logger.info(f"EOD recipients (from Sheet): {fresh}")
+                        return fresh
+        except Exception as e:
+            logger.warning(f"Could not read fresh EOD recipients from Sheet: {e}")
+
+        # Fallback to config (env var / yaml)
+        return self.recipients
+
     def send_report(self):
         """Generate stats, render the email, and send it. Chat always fires."""
         logger.info("Generating EOD report...")
+
+        # Check feature flags
+        flags = self.config.get("feature_flags", {})
+        eod_email_enabled = flags.get("eod_email_enabled", True)
 
         try:
             stats = self.generate_stats()
@@ -188,16 +195,28 @@ class EODReporter:
             logger.error(f"EOD Chat notification failed: {e}")
 
         # Send HTML email (requires gmail.send scope)
+        if eod_email_enabled:
+            try:
+                recipients = self._get_fresh_recipients()
+                html_content = self.render_email(stats)
+                self._send_email(
+                    subject=f"VIPL Email Agent — Daily Summary ({stats['date']})",
+                    html_body=html_content,
+                    recipients=recipients,
+                )
+                logger.info(f"EOD email sent to {len(recipients)} recipients")
+            except Exception as e:
+                logger.error(f"EOD email failed: {e}")
+        else:
+            logger.info("EOD email disabled via feature flag")
+
+        # Log daily AI cost to the Cost Tracker tab
         try:
-            html_content = self.render_email(stats)
-            self._send_email(
-                subject=f"VIPL Email Agent — Daily Summary ({stats['date']})",
-                html_body=html_content,
-                recipients=self.recipients,
-            )
-            logger.info(f"EOD email sent to {len(self.recipients)} recipients")
+            from agent.ai_processor import AIProcessor
+            usage = AIProcessor.get_usage_stats()
+            self.sheet.log_daily_cost(usage)
         except Exception as e:
-            logger.error(f"EOD email failed: {e}")
+            logger.warning(f"Cost tracking failed: {e}")
 
     def _send_email(self, subject: str, html_body: str, recipients: list[str]):
         """Send an HTML email via Gmail API."""
