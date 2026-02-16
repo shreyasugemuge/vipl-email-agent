@@ -1,0 +1,155 @@
+# ============================================================
+# VIPL Email Agent — CI/CD Deploy Pipeline
+# ============================================================
+# Triggers on every push to main.
+# Builds Docker image, pushes to Artifact Registry, deploys to Cloud Run,
+# posts deployment notification to Google Chat with key parameters.
+#
+# Auth: Workload Identity Federation (no SA key stored in GitHub)
+# ============================================================
+
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+      - '.gitignore'
+
+env:
+  PROJECT_ID: utilities-vipl
+  REGION: asia-south1
+  SERVICE: vipl-email-agent
+  REPOSITORY: vipl-repo
+  IMAGE: asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for Workload Identity Federation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for changelog
+
+      - name: Authenticate to Google Cloud (WIF)
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+
+      - name: Generate image tags
+        id: tags
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "image_sha=${{ env.IMAGE }}:${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "image_latest=${{ env.IMAGE }}:latest" >> "$GITHUB_OUTPUT"
+          echo "timestamp=$(TZ='Asia/Kolkata' date '+%d %b %Y, %I:%M %p IST')" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag ${{ steps.tags.outputs.image_sha }} \
+            --tag ${{ steps.tags.outputs.image_latest }} \
+            --label "git.sha=${{ github.sha }}" \
+            --label "git.ref=${{ github.ref_name }}" \
+            .
+
+      - name: Push to Artifact Registry
+        run: |
+          docker push ${{ steps.tags.outputs.image_sha }}
+          docker push ${{ steps.tags.outputs.image_latest }}
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image=${{ steps.tags.outputs.image_sha }} \
+            --region=${{ env.REGION }} \
+            --memory=256Mi --cpu=1 \
+            --min-instances=1 --max-instances=1 \
+            --no-allow-unauthenticated \
+            --set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest \
+            --set-secrets=GOOGLE_CHAT_WEBHOOK_URL=chat-webhook-url:latest \
+            --set-secrets=/secrets/service-account.json=sa-key:latest \
+            --set-env-vars=GOOGLE_SHEET_ID=${{ secrets.GOOGLE_SHEET_ID }},MONITORED_INBOXES="${{ secrets.MONITORED_INBOXES }}",ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }},EOD_RECIPIENTS=${{ secrets.EOD_RECIPIENTS }} \
+            --project=${{ env.PROJECT_ID }}
+
+      - name: Get commit summary
+        id: commits
+        run: |
+          # Get commits since last deploy (last 5 max)
+          COMMIT_LOG=$(git log --oneline -5 --no-merges --format="• %s (%an)" | head -5)
+          # Escape for JSON
+          COMMIT_LOG_ESCAPED=$(echo "$COMMIT_LOG" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+          echo "log=${COMMIT_LOG_ESCAPED}" >> "$GITHUB_OUTPUT"
+
+      - name: Notify Google Chat — Deployment
+        if: success()
+        run: |
+          curl -s -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "cardsV2": [{
+                "cardId": "deploy-${{ steps.tags.outputs.short_sha }}",
+                "card": {
+                  "header": {
+                    "title": "\U0001f680 New Deployment — ${{ steps.tags.outputs.short_sha }}",
+                    "subtitle": "${{ steps.tags.outputs.timestamp }}"
+                  },
+                  "sections": [
+                    {
+                      "header": "Configuration",
+                      "widgets": [
+                        {"decoratedText": {"topLabel": "Image", "text": "${{ steps.tags.outputs.image_sha }}"}},
+                        {"decoratedText": {"topLabel": "Triggered by", "text": "${{ github.actor }}"}},
+                        {"decoratedText": {"topLabel": "Commit", "text": "${{ github.sha }}"}},
+                        {"decoratedText": {"topLabel": "AI Model", "text": "Haiku (default) + Sonnet (CRITICAL)"}},
+                        {"decoratedText": {"topLabel": "Memory", "text": "256Mi"}},
+                        {"decoratedText": {"topLabel": "Min Instances", "text": "1"}},
+                        {"decoratedText": {"topLabel": "Inboxes", "text": "${{ secrets.MONITORED_INBOXES }}"}},
+                        {"decoratedText": {"topLabel": "EOD Report", "text": "7:00 PM IST daily + on startup"}},
+                        {"decoratedText": {"topLabel": "EOD Recipients", "text": "${{ secrets.EOD_RECIPIENTS }}"}}
+                      ]
+                    },
+                    {
+                      "header": "Recent Changes",
+                      "widgets": [
+                        {"textParagraph": {"text": "${{ steps.commits.outputs.log }}"}}
+                      ]
+                    },
+                    {
+                      "widgets": [
+                        {"buttonList": {"buttons": [
+                          {"text": "View Logs", "onClick": {"openLink": {"url": "https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE }}/logs?project=${{ env.PROJECT_ID }}"}}},
+                          {"text": "GitHub Commit", "onClick": {"openLink": {"url": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}"}}}
+                        ]}}
+                      ]
+                    }
+                  ]
+                }
+              }]
+            }'
+
+      - name: Notify Google Chat — Failure
+        if: failure()
+        run: |
+          curl -s -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "text": "\u274c *Deployment FAILED*\nCommit: ${{ github.sha }}\nTriggered by: ${{ github.actor }}\nCheck: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }'
