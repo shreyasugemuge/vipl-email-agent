@@ -170,9 +170,35 @@ class EODReporter:
         ]
         return "\n".join(lines)
 
+    def _get_fresh_recipients(self) -> list[str]:
+        """Re-read EOD recipients from Agent Config sheet at send time.
+        This allows adding recipients without redeployment."""
+        try:
+            tab_name = self.config.get("google_sheets", {}).get("agent_config_tab", "Agent Config")
+            result = self.sheet.sheets.values().get(
+                spreadsheetId=self.sheet.spreadsheet_id,
+                range=f"'{tab_name}'!A:B",
+            ).execute()
+            rows = result.get("values", [])
+            for row in rows:
+                if len(row) >= 2 and row[0].strip() == "EOD Recipients":
+                    fresh = [e.strip() for e in row[1].split(",") if e.strip()]
+                    if fresh:
+                        logger.info(f"EOD recipients (from Sheet): {fresh}")
+                        return fresh
+        except Exception as e:
+            logger.warning(f"Could not read fresh EOD recipients from Sheet: {e}")
+
+        # Fallback to config (env var / yaml)
+        return self.recipients
+
     def send_report(self):
         """Generate stats, render the email, and send it. Chat always fires."""
         logger.info("Generating EOD report...")
+
+        # Check feature flags
+        flags = self.config.get("feature_flags", {})
+        eod_email_enabled = flags.get("eod_email_enabled", True)
 
         try:
             stats = self.generate_stats()
@@ -188,16 +214,20 @@ class EODReporter:
             logger.error(f"EOD Chat notification failed: {e}")
 
         # Send HTML email (requires gmail.send scope)
-        try:
-            html_content = self.render_email(stats)
-            self._send_email(
-                subject=f"VIPL Email Agent — Daily Summary ({stats['date']})",
-                html_body=html_content,
-                recipients=self.recipients,
-            )
-            logger.info(f"EOD email sent to {len(self.recipients)} recipients")
-        except Exception as e:
-            logger.error(f"EOD email failed: {e}")
+        if eod_email_enabled:
+            try:
+                recipients = self._get_fresh_recipients()
+                html_content = self.render_email(stats)
+                self._send_email(
+                    subject=f"VIPL Email Agent — Daily Summary ({stats['date']})",
+                    html_body=html_content,
+                    recipients=recipients,
+                )
+                logger.info(f"EOD email sent to {len(recipients)} recipients")
+            except Exception as e:
+                logger.error(f"EOD email failed: {e}")
+        else:
+            logger.info("EOD email disabled via feature flag")
 
         # Log daily AI cost to the Cost Tracker tab
         try:

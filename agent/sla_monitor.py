@@ -59,13 +59,34 @@ class SLAMonitor:
         self.biz_days = sla_config.get("business_days", [0, 1, 2, 3, 4, 5])  # Mon-Sat
         self.cooldown_hours = sla_config.get("breach_alert_cooldown_hours", 4)
 
+    def _is_quiet_hours(self) -> bool:
+        """Check if current time falls within quiet hours (no Chat alerts)."""
+        qh = self.config.get("quiet_hours", {})
+        if not qh.get("enabled", False):
+            return False
+
+        now = datetime.now(IST)
+        current_hour = now.hour
+        start = qh.get("start_hour", 20)
+        end = qh.get("end_hour", 8)
+
+        if start > end:
+            return current_hour >= start or current_hour < end
+        else:
+            return start <= current_hour < end
+
     def check(self):
         """
         Main SLA check loop. Reads all open tickets and flags breaches.
         Called by the scheduler every 15 minutes.
+        Respects quiet hours — breaches are still tracked but Chat alerts are suppressed.
         """
         logger.info("Running SLA check...")
         now = datetime.now(IST)
+        quiet = self._is_quiet_hours()
+
+        if quiet:
+            logger.info("Quiet hours active — SLA breach Chat alerts suppressed")
 
         try:
             open_tickets = self.sheet.get_open_tickets()
@@ -105,15 +126,16 @@ class SLAMonitor:
                     hours_overdue = (now - sla_deadline).total_seconds() / 3600
                     breach_count += 1
 
-                    # Check cooldown to avoid alert spam
-                    if self._should_alert(ticket_id):
+                    # Check cooldown to avoid alert spam — and respect quiet hours
+                    if self._should_alert(ticket_id) and not quiet:
                         logger.warning(
                             f"SLA BREACH: {ticket_id} overdue by {hours_overdue:.1f}h"
                         )
                         self.chat.notify_sla_breach(ticket, hours_overdue)
                         self.state.record_alert(ticket_id)
 
-            logger.info(f"SLA check complete. {breach_count} breached tickets out of {len(open_tickets)} open.")
+            logger.info(f"SLA check complete. {breach_count} breached tickets out of {len(open_tickets)} open."
+                        f"{' [quiet hours — alerts suppressed]' if quiet else ''}")
 
         except Exception as e:
             logger.error(f"SLA check failed: {e}")

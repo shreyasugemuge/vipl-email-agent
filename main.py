@@ -161,7 +161,8 @@ def load_config(config_path: str = "config.yaml") -> dict:
 
 
 def load_sheet_config_overrides(sheet_logger, config: dict) -> dict:
-    """Read runtime config overrides from the Agent Config sheet tab."""
+    """Read runtime config overrides from the Agent Config sheet tab.
+    Called at startup AND before every poll cycle for hot-reload."""
     try:
         tab_name = config.get("google_sheets", {}).get("agent_config_tab", "Agent Config")
         result = sheet_logger.sheets.values().get(
@@ -216,12 +217,59 @@ def load_sheet_config_overrides(sheet_logger, config: dict) -> dict:
             if recipients:
                 config["eod"]["recipients"] = recipients
 
-        logger.info("Applied config overrides from Agent Config sheet")
+        # --- Feature flags ---
+        def _bool(val: str) -> bool:
+            return val.strip().upper() in ("TRUE", "YES", "1", "ON")
+
+        if overrides.get("Chat Notifications Enabled"):
+            config.setdefault("feature_flags", {})["chat_enabled"] = _bool(overrides["Chat Notifications Enabled"])
+        if overrides.get("AI Triage Enabled"):
+            config.setdefault("feature_flags", {})["ai_enabled"] = _bool(overrides["AI Triage Enabled"])
+        if overrides.get("EOD Email Enabled"):
+            config.setdefault("feature_flags", {})["eod_email_enabled"] = _bool(overrides["EOD Email Enabled"])
+
+        # --- Quiet hours ---
+        if overrides.get("Quiet Hours Enabled"):
+            config.setdefault("quiet_hours", {})["enabled"] = _bool(overrides["Quiet Hours Enabled"])
+        if overrides.get("Quiet Hours Start (IST)"):
+            try:
+                val = int(overrides["Quiet Hours Start (IST)"])
+                if 0 <= val <= 23:
+                    config.setdefault("quiet_hours", {})["start_hour"] = val
+            except ValueError:
+                pass
+        if overrides.get("Quiet Hours End (IST)"):
+            try:
+                val = int(overrides["Quiet Hours End (IST)"])
+                if 0 <= val <= 23:
+                    config.setdefault("quiet_hours", {})["end_hour"] = val
+            except ValueError:
+                pass
+
+        logger.debug("Applied config overrides from Agent Config sheet")
         return config
 
     except Exception as e:
         logger.info(f"No sheet config overrides (first run?): {e}")
         return config
+
+
+def is_quiet_hours(config: dict) -> bool:
+    """Check if current time falls within quiet hours (no Chat alerts)."""
+    qh = config.get("quiet_hours", {})
+    if not qh.get("enabled", False):
+        return False
+
+    now = datetime.now(IST)
+    current_hour = now.hour
+    start = qh.get("start_hour", 20)
+    end = qh.get("end_hour", 8)
+
+    # Handle overnight ranges (e.g. 20:00 → 08:00)
+    if start > end:
+        return current_hour >= start or current_hour < end
+    else:
+        return start <= current_hour < end
 
 
 # ----------------------------------------------------------------
@@ -298,12 +346,22 @@ def init_components(config: dict) -> dict:
 # ----------------------------------------------------------------
 
 def process_emails(components: dict):
-    """Poll Gmail → Claude triage → Sheet log → one Chat summary."""
-    config = components["config"]
+    """Poll Gmail → Claude triage → Sheet log → one Chat summary.
+    Reloads config from Sheet each cycle for hot-reload of settings."""
+    # Hot-reload config from Sheet every poll cycle (no redeploy needed)
+    config = load_sheet_config_overrides(components["sheet"], components["config"])
+    components["config"] = config
+
     gmail = components["gmail"]
     ai = components["ai"]
     sheet = components["sheet"]
     chat = components["chat"]
+
+    # Feature flags (default: all enabled)
+    flags = config.get("feature_flags", {})
+    ai_enabled = flags.get("ai_enabled", True)
+    chat_enabled = flags.get("chat_enabled", True)
+    quiet = is_quiet_hours(config)
 
     inboxes = config.get("gmail", {}).get("inboxes", [])
     sla_defaults = config.get("sla", {}).get("defaults", {})
@@ -317,14 +375,27 @@ def process_emails(components: dict):
         if not new_emails:
             logger.info(f"Poll complete — no new emails across {len(inboxes)} inbox(es)")
         else:
-            logger.info(f"Processing {len(new_emails)} new email(s)...")
+            logger.info(f"Processing {len(new_emails)} new email(s)..."
+                        f"{' [AI disabled]' if not ai_enabled else ''}"
+                        f"{' [quiet hours]' if quiet else ''}")
 
             for email in new_emails:
                 try:
                     if sheet.is_thread_logged(email.thread_id):
                         continue
 
-                    triage = ai.process(email)
+                    if ai_enabled:
+                        triage = ai.process(email)
+                    else:
+                        # Fallback when AI is disabled — log with defaults
+                        from agent.ai_processor import TriageResult
+                        triage = TriageResult(
+                            category="General Inquiry", priority="MEDIUM",
+                            summary="[AI triage disabled — manual review required]",
+                            draft_reply="", reasoning="AI disabled via feature flag",
+                            tags=["ai-disabled"], model_used="disabled",
+                        )
+
                     category = triage.category
                     sla_hours = sla_config.get(category, {}).get("hours") or sla_defaults.get(category, 24)
 
@@ -355,12 +426,15 @@ def process_emails(components: dict):
                     logger.error(f"Failed to process email '{email.subject[:50]}': {e}")
 
         # Send ONE summary Chat message for the entire poll (if any emails processed)
-        if processed_items:
+        # Respect quiet hours + feature flag
+        if processed_items and chat_enabled and not quiet:
             try:
                 chat.notify_poll_summary(processed_items)
             except Exception as e:
                 log_buffer.add("ERROR", f"Chat summary failed: {str(e)[:60]}")
                 logger.error(f"Chat poll summary failed: {e}")
+        elif processed_items and quiet:
+            logger.info(f"Quiet hours — suppressed Chat notification for {len(processed_items)} email(s)")
 
         # Write status + error logs to Agent Config sheet
         try:

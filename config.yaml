@@ -57,6 +57,14 @@ sla:
     "Internal": 24
     "Vendor": 48
 
+# --- Quiet Hours (suppress Chat alerts during off-hours) ---
+quiet_hours:
+  enabled: true
+  start_hour: 20    # 8 PM IST — stop sending Chat alerts
+  end_hour: 8       # 8 AM IST — resume Chat alerts
+  # Note: EOD email + Sheet logging still work during quiet hours.
+  # Only Chat webhook notifications are suppressed.
+
 # --- EOD Summary Defaults ---
 eod:
   send_hour: 19
