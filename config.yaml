@@ -66,3 +66,4 @@ eod:
 # --- Admin Defaults ---
 admin:
   max_consecutive_failures: 3
+
