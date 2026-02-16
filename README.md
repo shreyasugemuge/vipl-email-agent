@@ -1,4 +1,4 @@
-# 📧 VIPL Email Agent
+# VIPL Email Agent
 
 **AI-powered shared inbox monitoring, triage & response system for [Vidarbha Infotech](https://vidarbhainfotech.com)**
 
@@ -9,15 +9,15 @@ Built with Claude AI · Google Workspace · Cloud Run
 ## How It Works
 
 ```
-📬 Gmail Inboxes     🤖 Claude AI        📊 Google Sheets     💬 Google Chat
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│ info@vipl    │───▶│  Categorize  │───▶│  Log Ticket  │───▶│  Alert Team  │
-│ sales@vipl   │    │  Prioritize  │    │  Track SLA   │    │  SLA Breach  │
-│              │    │  Draft Reply │    │  EOD Report  │    │  Daily Brief │
-└──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
+Gmail Inboxes     Claude AI          Google Sheets      Google Chat
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│ info@vipl    │─▶│  Categorize  │─▶│  Log Ticket  │─▶│  Alert Team  │
+│ sales@vipl   │  │  Prioritize  │  │  Track SLA   │  │  SLA Summary │
+│              │  │  Draft Reply │  │  EOD Report  │  │  Daily Brief │
+└──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
 ```
 
-Every **5 minutes**, the agent polls monitored inboxes for new emails. Each email is triaged by Claude AI into one of 8 categories with a priority level, summary, and draft reply — then logged to Google Sheets and announced in Google Chat.
+Every **5 minutes**, the agent polls monitored inboxes. Each email is triaged by Claude AI into one of 8 categories with priority, summary, and draft reply — then logged to Google Sheets and announced in Google Chat.
 
 ---
 
@@ -25,15 +25,21 @@ Every **5 minutes**, the agent polls monitored inboxes for new emails. Each emai
 
 | Feature | Description |
 |---------|-------------|
-| **AI Triage** | Categorizes emails into Government/Tender, Sales Lead, Support Request, Complaint, Partnership, Vendor, Internal, General Inquiry |
-| **Priority Assessment** | CRITICAL → LOW based on business impact, sender importance, and urgency |
+| **AI Triage** | 8 categories: Government/Tender, Sales Lead, Support Request, Complaint, Partnership, Vendor, Internal, General Inquiry |
+| **Two-Tier AI** | Haiku (cheap) for all emails, Sonnet only if CRITICAL — ~$1.50/mo vs $19/mo |
+| **Priority Assessment** | CRITICAL → LOW based on business impact and urgency |
 | **Draft Replies** | Professional acknowledgement drafts ready for team review |
-| **SLA Tracking** | Per-category deadlines with automatic breach alerts |
-| **Google Chat Cards** | Rich notifications with buttons to open Gmail and the tracker |
-| **EOD Reports** | Daily summary email + Chat notification at 7 PM IST |
-| **Sheet-Based Config** | All settings editable in Google Sheets — no code changes needed |
-| **Live Agent Logs** | Latest 5 log entries visible in the config sheet |
-| **Prompt Injection Defense** | Email content treated as untrusted data, never followed as instructions |
+| **SLA Tracking** | Per-category deadlines with 3x daily breach summary (9 AM, 1 PM, 5 PM) |
+| **Quiet Hours** | No Chat alerts 8 PM – 8 AM IST (configurable) |
+| **Feature Flags** | AI, Chat, EOD Email — all toggleable from Google Sheets |
+| **Hot-Reload Config** | All settings reload every poll cycle — no redeploy needed |
+| **EOD Reports** | Daily summary email + Chat card at 7 PM IST + on every deploy |
+| **Dead Letter Tab** | Failed triages logged for manual review |
+| **Structured Logging** | JSON logs for Cloud Logging with component, tokens, cost |
+| **Health Endpoint** | JSON status with uptime, AI stats, failure count |
+| **Resilience** | Claude API retries 3x with exponential backoff on transient errors |
+| **Cost Tracker** | Daily AI usage logged to Google Sheets after each EOD report |
+| **Prompt Injection Defense** | Email content treated as untrusted data |
 
 ---
 
@@ -43,39 +49,43 @@ Every **5 minutes**, the agent polls monitored inboxes for new emails. Each emai
 vipl-email-agent/
 ├── main.py                  # Entry point, scheduler, health server
 ├── config.yaml              # Non-sensitive defaults
-├── deploy.sh                # One-command deploy to Cloud Run
 ├── Dockerfile               # Python 3.11 slim container
-├── cloudbuild.yaml          # CI/CD via Cloud Build
+├── requirements.txt
 ├── agent/
 │   ├── gmail_poller.py      # Gmail API polling with domain-wide delegation
-│   ├── ai_processor.py      # Claude API integration (tool-use)
-│   ├── sheet_logger.py      # Google Sheets read/write + config tab
-│   ├── chat_notifier.py     # Google Chat webhook notifications
-│   ├── sla_monitor.py       # SLA deadline checker with breach alerts
-│   ├── eod_reporter.py      # End-of-day summary generator
-│   └── state.py             # Persistent state (processed threads, failures)
-└── prompts/
-    └── triage_prompt.txt    # System prompt with injection defense
+│   ├── ai_processor.py      # Claude AI with retry, spam filter, cost tracking
+│   ├── sheet_logger.py      # Google Sheets CRUD + config tab + dead letter
+│   ├── chat_notifier.py     # Google Chat webhook (Cards v2)
+│   ├── sla_monitor.py       # SLA breach detection with 3x daily summary
+│   ├── eod_reporter.py      # End-of-day summary (email + Chat)
+│   ├── state.py             # In-memory SLA cooldowns (no file I/O)
+│   └── utils.py             # Shared utilities (datetime parsing, IST)
+├── prompts/
+│   └── triage_prompt.txt    # System prompt with injection defense
+├── templates/
+│   └── eod_email.html       # Jinja2 HTML template for EOD email
+└── .github/workflows/
+    ├── deploy.yml           # CI/CD: push to main → Cloud Run
+    └── release.yml          # Tag-triggered release + changelog
 ```
 
 ---
 
 ## Configuration
 
-All runtime settings live in the **"Agent Config"** tab of the Google Sheet:
+All runtime settings live in the **Agent Config** tab of the Google Sheet. Changes take effect on the next poll cycle (no redeploy needed):
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| Poll Interval (seconds) | 300 | How often to check for new emails |
+| Poll Interval (seconds) | 300 | How often to check for new emails (60–3600) |
 | SLA Alert Cooldown (hours) | 4 | Hours between repeated breach alerts |
 | EOD Report Hour (IST) | 19 | Hour to send the daily summary |
-| EOD Report Minute | 0 | Minute for the EOD report |
-| Admin Email | shreyas@vidarbhainfotech.com | Primary admin |
-| EOD Recipients | shreyas@vidarbhainfotech.com | Daily report recipients |
-| Monitored Inboxes | info@, sales@ | Inboxes being watched |
-| Claude Model | claude-sonnet-4-5 | AI model for triage |
-
-The config tab includes data validation, color formatting, and instructions for each field. The agent reads these values on startup.
+| EOD Recipients | shreyas@ | Comma-separated — edit in Sheet, no redeploy |
+| AI Triage Enabled | TRUE | Disable to skip AI (emails still logged) |
+| Chat Notifications Enabled | TRUE | Disable to suppress Chat alerts |
+| EOD Email Enabled | TRUE | Disable to skip EOD email (Chat still sent) |
+| Quiet Hours Enabled | TRUE | Suppress Chat during off-hours |
+| Quiet Hours Start/End | 20/8 | 8 PM – 8 AM IST |
 
 ---
 
@@ -95,28 +105,9 @@ The config tab includes data validation, color formatting, and instructions for 
 
 ## Deploy
 
-### One-Command Deploy (Cloud Shell)
+### CI/CD (Recommended)
 
-```bash
-./deploy.sh
-```
-
-This pulls the latest code, builds the container, deploys to Cloud Run, and shows recent logs.
-
-### Manual Deploy
-
-```bash
-# Build
-gcloud builds submit \
-  --tag asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent:latest \
-  --project=utilities-vipl
-
-# Deploy
-gcloud run deploy vipl-email-agent \
-  --image=asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent:latest \
-  --region=asia-south1 \
-  --project=utilities-vipl
-```
+Push to `main` → GitHub Actions auto-deploys to Cloud Run via Workload Identity Federation.
 
 ### CLI Options
 
@@ -130,29 +121,16 @@ python main.py --init-sheet   # Initialize sheet headers + config tab
 
 ---
 
-## Google Sheet Structure
+## Google Sheet Tabs
 
 | Tab | Purpose |
 |-----|---------|
-| **Email Log** | All triaged emails with ticket numbers, SLA status, formulas |
-| **Agent Config** | Runtime configuration with validation and live logs |
+| **Email Log** | All triaged emails with ticket numbers, SLA status |
+| **Agent Config** | Runtime config + live agent status + error logs |
 | **SLA Config** | Per-category SLA hours and escalation emails |
 | **Team** | Team members for assignment suggestions |
-
----
-
-## SLA Defaults
-
-| Category | Hours |
-|----------|-------|
-| Government/Tender | 4 |
-| Complaint | 4 |
-| Sales Lead | 4 |
-| Support Request | 8 |
-| General Inquiry | 24 |
-| Partnership | 24 |
-| Internal | 24 |
-| Vendor | 48 |
+| **Cost Tracker** | Daily AI usage stats (auto-logged after EOD) |
+| **Failed Triage** | Dead letter tab for emails that failed AI processing |
 
 ---
 
@@ -160,22 +138,22 @@ python main.py --init-sheet   # Initialize sheet headers + config tab
 
 - **No public access** — Cloud Run requires IAM authentication
 - **Service account** mounted from Secret Manager (never in git)
-- **Prompt injection defense** — emails are treated as untrusted data
+- **Prompt injection defense** — 10 rules in system prompt
+- **Input sanitization** — control chars stripped before AI processing
 - **Non-root container** — runs as `agent` user
-- **Draft replies** never echo URLs, account numbers, or email data
-- **Domain-wide delegation** scoped to Gmail read/modify only
+- **Domain-wide delegation** scoped to minimum required Gmail/Sheets APIs
+- **Workload Identity Federation** — no SA key stored in GitHub
 
 ---
 
 ## Logs
 
-View recent logs:
 ```bash
 gcloud run services logs read vipl-email-agent \
   --region=asia-south1 --project=utilities-vipl --limit=30
 ```
 
-Live agent logs are also written to the **Agent Config** tab in the Google Sheet after every poll cycle.
+Structured JSON logs flow to Cloud Logging. Live agent status is also visible in the Agent Config tab.
 
 ---
 
