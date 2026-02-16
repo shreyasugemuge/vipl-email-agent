@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import anthropic
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 logger = logging.getLogger(__name__)
 
@@ -230,8 +231,14 @@ class AIProcessor:
     # Core API Call — with token tracking
     # ----------------------------------------------------------------
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        retry=retry_if_exception_type((anthropic.APIConnectionError, anthropic.RateLimitError, anthropic.InternalServerError)),
+        before_sleep=lambda rs: logger.warning(f"Claude API retry #{rs.attempt_number} after {rs.outcome.exception()}"),
+    )
     def _call_claude(self, user_message: str, model: str, max_tokens: int) -> TriageResult:
-        """Make a single Claude API call and return structured result."""
+        """Make a single Claude API call with automatic retry on transient errors."""
         response = self.client.messages.create(
             model=model,
             max_tokens=max_tokens,

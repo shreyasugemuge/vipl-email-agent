@@ -424,6 +424,11 @@ def process_emails(components: dict):
                 except Exception as e:
                     log_buffer.add("ERROR", f"Failed: {email.subject[:50]} — {str(e)[:60]}")
                     logger.error(f"Failed to process email '{email.subject[:50]}': {e}")
+                    # Log to dead letter tab for manual review
+                    try:
+                        sheet.log_failed_triage(email, str(e))
+                    except Exception:
+                        pass
 
         # Send ONE summary Chat message for the entire poll (if any emails processed)
         # Respect quiet hours + feature flag

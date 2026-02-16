@@ -784,3 +784,50 @@ class SheetLogger:
             ).execute()
         except Exception as e:
             logger.warning(f"Could not write agent status to sheet: {e}")
+
+    # ----------------------------------------------------------------
+    # Dead Letter Tab — Failed triages for manual review
+    # ----------------------------------------------------------------
+
+    def log_failed_triage(self, email, error_msg: str):
+        """Log a failed email triage to the 'Failed Triage' tab for manual review."""
+        tab_name = "Failed Triage"
+        try:
+            self._create_tab_if_missing(tab_name)
+
+            # Ensure header
+            result = self.sheets.values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A1:A1",
+            ).execute()
+            existing = result.get("values", [[]])
+            first_cell = existing[0][0] if existing and existing[0] else ""
+
+            if first_cell != "Timestamp":
+                self.sheets.values().update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"'{tab_name}'!A1:F1",
+                    valueInputOption="RAW",
+                    body={"values": [["Timestamp", "Inbox", "From", "Subject", "Error", "Thread ID"]]},
+                ).execute()
+
+            ist_now = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
+            row = [
+                ist_now,
+                getattr(email, "inbox", ""),
+                f"{getattr(email, 'sender_name', '')} <{getattr(email, 'sender_email', '')}>",
+                getattr(email, "subject", "")[:100],
+                str(error_msg)[:200],
+                getattr(email, "thread_id", ""),
+            ]
+
+            self.sheets.values().append(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A:F",
+                valueInputOption="RAW",
+                insertDataOption="INSERT_ROWS",
+                body={"values": [row]},
+            ).execute()
+            logger.info(f"Logged failed triage to '{tab_name}': {getattr(email, 'subject', '')[:50]}")
+        except Exception as e:
+            logger.warning(f"Could not log failed triage: {e}")
