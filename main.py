@@ -12,6 +12,7 @@ Configuration priority:
   3. Google Sheet "Agent Config" tab (runtime overrides)
 """
 
+import json
 import logging
 import os
 import signal
@@ -35,15 +36,29 @@ from agent.eod_reporter import EODReporter
 from agent.state import StateManager
 
 # ----------------------------------------------------------------
-# Logging Setup
+# Logging Setup — JSON structured logging for Cloud Logging
 # ----------------------------------------------------------------
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
+class JSONFormatter(logging.Formatter):
+    """Structured JSON log format for Cloud Run / Cloud Logging."""
+    def format(self, record):
+        log_entry = {
+            "timestamp": datetime.now(pytz.timezone("Asia/Kolkata")).isoformat(),
+            "severity": record.levelname,
+            "component": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info and record.exc_info[0]:
+            log_entry["exception"] = self.formatException(record.exc_info)
+        # Add extra fields if present (e.g. inbox, thread_id, cost_usd)
+        for key in ("inbox", "thread_id", "cost_usd", "model", "tokens", "ticket"):
+            if hasattr(record, key):
+                log_entry[key] = getattr(record, key)
+        return json.dumps(log_entry, default=str)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(JSONFormatter())
+logging.basicConfig(level=logging.INFO, handlers=[handler])
 logger = logging.getLogger("vipl-agent")
 
 IST = pytz.timezone("Asia/Kolkata")
@@ -364,24 +379,53 @@ def process_emails(components: dict):
 
 
 # ----------------------------------------------------------------
-# Minimal Health Check Server (replaces Flask)
+# Health Check Server — JSON status endpoint
 # ----------------------------------------------------------------
 
+_agent_start_time = datetime.now(IST)
+_agent_components = {}  # Set by run_agent() for health endpoint access
+
+
 class HealthHandler(BaseHTTPRequestHandler):
-    """Minimal HTTP handler for Cloud Run health checks."""
+    """HTTP handler returning JSON health status with operational metrics."""
 
     def do_GET(self):
         if self.path == "/health" or self.path == "/":
+            status = self._build_status()
+            body = json.dumps(status, default=str).encode()
             self.send_response(200)
-            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(b"OK")
+            self.wfile.write(body)
         else:
             self.send_response(404)
             self.end_headers()
 
+    def _build_status(self) -> dict:
+        now = datetime.now(IST)
+        uptime = now - _agent_start_time
+        uptime_str = f"{uptime.days}d {uptime.seconds // 3600}h {(uptime.seconds % 3600) // 60}m"
+
+        status = {
+            "status": "healthy",
+            "uptime": uptime_str,
+            "started_at": _agent_start_time.isoformat(),
+            "current_time": now.isoformat(),
+        }
+
+        # Add AI usage stats if available
+        try:
+            status["ai_usage"] = AIProcessor.get_usage_stats()
+        except Exception:
+            pass
+
+        # Add failure count if available
+        if "state" in _agent_components:
+            status["consecutive_failures"] = _agent_components["state"].consecutive_failures
+
+        return status
+
     def log_message(self, format, *args):
-        # Suppress access logs to avoid clutter
         pass
 
 
@@ -398,8 +442,66 @@ def start_health_server(port: int):
 # Scheduler + Health Server
 # ----------------------------------------------------------------
 
+def startup_self_test(components: dict) -> bool:
+    """Verify all integrations work before starting the scheduler.
+    Fail fast with clear error if any integration is broken."""
+    checks = {}
+
+    # 1. Google Sheets API
+    try:
+        components["sheet"].sheets.get(
+            spreadsheetId=components["sheet"].spreadsheet_id,
+            fields="spreadsheetId",
+        ).execute()
+        checks["sheets_api"] = "OK"
+    except Exception as e:
+        checks["sheets_api"] = f"FAIL: {e}"
+
+    # 2. Gmail API (test first inbox)
+    try:
+        inboxes = components["config"].get("gmail", {}).get("inboxes", [])
+        if inboxes:
+            service = components["gmail"]._get_service(inboxes[0])
+            service.users().getProfile(userId="me").execute()
+            checks["gmail_api"] = "OK"
+        else:
+            checks["gmail_api"] = "SKIP: no inboxes"
+    except Exception as e:
+        checks["gmail_api"] = f"FAIL: {e}"
+
+    # 3. Claude API
+    try:
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        checks["claude_api"] = "OK" if api_key else "FAIL: no ANTHROPIC_API_KEY"
+    except Exception as e:
+        checks["claude_api"] = f"FAIL: {e}"
+
+    # 4. Chat webhook
+    try:
+        webhook = components["config"].get("google_chat", {}).get("webhook_url", "")
+        checks["chat_webhook"] = "OK" if webhook.startswith("https://chat.googleapis.com/") else f"WARN: {webhook[:40]}"
+    except Exception as e:
+        checks["chat_webhook"] = f"FAIL: {e}"
+
+    # Report
+    all_ok = all(v == "OK" for v in checks.values())
+    for name, result in checks.items():
+        level = logging.INFO if result == "OK" else logging.WARNING
+        logger.log(level, f"Self-test {name}: {result}")
+
+    if not all_ok:
+        logger.warning("Startup self-test: some checks failed — agent will start but may have issues")
+    else:
+        logger.info("Startup self-test: all integrations OK")
+
+    return all_ok
+
+
 def run_agent(components: dict):
     """Start scheduler + health server."""
+    global _agent_components
+    _agent_components = components
+
     config = components["config"]
     scheduler = BackgroundScheduler(timezone=IST)
 
@@ -436,6 +538,9 @@ def run_agent(components: dict):
     logger.info("=" * 60)
 
     log_buffer.add("HIGHLIGHT", f"Agent started — monitoring {len(inboxes)} inbox(es), polling every {poll_interval}s")
+
+    # Startup self-test — verify all integrations before starting
+    startup_self_test(components)
 
     # Send startup notification to Chat
     try:

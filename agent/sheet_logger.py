@@ -668,6 +668,59 @@ class SheetLogger:
     # Write Agent Status + Logs to Sheet
     # ----------------------------------------------------------------
 
+    # ----------------------------------------------------------------
+    # Cost Tracker — Daily AI usage stats
+    # ----------------------------------------------------------------
+
+    def log_daily_cost(self, usage_stats: dict):
+        """Append a row to the Cost Tracker tab with today's AI usage stats."""
+        tab_name = "Cost Tracker"
+        try:
+            self._create_tab_if_missing(tab_name)
+
+            # Ensure header exists
+            result = self.sheets.values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A1:A1",
+            ).execute()
+            existing = result.get("values", [[]])
+            first_cell = existing[0][0] if existing and existing[0] else ""
+
+            if first_cell != "Date":
+                self.sheets.values().update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"'{tab_name}'!A1:G1",
+                    valueInputOption="RAW",
+                    body={"values": [["Date", "API Calls", "Input Tokens", "Output Tokens",
+                                      "Cache Hit Rate %", "Est. Cost (USD)", "Notes"]]},
+                ).execute()
+
+            # Calculate estimated cost
+            input_cost = usage_stats.get("total_input_tokens", 0) / 1_000_000 * 0.25   # Haiku rate
+            output_cost = usage_stats.get("total_output_tokens", 0) / 1_000_000 * 1.25  # Haiku rate
+            est_cost = round(input_cost + output_cost, 4)
+
+            row = [
+                datetime.now(IST).strftime("%d %b %Y"),
+                usage_stats.get("total_calls", 0),
+                usage_stats.get("total_input_tokens", 0),
+                usage_stats.get("total_output_tokens", 0),
+                round(usage_stats.get("cache_hit_rate", 0), 1),
+                est_cost,
+                "",
+            ]
+
+            self.sheets.values().append(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A:G",
+                valueInputOption="RAW",
+                insertDataOption="INSERT_ROWS",
+                body={"values": [row]},
+            ).execute()
+            logger.info(f"Cost tracker: {usage_stats.get('total_calls', 0)} calls, ~${est_cost}")
+        except Exception as e:
+            logger.warning(f"Could not log daily cost: {e}")
+
     def write_agent_status(self, last_polled: str, emails_this_cycle: int, error_logs: list[dict]):
         """Update the Agent Status section and error/highlight logs."""
         tab_name = self.agent_config_tab

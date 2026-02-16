@@ -199,6 +199,14 @@ class EODReporter:
         except Exception as e:
             logger.error(f"EOD email failed: {e}")
 
+        # Log daily AI cost to the Cost Tracker tab
+        try:
+            from agent.ai_processor import AIProcessor
+            usage = AIProcessor.get_usage_stats()
+            self.sheet.log_daily_cost(usage)
+        except Exception as e:
+            logger.warning(f"Cost tracking failed: {e}")
+
     def _send_email(self, subject: str, html_body: str, recipients: list[str]):
         """Send an HTML email via Gmail API."""
         try:
