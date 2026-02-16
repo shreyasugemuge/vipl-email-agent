@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 IST = pytz.timezone("Asia/Kolkata")
 
 SCOPES = [
-    "https://mail.google.com/",
     "https://www.googleapis.com/auth/gmail.send",
 ]
 
