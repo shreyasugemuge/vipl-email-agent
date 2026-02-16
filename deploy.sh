@@ -37,3 +37,4 @@ echo "=== Recent logs ==="
 sleep 5
 gcloud run services logs read vipl-email-agent \
   --region=asia-south1 --project=utilities-vipl --limit=15
+# CI/CD trigger
