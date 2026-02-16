@@ -13,34 +13,12 @@ from typing import Optional
 
 import pytz
 
+from agent.utils import parse_sheet_datetime, IST
+
 logger = logging.getLogger(__name__)
-
-IST = pytz.timezone("Asia/Kolkata")
-
-# Timestamp formats used in the Google Sheet (written by sheet_logger)
-SHEET_DATETIME_FORMAT = "%d %b %Y, %I:%M %p"
 
 # Default hours for SLA summary alerts (IST)
 DEFAULT_SUMMARY_HOURS = [9, 13, 17]  # 9 AM, 1 PM, 5 PM
-
-
-def _parse_sheet_datetime(dt_str: str) -> Optional[datetime]:
-    """Parse a datetime string from the Google Sheet into a tz-aware IST datetime."""
-    if not dt_str:
-        return None
-    clean = dt_str.strip()
-    for suffix in (" IST", " ist"):
-        if clean.endswith(suffix):
-            clean = clean[: -len(suffix)]
-    try:
-        dt = datetime.strptime(clean.strip(), SHEET_DATETIME_FORMAT)
-        return IST.localize(dt)
-    except ValueError:
-        try:
-            dt = datetime.strptime(clean.strip(), "%Y-%m-%d %H:%M:%S")
-            return IST.localize(dt)
-        except ValueError:
-            return None
 
 
 class SLAMonitor:
@@ -128,7 +106,7 @@ class SLAMonitor:
                     self.state.clear_alert(ticket_id)
                     continue
 
-                sla_deadline = _parse_sheet_datetime(sla_deadline_str)
+                sla_deadline = parse_sheet_datetime(sla_deadline_str)
                 if sla_deadline is None:
                     logger.warning(f"Cannot parse SLA deadline for {ticket_id}: '{sla_deadline_str}'")
                     continue
@@ -181,7 +159,7 @@ class SLAMonitor:
                 if not sla_deadline_str:
                     continue
 
-                sla_deadline = _parse_sheet_datetime(sla_deadline_str)
+                sla_deadline = parse_sheet_datetime(sla_deadline_str)
                 if sla_deadline is None:
                     continue
 
