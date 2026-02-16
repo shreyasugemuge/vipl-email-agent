@@ -13,13 +13,14 @@ name: Deploy to Cloud Run
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '*.md'
-      - 'docs/**'
-      - 'LICENSE'
-      - '.gitignore'
-      - 'CHANGELOG.md'
-      - 'images/**'
+    paths:
+      - 'main.py'
+      - 'agent/**'
+      - 'prompts/**'
+      - 'templates/**'
+      - 'config.yaml'
+      - 'requirements.txt'
+      - 'Dockerfile'
 
 env:
   PROJECT_ID: utilities-vipl
