@@ -47,6 +47,7 @@ sla:
   business_hours_end: 18
   business_days: [0, 1, 2, 3, 4, 5]
   breach_alert_cooldown_hours: 4
+  summary_hours: [9, 13, 17]       # SLA breach summary at 9AM, 1PM, 5PM IST
   defaults:
     "Government/Tender": 4
     "Complaint": 4

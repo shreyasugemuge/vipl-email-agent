@@ -128,32 +128,45 @@ class ChatNotifier:
         return self._post(payload)
 
     # ----------------------------------------------------------------
-    # SLA Breach Alert
+    # SLA Breach Summary — 3x daily instead of per-ticket spam
     # ----------------------------------------------------------------
 
-    def notify_sla_breach(self, ticket: dict, hours_overdue: float) -> bool:
-        ticket_num = ticket.get("Ticket #", "Unknown")
-        subject = ticket.get("Subject", "No subject")[:80]
-        assigned_to = ticket.get("Assigned To", "").strip() or "UNASSIGNED"
-        sla_deadline = ticket.get("SLA Deadline", "Unknown")
+    def notify_sla_summary(self, breached_tickets: list[dict]) -> bool:
+        """Post a single summary card with all breached tickets.
+        Called 3x daily (9 AM, 1 PM, 5 PM) instead of per-ticket."""
+        if not breached_tickets:
+            return True
+
+        count = len(breached_tickets)
+        # Sort by overdue hours (worst first)
+        sorted_tickets = sorted(breached_tickets, key=lambda t: t.get("hours_overdue", 0), reverse=True)
+
+        # Build per-ticket line items (cap at 10)
+        ticket_widgets = []
+        for t in sorted_tickets[:10]:
+            ticket_id = t.get("Ticket #", "?")
+            subject = t.get("Subject", "No subject")[:50]
+            assigned = t.get("Assigned To", "").strip() or "UNASSIGNED"
+            overdue = t.get("hours_overdue", 0)
+
+            line = f"<font color=\"#D93025\"><b>{ticket_id}</b></font> — {subject}"
+            ticket_widgets.append({"decoratedText": {
+                "topLabel": f"{assigned} | {overdue:.1f}h overdue",
+                "text": line,
+            }})
+
+        if count > 10:
+            ticket_widgets.append({"textParagraph": {
+                "text": f"<i>...and {count - 10} more breached tickets</i>"
+            }})
 
         card = {
             "header": {
-                "title": f"\u26a0\ufe0f SLA BREACH — {ticket_num}",
-                "subtitle": f"Overdue by {hours_overdue:.1f} hours",
+                "title": f"\u26a0\ufe0f SLA Breach Summary — {count} ticket(s)",
+                "subtitle": "Worst overdue listed first",
             },
             "sections": [
-                {
-                    "widgets": [
-                        {"decoratedText": {"topLabel": "Subject", "text": subject}},
-                        {"decoratedText": {"topLabel": "Assigned To", "text": assigned_to}},
-                        {"decoratedText": {"topLabel": "SLA Deadline", "text": f"Was {sla_deadline}"}},
-                        {"decoratedText": {
-                            "topLabel": "Overdue By",
-                            "text": f"<font color=\"#D93025\"><b>{hours_overdue:.1f} hours</b></font>",
-                        }},
-                    ]
-                },
+                {"widgets": ticket_widgets},
                 {
                     "widgets": [
                         {"buttonList": {"buttons": [
@@ -164,8 +177,13 @@ class ChatNotifier:
             ]
         }
 
-        payload = {"cardsV2": [{"cardId": f"sla-{ticket_num}", "card": card}]}
+        payload = {"cardsV2": [{"cardId": f"sla-summary-{count}", "card": card}]}
         return self._post(payload)
+
+    # Keep legacy method for backward compat (unused by SLAMonitor now)
+    def notify_sla_breach(self, ticket: dict, hours_overdue: float) -> bool:
+        """Legacy per-ticket SLA breach alert. Replaced by notify_sla_summary."""
+        return self.notify_sla_summary([{**ticket, "hours_overdue": hours_overdue}])
 
     # ----------------------------------------------------------------
     # EOD Summary
