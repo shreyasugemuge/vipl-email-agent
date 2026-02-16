@@ -39,6 +39,24 @@ jobs:
         with:
           fetch-depth: 0  # Full history for changelog
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Lint check (syntax only)
+        run: |
+          python -m py_compile main.py
+          python -m py_compile agent/ai_processor.py
+          python -m py_compile agent/sheet_logger.py
+          python -m py_compile agent/sla_monitor.py
+          python -m py_compile agent/eod_reporter.py
+          python -m py_compile agent/chat_notifier.py
+          python -m py_compile agent/gmail_poller.py
+          python -m py_compile agent/state.py
+          python -m py_compile agent/utils.py
+          echo "All Python files compile OK"
+
       - name: Authenticate to Google Cloud (WIF)
         id: auth
         uses: google-github-actions/auth@v2
