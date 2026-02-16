@@ -75,6 +75,15 @@ jobs:
           docker push ${{ steps.tags.outputs.image_sha }}
           docker push ${{ steps.tags.outputs.image_latest }}
 
+      - name: Write env vars file
+        run: |
+          cat > /tmp/env-vars.yaml <<ENVEOF
+          GOOGLE_SHEET_ID: "${{ secrets.GOOGLE_SHEET_ID }}"
+          MONITORED_INBOXES: "${{ secrets.MONITORED_INBOXES }}"
+          ADMIN_EMAIL: "${{ secrets.ADMIN_EMAIL }}"
+          EOD_RECIPIENTS: "${{ secrets.EOD_RECIPIENTS }}"
+          ENVEOF
+
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE }} \
@@ -86,7 +95,7 @@ jobs:
             --set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest \
             --set-secrets=GOOGLE_CHAT_WEBHOOK_URL=chat-webhook-url:latest \
             --set-secrets=/secrets/service-account.json=sa-key:latest \
-            --set-env-vars=GOOGLE_SHEET_ID=${{ secrets.GOOGLE_SHEET_ID }},MONITORED_INBOXES="${{ secrets.MONITORED_INBOXES }}",ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }},EOD_RECIPIENTS=${{ secrets.EOD_RECIPIENTS }} \
+            --env-vars-file=/tmp/env-vars.yaml \
             --project=${{ env.PROJECT_ID }}
 
       - name: Get commit summary
