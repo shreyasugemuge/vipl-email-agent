@@ -15,8 +15,11 @@ on:
     branches: [main]
     paths-ignore:
       - '*.md'
+      - 'docs/**'
       - 'LICENSE'
       - '.gitignore'
+      - 'CHANGELOG.md'
+      - 'images/**'
 
 env:
   PROJECT_ID: utilities-vipl
