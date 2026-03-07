@@ -1,9 +1,8 @@
 # ============================================================
 # VIPL Email Agent — CI/CD Deploy Pipeline
 # ============================================================
-# Triggers on every push to main.
-# Builds Docker image, pushes to Artifact Registry, deploys to Cloud Run,
-# posts deployment notification to Google Chat with key parameters.
+# Triggers on version tags (v*.*.*) for full deploy, and on
+# pull requests for test-only validation.
 #
 # Auth: Workload Identity Federation (no SA key stored in GitHub)
 # ============================================================
@@ -12,15 +11,8 @@ name: Deploy to Cloud Run
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'main.py'
-      - 'agent/**'
-      - 'prompts/**'
-      - 'templates/**'
-      - 'config.yaml'
-      - 'requirements.txt'
-      - 'Dockerfile'
+    tags:
+      - 'v*.*.*'
   pull_request:
     branches: [main]
 
@@ -52,7 +44,7 @@ jobs:
   deploy:
     name: Build & Deploy
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: read

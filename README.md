@@ -5,7 +5,7 @@
 ### AI-Powered Email Monitoring & Triage System
 
 [![Deploy](https://img.shields.io/badge/Cloud%20Run-Deployed-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://console.cloud.google.com/run)
-[![Version](https://img.shields.io/badge/Version-1.0.0-2ea44f?style=for-the-badge)](https://github.com/shreyas613/vipl-email-agent/releases/tag/v1.0.0)
+[![Version](https://img.shields.io/badge/Version-1.1.0-2ea44f?style=for-the-badge)](https://github.com/shreyas613/vipl-email-agent/releases/tag/v1.1.0)
 [![AI](https://img.shields.io/badge/Powered%20by-Claude%20AI-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://anthropic.com)
 [![License](https://img.shields.io/badge/License-Private-red?style=for-the-badge)](LICENSE)
 
@@ -76,6 +76,8 @@ VIPL Email Agent runs 24/7 on Google Cloud Run, polling Gmail every 5 minutes. E
 | :moneybag: | **Two-Tier AI** | Haiku for routine emails (~$0.001/ea), Sonnet only for CRITICAL (~$0.01/ea). Monthly cost: ~$5-15 |
 | :dart: | **Smart Assignment** | AI matches emails to team members based on the Team roster in Google Sheets |
 | :shield: | **Input Sanitization** | Control characters stripped before AI processing; prompt injection defense built into system prompt |
+| :globe_with_meridians: | **Multi-Language** | Detects Hindi, Marathi, Mixed emails; summaries in English; replies in original language |
+| :paperclip: | **PDF Analysis** | Extracts text from PDF attachments (first 3 pages) for context-aware triage |
 
 ### Monitoring & Alerts
 
@@ -93,7 +95,7 @@ VIPL Email Agent runs 24/7 on Google Cloud Run, polling Gmail every 5 minutes. E
 | :gear: | **Hot-Reload Config** | Agent Config sheet re-read every poll cycle. Change settings without redeploying. |
 | :triangular_flag_on_post: | **Feature Flags** | AI Triage, Chat Notifications, EOD Email &mdash; all toggleable from the Sheet |
 | :repeat: | **Retry with Backoff** | Claude API retries 3x with exponential backoff (2s, 4s, 8s) on transient errors |
-| :coffin: | **Dead Letter Queue** | Failed triages logged to a dedicated Sheet tab for manual review |
+| :coffin: | **Dead Letter + Retry** | Failed triages auto-retried every 30 min (max 3 attempts), then marked Exhausted |
 | :chart_with_upwards_trend: | **Cost Tracker** | Daily AI usage (calls, tokens, cost) logged to Sheet after each EOD report |
 | :green_heart: | **Health Endpoint** | `/health` returns JSON with uptime, AI stats, failure count, last poll time |
 | :page_facing_up: | **Structured Logging** | JSON logs for Cloud Logging with severity, component, tokens, and cost fields |
@@ -106,7 +108,7 @@ VIPL Email Agent runs 24/7 on Google Cloud Run, polling Gmail every 5 minutes. E
 vipl-email-agent/
 ├── main.py                    # Entry point: scheduler, health server, orchestration
 ├── config.yaml                # Non-sensitive defaults (SLA hours, quiet hours, etc.)
-├── Dockerfile                 # Python 3.12 slim container
+├── Dockerfile                 # Python 3.11 slim container
 ├── requirements.txt           # Dependencies (anthropic, google-*, tenacity, etc.)
 │
 ├── agent/
@@ -141,18 +143,18 @@ vipl-email-agent/
 │   └── run_local.sh           # Local dev runner (loads .env, validates SA key)
 │
 ├── docs/
-│   └── PRD_v1.0.0.docx       # Product Requirements Document
+│   └── PRD_v1.1.0.docx       # Product Requirements Document
 │
 └── .github/workflows/
-    ├── deploy.yml             # Push-to-main: test → build → deploy to Cloud Run
-    └── release.yml            # Tag-triggered GitHub Release + changelog
+    ├── deploy.yml             # Tag v*.*.* → test → build → deploy to Cloud Run
+    └── release.yml            # Tag v*.*.* → GitHub Release + changelog
 ```
 
 ### Technology Stack
 
 | Layer | Technology |
 |-------|-----------|
-| **Runtime** | Python 3.12 on Google Cloud Run (`asia-south1`, 256Mi, min-instances=1) |
+| **Runtime** | Python 3.11 on Google Cloud Run (`asia-south1`, 256Mi, min-instances=1) |
 | **AI** | Anthropic Claude: Haiku 4.5 (default) + Sonnet 4.5 (CRITICAL escalation) |
 | **Email** | Gmail API with domain-wide delegation via service account |
 | **Database** | Google Sheets API v4 with in-memory caching |
@@ -198,6 +200,7 @@ All runtime settings live in the **Agent Config** tab of the Google Sheet. Chang
 | `MONITORED_INBOXES` | Cloud Run env | Comma-separated inbox emails |
 | `ADMIN_EMAIL` | Cloud Run env | Admin email (used for Gmail impersonation) |
 | `EOD_RECIPIENTS` | Cloud Run env | Comma-separated report recipients |
+| `EOD_SENDER_EMAIL` | Cloud Run env | Sender for EOD emails (defaults to ADMIN_EMAIL) |
 | `ANTHROPIC_API_KEY` | Secret Manager | Claude API key |
 | `GOOGLE_CHAT_WEBHOOK_URL` | Secret Manager | Chat space webhook URL |
 | `/secrets/service-account.json` | Secret Manager (file) | GCP service account credentials |
@@ -225,24 +228,18 @@ The Google Sheet serves as both database and configuration panel:
 
 ### CI/CD (Recommended)
 
-Push to `main` triggers automatic deployment via GitHub Actions:
-
-```
-git push origin main
-```
-
-The pipeline: **Unit tests** &rarr; **Docker build** &rarr; **Push to Artifact Registry** &rarr; **Deploy to Cloud Run** &rarr; **Chat notification**
-
-> **Note:** Documentation-only changes (`*.md`, `docs/**`, `images/**`, `LICENSE`, `.gitignore`) do NOT trigger deployments.
-
-### Tagging a Release
+Deploys are triggered by version tags only &mdash; pushing to `main` does NOT deploy:
 
 ```bash
-git tag -a v1.1.0 -m "Description of release"
-git push origin v1.1.0
+git tag -a v1.2.0 -m "Description of release"
+git push origin main --tags
 ```
 
-This triggers `release.yml`: creates a GitHub Release with auto-generated changelog and posts to Chat.
+This triggers two workflows:
+1. **`deploy.yml`**: Unit tests &rarr; Docker build &rarr; Push to Artifact Registry &rarr; Deploy to Cloud Run &rarr; Chat notification
+2. **`release.yml`**: GitHub Release with auto-changelog &rarr; Docker image version tag &rarr; Chat notification
+
+Pull requests to `main` run tests only (no deploy).
 
 ### CLI Options
 
@@ -251,6 +248,7 @@ python main.py                # Full agent (scheduler + health server)
 python main.py --once         # Single poll cycle and exit
 python main.py --eod          # Trigger EOD report immediately
 python main.py --sla          # Run SLA check immediately
+python main.py --retry        # Run dead letter retry immediately
 python main.py --init-sheet   # Initialize sheet headers + config tab
 ```
 
@@ -311,7 +309,7 @@ Unit tests use mocks for all external services (Gmail, Sheets, Chat, Claude). Th
 | **CI/CD Auth** | Workload Identity Federation &mdash; no long-lived service account keys in GitHub |
 | **AI Safety** | 10-rule prompt injection defense in system prompt; email content treated as untrusted |
 | **Input** | Control characters and null bytes stripped before AI processing |
-| **Container** | Non-root `agent` user; Python 3.12 slim base image |
+| **Container** | Non-root `agent` user; Python 3.11 slim base image |
 | **Gmail** | Domain-wide delegation scoped to minimum required APIs (read, labels, modify, send) |
 | **Data** | All data stays in `asia-south1` (Mumbai) for Indian data residency compliance |
 
@@ -379,6 +377,7 @@ The `/health` endpoint returns:
 
 | Version | Date | Highlights |
 |:---:|:---:|------------|
+| **1.1.0** | Mar 2026 | Reliability + intelligence: dead letter retry, multi-language triage, PDF attachment analysis, config audit log, configurable sender email, 112 tests |
 | **1.0.0** | Feb 2026 | Production release: dynamic config, feature flags, quiet hours, SLA summaries, retry/resilience, dead letter, structured logging, cost tracking, CI/CD hardening |
 | 0.7.0 | Feb 2026 | CI/CD with GitHub Actions + Workload Identity Federation |
 | 0.6.0 | Feb 2026 | Dedup simplification, thread cache, first-poll backfill |
@@ -396,7 +395,7 @@ The `/health` endpoint returns:
 |----------|-------------|
 | [`CLAUDE.md`](CLAUDE.md) | Architecture reference for AI-assisted development |
 | [`CHANGELOG.md`](CHANGELOG.md) | Full changelog with all versions |
-| [`docs/PRD_v1.0.0.docx`](docs/PRD_v1.0.0.docx) | Product Requirements Document (detailed) |
+| [`docs/PRD_v1.1.0.docx`](docs/PRD_v1.1.0.docx) | Product Requirements Document (detailed) |
 
 ---
 

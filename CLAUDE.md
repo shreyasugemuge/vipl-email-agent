@@ -46,14 +46,14 @@ templates/
 
 tests/
   conftest.py                # Shared fixtures (MockEmail, mock services, default config)
-  test_*.py                  # Unit tests for each module (92 tests, all mocked)
+  test_*.py                  # Unit tests for each module (112 tests, all mocked)
   sample_emails.json         # Fixture data for integration tests
 
 scripts/
   run_local.sh               # Local dev runner (loads .env, validates SA key)
 
 .github/workflows/
-  deploy.yml                 # CI/CD: test → build → deploy to Cloud Run
+  deploy.yml                 # CI/CD: tag v*.*.* → test → build → deploy to Cloud Run
   release.yml                # Tag-triggered release with auto-changelog
 ```
 
@@ -102,8 +102,15 @@ Config reloads from Agent Config sheet tab every poll cycle:
 - Recipients re-read from Agent Config sheet at send time
 - Logs daily AI cost to Cost Tracker tab after each report
 
-### Dead Letter
-Failed triages logged to "Failed Triage" tab with timestamp, inbox, sender, subject, error, thread ID.
+### Dead Letter & Retry
+Failed triages logged to "Failed Triage" tab. Auto-retried every 30 min (max 3 attempts).
+On exhaustion: marked "Exhausted" and Chat alert sent.
+
+### Multi-Language Support
+Emails in Hindi, Marathi, or Mixed are detected automatically. Summaries written in English for internal tracking. Draft replies composed in the original language.
+
+### Attachment Analysis
+PDF attachments extracted via pymupdf (first 3 pages, max 1000 chars, skip > 5 MB). Extracted text appended to Claude prompt for context-aware triage.
 
 ### Google Sheet Structure
 - **Email Log** tab: All triaged emails with ticket numbers, priority, category, SLA deadlines, status
@@ -133,8 +140,9 @@ GOOGLE_CHAT_WEBHOOK_URL      # Chat space webhook
 ## Deployment
 
 ### CI/CD (Primary)
-Push to `main` → GitHub Actions auto-deploys via Workload Identity Federation.
-Tag `v*.*.*` → creates GitHub Release with auto-changelog.
+Tag `v*.*.*` → GitHub Actions runs tests → builds → deploys to Cloud Run via WIF.
+Same tag also triggers GitHub Release with auto-changelog.
+Pull requests run tests only (no deploy).
 
 ### GCP Project
 - Project: `utilities-vipl`
@@ -176,5 +184,6 @@ pytest -m integration -v
 python main.py --once         # Single poll cycle
 python main.py --eod          # Trigger EOD report
 python main.py --sla          # Run SLA check
+python main.py --retry        # Run dead letter retry
 python main.py --init-sheet   # Initialize sheet headers + config tab
 ```
