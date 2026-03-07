@@ -23,6 +23,7 @@ class StateManager:
     def __init__(self):
         self._sla_alerts: dict[str, datetime] = {}   # ticket_id -> last alert time
         self._consecutive_failures: int = 0
+        self._config_snapshot: dict[str, str] = {}    # previous Agent Config values
 
     # --- SLA alert tracking ---
 
@@ -51,3 +52,22 @@ class StateManager:
     @property
     def consecutive_failures(self) -> int:
         return self._consecutive_failures
+
+    # --- Config change detection ---
+
+    def detect_config_changes(self, current: dict[str, str]) -> list[dict]:
+        """Compare current config against previous snapshot, return list of changes.
+        First call establishes baseline and returns no changes."""
+        changes = []
+        previous = self._config_snapshot
+        if previous:  # Skip diff on first call (no baseline)
+            for key, new_val in current.items():
+                old_val = previous.get(key, "")
+                if str(old_val) != str(new_val):
+                    changes.append({
+                        "setting": key,
+                        "old_value": str(old_val),
+                        "new_value": str(new_val),
+                    })
+        self._config_snapshot = dict(current)
+        return changes

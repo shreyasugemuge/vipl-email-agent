@@ -26,6 +26,7 @@ main.py                      # Entry point — scheduler, health server, JSON lo
 config.yaml                  # Non-sensitive defaults (secrets from env vars)
 Dockerfile                   # Python 3.11-slim, non-root user
 requirements.txt
+requirements-dev.txt             # Dev/test dependencies (pytest, pytest-cov)
 
 agent/
   gmail_poller.py            # Polls Gmail via domain-wide delegation
@@ -43,8 +44,16 @@ prompts/
 templates/
   eod_email.html             # Jinja2 HTML template for EOD email
 
+tests/
+  conftest.py                # Shared fixtures (MockEmail, mock services, default config)
+  test_*.py                  # Unit tests for each module (92 tests, all mocked)
+  sample_emails.json         # Fixture data for integration tests
+
+scripts/
+  run_local.sh               # Local dev runner (loads .env, validates SA key)
+
 .github/workflows/
-  deploy.yml                 # CI/CD: push to main → build + deploy to Cloud Run
+  deploy.yml                 # CI/CD: test → build → deploy to Cloud Run
   release.yml                # Tag-triggered release with auto-changelog
 ```
 
@@ -144,6 +153,22 @@ Scopes: `gmail.readonly`, `gmail.labels`, `gmail.modify`, `gmail.send`, `spreads
 - Prompt injection defense in system prompt (10 rules)
 - Input sanitization before AI processing (control chars, null bytes)
 - Workload Identity Federation for CI/CD (no SA key in GitHub)
+
+## Testing
+
+```bash
+# Install dev dependencies
+pip install -r requirements-dev.txt
+
+# Run unit tests (no API keys needed)
+pytest -m "not integration" -v
+
+# Run integration tests (requires ANTHROPIC_API_KEY)
+pytest -m integration -v
+
+# Local dev run (requires .env + service-account.json)
+./scripts/run_local.sh --once
+```
 
 ## Common Tasks
 

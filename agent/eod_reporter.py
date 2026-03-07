@@ -39,7 +39,10 @@ class EODReporter:
 
         eod_config = config.get("eod", {})
         self.recipients = eod_config.get("recipients", [])
-        self.sender_email = config.get("admin", {}).get("email", "")
+        self.sender_email = (
+            config.get("eod", {}).get("sender_email")
+            or config.get("admin", {}).get("email", "")
+        )
         self.sheet_url = f"https://docs.google.com/spreadsheets/d/{config['google_sheets']['spreadsheet_id']}"
 
         # Gmail service for sending (impersonating the admin email)

@@ -51,6 +51,10 @@ class ChatNotifier:
             logger.error(f"Chat webhook request failed: {type(e).__name__}: {e}")
             return False
 
+    def send_simple_message(self, text: str) -> bool:
+        """Send a plain text message to Chat."""
+        return self._post({"text": text})
+
     # ----------------------------------------------------------------
     # Startup Notification (simple text)
     # ----------------------------------------------------------------

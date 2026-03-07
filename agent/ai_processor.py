@@ -23,6 +23,8 @@ from typing import Optional
 import anthropic
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
+from agent.utils import IST
+
 logger = logging.getLogger(__name__)
 
 # Valid categories and priorities (for validation)
@@ -67,6 +69,7 @@ class TriageResult:
     raw_response: dict = field(default_factory=dict)
     success: bool = True
     error: Optional[str] = None
+    language: str = "English"       # Detected language of the email
     model_used: str = ""            # Track which model was used
     input_tokens: int = 0           # Track for cost monitoring
     output_tokens: int = 0
@@ -110,8 +113,13 @@ TRIAGE_TOOL = {
                 "items": {"type": "string"},
                 "description": "Relevant tags for searchability (3-5 tags).",
             },
+            "language": {
+                "type": "string",
+                "enum": ["English", "Hindi", "Marathi", "Mixed"],
+                "description": "Primary language of the email.",
+            },
         },
-        "required": ["category", "priority", "summary", "draft_reply", "reasoning", "tags"],
+        "required": ["category", "priority", "summary", "draft_reply", "reasoning", "tags", "language"],
     },
 }
 
@@ -200,6 +208,29 @@ class AIProcessor:
         return None
 
     # ----------------------------------------------------------------
+    # PDF Text Extraction — for attachment analysis
+    # ----------------------------------------------------------------
+
+    @staticmethod
+    def _extract_pdf_text(pdf_bytes: bytes, max_pages: int = 3, max_chars: int = 1000) -> str:
+        """Extract text from a PDF byte stream. Returns first N pages, truncated."""
+        try:
+            import fitz  # pymupdf
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            text_parts = []
+            for page_num in range(min(len(doc), max_pages)):
+                page_text = doc[page_num].get_text()
+                text_parts.append(page_text)
+            doc.close()
+            full_text = "\n".join(text_parts)
+            if len(full_text) > max_chars:
+                full_text = full_text[:max_chars] + "\n[...truncated...]"
+            return full_text.strip()
+        except Exception as e:
+            logger.warning(f"PDF extraction failed: {e}")
+            return ""
+
+    # ----------------------------------------------------------------
     # Build User Message — truncated for cost
     # ----------------------------------------------------------------
 
@@ -211,7 +242,7 @@ class AIProcessor:
         # Remove null bytes and other control chars (keep newlines/tabs)
         return "".join(c for c in text if c == "\n" or c == "\t" or (ord(c) >= 32))
 
-    def _build_user_message(self, email) -> str:
+    def _build_user_message(self, email, pdf_text: str = "") -> str:
         """Build the user message with aggressive body truncation and input sanitization."""
         attachments_info = ""
         if email.attachment_count > 0:
@@ -226,16 +257,21 @@ class AIProcessor:
         subject = self._sanitize(email.subject)[:200]
         sender_name = self._sanitize(email.sender_name)[:100]
 
+        pdf_section = ""
+        if pdf_text:
+            pdf_section = f"\n\n--- ATTACHED PDF CONTENT ---\n{self._sanitize(pdf_text)}\n--- END PDF ---"
+
         return (
             f"--- INCOMING EMAIL ---\n"
             f"Inbox: {email.inbox}\n"
             f"From: {sender_name} <{email.sender_email}>\n"
             f"Subject: {subject}\n"
-            f"Received: {email.timestamp.strftime('%Y-%m-%d %H:%M:%S IST')}"
+            f"Received: {email.timestamp.astimezone(IST).strftime('%Y-%m-%d %H:%M:%S IST')}"
             f"{attachments_info}\n"
             f"\n--- EMAIL BODY ---\n"
             f"{body}\n"
             f"--- END ---"
+            f"{pdf_section}"
         )
 
     # ----------------------------------------------------------------
@@ -287,6 +323,7 @@ class AIProcessor:
                     reasoning=data.get("reasoning", ""),
                     suggested_assignee=data.get("suggested_assignee", ""),
                     tags=data.get("tags", []),
+                    language=data.get("language", "English"),
                     raw_response=data,
                     success=True,
                     model_used=model,
@@ -301,7 +338,7 @@ class AIProcessor:
     # Two-Tier Process — Haiku first, Sonnet only if needed
     # ----------------------------------------------------------------
 
-    def process(self, email) -> TriageResult:
+    def process(self, email, gmail_poller=None) -> TriageResult:
         """
         Process email through two-tier AI:
         1. Spam pre-filter (free)
@@ -318,8 +355,24 @@ class AIProcessor:
             logger.info(f"Spam pre-filter caught: {email.subject[:50]}")
             return spam_result
 
+        # Extract PDF text from attachments if available
+        pdf_text = ""
+        if gmail_poller and getattr(email, "attachment_details", None):
+            for att in email.attachment_details:
+                if att.get("mime_type") == "application/pdf" and att.get("attachment_id"):
+                    # Skip large attachments (> 5 MB)
+                    if att.get("size", 0) > 5 * 1024 * 1024:
+                        logger.info(f"Skipping large PDF: {att['filename']} ({att['size']} bytes)")
+                        continue
+                    raw = gmail_poller.download_attachment(email.inbox, email.message_id, att["attachment_id"])
+                    if raw:
+                        extracted = self._extract_pdf_text(raw)
+                        if extracted:
+                            pdf_text += f"\n[{att['filename']}]\n{extracted}\n"
+                            break  # Only extract the first PDF to save tokens
+
         try:
-            user_message = self._build_user_message(email)
+            user_message = self._build_user_message(email, pdf_text=pdf_text)
             logger.info(f"Processing [{self.model.split('-')[1]}]: {email.subject[:60]}...")
 
             # Tier 1: Primary model (Haiku)

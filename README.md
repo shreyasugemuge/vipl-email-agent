@@ -125,11 +125,26 @@ vipl-email-agent/
 ├── templates/
 │   └── eod_email.html         # Jinja2 HTML template for EOD report
 │
+├── tests/
+│   ├── conftest.py            # Shared fixtures (MockEmail, mock services)
+│   ├── test_ai_processor.py   # AI triage unit + integration tests
+│   ├── test_chat_notifier.py  # Chat webhook tests
+│   ├── test_eod_reporter.py   # EOD report generation tests
+│   ├── test_gmail_poller.py   # Gmail parsing tests
+│   ├── test_main.py           # Config loading + quiet hours tests
+│   ├── test_sheet_logger.py   # Sheet CRUD + ticket numbering tests
+│   ├── test_sla_monitor.py    # SLA breach detection tests
+│   ├── test_utils.py          # Utility function tests
+│   └── sample_emails.json     # Test fixture data for integration tests
+│
+├── scripts/
+│   └── run_local.sh           # Local dev runner (loads .env, validates SA key)
+│
 ├── docs/
 │   └── PRD_v1.0.0.docx       # Product Requirements Document
 │
 └── .github/workflows/
-    ├── deploy.yml             # Push-to-main auto-deploy to Cloud Run
+    ├── deploy.yml             # Push-to-main: test → build → deploy to Cloud Run
     └── release.yml            # Tag-triggered GitHub Release + changelog
 ```
 
@@ -216,7 +231,7 @@ Push to `main` triggers automatic deployment via GitHub Actions:
 git push origin main
 ```
 
-The pipeline: **Syntax check** &rarr; **Docker build** &rarr; **Push to Artifact Registry** &rarr; **Deploy to Cloud Run** &rarr; **Chat notification**
+The pipeline: **Unit tests** &rarr; **Docker build** &rarr; **Push to Artifact Registry** &rarr; **Deploy to Cloud Run** &rarr; **Chat notification**
 
 > **Note:** Documentation-only changes (`*.md`, `docs/**`, `images/**`, `LICENSE`, `.gitignore`) do NOT trigger deployments.
 
@@ -238,6 +253,52 @@ python main.py --eod          # Trigger EOD report immediately
 python main.py --sla          # Run SLA check immediately
 python main.py --init-sheet   # Initialize sheet headers + config tab
 ```
+
+---
+
+## Development & Testing
+
+### Local Dev Setup
+
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+2. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with real values (Sheet ID, inboxes, admin email, etc.)
+   ```
+
+3. **Place service account key:**
+   ```bash
+   # Copy your SA key JSON to the project root (already in .gitignore)
+   cp ~/path/to/sa-key.json ./service-account.json
+   ```
+
+4. **Run locally:**
+   ```bash
+   ./scripts/run_local.sh --once    # Single poll cycle
+   ./scripts/run_local.sh --eod     # Test EOD report
+   ./scripts/run_local.sh --sla     # Test SLA check
+   ./scripts/run_local.sh           # Continuous mode
+   ```
+
+### Running Tests
+
+```bash
+# Unit tests (no API keys or external services needed)
+pytest -m "not integration" -v
+
+# Integration tests (requires ANTHROPIC_API_KEY)
+ANTHROPIC_API_KEY=sk-... pytest -m integration -v
+
+# With coverage
+pytest -m "not integration" --cov=agent --cov-report=term-missing
+```
+
+Unit tests use mocks for all external services (Gmail, Sheets, Chat, Claude). The CI pipeline runs unit tests on every push and PR before deploying.
 
 ---
 

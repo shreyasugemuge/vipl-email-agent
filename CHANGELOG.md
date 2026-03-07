@@ -2,7 +2,28 @@
 
 All notable changes to the VIPL Email Agent are documented here.
 
-## [Unreleased] — v1.0.0 Release Candidate
+## [1.1.0] — Mar 2026
+
+### Added
+- **Unit test suite** — 112 tests covering all modules with mocked external services
+- **Local dev environment** — `scripts/run_local.sh` + expanded `.env.example` for running against prod
+- **CI test gate** — unit tests run on every push and PR before deploy
+- **Dev dependencies** — `requirements-dev.txt` with pytest and pytest-cov
+- **Test fixtures** — shared `conftest.py` with MockEmail, mock services, default config
+- **PR trigger** — CI now runs tests on pull requests to main
+- **Configurable EOD sender email** — `EOD_SENDER_EMAIL` env var with Sheet hot-reload override
+- **Config change audit log** — detects config changes and logs diffs to Change Log tab
+- **Dead letter retry** — auto-retries failed triages every 30 min (max 3 attempts), `--retry` CLI flag
+- **Multi-language triage** — detects Hindi, Marathi, Mixed languages; replies in original language; Language column in Sheet
+- **Attachment analysis** — extracts PDF text (first 3 pages, max 1000 chars) via pymupdf, included in Claude prompt
+
+### Fixed
+- **NUM_CONFIG_FIELDS off-by-one** — constant now matches actual CONFIG_FIELDS list length
+- **SLA status never written** — `update_sla_status()` writes "Breached" to column M in Email Log
+- **Timestamp labeled IST but was UTC** — `ai_processor.py` now converts to IST before formatting
+- **Deploy spam** — test-only changes no longer trigger Cloud Run deploys
+
+## [1.0.0] — Mar 2026
 
 ### Added
 - **Structured JSON logging** for Cloud Logging compatibility

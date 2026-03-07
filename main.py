@@ -152,6 +152,11 @@ def load_config(config_path: str = "config.yaml") -> dict:
         logger.error(f"Missing required config (set as env vars): {', '.join(missing)}")
         sys.exit(1)
 
+    # EOD sender email (optional, falls back to ADMIN_EMAIL)
+    eod_sender = os.environ.get("EOD_SENDER_EMAIL")
+    if eod_sender:
+        config.setdefault("eod", {})["sender_email"] = eod_sender.strip()
+
     # Ensure EOD recipients defaults to admin email
     if not config.get("eod", {}).get("recipients"):
         config.setdefault("eod", {})["recipients"] = [config["admin"]["email"]]
@@ -216,6 +221,9 @@ def load_sheet_config_overrides(sheet_logger, config: dict) -> dict:
             recipients = [e.strip() for e in overrides["EOD Recipients"].split(",") if e.strip()]
             if recipients:
                 config["eod"]["recipients"] = recipients
+
+        if overrides.get("EOD Sender Email"):
+            config.setdefault("eod", {})["sender_email"] = overrides["EOD Sender Email"]
 
         # --- Feature flags ---
         def _bool(val: str) -> bool:
@@ -352,6 +360,19 @@ def process_emails(components: dict):
     config = load_sheet_config_overrides(components["sheet"], components["config"])
     components["config"] = config
 
+    # Config change audit — detect and log changes to Change Log tab
+    try:
+        from agent.sheet_logger import SheetLogger
+        current_snapshot = {}
+        for field_name, default_fn, _ in SheetLogger.CONFIG_FIELDS:
+            current_snapshot[field_name] = str(default_fn(config))
+        changes = components["state"].detect_config_changes(current_snapshot)
+        if changes:
+            components["sheet"].log_config_changes(changes)
+            logger.info(f"Config changes detected: {[c['setting'] for c in changes]}")
+    except Exception as e:
+        logger.warning(f"Config audit failed: {e}")
+
     gmail = components["gmail"]
     ai = components["ai"]
     sheet = components["sheet"]
@@ -385,7 +406,7 @@ def process_emails(components: dict):
                         continue
 
                     if ai_enabled:
-                        triage = ai.process(email)
+                        triage = ai.process(email, gmail_poller=gmail)
                     else:
                         # Fallback when AI is disabled — log with defaults
                         from agent.ai_processor import TriageResult
@@ -455,6 +476,80 @@ def process_emails(components: dict):
             sheet.write_agent_status(last_polled, 0, log_buffer.latest(5))
         except Exception:
             pass
+
+
+# ----------------------------------------------------------------
+# Dead Letter Retry — retry failed triages periodically
+# ----------------------------------------------------------------
+
+def retry_failed_triages(components: dict):
+    """Retry failed triages from the Dead Letter tab.
+    Runs every 30 min. Max 3 retries per entry, then marks 'Exhausted'."""
+    sheet = components["sheet"]
+    gmail = components["gmail"]
+    ai = components["ai"]
+    chat = components["chat"]
+    config = components["config"]
+
+    flags = config.get("feature_flags", {})
+    ai_enabled = flags.get("ai_enabled", True)
+    if not ai_enabled:
+        return
+
+    try:
+        eligible = sheet.get_failed_triages_for_retry()
+        if not eligible:
+            return
+
+        logger.info(f"Dead letter retry: {len(eligible)} entry/entries eligible")
+        sla_config = sheet.get_sla_config() or {}
+        sla_defaults = config.get("sla", {}).get("defaults", {})
+
+        for entry in eligible:
+            thread_id = entry.get("Thread ID", "").strip()
+            inbox = entry.get("Inbox", "").strip()
+            row_num = entry["_row_number"]
+            retry_count = int(entry.get("Retry Count", "0") or "0") + 1
+
+            if not thread_id or not inbox:
+                logger.warning(f"Dead letter row {row_num}: missing Thread ID or Inbox, skipping")
+                sheet.update_failed_triage_retry(row_num, retry_count, "Exhausted")
+                continue
+
+            try:
+                email = gmail.fetch_thread_message(inbox, thread_id)
+                if not email:
+                    raise ValueError(f"Could not fetch thread {thread_id}")
+
+                triage = ai.process(email)
+                category = triage.category
+                sla_hours = sla_config.get(category, {}).get("hours") or sla_defaults.get(category, 24)
+                ticket_number = sheet.log_email(email, triage, sla_hours)
+
+                sheet.update_failed_triage_retry(row_num, retry_count, "Success")
+                logger.info(f"Dead letter retry SUCCESS: {thread_id} → {ticket_number}")
+                log_buffer.add("HIGHLIGHT", f"♻️ Retry success: {ticket_number}")
+
+            except Exception as e:
+                logger.warning(f"Dead letter retry attempt {retry_count} failed for {thread_id}: {e}")
+                if retry_count >= 3:
+                    sheet.update_failed_triage_retry(row_num, retry_count, "Exhausted")
+                    # Alert on Chat
+                    try:
+                        chat_enabled = flags.get("chat_enabled", True)
+                        quiet = is_quiet_hours(config)
+                        if chat_enabled and not quiet:
+                            chat.send_simple_message(
+                                f"⚠️ Dead letter exhausted (3 retries): {entry.get('Subject', 'unknown')[:60]} — {str(e)[:80]}"
+                            )
+                    except Exception:
+                        pass
+                    log_buffer.add("ERROR", f"Dead letter exhausted: {entry.get('Subject', '')[:50]}")
+                else:
+                    sheet.update_failed_triage_retry(row_num, retry_count, f"Retry {retry_count} failed")
+
+    except Exception as e:
+        logger.error(f"Dead letter retry cycle failed: {e}")
 
 
 # ----------------------------------------------------------------
@@ -599,6 +694,10 @@ def run_agent(components: dict):
                       trigger=CronTrigger(hour=eod_hour, minute=eod_minute, timezone=IST),
                       id="eod_report", name="EOD Report", max_instances=1)
 
+    scheduler.add_job(retry_failed_triages, trigger=IntervalTrigger(minutes=30),
+                      args=[components], id="dead_letter_retry", name="Dead Letter Retry",
+                      max_instances=1, coalesce=True)
+
     def shutdown(signum, frame):
         logger.info("Shutting down...")
         scheduler.shutdown(wait=False)
@@ -666,6 +765,7 @@ def main():
     parser.add_argument("--eod", action="store_true", help="Trigger EOD report and exit")
     parser.add_argument("--sla", action="store_true", help="Run one SLA check and exit")
     parser.add_argument("--init-sheet", action="store_true", help="Initialize Sheet headers")
+    parser.add_argument("--retry", action="store_true", help="Run dead letter retry and exit")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -687,6 +787,9 @@ def main():
         return
     if args.sla:
         components["sla"].check()
+        return
+    if args.retry:
+        retry_failed_triages(components)
         return
 
     components["sheet"].ensure_headers()

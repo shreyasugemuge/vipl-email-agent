@@ -14,20 +14,13 @@ For CI, mock the API calls or skip with: pytest -m "not integration"
 
 import json
 import os
-import sys
 import pytest
+
 from dataclasses import dataclass, field
 from datetime import datetime
 
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from agent.ai_processor import AIProcessor, TriageResult, VALID_CATEGORIES, VALID_PRIORITIES
 
-
-# ----------------------------------------------------------------
-# Fixtures
-# ----------------------------------------------------------------
 
 @dataclass
 class MockEmail:
@@ -48,6 +41,10 @@ class MockEmail:
         if self.timestamp is None:
             self.timestamp = datetime.now()
 
+
+# ----------------------------------------------------------------
+# Fixtures
+# ----------------------------------------------------------------
 
 def load_sample_emails():
     """Load test emails from the sample_emails.json fixture."""
@@ -82,6 +79,7 @@ class TestTriageResultDefaults:
         result = TriageResult()
         assert result.category == "General Inquiry"
         assert result.priority == "MEDIUM"
+        assert result.language == "English"
         assert result.success is True
         assert result.error is None
 
@@ -112,6 +110,14 @@ class TestInputValidation:
 class TestMessageBuilding:
     """Test the user message construction."""
 
+    def _make_processor(self):
+        """Create a minimal AIProcessor-like object with _sanitize and _build_user_message."""
+        proc = type("P", (), {
+            "_build_user_message": AIProcessor._build_user_message,
+            "_sanitize": staticmethod(AIProcessor._sanitize),
+        })()
+        return proc
+
     def test_basic_message(self):
         email = MockEmail(
             sender_name="John Doe",
@@ -119,8 +125,8 @@ class TestMessageBuilding:
             subject="Hello World",
             body="This is a test email.",
         )
-        processor = type("P", (), {"_build_user_message": AIProcessor._build_user_message})()
-        msg = AIProcessor._build_user_message(processor, email)
+        proc = self._make_processor()
+        msg = proc._build_user_message(email)
 
         assert "John Doe" in msg
         assert "john@test.com" in msg
@@ -128,17 +134,42 @@ class TestMessageBuilding:
         assert "This is a test email." in msg
         assert "info@vidarbhainfotech.com" in msg
 
+    def test_timestamp_converted_to_ist(self):
+        """Timestamp should be converted from UTC to IST in the message."""
+        import pytz
+        utc_time = datetime(2026, 3, 7, 6, 30, 0, tzinfo=pytz.UTC)  # 6:30 UTC = 12:00 IST
+        email = MockEmail(timestamp=utc_time)
+        proc = self._make_processor()
+        msg = proc._build_user_message(email)
+        assert "12:00:00 IST" in msg
+        assert "06:30:00" not in msg  # UTC time should NOT appear
+
     def test_message_with_attachments(self):
         email = MockEmail(
             attachment_count=2,
             attachment_names=["document.pdf", "image.png"],
         )
-        processor = type("P", (), {"_build_user_message": AIProcessor._build_user_message})()
-        msg = AIProcessor._build_user_message(processor, email)
+        proc = self._make_processor()
+        msg = proc._build_user_message(email)
 
         assert "Attachments (2)" in msg
         assert "document.pdf" in msg
         assert "image.png" in msg
+
+    def test_message_with_pdf_text(self):
+        email = MockEmail()
+        proc = self._make_processor()
+        msg = proc._build_user_message(email, pdf_text="PDF content here")
+
+        assert "ATTACHED PDF CONTENT" in msg
+        assert "PDF content here" in msg
+
+    def test_message_without_pdf_text(self):
+        email = MockEmail()
+        proc = self._make_processor()
+        msg = proc._build_user_message(email, pdf_text="")
+
+        assert "ATTACHED PDF CONTENT" not in msg
 
 
 # ----------------------------------------------------------------

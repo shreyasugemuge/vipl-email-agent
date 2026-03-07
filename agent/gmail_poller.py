@@ -39,6 +39,7 @@ class EmailMessage:
     timestamp: datetime
     attachment_count: int = 0
     attachment_names: list = field(default_factory=list)
+    attachment_details: list = field(default_factory=list)  # [{filename, attachment_id, size, mime_type}]
     gmail_link: str = ""
 
 
@@ -124,7 +125,8 @@ class GmailPoller:
 
             # Count attachments
             attachments = []
-            self._find_attachments(msg_data.get("payload", {}), attachments)
+            attachment_details = []
+            self._find_attachments(msg_data.get("payload", {}), attachments, attachment_details)
 
             # Build Gmail deep link
             thread_id = msg_data.get("threadId", "")
@@ -141,6 +143,7 @@ class GmailPoller:
                 timestamp=timestamp,
                 attachment_count=len(attachments),
                 attachment_names=attachments,
+                attachment_details=attachment_details,
                 gmail_link=gmail_link,
             )
         except Exception as e:
@@ -187,13 +190,49 @@ class GmailPoller:
         text = re.sub(r"\s+", " ", text).strip()
         return text
 
-    def _find_attachments(self, payload: dict, result: list):
-        """Recursively find attachment filenames."""
+    def _find_attachments(self, payload: dict, names: list, details: list):
+        """Recursively find attachment filenames and metadata."""
         filename = payload.get("filename", "")
         if filename:
-            result.append(filename)
+            names.append(filename)
+            body = payload.get("body", {})
+            details.append({
+                "filename": filename,
+                "attachment_id": body.get("attachmentId", ""),
+                "size": body.get("size", 0),
+                "mime_type": payload.get("mimeType", ""),
+            })
         for part in payload.get("parts", []):
-            self._find_attachments(part, result)
+            self._find_attachments(part, names, details)
+
+    def download_attachment(self, inbox_email: str, message_id: str, attachment_id: str) -> Optional[bytes]:
+        """Download an attachment by its ID. Returns raw bytes or None on failure."""
+        try:
+            service = self._get_service(inbox_email)
+            result = service.users().messages().attachments().get(
+                userId="me", messageId=message_id, id=attachment_id,
+            ).execute()
+            data = result.get("data", "")
+            if data:
+                return base64.urlsafe_b64decode(data)
+        except Exception as e:
+            logger.error(f"Failed to download attachment {attachment_id}: {e}")
+        return None
+
+    def fetch_thread_message(self, inbox_email: str, thread_id: str) -> Optional[EmailMessage]:
+        """Fetch the first message from a Gmail thread by thread ID.
+        Used for dead letter retry — reconstructing an EmailMessage from a thread ID."""
+        try:
+            service = self._get_service(inbox_email)
+            thread = service.users().threads().get(
+                userId="me", id=thread_id, format="full"
+            ).execute()
+            messages = thread.get("messages", [])
+            if messages:
+                return self._parse_message(service, messages[0], inbox_email)
+        except Exception as e:
+            logger.error(f"Could not fetch thread {thread_id}: {e}")
+        return None
 
     def poll(self, inbox_email: str) -> list[EmailMessage]:
         """

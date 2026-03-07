@@ -1,24 +1,17 @@
 """
 Tests for the SLA Monitor module.
 
-Tests breach detection logic, cooldown behavior, and business-hours mode.
+Tests breach detection logic, cooldown behavior, and summary alerting.
 
 Usage:
     pytest tests/test_sla_monitor.py -v
 """
 
-import os
-import sys
-import json
-import tempfile
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 import pytz
-
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent.sla_monitor import SLAMonitor
 from agent.state import StateManager
@@ -31,10 +24,9 @@ IST = pytz.timezone("Asia/Kolkata")
 # ----------------------------------------------------------------
 
 @pytest.fixture
-def state_manager(tmp_path):
-    """Create a fresh StateManager with a temp file."""
-    state_file = str(tmp_path / "test_state.json")
-    return StateManager(state_file)
+def state_manager():
+    """Create a fresh in-memory StateManager."""
+    return StateManager()
 
 
 @pytest.fixture
@@ -47,7 +39,7 @@ def mock_sheet():
 def mock_chat():
     """Create a mock ChatNotifier."""
     chat = MagicMock()
-    chat.notify_sla_breach.return_value = True
+    chat.notify_sla_summary.return_value = True
     return chat
 
 
@@ -61,7 +53,9 @@ def default_config():
             "business_hours_end": 18,
             "business_days": [0, 1, 2, 3, 4, 5],
             "breach_alert_cooldown_hours": 4,
-        }
+            "summary_hours": [9, 13, 17],
+        },
+        "quiet_hours": {"enabled": False},
     }
 
 
@@ -78,8 +72,8 @@ def sla_monitor(mock_sheet, mock_chat, state_manager, default_config):
 class TestBreachDetection:
     """Test SLA breach detection logic."""
 
-    def test_breached_ticket_triggers_alert(self, sla_monitor, mock_sheet, mock_chat):
-        """A ticket past its SLA deadline should trigger an alert."""
+    def test_breached_ticket_detected(self, sla_monitor, mock_sheet):
+        """A ticket past its SLA deadline should be detected as breached."""
         past_deadline = (datetime.now(IST) - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
         mock_sheet.get_open_tickets.return_value = [
             {
@@ -91,15 +85,14 @@ class TestBreachDetection:
             }
         ]
 
-        sla_monitor.check()
+        breached = sla_monitor.get_breached_tickets()
 
-        mock_chat.notify_sla_breach.assert_called_once()
-        call_args = mock_chat.notify_sla_breach.call_args
-        assert call_args[0][0]["Ticket #"] == "INF-0001"
-        assert call_args[0][1] > 0  # hours_overdue should be positive
+        assert len(breached) == 1
+        assert breached[0]["Ticket #"] == "INF-0001"
+        assert breached[0]["hours_overdue"] > 0
 
-    def test_non_breached_ticket_no_alert(self, sla_monitor, mock_sheet, mock_chat):
-        """A ticket within its SLA deadline should not trigger an alert."""
+    def test_non_breached_ticket_not_detected(self, sla_monitor, mock_sheet):
+        """A ticket within its SLA deadline should not be detected."""
         future_deadline = (datetime.now(IST) + timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S")
         mock_sheet.get_open_tickets.return_value = [
             {
@@ -111,37 +104,35 @@ class TestBreachDetection:
             }
         ]
 
-        sla_monitor.check()
+        breached = sla_monitor.get_breached_tickets()
 
-        mock_chat.notify_sla_breach.assert_not_called()
+        assert len(breached) == 0
 
-    def test_closed_ticket_ignored(self, sla_monitor, mock_sheet, mock_chat):
-        """Closed tickets should not trigger breach alerts even if past deadline."""
-        past_deadline = (datetime.now(IST) - timedelta(hours=10)).strftime("%Y-%m-%d %H:%M:%S")
-        mock_sheet.get_open_tickets.return_value = [
-            {
-                "Ticket #": "INF-0003",
-                "Subject": "Closed ticket",
-                "SLA Deadline": past_deadline,
-                "Status": "Closed",
-                "Assigned To": "Shreyas",
-            }
-        ]
-
-        sla_monitor.check()
-
-        mock_chat.notify_sla_breach.assert_not_called()
-
-    def test_empty_ticket_list(self, sla_monitor, mock_sheet, mock_chat):
-        """No tickets should result in no alerts."""
+    def test_empty_ticket_list(self, sla_monitor, mock_sheet):
+        """No tickets should result in no breaches."""
         mock_sheet.get_open_tickets.return_value = []
 
+        breached = sla_monitor.get_breached_tickets()
+
+        assert len(breached) == 0
+
+    def test_check_writes_breached_status_to_sheet(self, sla_monitor, mock_sheet):
+        """check() should call update_sla_status for breached tickets."""
+        past_deadline = (datetime.now(IST) - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+        mock_sheet.get_open_tickets.return_value = [
+            {
+                "Ticket #": "INF-0001",
+                "Subject": "Overdue ticket",
+                "SLA Deadline": past_deadline,
+                "Status": "New",
+                "Assigned To": "",
+            }
+        ]
         sla_monitor.check()
+        mock_sheet.update_sla_status.assert_called_with("INF-0001", "Breached")
 
-        mock_chat.notify_sla_breach.assert_not_called()
-
-    def test_invalid_deadline_format_handled(self, sla_monitor, mock_sheet, mock_chat):
-        """Tickets with invalid SLA deadline format should be skipped gracefully."""
+    def test_invalid_deadline_format_skipped(self, sla_monitor, mock_sheet):
+        """Tickets with invalid SLA deadline format should be skipped."""
         mock_sheet.get_open_tickets.return_value = [
             {
                 "Ticket #": "INF-0004",
@@ -152,45 +143,42 @@ class TestBreachDetection:
             }
         ]
 
-        # Should not raise an exception
-        sla_monitor.check()
+        breached = sla_monitor.get_breached_tickets()
 
-        mock_chat.notify_sla_breach.assert_not_called()
+        assert len(breached) == 0
 
 
 # ----------------------------------------------------------------
-# Tests: Alert Cooldown
+# Tests: Summary Timing
 # ----------------------------------------------------------------
 
-class TestAlertCooldown:
-    """Test alert cooldown logic to prevent alert spam."""
+class TestSummaryTiming:
+    """Test summary-based alerting (3x daily)."""
 
-    def test_first_alert_always_sent(self, sla_monitor, state_manager):
-        """First breach alert for a ticket should always be sent."""
-        assert sla_monitor._should_alert("INF-0001") is True
+    def test_is_summary_time_at_configured_hour(self, sla_monitor):
+        """Should return True at configured summary hours."""
+        from unittest.mock import patch
+        with patch("agent.sla_monitor.datetime") as mock_dt:
+            mock_dt.now.return_value.hour = 9  # 9 AM is in summary_hours
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            assert sla_monitor._is_summary_time() is True
 
-    def test_repeated_alert_within_cooldown_blocked(self, sla_monitor, state_manager):
-        """Alert within cooldown period should be suppressed."""
-        state_manager.record_alert("INF-0001")
+    def test_not_summary_time_outside_hours(self, sla_monitor):
+        """Should return False outside configured summary hours."""
+        from unittest.mock import patch
+        with patch("agent.sla_monitor.datetime") as mock_dt:
+            mock_dt.now.return_value.hour = 15  # Not in [9, 13, 17]
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            assert sla_monitor._is_summary_time() is False
 
-        assert sla_monitor._should_alert("INF-0001") is False
-
-    def test_alert_after_cooldown_allowed(self, sla_monitor, state_manager):
-        """Alert after cooldown period should be sent."""
-        # Manually set the last alert time to 5 hours ago
-        five_hours_ago = (datetime.now() - timedelta(hours=5)).isoformat()
-        state_manager.state["sla_alerts"]["INF-0001"] = five_hours_ago
-        state_manager.save()
-
-        # Cooldown is 4 hours, so 5 hours ago should allow a new alert
-        assert sla_monitor._should_alert("INF-0001") is True
-
-    def test_different_tickets_independent_cooldown(self, sla_monitor, state_manager):
-        """Cooldown for one ticket should not affect another."""
-        state_manager.record_alert("INF-0001")
-
-        assert sla_monitor._should_alert("INF-0001") is False
-        assert sla_monitor._should_alert("INF-0002") is True
+    def test_no_duplicate_summary_same_hour(self, sla_monitor):
+        """Should not send duplicate summary in the same hour."""
+        sla_monitor._last_summary_hour = 9
+        from unittest.mock import patch
+        with patch("agent.sla_monitor.datetime") as mock_dt:
+            mock_dt.now.return_value.hour = 9
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            assert sla_monitor._is_summary_time() is False
 
 
 # ----------------------------------------------------------------
@@ -234,35 +222,54 @@ class TestGetBreachedTickets:
 class TestStateManager:
     """Test the StateManager independently."""
 
-    def test_fresh_state(self, tmp_path):
-        sm = StateManager(str(tmp_path / "new_state.json"))
+    def test_fresh_state(self):
+        sm = StateManager()
         assert sm.consecutive_failures == 0
-        assert not sm.is_processed("thread_123")
 
-    def test_mark_and_check_processed(self, state_manager):
-        assert not state_manager.is_processed("thread_abc")
-        state_manager.mark_processed("thread_abc")
-        assert state_manager.is_processed("thread_abc")
+    def test_failure_tracking(self):
+        sm = StateManager()
+        assert sm.consecutive_failures == 0
+        sm.record_failure()
+        sm.record_failure()
+        assert sm.consecutive_failures == 2
+        sm.reset_failures()
+        assert sm.consecutive_failures == 0
 
-    def test_state_persists_to_disk(self, tmp_path):
-        path = str(tmp_path / "persist_state.json")
-        sm1 = StateManager(path)
-        sm1.mark_processed("thread_xyz")
+    def test_record_alert(self):
+        sm = StateManager()
+        sm.record_alert("INF-0001")
+        assert sm.get_last_alert_time("INF-0001") is not None
 
-        # Create a new instance from the same file
-        sm2 = StateManager(path)
-        assert sm2.is_processed("thread_xyz")
+    def test_get_last_alert_time_unknown(self):
+        sm = StateManager()
+        assert sm.get_last_alert_time("INF-9999") is None
 
-    def test_failure_tracking(self, state_manager):
-        assert state_manager.consecutive_failures == 0
-        state_manager.record_failure()
-        state_manager.record_failure()
-        assert state_manager.consecutive_failures == 2
-        state_manager.reset_failures()
-        assert state_manager.consecutive_failures == 0
+    def test_clear_alert(self):
+        sm = StateManager()
+        sm.record_alert("INF-0001")
+        sm.clear_alert("INF-0001")
+        assert sm.get_last_alert_time("INF-0001") is None
 
-    def test_thread_id_limit(self, state_manager):
-        """State should cap stored thread IDs at 5000."""
-        for i in range(5100):
-            state_manager.mark_processed(f"thread_{i}")
-        assert len(state_manager.state["processed_threads"]) == 5000
+    def test_clear_nonexistent_alert_no_error(self):
+        sm = StateManager()
+        sm.clear_alert("INF-9999")  # Should not raise
+
+    def test_config_change_detection_first_call_no_changes(self):
+        sm = StateManager()
+        changes = sm.detect_config_changes({"Poll Interval": "300", "Admin Email": "admin@test.com"})
+        assert changes == []  # First call establishes baseline
+
+    def test_config_change_detection_detects_diff(self):
+        sm = StateManager()
+        sm.detect_config_changes({"Poll Interval": "300", "Admin Email": "admin@test.com"})
+        changes = sm.detect_config_changes({"Poll Interval": "120", "Admin Email": "admin@test.com"})
+        assert len(changes) == 1
+        assert changes[0]["setting"] == "Poll Interval"
+        assert changes[0]["old_value"] == "300"
+        assert changes[0]["new_value"] == "120"
+
+    def test_config_change_detection_no_diff(self):
+        sm = StateManager()
+        sm.detect_config_changes({"Poll Interval": "300"})
+        changes = sm.detect_config_changes({"Poll Interval": "300"})
+        assert changes == []

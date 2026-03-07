@@ -149,6 +149,7 @@ class SheetLogger:
             tags_str,                           # S: Tags
             email.thread_id,                    # T: Gmail Thread ID
             attachments_str,                    # U: Attachments
+            triage_result.language,             # V: Language
         ]
 
         try:
@@ -156,7 +157,7 @@ class SheetLogger:
             body = {"values": [row]}
             result = self.sheets.values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{self.email_log_tab}'!A:U",
+                range=f"'{self.email_log_tab}'!A:V",
                 valueInputOption="RAW",
                 insertDataOption="INSERT_ROWS",
                 body=body,
@@ -365,7 +366,7 @@ class SheetLogger:
             "Subject", "AI Summary", "Category", "Priority", "Assigned To",
             "Status", "SLA Deadline", "SLA Status", "Draft Reply",
             "First Response At", "Resolved At", "Resolution Time", "Notes",
-            "Tags", "Gmail Thread ID", "Attachments",
+            "Tags", "Gmail Thread ID", "Attachments", "Language",
         ]
         try:
             result = self.sheets.values().get(
@@ -396,7 +397,7 @@ class SheetLogger:
 
                 self.sheets.values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f"'{self.email_log_tab}'!A1:U1",
+                    range=f"'{self.email_log_tab}'!A1:V1",
                     valueInputOption="RAW",
                     body={"values": [headers]},
                 ).execute()
@@ -525,6 +526,8 @@ class SheetLogger:
          "Primary admin email. Receives escalations and fallback EOD reports."),
         ("EOD Recipients", lambda c: ", ".join(c.get("eod", {}).get("recipients", [])),
          "Comma-separated emails. Edit here — no redeploy needed!"),
+        ("EOD Sender Email", lambda c: c.get("eod", {}).get("sender_email", c.get("admin", {}).get("email", "")),
+         "Email address for EOD reports. Falls back to Admin Email if blank."),
         ("Monitored Inboxes", lambda c: ", ".join(c.get("gmail", {}).get("inboxes", [])),
          "Comma-separated inbox addresses. Changes here need redeployment."),
         ("Claude Model", lambda c: c.get("claude", {}).get("model", "claude-haiku-4-5-20251001"),
@@ -549,7 +552,7 @@ class SheetLogger:
     ]
 
     # 1-indexed row numbers for the status and log sections
-    # Updated: config section is now 4 header + 16 fields = row 20 for blank, 21 for status header
+    # Config section: 4 header rows + N config fields
     NUM_CONFIG_FIELDS = 16  # Keep in sync with CONFIG_FIELDS above
     STATUS_HEADER_ROW = 4 + NUM_CONFIG_FIELDS + 1 + 1  # row 22
     STATUS_DATA_ROW = STATUS_HEADER_ROW + 2              # row 24
@@ -703,6 +706,66 @@ class SheetLogger:
     # Cost Tracker — Daily AI usage stats
     # ----------------------------------------------------------------
 
+    def update_sla_status(self, ticket_id: str, status: str):
+        """Update the SLA Status (column M) for a given ticket."""
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{self.email_log_tab}'!A:A",
+            ).execute()
+            rows = result.get("values", [])
+            row_num = None
+            for i, row in enumerate(rows):
+                if row and row[0] == ticket_id:
+                    row_num = i + 1
+                    break
+            if row_num:
+                self.sheets.values().update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"'{self.email_log_tab}'!M{row_num}",
+                    valueInputOption="RAW",
+                    body={"values": [[status]]},
+                ).execute()
+                logger.debug(f"SLA status updated: {ticket_id} → {status}")
+        except Exception as e:
+            logger.warning(f"Could not update SLA status for {ticket_id}: {e}")
+
+    def log_config_changes(self, changes: list[dict]):
+        """Write config changes to the Change Log tab."""
+        tab_name = self.change_log_tab
+        try:
+            self._create_tab_if_missing(tab_name)
+
+            # Ensure header
+            result = self.sheets.values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A1:A1",
+            ).execute()
+            existing = result.get("values", [[]])
+            first_cell = existing[0][0] if existing and existing[0] else ""
+
+            if first_cell != "Timestamp":
+                self.sheets.values().update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"'{tab_name}'!A1:D1",
+                    valueInputOption="RAW",
+                    body={"values": [["Timestamp", "Setting Name", "Old Value", "New Value"]]},
+                ).execute()
+
+            ist_now = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
+            rows = [[ist_now, c["setting"], c["old_value"], c["new_value"]] for c in changes]
+
+            self.sheets.values().append(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A:D",
+                valueInputOption="RAW",
+                insertDataOption="INSERT_ROWS",
+                body={"values": rows},
+            ).execute()
+            logger.info(f"Logged {len(changes)} config change(s) to Change Log")
+        except Exception as e:
+            logger.warning(f"Could not log config changes: {e}")
+
     def log_daily_cost(self, usage_stats: dict):
         """Append a row to the Cost Tracker tab with today's AI usage stats."""
         tab_name = "Cost Tracker"
@@ -806,9 +869,10 @@ class SheetLogger:
             if first_cell != "Timestamp":
                 self.sheets.values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f"'{tab_name}'!A1:F1",
+                    range=f"'{tab_name}'!A1:I1",
                     valueInputOption="RAW",
-                    body={"values": [["Timestamp", "Inbox", "From", "Subject", "Error", "Thread ID"]]},
+                    body={"values": [["Timestamp", "Inbox", "From", "Subject", "Error",
+                                      "Thread ID", "Retry Count", "Last Retry At", "Retry Status"]]},
                 ).execute()
 
             ist_now = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
@@ -819,11 +883,14 @@ class SheetLogger:
                 getattr(email, "subject", "")[:100],
                 str(error_msg)[:200],
                 getattr(email, "thread_id", ""),
+                "0",        # Retry Count
+                "",         # Last Retry At
+                "Pending",  # Retry Status
             ]
 
             self.sheets.values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"'{tab_name}'!A:F",
+                range=f"'{tab_name}'!A:I",
                 valueInputOption="RAW",
                 insertDataOption="INSERT_ROWS",
                 body={"values": [row]},
@@ -831,3 +898,64 @@ class SheetLogger:
             logger.info(f"Logged failed triage to '{tab_name}': {getattr(email, 'subject', '')[:50]}")
         except Exception as e:
             logger.warning(f"Could not log failed triage: {e}")
+
+    def get_failed_triages_for_retry(self) -> list[dict]:
+        """Get failed triages eligible for retry (count < 3, last attempt > 15 min ago)."""
+        tab_name = "Failed Triage"
+        try:
+            result = self.sheets.values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!A:I",
+            ).execute()
+            rows = result.get("values", [])
+            if len(rows) < 2:
+                return []
+
+            header = rows[0]
+            eligible = []
+            now = datetime.now(IST)
+
+            for i, row in enumerate(rows[1:], start=2):
+                padded = row + [""] * (len(header) - len(row))
+                entry = dict(zip(header, padded))
+                entry["_row_number"] = i
+
+                status = entry.get("Retry Status", "").strip()
+                if status in ("Success", "Exhausted"):
+                    continue
+
+                try:
+                    retry_count = int(entry.get("Retry Count", "0"))
+                except ValueError:
+                    retry_count = 0
+
+                if retry_count >= 3:
+                    continue
+
+                last_retry = entry.get("Last Retry At", "").strip()
+                if last_retry:
+                    from agent.utils import parse_sheet_datetime
+                    last_dt = parse_sheet_datetime(last_retry)
+                    if last_dt and (now - last_dt).total_seconds() < 900:  # 15 min
+                        continue
+
+                eligible.append(entry)
+
+            return eligible
+        except Exception as e:
+            logger.warning(f"Could not read failed triages: {e}")
+            return []
+
+    def update_failed_triage_retry(self, row_number: int, retry_count: int, status: str):
+        """Update retry metadata for a Failed Triage row."""
+        tab_name = "Failed Triage"
+        ist_now = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
+        try:
+            self.sheets.values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range=f"'{tab_name}'!G{row_number}:I{row_number}",
+                valueInputOption="RAW",
+                body={"values": [[str(retry_count), ist_now, status]]},
+            ).execute()
+        except Exception as e:
+            logger.warning(f"Could not update retry status for row {row_number}: {e}")

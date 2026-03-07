@@ -122,6 +122,11 @@ class SLAMonitor:
                     hours_overdue = (now - sla_deadline).total_seconds() / 3600
                     ticket["hours_overdue"] = round(hours_overdue, 1)
                     breached.append(ticket)
+                    # Write SLA status back to Sheet
+                    try:
+                        self.sheet.update_sla_status(ticket_id, "Breached")
+                    except Exception as e:
+                        logger.warning(f"Could not update SLA status for {ticket_id}: {e}")
 
             logger.info(f"SLA check: {len(breached)} breached out of {len(open_tickets)} open tickets")
 
