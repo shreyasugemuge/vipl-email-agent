@@ -729,12 +729,17 @@ def run_agent(components: dict):
     # First poll immediately
     process_emails(components)
 
-    # Send a fresh EOD report on every deploy/startup
-    try:
-        logger.info("Sending startup EOD report...")
-        components["eod"].send_report()
-    except Exception as e:
-        logger.warning(f"Startup EOD report failed: {e}")
+    # Send EOD report on startup — but only during business hours (8 AM – 9 PM IST)
+    # Cloud Run may restart overnight (cold starts); we don't want EOD spam at 2 AM
+    now_ist = datetime.now(IST)
+    if 8 <= now_ist.hour <= 21:
+        try:
+            logger.info("Sending startup EOD report...")
+            components["eod"].send_report()
+        except Exception as e:
+            logger.warning(f"Startup EOD report failed: {e}")
+    else:
+        logger.info(f"Skipping startup EOD — outside business hours ({now_ist.hour}:00 IST)")
 
     scheduler.start()
 

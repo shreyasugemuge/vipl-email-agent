@@ -1,13 +1,16 @@
 # ============================================================
-# VIPL Email Agent — CI/CD Deploy Pipeline
+# VIPL Email Agent — CI/CD Pipeline
 # ============================================================
-# Triggers on version tags (v*.*.*) for full deploy, and on
-# pull requests for test-only validation.
+# Single workflow for test, deploy, and release.
+#
+# Triggers:
+#   - Version tags (v*.*.*): test → deploy → release
+#   - Pull requests: test only (no deploy)
 #
 # Auth: Workload Identity Federation (no SA key stored in GitHub)
 # ============================================================
 
-name: Deploy to Cloud Run
+name: Deploy & Release
 
 on:
   push:
@@ -24,6 +27,7 @@ env:
   IMAGE: asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent
 
 jobs:
+  # ---- Job 1: Run unit tests (always) ----
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -41,6 +45,7 @@ jobs:
       - name: Run unit tests
         run: pytest -m "not integration" --tb=short -q
 
+  # ---- Job 2: Build & Deploy to Cloud Run (tags only) ----
   deploy:
     name: Build & Deploy
     needs: test
@@ -48,21 +53,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write  # Required for Workload Identity Federation
+      id-token: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for changelog
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+          fetch-depth: 0
 
       - name: Authenticate to Google Cloud (WIF)
-        id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
@@ -77,9 +76,12 @@ jobs:
       - name: Generate image tags
         id: tags
         run: |
+          VERSION="${GITHUB_REF_NAME}"
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
           echo "image_sha=${{ env.IMAGE }}:${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "image_version=${{ env.IMAGE }}:${VERSION}" >> "$GITHUB_OUTPUT"
           echo "image_latest=${{ env.IMAGE }}:latest" >> "$GITHUB_OUTPUT"
           echo "timestamp=$(TZ='Asia/Kolkata' date '+%d %b %Y, %I:%M %p IST')" >> "$GITHUB_OUTPUT"
 
@@ -87,6 +89,7 @@ jobs:
         run: |
           docker build \
             --tag ${{ steps.tags.outputs.image_sha }} \
+            --tag ${{ steps.tags.outputs.image_version }} \
             --tag ${{ steps.tags.outputs.image_latest }} \
             --label "git.sha=${{ github.sha }}" \
             --label "git.ref=${{ github.ref_name }}" \
@@ -95,6 +98,7 @@ jobs:
       - name: Push to Artifact Registry
         run: |
           docker push ${{ steps.tags.outputs.image_sha }}
+          docker push ${{ steps.tags.outputs.image_version }}
           docker push ${{ steps.tags.outputs.image_latest }}
 
       - name: Write env vars file
@@ -120,15 +124,6 @@ jobs:
             --env-vars-file=/tmp/env-vars.yaml \
             --project=${{ env.PROJECT_ID }}
 
-      - name: Get commit summary
-        id: commits
-        run: |
-          # Get commits since last deploy (last 5 max)
-          COMMIT_LOG=$(git log --oneline -5 --no-merges --format="• %s (%an)" | head -5)
-          # Escape for JSON
-          COMMIT_LOG_ESCAPED=$(echo "$COMMIT_LOG" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
-          echo "log=${COMMIT_LOG_ESCAPED}" >> "$GITHUB_OUTPUT"
-
       - name: Notify Google Chat — Deployment
         if: success()
         run: |
@@ -136,38 +131,27 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{
               "cardsV2": [{
-                "cardId": "deploy-${{ steps.tags.outputs.short_sha }}",
+                "cardId": "deploy-${{ steps.tags.outputs.version }}",
                 "card": {
                   "header": {
-                    "title": "\U0001f680 New Deployment — ${{ steps.tags.outputs.short_sha }}",
+                    "title": "\U0001f680 Deployed ${{ steps.tags.outputs.version }}",
                     "subtitle": "${{ steps.tags.outputs.timestamp }}"
                   },
                   "sections": [
                     {
                       "header": "Configuration",
                       "widgets": [
+                        {"decoratedText": {"topLabel": "Version", "text": "${{ steps.tags.outputs.version }}"}},
                         {"decoratedText": {"topLabel": "Image", "text": "${{ steps.tags.outputs.image_sha }}"}},
                         {"decoratedText": {"topLabel": "Triggered by", "text": "${{ github.actor }}"}},
-                        {"decoratedText": {"topLabel": "Commit", "text": "${{ github.sha }}"}},
-                        {"decoratedText": {"topLabel": "AI Model", "text": "Haiku (default) + Sonnet (CRITICAL)"}},
-                        {"decoratedText": {"topLabel": "Memory", "text": "256Mi"}},
-                        {"decoratedText": {"topLabel": "Min Instances", "text": "1"}},
-                        {"decoratedText": {"topLabel": "Inboxes", "text": "${{ secrets.MONITORED_INBOXES }}"}},
-                        {"decoratedText": {"topLabel": "EOD Report", "text": "7:00 PM IST daily + on startup"}},
-                        {"decoratedText": {"topLabel": "EOD Recipients", "text": "${{ secrets.EOD_RECIPIENTS }}"}}
-                      ]
-                    },
-                    {
-                      "header": "Recent Changes",
-                      "widgets": [
-                        {"textParagraph": {"text": "${{ steps.commits.outputs.log }}"}}
+                        {"decoratedText": {"topLabel": "Inboxes", "text": "${{ secrets.MONITORED_INBOXES }}"}}
                       ]
                     },
                     {
                       "widgets": [
                         {"buttonList": {"buttons": [
                           {"text": "View Logs", "onClick": {"openLink": {"url": "https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE }}/logs?project=${{ env.PROJECT_ID }}"}}},
-                          {"text": "GitHub Commit", "onClick": {"openLink": {"url": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}"}}}
+                          {"text": "GitHub Release", "onClick": {"openLink": {"url": "https://github.com/${{ github.repository }}/releases/tag/${{ steps.tags.outputs.version }}"}}}
                         ]}}
                       ]
                     }
@@ -182,5 +166,73 @@ jobs:
           curl -s -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
             -d '{
-              "text": "\u274c *Deployment FAILED*\nCommit: ${{ github.sha }}\nTriggered by: ${{ github.actor }}\nCheck: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "\u274c *Deploy FAILED* — ${{ github.ref_name }}\nBy: ${{ github.actor }}\nhttps://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }'
+
+  # ---- Job 3: Create GitHub Release (tags only, after deploy) ----
+  release:
+    name: GitHub Release
+    needs: deploy
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get release info
+        id: release_info
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p')
+          if [ -z "$PREV_TAG" ]; then
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+            echo "prev_tag_name=initial" >> "$GITHUB_OUTPUT"
+          else
+            echo "prev_tag_name=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "prev_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG="${{ steps.release_info.outputs.prev_tag }}"
+          VERSION="${{ steps.release_info.outputs.version }}"
+
+          echo "## What's Changed in ${VERSION}" > changelog.md
+          echo "" >> changelog.md
+
+          echo "### Features & Enhancements" >> changelog.md
+          git log ${PREV_TAG}..HEAD --oneline --no-merges --format="- %s (%h)" \
+            --grep="[Aa]dd\|[Ff]eat\|[Ee]nhance\|[Ii]mplement\|[Nn]ew" >> changelog.md 2>/dev/null || echo "_None_" >> changelog.md
+          echo "" >> changelog.md
+
+          echo "### Bug Fixes" >> changelog.md
+          git log ${PREV_TAG}..HEAD --oneline --no-merges --format="- %s (%h)" \
+            --grep="[Ff]ix\|[Bb]ug\|[Pp]atch\|[Rr]esolve" >> changelog.md 2>/dev/null || echo "_None_" >> changelog.md
+          echo "" >> changelog.md
+
+          echo "### All Commits" >> changelog.md
+          git log ${PREV_TAG}..HEAD --oneline --no-merges --format="- %s — *%an* (%h)" >> changelog.md
+          echo "" >> changelog.md
+
+          COMMIT_COUNT=$(git rev-list --count ${PREV_TAG}..HEAD)
+          echo "---" >> changelog.md
+          echo "**${COMMIT_COUNT} commits** since ${{ steps.release_info.outputs.prev_tag_name }}" >> changelog.md
+
+          cat changelog.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.version }}
+          name: ${{ steps.release_info.outputs.version }}
+          body_path: changelog.md
+          draft: false
+          prerelease: false
