@@ -146,8 +146,7 @@ vipl-email-agent/
 │   └── PRD_v1.1.0.docx       # Product Requirements Document
 │
 └── .github/workflows/
-    ├── deploy.yml             # Tag v*.*.* → test → build → deploy to Cloud Run
-    └── release.yml            # Tag v*.*.* → GitHub Release + changelog
+    └── deploy.yml             # Tag v*.*.* → test → build → deploy → GitHub Release
 ```
 
 ### Technology Stack
@@ -235,9 +234,10 @@ git tag -a v1.2.0 -m "Description of release"
 git push origin main --tags
 ```
 
-This triggers two workflows:
-1. **`deploy.yml`**: Unit tests &rarr; Docker build &rarr; Push to Artifact Registry &rarr; Deploy to Cloud Run &rarr; Chat notification
-2. **`release.yml`**: GitHub Release with auto-changelog &rarr; Docker image version tag &rarr; Chat notification
+This triggers a single workflow (`deploy.yml`) with three sequential jobs:
+1. **Test**: Run unit tests
+2. **Deploy**: Docker build &rarr; Push to Artifact Registry &rarr; Deploy to Cloud Run &rarr; Chat notification
+3. **Release**: GitHub Release with auto-generated changelog
 
 Pull requests to `main` run tests only (no deploy).
 

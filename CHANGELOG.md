@@ -2,6 +2,14 @@
 
 All notable changes to the VIPL Email Agent are documented here.
 
+## [1.1.3] — Mar 2026
+
+### Fixed
+- **Startup EOD spam** — startup EOD report now guarded by business hours check (8 AM–9 PM IST), prevents midnight cold-start spam
+- **Double GitHub Actions** — merged `deploy.yml` + `release.yml` into single workflow with 3 sequential jobs (test → deploy → release)
+- **Dead letter retry missing PDF context** — `retry_failed_triages()` now passes `gmail_poller` to `ai.process()` for attachment extraction
+- **Repo cleanup** — removed `to_delete/` from git tracking, added to `.gitignore`; updated docs to reflect single workflow
+
 ## [1.1.0] — Mar 2026
 
 ### Added

@@ -53,8 +53,7 @@ scripts/
   run_local.sh               # Local dev runner (loads .env, validates SA key)
 
 .github/workflows/
-  deploy.yml                 # CI/CD: tag v*.*.* → test → build → deploy to Cloud Run
-  release.yml                # Tag-triggered release with auto-changelog
+  deploy.yml                 # CI/CD: tag v*.*.* → test → build → deploy → GitHub Release
 ```
 
 ## Key Design Decisions
@@ -97,7 +96,7 @@ Config reloads from Agent Config sheet tab every poll cycle:
 - Configurable via `sla.summary_hours` in config.yaml
 
 ### EOD Report
-- Fires daily at 7 PM IST (configurable) + on every startup/deploy
+- Fires daily at 7 PM IST (configurable) + on startup (business hours only, 8 AM–9 PM IST)
 - Chat first (always), then email (independently)
 - Recipients re-read from Agent Config sheet at send time
 - Logs daily AI cost to Cost Tracker tab after each report

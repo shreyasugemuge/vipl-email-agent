@@ -32,6 +32,9 @@ agent.log
 # State file (contains processed IDs)
 state.json
 
+# Temp / deleted files (local-only, never commit)
+to_delete/
+
 # OS
 .DS_Store
 Thumbs.db

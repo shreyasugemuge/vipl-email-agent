@@ -521,7 +521,7 @@ def retry_failed_triages(components: dict):
                 if not email:
                     raise ValueError(f"Could not fetch thread {thread_id}")
 
-                triage = ai.process(email)
+                triage = ai.process(email, gmail_poller=gmail)
                 category = triage.category
                 sla_hours = sla_config.get(category, {}).get("hours") or sla_defaults.get(category, 24)
                 ticket_number = sheet.log_email(email, triage, sla_hours)
