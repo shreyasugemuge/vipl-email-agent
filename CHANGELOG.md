@@ -4,11 +4,30 @@ All notable changes to the VIPL Email Agent are documented here.
 
 ## [1.1.3] — Mar 2026
 
+Full code review and production hardening release. 22 issues identified and fixed across all severity levels.
+
+### Added
+- **Circuit breaker** — `StateManager` tracks consecutive failures; polling pauses after 3+ failures to stop hammering dead APIs
+- **EOD send deduplication** — 10-minute cooldown window prevents double EOD reports on startup + CronTrigger collision
+- **Sheet write retries** — `log_email()` and related writes retry 3x with exponential backoff on transient `HttpError`
+- **Claude output validation** — category and priority validated against allowed enums; hallucinated values default to "General Inquiry" / "MEDIUM"
+- **SLA parse error handling** — malformed SLA deadlines now set status to "ERROR — Invalid deadline" instead of silent skip
+- **Config parse warnings** — invalid Sheet config values (e.g., non-numeric poll interval) now log WARNING with the invalid value and range
+- **11 new unit tests** — circuit breaker, EOD dedup, mark_processed label flow, output validation (123 total)
+
 ### Fixed
-- **Startup EOD spam** — startup EOD report now guarded by business hours check (8 AM–9 PM IST), prevents midnight cold-start spam
-- **Double GitHub Actions** — merged `deploy.yml` + `release.yml` into single workflow with 3 sequential jobs (test → deploy → release)
-- **Dead letter retry missing PDF context** — `retry_failed_triages()` now passes `gmail_poller` to `ai.process()` for attachment extraction
-- **Repo cleanup** — removed `to_delete/` from git tracking, added to `.gitignore`; updated docs to reflect single workflow
+- **Email loss prevention** (CRITICAL) — Gmail "Agent/Processed" label now applied AFTER successful Sheet log, not during poll. If Sheet write fails, email is retried next cycle instead of permanently lost.
+- **Startup EOD spam** — startup EOD report guarded by business hours check (8 AM–9 PM IST) and 10-min dedup window
+- **Double GitHub Actions** — merged `deploy.yml` + `release.yml` into single workflow (test → deploy → release)
+- **Dead letter retry missing PDF context** — `retry_failed_triages()` now passes `gmail_poller` for attachment extraction
+- **Ticket counter crash** — malformed ticket numbers (e.g., "INF-" or "INF-abc") no longer crash startup; logged and skipped
+- **Thread cache header row** — dedup cache now skips header row (`values[1:]`), preventing false positive on "Gmail Thread ID" text
+- **EOD Chat ignores feature flag** — EOD Chat summary now respects `Chat Notifications Enabled` flag
+- **Health endpoint crash** — wrapped status builder in try-except; returns `{"status": "degraded"}` instead of 500 on failure
+- **SIGTERM delay** — replaced `signal.pause()` with `time.sleep(10)` loop for faster graceful shutdown
+- **HTML entity decoding** — `_strip_html()` now calls `html.unescape()` for cleaner email body extraction
+- **Config hot-reload race** — added `threading.Lock()` to prevent concurrent config reads during retry jobs
+- **Repo cleanup** — removed `to_delete/` from git tracking, added to `.gitignore`; updated docs
 
 ## [1.1.0] — Mar 2026
 
@@ -47,8 +66,6 @@ All notable changes to the VIPL Email Agent are documented here.
 - **Input sanitization** — control chars stripped from email content before AI
 - **Shared utilities** — `agent/utils.py` with `parse_sheet_datetime()` and IST
 - **CI/CD pipeline** — GitHub Actions auto-deploy on push to main (WIF, no SA key)
-- **Release pipeline** — tag-triggered GitHub Release with auto-changelog
-
 ### Changed
 - EOD recipients now re-read from Sheet at send time (add without redeploy)
 - SLA monitor uses summary-based alerts instead of per-ticket Chat spam

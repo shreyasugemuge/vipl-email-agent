@@ -5,7 +5,7 @@
 ### AI-Powered Email Monitoring & Triage System
 
 [![Deploy](https://img.shields.io/badge/Cloud%20Run-Deployed-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://console.cloud.google.com/run)
-[![Version](https://img.shields.io/badge/Version-1.1.0-2ea44f?style=for-the-badge)](https://github.com/shreyas613/vipl-email-agent/releases/tag/v1.1.0)
+[![Version](https://img.shields.io/badge/Version-1.1.3-2ea44f?style=for-the-badge)](https://github.com/shreyas613/vipl-email-agent/releases/tag/v1.1.3)
 [![AI](https://img.shields.io/badge/Powered%20by-Claude%20AI-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://anthropic.com)
 [![License](https://img.shields.io/badge/License-Private-red?style=for-the-badge)](LICENSE)
 
@@ -118,7 +118,7 @@ vipl-email-agent/
 │   ├── chat_notifier.py       # Google Chat webhook (Cards v2)
 │   ├── sla_monitor.py         # SLA breach detection with 3x daily summary
 │   ├── eod_reporter.py        # End-of-day email + Chat summary
-│   ├── state.py               # In-memory SLA cooldowns
+│   ├── state.py               # In-memory SLA cooldowns, failure tracking, EOD dedup
 │   └── utils.py               # Shared utilities (datetime parsing, IST)
 │
 ├── prompts/
@@ -296,7 +296,7 @@ ANTHROPIC_API_KEY=sk-... pytest -m integration -v
 pytest -m "not integration" --cov=agent --cov-report=term-missing
 ```
 
-Unit tests use mocks for all external services (Gmail, Sheets, Chat, Claude). The CI pipeline runs unit tests on every push and PR before deploying.
+123 unit tests use mocks for all external services (Gmail, Sheets, Chat, Claude). The CI pipeline runs unit tests on every version tag push and PR before deploying.
 
 ---
 
@@ -377,7 +377,8 @@ The `/health` endpoint returns:
 
 | Version | Date | Highlights |
 |:---:|:---:|------------|
-| **1.1.0** | Mar 2026 | Reliability + intelligence: dead letter retry, multi-language triage, PDF attachment analysis, config audit log, configurable sender email, 112 tests |
+| **1.1.3** | Mar 2026 | Production hardening: circuit breaker, email-loss prevention (label after log), Sheet write retries, Claude output validation, config locking, 123 tests |
+| **1.1.0** | Mar 2026 | Reliability + intelligence: dead letter retry, multi-language triage, PDF attachment analysis, config audit log, configurable sender email |
 | **1.0.0** | Feb 2026 | Production release: dynamic config, feature flags, quiet hours, SLA summaries, retry/resilience, dead letter, structured logging, cost tracking, CI/CD hardening |
 | 0.7.0 | Feb 2026 | CI/CD with GitHub Actions + Workload Identity Federation |
 | 0.6.0 | Feb 2026 | Dedup simplification, thread cache, first-poll backfill |

@@ -177,12 +177,15 @@ class EODReporter:
         return self.recipients
 
     def send_report(self):
-        """Generate stats, render the email, and send it. Chat always fires."""
+        """Generate stats, render the email, and send it.
+        Chat summary always fires (controlled by 'Chat Notifications Enabled' flag).
+        Email is controlled by the 'EOD Email Enabled' flag."""
         logger.info("Generating EOD report...")
 
         # Check feature flags
         flags = self.config.get("feature_flags", {})
         eod_email_enabled = flags.get("eod_email_enabled", True)
+        chat_enabled = flags.get("chat_enabled", True)
 
         try:
             stats = self.generate_stats()
@@ -190,12 +193,15 @@ class EODReporter:
             logger.error(f"Failed to generate EOD stats: {e}")
             return
 
-        # Post to Google Chat first (always works, no scope issues)
-        try:
-            self.chat.notify_eod_summary(stats)
-            logger.info("EOD summary posted to Chat")
-        except Exception as e:
-            logger.error(f"EOD Chat notification failed: {e}")
+        # Post to Google Chat (respects Chat Notifications Enabled flag)
+        if chat_enabled:
+            try:
+                self.chat.notify_eod_summary(stats)
+                logger.info("EOD summary posted to Chat")
+            except Exception as e:
+                logger.error(f"EOD Chat notification failed: {e}")
+        else:
+            logger.info("EOD Chat summary suppressed — Chat Notifications disabled")
 
         # Send HTML email (requires gmail.send scope)
         if eod_email_enabled:

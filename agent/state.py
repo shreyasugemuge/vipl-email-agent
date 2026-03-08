@@ -24,6 +24,7 @@ class StateManager:
         self._sla_alerts: dict[str, datetime] = {}   # ticket_id -> last alert time
         self._consecutive_failures: int = 0
         self._config_snapshot: dict[str, str] = {}    # previous Agent Config values
+        self._last_eod_time: Optional[datetime] = None  # prevent double EOD
 
     # --- SLA alert tracking ---
 
@@ -52,6 +53,18 @@ class StateManager:
     @property
     def consecutive_failures(self) -> int:
         return self._consecutive_failures
+
+    # --- EOD dedup ---
+
+    def can_send_eod(self) -> bool:
+        """Return True if an EOD report hasn't been sent in the last 10 minutes."""
+        if self._last_eod_time is None:
+            return True
+        return (datetime.now() - self._last_eod_time).total_seconds() > 600
+
+    def record_eod_sent(self):
+        """Record that an EOD report was just sent."""
+        self._last_eod_time = datetime.now()
 
     # --- Config change detection ---
 

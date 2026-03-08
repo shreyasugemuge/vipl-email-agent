@@ -315,9 +315,21 @@ class AIProcessor:
         for block in response.content:
             if block.type == "tool_use" and block.name == "triage_email":
                 data = block.input
+
+                # Validate against allowed enums — Claude should respect tool schema,
+                # but defend against hallucinated values
+                category = data.get("category", "General Inquiry")
+                if category not in VALID_CATEGORIES:
+                    logger.warning(f"Invalid category from Claude: '{category}', defaulting to General Inquiry")
+                    category = "General Inquiry"
+                priority = data.get("priority", "MEDIUM")
+                if priority not in VALID_PRIORITIES:
+                    logger.warning(f"Invalid priority from Claude: '{priority}', defaulting to MEDIUM")
+                    priority = "MEDIUM"
+
                 return TriageResult(
-                    category=data.get("category", "General Inquiry"),
-                    priority=data.get("priority", "MEDIUM"),
+                    category=category,
+                    priority=priority,
                     summary=data.get("summary", ""),
                     draft_reply=data.get("draft_reply", ""),
                     reasoning=data.get("reasoning", ""),

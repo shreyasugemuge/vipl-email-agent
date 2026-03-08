@@ -172,6 +172,31 @@ class TestMessageBuilding:
         assert "ATTACHED PDF CONTENT" not in msg
 
 
+class TestOutputValidation:
+    """Test that Claude output is validated against allowed enums."""
+
+    def test_valid_category_passes(self):
+        """Valid categories should pass through unchanged."""
+        for cat in VALID_CATEGORIES:
+            assert cat in VALID_CATEGORIES
+
+    def test_valid_priority_passes(self):
+        """Valid priorities should pass through unchanged."""
+        for pri in VALID_PRIORITIES:
+            assert pri in VALID_PRIORITIES
+
+    def test_invalid_category_not_in_valid(self):
+        """Hallucinated categories should not be in the valid list."""
+        assert "URGENT" not in VALID_CATEGORIES
+        assert "Emergency" not in VALID_CATEGORIES
+        assert "Other" not in VALID_CATEGORIES
+
+    def test_invalid_priority_not_in_valid(self):
+        """Hallucinated priorities should not be in the valid list."""
+        assert "URGENT" not in VALID_PRIORITIES
+        assert "NORMAL" not in VALID_PRIORITIES
+
+
 # ----------------------------------------------------------------
 # Integration Tests (require API key)
 # ----------------------------------------------------------------

@@ -14,6 +14,8 @@ from typing import Optional
 import pytz
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,8 @@ class SheetLogger:
         self.service = build("sheets", "v4", credentials=credentials)
         self.sheets = self.service.spreadsheets()
 
-        # Cache for ticket counter
+        # Ticket counter — in-memory, safe only with Cloud Run max-instances=1.
+        # If max-instances is increased, switch to Sheet-based atomic counter.
         self._ticket_counts = {"INF": 0, "SAL": 0, "SUP": 0}
         self._load_ticket_counts()
 
@@ -75,15 +78,14 @@ class SheetLogger:
             for row in values:
                 if row and len(row) > 0:
                     ticket = row[0]
-                    if ticket.startswith("INF-"):
-                        num = int(ticket.split("-")[1])
-                        self._ticket_counts["INF"] = max(self._ticket_counts["INF"], num)
-                    elif ticket.startswith("SAL-"):
-                        num = int(ticket.split("-")[1])
-                        self._ticket_counts["SAL"] = max(self._ticket_counts["SAL"], num)
-                    elif ticket.startswith("SUP-"):
-                        num = int(ticket.split("-")[1])
-                        self._ticket_counts["SUP"] = max(self._ticket_counts["SUP"], num)
+                    for prefix in ("INF", "SAL", "SUP"):
+                        if ticket.startswith(f"{prefix}-"):
+                            try:
+                                num = int(ticket.split("-")[1])
+                                self._ticket_counts[prefix] = max(self._ticket_counts[prefix], num)
+                            except (ValueError, IndexError):
+                                logger.warning(f"Skipping malformed ticket: {ticket}")
+                            break
 
             logger.info(f"Ticket counters: INF={self._ticket_counts['INF']}, SAL={self._ticket_counts['SAL']}, SUP={self._ticket_counts['SUP']}")
         except Exception as e:
@@ -155,13 +157,9 @@ class SheetLogger:
         try:
             # Append the row using RAW to keep timestamps as plain text
             body = {"values": [row]}
-            result = self.sheets.values().append(
-                spreadsheetId=self.spreadsheet_id,
-                range=f"'{self.email_log_tab}'!A:V",
-                valueInputOption="RAW",
-                insertDataOption="INSERT_ROWS",
-                body=body,
-            ).execute()
+            result = self._append_with_retry(
+                f"'{self.email_log_tab}'!A:V", body
+            )
 
             # Determine the row number that was just written
             updated_range = result.get("updates", {}).get("updatedRange", "")
@@ -171,12 +169,9 @@ class SheetLogger:
                 # SLA Status + Resolution Time are set as initial static values.
                 # The SLA monitor (server-side) handles breach detection every 15 min.
                 # Formulas can't compare NOW() to text timestamps, so we use static defaults.
-                self.sheets.values().update(
-                    spreadsheetId=self.spreadsheet_id,
-                    range=f"'{self.email_log_tab}'!M{row_num}",
-                    valueInputOption="RAW",
-                    body={"values": [["OK"]]},
-                ).execute()
+                self._update_with_retry(
+                    f"'{self.email_log_tab}'!M{row_num}", {"values": [["OK"]]}
+                )
 
             # Add to in-memory cache so next dedup check is instant
             self._add_to_thread_cache(email.thread_id)
@@ -196,6 +191,41 @@ class SheetLogger:
         if match:
             return int(match.group(1))
         return None
+
+    # ----------------------------------------------------------------
+    # Retry Helpers — transient Sheets API 5xx errors
+    # ----------------------------------------------------------------
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=8),
+        retry=retry_if_exception_type(HttpError),
+        before_sleep=lambda rs: logger.warning(f"Sheets API retry #{rs.attempt_number}"),
+    )
+    def _append_with_retry(self, range_: str, body: dict) -> dict:
+        """Append to Sheet with retry on transient errors."""
+        return self.sheets.values().append(
+            spreadsheetId=self.spreadsheet_id,
+            range=range_,
+            valueInputOption="RAW",
+            insertDataOption="INSERT_ROWS",
+            body=body,
+        ).execute()
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=8),
+        retry=retry_if_exception_type(HttpError),
+        before_sleep=lambda rs: logger.warning(f"Sheets API retry #{rs.attempt_number}"),
+    )
+    def _update_with_retry(self, range_: str, body: dict) -> dict:
+        """Update Sheet with retry on transient errors."""
+        return self.sheets.values().update(
+            spreadsheetId=self.spreadsheet_id,
+            range=range_,
+            valueInputOption="RAW",
+            body=body,
+        ).execute()
 
     # ----------------------------------------------------------------
     # Reading Data
@@ -345,7 +375,8 @@ class SheetLogger:
                 range=f"'{self.email_log_tab}'!T:T",
             ).execute()
             values = result.get("values", [])
-            self._thread_id_cache = {row[0] for row in values if row}
+            # Skip header row to avoid caching "Gmail Thread ID" string
+            self._thread_id_cache = {row[0] for row in values[1:] if row}
             self._thread_id_cache_time = time.time()
             logger.debug(f"Thread ID cache refreshed: {len(self._thread_id_cache)} entries")
         except Exception as e:

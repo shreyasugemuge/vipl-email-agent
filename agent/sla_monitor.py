@@ -109,6 +109,10 @@ class SLAMonitor:
                 sla_deadline = parse_sheet_datetime(sla_deadline_str)
                 if sla_deadline is None:
                     logger.warning(f"Cannot parse SLA deadline for {ticket_id}: '{sla_deadline_str}'")
+                    try:
+                        self.sheet.update_sla_status(ticket_id, "ERROR — Invalid deadline")
+                    except Exception:
+                        pass
                     continue
 
                 if self.business_hours_only:

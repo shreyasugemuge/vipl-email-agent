@@ -63,6 +63,9 @@ logger = logging.getLogger("vipl-agent")
 
 IST = pytz.timezone("Asia/Kolkata")
 
+# Lock for thread-safe config hot-reload
+_config_lock = threading.Lock()
+
 
 # ----------------------------------------------------------------
 # In-Memory Log Buffer — errors & highlights only
@@ -187,32 +190,59 @@ def load_sheet_config_overrides(sheet_logger, config: dict) -> dict:
                 val = int(overrides["Poll Interval (seconds)"])
                 if 60 <= val <= 3600:
                     config["gmail"]["poll_interval_seconds"] = val
+                else:
+                    logger.warning(f"Poll Interval out of range (60-3600): {val}")
             except ValueError:
-                pass
+                logger.warning(f"Invalid Poll Interval: '{overrides['Poll Interval (seconds)']}'")
 
         if overrides.get("SLA Alert Cooldown (hours)"):
             try:
                 val = int(overrides["SLA Alert Cooldown (hours)"])
                 if 1 <= val <= 48:
                     config["sla"]["breach_alert_cooldown_hours"] = val
+                else:
+                    logger.warning(f"SLA Cooldown out of range (1-48): {val}")
             except ValueError:
-                pass
+                logger.warning(f"Invalid SLA Cooldown: '{overrides['SLA Alert Cooldown (hours)']}'")
 
         if overrides.get("EOD Report Hour (IST)"):
             try:
                 val = int(overrides["EOD Report Hour (IST)"])
                 if 0 <= val <= 23:
                     config["eod"]["send_hour"] = val
+                else:
+                    logger.warning(f"EOD Hour out of range (0-23): {val}")
             except ValueError:
-                pass
+                logger.warning(f"Invalid EOD Hour: '{overrides['EOD Report Hour (IST)']}'")
 
         if overrides.get("EOD Report Minute"):
             try:
                 val = int(overrides["EOD Report Minute"])
                 if 0 <= val <= 59:
                     config["eod"]["send_minute"] = val
+                else:
+                    logger.warning(f"EOD Minute out of range (0-59): {val}")
             except ValueError:
-                pass
+                logger.warning(f"Invalid EOD Minute: '{overrides['EOD Report Minute']}'")
+
+        if overrides.get("Quiet Hours Start (IST)"):
+            try:
+                val = int(overrides["Quiet Hours Start (IST)"])
+                if 0 <= val <= 23:
+                    config.setdefault("quiet_hours", {})["start_hour"] = val
+                else:
+                    logger.warning(f"Quiet Hours Start out of range (0-23): {val}")
+            except ValueError:
+                logger.warning(f"Invalid Quiet Hours Start: '{overrides['Quiet Hours Start (IST)']}'")
+        if overrides.get("Quiet Hours End (IST)"):
+            try:
+                val = int(overrides["Quiet Hours End (IST)"])
+                if 0 <= val <= 23:
+                    config.setdefault("quiet_hours", {})["end_hour"] = val
+                else:
+                    logger.warning(f"Quiet Hours End out of range (0-23): {val}")
+            except ValueError:
+                logger.warning(f"Invalid Quiet Hours End: '{overrides['Quiet Hours End (IST)']}'")
 
         if overrides.get("Admin Email"):
             config["admin"]["email"] = overrides["Admin Email"]
@@ -239,20 +269,6 @@ def load_sheet_config_overrides(sheet_logger, config: dict) -> dict:
         # --- Quiet hours ---
         if overrides.get("Quiet Hours Enabled"):
             config.setdefault("quiet_hours", {})["enabled"] = _bool(overrides["Quiet Hours Enabled"])
-        if overrides.get("Quiet Hours Start (IST)"):
-            try:
-                val = int(overrides["Quiet Hours Start (IST)"])
-                if 0 <= val <= 23:
-                    config.setdefault("quiet_hours", {})["start_hour"] = val
-            except ValueError:
-                pass
-        if overrides.get("Quiet Hours End (IST)"):
-            try:
-                val = int(overrides["Quiet Hours End (IST)"])
-                if 0 <= val <= 23:
-                    config.setdefault("quiet_hours", {})["end_hour"] = val
-            except ValueError:
-                pass
 
         logger.debug("Applied config overrides from Agent Config sheet")
         return config
@@ -357,8 +373,9 @@ def process_emails(components: dict):
     """Poll Gmail → Claude triage → Sheet log → one Chat summary.
     Reloads config from Sheet each cycle for hot-reload of settings."""
     # Hot-reload config from Sheet every poll cycle (no redeploy needed)
-    config = load_sheet_config_overrides(components["sheet"], components["config"])
-    components["config"] = config
+    with _config_lock:
+        config = load_sheet_config_overrides(components["sheet"], components["config"])
+        components["config"] = config
 
     # Config change audit — detect and log changes to Change Log tab
     try:
@@ -388,6 +405,13 @@ def process_emails(components: dict):
     sla_defaults = config.get("sla", {}).get("defaults", {})
     last_polled = datetime.now(IST).strftime("%d %b %Y, %I:%M:%S %p")
     processed_items = []  # Collect all for batch Chat summary
+
+    # Circuit breaker — skip polling if too many consecutive failures
+    state = components.get("state")
+    max_failures = config.get("admin", {}).get("max_consecutive_failures", 3)
+    if state and state.consecutive_failures >= max_failures:
+        logger.critical(f"Circuit breaker OPEN — {state.consecutive_failures} consecutive failures, skipping poll cycle")
+        return
 
     try:
         sla_config = sheet.get_sla_config() or {}
@@ -421,6 +445,11 @@ def process_emails(components: dict):
                     sla_hours = sla_config.get(category, {}).get("hours") or sla_defaults.get(category, 24)
 
                     ticket_number = sheet.log_email(email, triage, sla_hours)
+
+                    # Label AFTER successful Sheet log — prevents email loss
+                    # if Sheet write had failed, email stays unlabeled for retry
+                    gmail.mark_processed(email)
+
                     sla_deadline = email.timestamp + timedelta(hours=sla_hours)
                     sla_deadline_str = sla_deadline.strftime("%d %b %Y, %I:%M %p IST")
 
@@ -468,9 +497,17 @@ def process_emails(components: dict):
         except Exception as e:
             logger.warning(f"Could not write agent status to sheet: {e}")
 
+        # Circuit breaker — reset on successful cycle
+        if state:
+            state.reset_failures()
+
     except Exception as e:
         log_buffer.add("ERROR", f"Poll cycle failed: {str(e)[:80]}")
         logger.error(f"Email processing cycle failed: {e}")
+        # Circuit breaker — record failure
+        if state:
+            state.record_failure()
+            logger.warning(f"Consecutive failures: {state.consecutive_failures}/{max_failures}")
         # Still update status even on failure
         try:
             sheet.write_agent_status(last_polled, 0, log_buffer.latest(5))
@@ -565,7 +602,11 @@ class HealthHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health" or self.path == "/":
-            status = self._build_status()
+            try:
+                status = self._build_status()
+            except Exception as e:
+                logger.error(f"Health status build failed: {e}")
+                status = {"status": "degraded", "error": str(e)}
             body = json.dumps(status, default=str).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -733,11 +774,15 @@ def run_agent(components: dict):
     # Cloud Run may restart overnight (cold starts); we don't want EOD spam at 2 AM
     now_ist = datetime.now(IST)
     if 8 <= now_ist.hour <= 21:
-        try:
-            logger.info("Sending startup EOD report...")
-            components["eod"].send_report()
-        except Exception as e:
-            logger.warning(f"Startup EOD report failed: {e}")
+        if components["state"].can_send_eod():
+            try:
+                logger.info("Sending startup EOD report...")
+                components["eod"].send_report()
+                components["state"].record_eod_sent()
+            except Exception as e:
+                logger.warning(f"Startup EOD report failed: {e}")
+        else:
+            logger.info("Skipping startup EOD — already sent recently")
     else:
         logger.info(f"Skipping startup EOD — outside business hours ({now_ist.hour}:00 IST)")
 
@@ -747,14 +792,13 @@ def run_agent(components: dict):
     port = int(os.environ.get("PORT", 8080))
     server = start_health_server(port)
 
-    # Keep main thread alive
+    # Keep main thread alive — short sleep for fast SIGTERM response
+    import time
     try:
-        signal.pause()
-    except AttributeError:
-        # Windows fallback
-        import time
         while True:
-            time.sleep(3600)
+            time.sleep(10)
+    except (KeyboardInterrupt, SystemExit):
+        pass
 
 
 # ----------------------------------------------------------------

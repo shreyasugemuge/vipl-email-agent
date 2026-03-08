@@ -6,6 +6,7 @@ to impersonate the shared inbox users and read their mail.
 """
 
 import base64
+import html as html_module
 import logging
 import re
 from dataclasses import dataclass, field
@@ -50,6 +51,7 @@ class GmailPoller:
         self.sa_key_path = service_account_key_path
         self.processed_label = processed_label
         self._services = {}  # Cache per-inbox Gmail service instances
+        self._label_ids = {}  # Cache per-inbox label IDs
         self._first_poll_done = False  # Track if first poll has completed
         # Record start time — subsequent polls only look at emails after this
         self._start_epoch = int(datetime.now().timestamp())
@@ -183,10 +185,11 @@ class GmailPoller:
 
     @staticmethod
     def _strip_html(html: str) -> str:
-        """Naive HTML tag stripping for fallback body extraction."""
+        """Strip HTML tags, scripts, styles, and decode entities."""
         text = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
         text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
         text = re.sub(r"<[^>]+>", " ", text)
+        text = html_module.unescape(text)  # Decode &nbsp; &amp; etc.
         text = re.sub(r"\s+", " ", text).strip()
         return text
 
@@ -248,6 +251,8 @@ class GmailPoller:
         try:
             service = self._get_service(inbox_email)
             label_id = self._ensure_label(service, inbox_email)
+            if label_id:
+                self._label_ids[inbox_email] = label_id
 
             if not self._first_poll_done:
                 query = "in:inbox"
@@ -282,9 +287,6 @@ class GmailPoller:
                 email_msg = self._parse_message(service, msg_data, inbox_email)
                 if email_msg:
                     emails.append(email_msg)
-                    # Apply Gmail label so it's excluded from future queries
-                    if label_id:
-                        self._mark_as_processed(service, msg_ref["id"], label_id)
 
         except Exception as e:
             logger.error(f"Gmail poll failed for {inbox_email}: {e}")
@@ -309,3 +311,14 @@ class GmailPoller:
             logger.info("First poll complete — switching to incremental mode")
 
         return all_emails
+
+    def mark_processed(self, email_msg):
+        """Apply the 'Agent/Processed' label to an email AFTER successful Sheet log.
+        Called by main.py to prevent email loss — label is only applied once
+        the email is safely persisted to Google Sheets."""
+        label_id = self._label_ids.get(email_msg.inbox)
+        if not label_id:
+            logger.warning(f"No label ID cached for {email_msg.inbox}, cannot mark processed")
+            return
+        service = self._get_service(email_msg.inbox)
+        self._mark_as_processed(service, email_msg.message_id, label_id)

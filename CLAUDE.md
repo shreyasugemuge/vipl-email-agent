@@ -14,10 +14,10 @@ Gmail Inboxes → GmailPoller (poll every 5 min)
     → SheetLogger (Google Sheets as database)
     → ChatNotifier (Google Chat webhook)
     → SLAMonitor (every 15 min, 3x daily summary)
-    → EODReporter (daily 7 PM IST + on every startup)
+    → EODReporter (daily 7 PM IST + startup during business hours)
 ```
 
-Runs on Cloud Run with `--no-allow-unauthenticated`, `256Mi` memory, `min-instances=1`.
+Runs on Cloud Run with `--no-allow-unauthenticated`, `256Mi` memory, `min-instances=1`, `max-instances=1`.
 
 ## File Structure
 
@@ -26,16 +26,16 @@ main.py                      # Entry point — scheduler, health server, JSON lo
 config.yaml                  # Non-sensitive defaults (secrets from env vars)
 Dockerfile                   # Python 3.11-slim, non-root user
 requirements.txt
-requirements-dev.txt             # Dev/test dependencies (pytest, pytest-cov)
+requirements-dev.txt         # Dev/test dependencies (pytest, pytest-cov)
 
 agent/
   gmail_poller.py            # Polls Gmail via domain-wide delegation
   ai_processor.py            # Two-tier Claude AI with retry (tenacity), spam filter
-  sheet_logger.py            # Google Sheets CRUD + config tab + dead letter
+  sheet_logger.py            # Google Sheets CRUD + config tab + dead letter (with retry)
   chat_notifier.py           # Google Chat Cards v2 webhook (poll, SLA summary, EOD)
   sla_monitor.py             # SLA breach detection — 3x daily summary (not per-ticket)
   eod_reporter.py            # Daily summary email + Chat card
-  state.py                   # In-memory SLA alert cooldowns (no file I/O)
+  state.py                   # In-memory SLA cooldowns, failure tracking, EOD dedup
   utils.py                   # Shared utilities (parse_sheet_datetime, IST)
 
 prompts/
@@ -46,7 +46,7 @@ templates/
 
 tests/
   conftest.py                # Shared fixtures (MockEmail, mock services, default config)
-  test_*.py                  # Unit tests for each module (112 tests, all mocked)
+  test_*.py                  # 123 unit tests, all mocked (8 integration tests separate)
   sample_emails.json         # Fixture data for integration tests
 
 scripts/
@@ -66,6 +66,18 @@ scripts/
 - Body truncation: max 1500 chars sent to Claude
 - Retry: 3x with exponential backoff on transient errors (tenacity)
 - Input sanitization: control chars stripped before AI processing
+- Output validation: category/priority validated against allowed enums
+
+### Email Safety
+- Gmail "Agent/Processed" label applied AFTER successful Sheet log (not during poll)
+- If Sheet write fails, email stays unlabeled and will be retried on next poll
+- Sheet writes retry 3x with exponential backoff on transient API errors
+
+### Circuit Breaker
+- Tracks consecutive poll cycle failures via `StateManager`
+- After `max_consecutive_failures` (default: 3), skips poll cycles to avoid hammering broken APIs
+- Resets on first successful cycle
+- Health endpoint reports failure count
 
 ### Dedup Strategy (Two Layers Only)
 1. **Gmail query filter**: `-label:Agent/Processed` + `after:{startup_epoch}`
@@ -74,15 +86,16 @@ scripts/
 No `state.json` — Cloud Run's ephemeral filesystem makes file persistence useless.
 
 ### Dynamic Config (Hot-Reload)
-Config reloads from Agent Config sheet tab every poll cycle:
+Config reloads from Agent Config sheet tab every poll cycle (thread-safe with lock):
 - EOD recipients, poll interval, feature flags, quiet hours
 - No redeploy needed for config changes
+- Invalid values logged as warnings, previous config kept
 - Override priority: env vars > Sheet > config.yaml
 
 ### Feature Flags (in Agent Config sheet)
 - **AI Triage Enabled**: TRUE/FALSE — disable to skip Claude calls
-- **Chat Notifications Enabled**: TRUE/FALSE — suppress all Chat alerts
-- **EOD Email Enabled**: TRUE/FALSE — skip email, keep Chat summary
+- **Chat Notifications Enabled**: TRUE/FALSE — suppress all Chat alerts (including EOD Chat)
+- **EOD Email Enabled**: TRUE/FALSE — skip EOD email only
 
 ### Quiet Hours
 - Default: 8 PM – 8 AM IST (configurable in Sheet)
@@ -93,11 +106,13 @@ Config reloads from Agent Config sheet tab every poll cycle:
 - **No per-ticket alert spam** — 3x daily summary at 9 AM, 1 PM, 5 PM IST
 - Summary card shows breach count, worst-overdue-first, assignee info
 - check() still runs every 15 min to keep Sheet SLA status current
+- Unparseable deadlines marked as "ERROR" in Sheet for manual investigation
 - Configurable via `sla.summary_hours` in config.yaml
 
 ### EOD Report
-- Fires daily at 7 PM IST (configurable) + on startup (business hours only, 8 AM–9 PM IST)
-- Chat first (always), then email (independently)
+- Fires daily at 7 PM IST (configurable) + on startup (business hours 8 AM–9 PM IST only)
+- Startup EOD deduplicated — won't send if already sent within 10 min
+- Chat respects `Chat Notifications Enabled` flag, email respects `EOD Email Enabled` flag
 - Recipients re-read from Agent Config sheet at send time
 - Logs daily AI cost to Cost Tracker tab after each report
 
@@ -118,6 +133,11 @@ PDF attachments extracted via pymupdf (first 3 pages, max 1000 chars, skip > 5 M
 - **Team** tab: Team member list for assignment suggestions
 - **Cost Tracker** tab: Daily AI usage stats
 - **Failed Triage** tab: Dead letter for failed processing
+- **Change Log** tab: Audit trail of config changes
+
+### Single-Instance Constraint
+Ticket numbering uses an in-memory counter. This is safe with `max-instances=1` on Cloud Run.
+If scaling to multiple instances, switch to a Sheet-based atomic counter.
 
 ## Configuration
 
@@ -127,6 +147,7 @@ GOOGLE_SHEET_ID              # Spreadsheet ID
 MONITORED_INBOXES            # Comma-separated inboxes
 ADMIN_EMAIL                  # shreyas@vidarbhainfotech.com
 EOD_RECIPIENTS               # Comma-separated email recipients
+EOD_SENDER_EMAIL             # (optional) Sender for EOD emails
 ```
 
 ### Secrets (Google Secret Manager)
@@ -138,10 +159,12 @@ GOOGLE_CHAT_WEBHOOK_URL      # Chat space webhook
 
 ## Deployment
 
-### CI/CD (Primary)
-Tag `v*.*.*` → GitHub Actions runs tests → builds → deploys to Cloud Run via WIF.
-Same tag also triggers GitHub Release with auto-changelog.
-Pull requests run tests only (no deploy).
+### CI/CD
+Single workflow (`deploy.yml`) triggered by version tags only:
+```
+Tag v*.*.* → test → build → deploy to Cloud Run → GitHub Release
+```
+Push to `main` does NOT deploy. Pull requests run tests only.
 
 ### GCP Project
 - Project: `utilities-vipl`
@@ -167,7 +190,7 @@ Scopes: `gmail.readonly`, `gmail.labels`, `gmail.modify`, `gmail.send`, `spreads
 # Install dev dependencies
 pip install -r requirements-dev.txt
 
-# Run unit tests (no API keys needed)
+# Run unit tests (no API keys needed) — 123 tests
 pytest -m "not integration" -v
 
 # Run integration tests (requires ANTHROPIC_API_KEY)

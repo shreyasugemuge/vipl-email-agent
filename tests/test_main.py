@@ -1,5 +1,6 @@
-"""Tests for main.py — config loading, quiet hours logic, dead letter retry."""
+"""Tests for main.py — config loading, quiet hours, circuit breaker, dead letter retry."""
 
+import json
 import os
 from datetime import datetime
 from unittest.mock import patch, MagicMock
@@ -8,7 +9,8 @@ import pytest
 import pytz
 
 # Import functions under test
-from main import load_config, is_quiet_hours, retry_failed_triages
+from main import load_config, is_quiet_hours, retry_failed_triages, process_emails, HealthHandler
+from agent.state import StateManager
 
 
 class TestLoadConfig:
@@ -193,3 +195,125 @@ class TestRetryFailedTriages:
         retry_failed_triages(components)
 
         mock_sheet.update_failed_triage_retry.assert_called_with(3, 3, "Exhausted")
+
+
+class TestCircuitBreaker:
+    """Test that the circuit breaker prevents polling when too many failures occur."""
+
+    def test_state_manager_failure_tracking(self):
+        state = StateManager()
+        assert state.consecutive_failures == 0
+        state.record_failure()
+        assert state.consecutive_failures == 1
+        state.record_failure()
+        state.record_failure()
+        assert state.consecutive_failures == 3
+        state.reset_failures()
+        assert state.consecutive_failures == 0
+
+    @patch("main.load_sheet_config_overrides")
+    def test_circuit_breaker_skips_poll(self, mock_overrides):
+        """When failures >= max, process_emails should return early."""
+        state = StateManager()
+        for _ in range(3):
+            state.record_failure()
+
+        config = {
+            "admin": {"max_consecutive_failures": 3},
+            "feature_flags": {},
+            "gmail": {"inboxes": ["info@test.com"]},
+            "sla": {"defaults": {}},
+            "quiet_hours": {"enabled": False},
+        }
+        mock_overrides.return_value = config
+
+        components = {
+            "sheet": MagicMock(),
+            "gmail": MagicMock(),
+            "ai": MagicMock(),
+            "chat": MagicMock(),
+            "state": state,
+            "config": config,
+        }
+        process_emails(components)
+        # Gmail should NOT be polled when circuit breaker is open
+        components["gmail"].poll_all.assert_not_called()
+
+
+class TestEODDedup:
+    """Test that EOD send deduplication works."""
+
+    def test_can_send_eod_initially(self):
+        state = StateManager()
+        assert state.can_send_eod() is True
+
+    def test_cannot_send_eod_after_recent_send(self):
+        state = StateManager()
+        state.record_eod_sent()
+        assert state.can_send_eod() is False
+
+    def test_can_send_eod_after_timeout(self):
+        state = StateManager()
+        state._last_eod_time = datetime(2020, 1, 1)  # Way in the past
+        assert state.can_send_eod() is True
+
+
+class TestMarkProcessed:
+    """Test that Gmail label is applied after Sheet log, not during poll."""
+
+    @patch("agent.gmail_poller.service_account.Credentials.from_service_account_file")
+    @patch("agent.gmail_poller.build")
+    def test_poll_does_not_label(self, mock_build, mock_creds):
+        """poll() should return emails WITHOUT labeling them."""
+        from agent.gmail_poller import GmailPoller
+
+        poller = GmailPoller(service_account_key_path="/tmp/fake-sa.json")
+        mock_service = MagicMock()
+        poller._services["test@test.com"] = mock_service
+
+        # Mock label exists
+        mock_service.users().labels().list().execute.return_value = {
+            "labels": [{"name": "Agent/Processed", "id": "Label_123"}]
+        }
+        # Mock message list
+        mock_service.users().messages().list().execute.return_value = {
+            "messages": [{"id": "msg1"}]
+        }
+        # Mock full message
+        mock_service.users().messages().get().execute.return_value = {
+            "id": "msg1",
+            "threadId": "thread1",
+            "internalDate": "1709000000000",
+            "payload": {
+                "headers": [
+                    {"name": "From", "value": "test@example.com"},
+                    {"name": "Subject", "value": "Test"},
+                ],
+                "mimeType": "text/plain",
+                "body": {"data": "dGVzdA=="},
+            },
+        }
+
+        emails = poller.poll("test@test.com")
+        assert len(emails) == 1
+        # Should NOT have called modify (label application)
+        mock_service.users().messages().modify.assert_not_called()
+
+    @patch("agent.gmail_poller.service_account.Credentials.from_service_account_file")
+    @patch("agent.gmail_poller.build")
+    def test_mark_processed_applies_label(self, mock_build, mock_creds):
+        """mark_processed() should apply the label."""
+        from agent.gmail_poller import GmailPoller, EmailMessage
+
+        poller = GmailPoller(service_account_key_path="/tmp/fake-sa.json")
+        mock_service = MagicMock()
+        poller._services["test@test.com"] = mock_service
+        poller._label_ids["test@test.com"] = "Label_123"
+
+        email = EmailMessage(
+            thread_id="t1", message_id="msg1", inbox="test@test.com",
+            sender_name="Test", sender_email="test@test.com",
+            subject="Test", body="Test", timestamp=datetime.now(),
+        )
+        poller.mark_processed(email)
+        mock_service.users().messages().modify.assert_called_once()
