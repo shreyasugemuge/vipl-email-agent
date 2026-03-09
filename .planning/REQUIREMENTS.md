@@ -42,24 +42,24 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Auth
 
-- [ ] **AUTH-01**: Dashboard requires login (simple password auth for v1)
-- [ ] **AUTH-02**: Admin role (manager) can assign, reassign, configure
-- [ ] **AUTH-03**: User role (team member) sees their assignments and can acknowledge
+- [x] **AUTH-01**: Dashboard requires login (simple password auth for v1)
+- [x] **AUTH-02**: Admin role (manager) can assign, reassign, configure
+- [x] **AUTH-03**: User role (team member) sees their assignments and can acknowledge
 
 ### Infrastructure
 
-- [ ] **INFR-01**: PostgreSQL is the source of truth for all email and assignment data
+- [x] **INFR-01**: PostgreSQL is the source of truth for all email and assignment data
 - [ ] **INFR-02**: System deployed via Docker Compose on existing VM
 - [ ] **INFR-03**: CI/CD via GitHub Actions triggered by version tags
 - [ ] **INFR-04**: Google Sheets receives read-only sync (simplified: date, from, subject, assignee, status)
 - [ ] **INFR-05**: Daily EOD report sent via email + Chat card with stats from database
-- [ ] **INFR-06**: Health endpoint reports system status (uptime, failure count, last poll)
+- [x] **INFR-06**: Health endpoint reports system status (uptime, failure count, last poll)
 - [ ] **INFR-07**: Admin can configure monitored inboxes without code changes
 - [ ] **INFR-08**: Admin can configure polling frequency, quiet hours, and business hours
 - [ ] **INFR-09**: Admin can configure SLA deadlines per category/priority
 - [ ] **INFR-10**: Admin can configure assignment rules (category-to-person mapping)
 - [ ] **INFR-11**: Admin can toggle feature flags (AI triage, Chat notifications, EOD email) without redeploy
-- [ ] **INFR-12**: Admin can manage team members (add/remove, set roles)
+- [x] **INFR-12**: Admin can manage team members (add/remove, set roles)
 
 ### Migration + Cutover
 
@@ -150,21 +150,21 @@ Deferred to future release. Tracked but not in current roadmap.
 | DASH-04 | Phase 3 | Pending |
 | DASH-05 | Phase 3 | Pending |
 | DASH-06 | Phase 3 | Pending |
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
-| INFR-01 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete (01-01) |
+| AUTH-02 | Phase 1 | Complete (01-01) |
+| AUTH-03 | Phase 1 | Complete (01-01) |
+| INFR-01 | Phase 1 | Complete (01-01) |
 | INFR-02 | Phase 1 | Pending |
 | INFR-03 | Phase 1 | Pending |
 | INFR-04 | Phase 5 | Pending |
 | INFR-05 | Phase 5 | Pending |
-| INFR-06 | Phase 1 | Pending |
+| INFR-06 | Phase 1 | Complete (01-01) |
 | INFR-07 | Phase 5 | Pending |
 | INFR-08 | Phase 2 | Pending |
 | INFR-09 | Phase 4 | Pending |
 | INFR-10 | Phase 4 | Pending |
 | INFR-11 | Phase 2 | Pending |
-| INFR-12 | Phase 1 | Pending |
+| INFR-12 | Phase 1 | Complete (01-01) |
 | CUTV-01 | Phase 6 | Pending |
 | CUTV-02 | Phase 6 | Pending |
 | CUTV-03 | Phase 6 | Pending |
@@ -177,4 +177,4 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after roadmap creation*
+*Last updated: 2026-03-09 after plan 01-01 execution*

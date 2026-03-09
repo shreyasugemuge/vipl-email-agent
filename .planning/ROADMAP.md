@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Django project skeleton, PostgreSQL models, custom User with roles, auth views, health endpoint, test infrastructure
+- [x] 01-01-PLAN.md -- Django project skeleton, PostgreSQL models, custom User with roles, auth views, health endpoint, test infrastructure
 - [ ] 01-02-PLAN.md -- Dockerfile, Docker Compose, Nginx reverse proxy, CI/CD pipeline (GitHub Actions SSH deploy)
 
 ### Phase 2: Email Pipeline
@@ -122,7 +122,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/2 | Planning complete | - |
+| 1. Foundation | 1/2 | In progress | - |
 | 2. Email Pipeline | 0/3 | Not started | - |
 | 3. Dashboard | 0/3 | Not started | - |
 | 4. Assignment Engine + SLA | 0/2 | Not started | - |
