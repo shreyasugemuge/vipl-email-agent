@@ -4,24 +4,36 @@
 
 ### AI-Powered Email Monitoring & Triage System
 
-[![Deploy](https://img.shields.io/badge/Cloud%20Run-Deployed-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://console.cloud.google.com/run)
-[![Version](https://img.shields.io/badge/Version-1.1.3-2ea44f?style=for-the-badge)](https://github.com/shreyas613/vipl-email-agent/releases/tag/v1.1.3)
 [![AI](https://img.shields.io/badge/Powered%20by-Claude%20AI-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://anthropic.com)
 [![License](https://img.shields.io/badge/License-Private-red?style=for-the-badge)](LICENSE)
 
 **Autonomous email classification, SLA tracking, and team alerting**
 **for [Vidarbha Infotech Pvt. Ltd.](https://vidarbhainfotech.com)**
 
-Built with Claude AI &middot; Google Workspace &middot; Cloud Run &middot; GitHub Actions
+</div>
 
 ---
 
-<img src="https://img.shields.io/badge/Emails%20Triaged-30--80%2Fday-blue?style=flat-square" alt="emails">
-<img src="https://img.shields.io/badge/AI%20Cost-%3C%20%2415%2Fmo-green?style=flat-square" alt="cost">
-<img src="https://img.shields.io/badge/Latency-%3C%203s%2Femail-purple?style=flat-square" alt="latency">
-<img src="https://img.shields.io/badge/Uptime-99.9%25%2B-brightgreen?style=flat-square" alt="uptime">
+## Version Status
 
-</div>
+| Version | Branch | Status | Platform |
+|---------|--------|--------|----------|
+| **v1.x** | `main` | Production (v1.1.3) — will be shut down after v2 migration | Google Cloud Run |
+| **v2.0** | `v2` | **In Development** — full-stack rebuild | Self-hosted VM (Docker Compose) |
+
+### v2 — What's Changing
+
+Full-stack rebuild: Django backend with HTMX server-rendered frontend + PostgreSQL, deployed on the existing VIPL VM. Google Sheets becomes a read-only sync mirror, not the source of truth. Cloud Run will be shut down once v2 is live.
+
+| Layer | v1 | v2 |
+|-------|----|----|
+| **Backend** | Python scripts + Google Sheets as DB | Django 5.2 LTS + PostgreSQL |
+| **Frontend** | Google Sheets + Chat cards | Django templates + HTMX + Tailwind CSS |
+| **Deployment** | Cloud Run (serverless) | Docker Compose on self-hosted VM |
+| **Auth** | Service account only | Django built-in auth (domain-restricted) |
+| **URL** | Cloud Run endpoint | `triage.vidarbhainfotech.com` |
+
+**v2 Phase 1 (Foundation)** is complete: Django project skeleton, custom User model, Email/Attachment models, auth views, health endpoint, Docker/Nginx/CI-CD config, and test infrastructure.
 
 ---
 
@@ -104,49 +116,40 @@ VIPL Email Agent runs 24/7 on Google Cloud Run, polling Gmail every 5 minutes. E
 
 ## Architecture
 
+### v2 File Structure (v2 branch — in development)
+
 ```
-vipl-email-agent/
-├── main.py                    # Entry point: scheduler, health server, orchestration
-├── config.yaml                # Non-sensitive defaults (SLA hours, quiet hours, etc.)
-├── Dockerfile                 # Python 3.11 slim container
-├── requirements.txt           # Dependencies (anthropic, google-*, tenacity, etc.)
-│
-├── agent/
-│   ├── gmail_poller.py        # Gmail API polling with domain-wide delegation
-│   ├── ai_processor.py        # Claude AI triage with retry + cost tracking
-│   ├── sheet_logger.py        # Google Sheets CRUD + dynamic config + dead letter
-│   ├── chat_notifier.py       # Google Chat webhook (Cards v2)
-│   ├── sla_monitor.py         # SLA breach detection with 3x daily summary
-│   ├── eod_reporter.py        # End-of-day email + Chat summary
-│   ├── state.py               # In-memory SLA cooldowns, failure tracking, EOD dedup
-│   └── utils.py               # Shared utilities (datetime parsing, IST)
-│
-├── prompts/
-│   └── triage_prompt.txt      # System prompt with 10-rule injection defense
-│
-├── templates/
-│   └── eod_email.html         # Jinja2 HTML template for EOD report
-│
-├── tests/
-│   ├── conftest.py            # Shared fixtures (MockEmail, mock services)
-│   ├── test_ai_processor.py   # AI triage unit + integration tests
-│   ├── test_chat_notifier.py  # Chat webhook tests
-│   ├── test_eod_reporter.py   # EOD report generation tests
-│   ├── test_gmail_poller.py   # Gmail parsing tests
-│   ├── test_main.py           # Config loading + quiet hours tests
-│   ├── test_sheet_logger.py   # Sheet CRUD + ticket numbering tests
-│   ├── test_sla_monitor.py    # SLA breach detection tests
-│   ├── test_utils.py          # Utility function tests
-│   └── sample_emails.json     # Test fixture data for integration tests
-│
-├── scripts/
-│   └── run_local.sh           # Local dev runner (loads .env, validates SA key)
-│
-├── docs/
-│   └── PRD_v1.1.0.docx       # Product Requirements Document
-│
-└── .github/workflows/
-    └── deploy.yml             # Tag v*.*.* → test → build → deploy → GitHub Release
+manage.py                        # Django management
+conftest.py                      # Root test config
+gunicorn.conf.py                 # Production WSGI server
+Dockerfile                       # Django + Gunicorn container
+docker-compose.yml               # Single-service compose
+
+config/                          # Django project config
+  settings/ (base.py, dev.py, prod.py), urls.py, wsgi.py, asgi.py
+
+apps/
+  accounts/                      # Custom User model (admin/member roles), auth views
+  emails/                        # Email + AttachmentMetadata models
+  core/                          # SoftDeleteModel, TimestampedModel, health endpoint
+
+templates/                       # Django templates (base, login, dashboard)
+nginx/triage.conf                # Reverse proxy for triage.vidarbhainfotech.com
+.github/workflows/deploy.yml     # v2 CI/CD: tag → test → SSH deploy → docker compose up
+```
+
+### v1 File Structure (main branch — production)
+
+```
+main.py                          # Entry point: scheduler, health server
+config.yaml                      # Non-sensitive defaults
+agent/                           # Gmail poller, AI processor, Sheet logger, Chat notifier,
+                                 #   SLA monitor, EOD reporter, state, utils
+prompts/triage_prompt.txt        # System prompt with injection defense
+templates/eod_email.html         # Jinja2 HTML template for EOD report
+tests/                           # 123 unit tests + 8 integration tests
+scripts/run_local.sh             # Local dev runner
+.github/workflows/deploy.yml     # Tag v*.*.* → test → build → deploy to Cloud Run
 ```
 
 ### Technology Stack
@@ -396,7 +399,6 @@ The `/health` endpoint returns:
 |----------|-------------|
 | [`CLAUDE.md`](CLAUDE.md) | Architecture reference for AI-assisted development |
 | [`CHANGELOG.md`](CHANGELOG.md) | Full changelog with all versions |
-| [`docs/PRD_v1.1.0.docx`](docs/PRD_v1.1.0.docx) | Product Requirements Document (detailed) |
 
 ---
 

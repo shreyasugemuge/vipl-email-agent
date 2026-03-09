@@ -42,6 +42,12 @@ state.json
 # Temp / deleted files (local-only, never commit)
 to_delete/
 
+# Claude / MCP / Swarm runtime (local-only)
+.claude/
+.claude-flow/
+.swarm/
+.mcp.json
+
 # OS
 .DS_Store
 Thumbs.db
