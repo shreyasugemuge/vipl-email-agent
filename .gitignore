@@ -3,8 +3,11 @@
 *.json
 !tests/sample_emails.json
 !package.json
+!.planning/**/*.json
+!.planning/*.json
 service-account*.json
 *-sa-key.json
+.taiga-credentials
 
 # Python
 __pycache__/
