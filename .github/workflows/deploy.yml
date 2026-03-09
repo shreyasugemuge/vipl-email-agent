@@ -1,13 +1,11 @@
 # ============================================================
-# VIPL Email Agent — CI/CD Pipeline
+# VIPL Email Agent v2 -- CI/CD Pipeline
 # ============================================================
-# Single workflow for test, deploy, and release.
-#
 # Triggers:
-#   - Version tags (v*.*.*): test → deploy → release
-#   - Pull requests: test only (no deploy)
+#   - Version tags (v*.*.*): test -> deploy via SSH to VM
+#   - Pull requests to v2:   test only (no deploy)
 #
-# Auth: Workload Identity Federation (no SA key stored in GitHub)
+# Replaces v1 Cloud Run deployment with VM SSH deploy.
 # ============================================================
 
 name: Deploy & Release
@@ -17,17 +15,10 @@ on:
     tags:
       - 'v*.*.*'
   pull_request:
-    branches: [main]
-
-env:
-  PROJECT_ID: utilities-vipl
-  REGION: asia-south1
-  SERVICE: vipl-email-agent
-  REPOSITORY: vipl-repo
-  IMAGE: asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent
+    branches: [v2]
 
 jobs:
-  # ---- Job 1: Run unit tests (always) ----
+  # ---- Job 1: Run tests (always) ----
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -42,197 +33,30 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
-      - name: Run unit tests
-        run: pytest -m "not integration" --tb=short -q
+      - name: Run tests
+        run: pytest --tb=short -q
 
-  # ---- Job 2: Build & Deploy to Cloud Run (tags only) ----
+  # ---- Job 2: Deploy to VM via SSH (tags only) ----
   deploy:
-    name: Build & Deploy
+    name: Deploy to VM
     needs: test
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
         with:
-          fetch-depth: 0
-
-      - name: Authenticate to Google Cloud (WIF)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
-
-      - name: Generate image tags
-        id: tags
-        run: |
-          VERSION="${GITHUB_REF_NAME}"
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-          echo "image_sha=${{ env.IMAGE }}:${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-          echo "image_version=${{ env.IMAGE }}:${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "image_latest=${{ env.IMAGE }}:latest" >> "$GITHUB_OUTPUT"
-          echo "timestamp=$(TZ='Asia/Kolkata' date '+%d %b %Y, %I:%M %p IST')" >> "$GITHUB_OUTPUT"
-
-      - name: Build Docker image
-        run: |
-          docker build \
-            --tag ${{ steps.tags.outputs.image_sha }} \
-            --tag ${{ steps.tags.outputs.image_version }} \
-            --tag ${{ steps.tags.outputs.image_latest }} \
-            --label "git.sha=${{ github.sha }}" \
-            --label "git.ref=${{ github.ref_name }}" \
-            .
-
-      - name: Push to Artifact Registry
-        run: |
-          docker push ${{ steps.tags.outputs.image_sha }}
-          docker push ${{ steps.tags.outputs.image_version }}
-          docker push ${{ steps.tags.outputs.image_latest }}
-
-      - name: Write env vars file
-        run: |
-          cat > /tmp/env-vars.yaml <<ENVEOF
-          GOOGLE_SHEET_ID: "${{ secrets.GOOGLE_SHEET_ID }}"
-          MONITORED_INBOXES: "${{ secrets.MONITORED_INBOXES }}"
-          ADMIN_EMAIL: "${{ secrets.ADMIN_EMAIL }}"
-          EOD_RECIPIENTS: "${{ secrets.EOD_RECIPIENTS }}"
-          ENVEOF
-
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy ${{ env.SERVICE }} \
-            --image=${{ steps.tags.outputs.image_sha }} \
-            --region=${{ env.REGION }} \
-            --memory=256Mi --cpu=1 \
-            --min-instances=1 --max-instances=1 \
-            --no-allow-unauthenticated \
-            --set-secrets=ANTHROPIC_API_KEY=anthropic-api-key:latest \
-            --set-secrets=GOOGLE_CHAT_WEBHOOK_URL=chat-webhook-url:latest \
-            --set-secrets=/secrets/service-account.json=sa-key:latest \
-            --env-vars-file=/tmp/env-vars.yaml \
-            --project=${{ env.PROJECT_ID }}
-
-      - name: Notify Google Chat — Deployment
-        if: success()
-        run: |
-          curl -s -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "cardsV2": [{
-                "cardId": "deploy-${{ steps.tags.outputs.version }}",
-                "card": {
-                  "header": {
-                    "title": "\U0001f680 Deployed ${{ steps.tags.outputs.version }}",
-                    "subtitle": "${{ steps.tags.outputs.timestamp }}"
-                  },
-                  "sections": [
-                    {
-                      "header": "Configuration",
-                      "widgets": [
-                        {"decoratedText": {"topLabel": "Version", "text": "${{ steps.tags.outputs.version }}"}},
-                        {"decoratedText": {"topLabel": "Image", "text": "${{ steps.tags.outputs.image_sha }}"}},
-                        {"decoratedText": {"topLabel": "Triggered by", "text": "${{ github.actor }}"}},
-                        {"decoratedText": {"topLabel": "Inboxes", "text": "${{ secrets.MONITORED_INBOXES }}"}}
-                      ]
-                    },
-                    {
-                      "widgets": [
-                        {"buttonList": {"buttons": [
-                          {"text": "View Logs", "onClick": {"openLink": {"url": "https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE }}/logs?project=${{ env.PROJECT_ID }}"}}},
-                          {"text": "GitHub Release", "onClick": {"openLink": {"url": "https://github.com/${{ github.repository }}/releases/tag/${{ steps.tags.outputs.version }}"}}}
-                        ]}}
-                      ]
-                    }
-                  ]
-                }
-              }]
-            }'
-
-      - name: Notify Google Chat — Failure
-        if: failure()
-        run: |
-          curl -s -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "text": "\u274c *Deploy FAILED* — ${{ github.ref_name }}\nBy: ${{ github.actor }}\nhttps://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }'
-
-  # ---- Job 3: Create GitHub Release (tags only, after deploy) ----
-  release:
-    name: GitHub Release
-    needs: deploy
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get release info
-        id: release_info
-        run: |
-          VERSION="${GITHUB_REF_NAME}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p')
-          if [ -z "$PREV_TAG" ]; then
-            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
-            echo "prev_tag_name=initial" >> "$GITHUB_OUTPUT"
-          else
-            echo "prev_tag_name=${PREV_TAG}" >> "$GITHUB_OUTPUT"
-          fi
-          echo "prev_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          PREV_TAG="${{ steps.release_info.outputs.prev_tag }}"
-          VERSION="${{ steps.release_info.outputs.version }}"
-
-          echo "## What's Changed in ${VERSION}" > changelog.md
-          echo "" >> changelog.md
-
-          echo "### Features & Enhancements" >> changelog.md
-          git log ${PREV_TAG}..HEAD --oneline --no-merges --format="- %s (%h)" \
-            --grep="[Aa]dd\|[Ff]eat\|[Ee]nhance\|[Ii]mplement\|[Nn]ew" >> changelog.md 2>/dev/null || echo "_None_" >> changelog.md
-          echo "" >> changelog.md
-
-          echo "### Bug Fixes" >> changelog.md
-          git log ${PREV_TAG}..HEAD --oneline --no-merges --format="- %s (%h)" \
-            --grep="[Ff]ix\|[Bb]ug\|[Pp]atch\|[Rr]esolve" >> changelog.md 2>/dev/null || echo "_None_" >> changelog.md
-          echo "" >> changelog.md
-
-          echo "### All Commits" >> changelog.md
-          git log ${PREV_TAG}..HEAD --oneline --no-merges --format="- %s — *%an* (%h)" >> changelog.md
-          echo "" >> changelog.md
-
-          COMMIT_COUNT=$(git rev-list --count ${PREV_TAG}..HEAD)
-          echo "---" >> changelog.md
-          echo "**${COMMIT_COUNT} commits** since ${{ steps.release_info.outputs.prev_tag_name }}" >> changelog.md
-
-          cat changelog.md
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.release_info.outputs.version }}
-          name: ${{ steps.release_info.outputs.version }}
-          body_path: changelog.md
-          draft: false
-          prerelease: false
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            cd /opt/vipl-email-agent
+            git fetch --tags
+            git checkout ${{ github.ref_name }}
+            docker compose build --no-cache
+            docker compose up -d
+            docker compose exec -T web python manage.py migrate --noinput
+            echo "Deployed ${{ github.ref_name }}"

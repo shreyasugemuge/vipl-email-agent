@@ -1,0 +1,31 @@
+# ============================================================
+# VIPL Email Agent v2 -- Docker Compose
+# ============================================================
+# Single service: Django + Gunicorn
+# Connects to host PostgreSQL via host.docker.internal
+# Nginx on the host proxies triage.vidarbhainfotech.com to port 8100
+# ============================================================
+
+services:
+  web:
+    build: .
+    container_name: vipl-email-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
+    ports:
+      - "8100:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - static_files:/app/staticfiles
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  static_files:
