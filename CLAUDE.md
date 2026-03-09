@@ -1,12 +1,100 @@
 # VIPL Email Agent
 
-AI-powered shared inbox monitoring, triage, and response system for Vidarbha Infotech Private Limited. Deployed on Google Cloud Run.
+AI-powered shared inbox monitoring, triage, and response system for Vidarbha Infotech Private Limited.
 
-## What This Does
+## Version Status
+
+| Version | Status | Platform |
+|---------|--------|----------|
+| **v1.x** (main branch) | Production — will be shut down after v2 migration | Google Cloud Run |
+| **v2.0** (v2 branch) | **In Development** — full-stack rebuild | Self-hosted VM (Docker Compose) |
+
+## v2 — What's Changing
+
+Full-stack rebuild: Django backend with HTMX server-rendered frontend + PostgreSQL, deployed on the existing VIPL VM (already hosts Taiga + internal tools). Google Sheets becomes a read-only sync mirror, not the source of truth. Cloud Run will be shut down once v2 is live.
+
+### v2 Target Stack
+- **Backend**: Django 5.2 LTS + PostgreSQL (already on VM)
+- **Frontend**: Django templates + HTMX + Tailwind CSS (server-rendered, no React/Node)
+- **Deployment**: Docker Compose (single container: Django + Gunicorn), Nginx on host
+- **Auth**: Simple password auth (Django built-in), Google OAuth deferred
+- **Subdomain**: triage.vidarbhainfotech.com (configured, SSL via Let's Encrypt)
+
+## v2 Architecture (Phase 1 Complete)
+
+### v2 File Structure
+
+```
+manage.py
+conftest.py
+pytest.ini
+gunicorn.conf.py
+requirements.txt
+requirements-dev.txt
+.env.example
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+config/
+  __init__.py, settings/ (base.py, dev.py, prod.py), urls.py, wsgi.py, asgi.py
+
+apps/
+  __init__.py
+  accounts/    # Custom User model (admin/member roles), auth views, admin
+  emails/      # Email + AttachmentMetadata models (ready for Phase 2)
+  core/        # SoftDeleteModel, TimestampedModel, health endpoint
+
+templates/
+  base.html, registration/login.html
+
+nginx/
+  triage.conf  # Reverse proxy for triage.vidarbhainfotech.com
+
+.github/workflows/
+  deploy.yml   # v2 CI/CD: tag → test → SSH deploy → docker compose up
+```
+
+### VM Details
+- **VM**: `taiga` in GCP project `cm-sec-455407`, zone `asia-south1-b`, IP `35.207.237.47`
+- **SSH user**: `shreyas_vidarbhainfotech_com` (gcloud compute ssh)
+- **PostgreSQL**: Runs inside Taiga's Docker container (`taiga-docker-taiga-db-1`, postgres:12.3)
+  - DB: `vipl_email_agent`, user: `vipl_agent`
+  - Network: `taiga-docker_taiga` (172.18.0.0/16), DB IP: 172.18.0.6
+- **Nginx**: Port 8100 → `triage.vidarbhainfotech.com` (SSL via Let's Encrypt)
+
+### v2 Key Design Decisions (Phase 1)
+- Python 3.13 venv required locally (system 3.9.6 too old for Django 5.2)
+- SQLite for local dev/tests, PostgreSQL via `DATABASE_URL` in prod
+- SoftDeleteModel base class (nothing ever truly deleted)
+- APScheduler as separate management command (not inside Gunicorn)
+- CI/CD: GitHub secrets set (`VM_HOST`, `VM_USER`, `VM_SSH_KEY` deploy key)
+
+### v2 Testing
+
+```bash
+# Activate venv first
+source .venv/bin/activate
+
+# Run v2 tests
+pytest -v
+```
+
+### v2 Common Tasks
+
+```bash
+source .venv/bin/activate
+python manage.py runserver          # Local dev server
+python manage.py createsuperuser    # Create admin user
+python manage.py migrate            # Apply migrations
+docker compose up -d                # Start production container
+```
+
+## v1 — Current Production (main branch)
 
 Monitors Gmail shared inboxes (info@vidarbhainfotech.com, sales@vidarbhainfotech.com), triages emails using Claude AI, logs to a Google Sheet tracker, posts notifications to Google Chat, monitors SLA compliance, and sends daily EOD summary reports.
 
-## Architecture
+### v1 Architecture
 
 ```
 Gmail Inboxes → GmailPoller (poll every 5 min)
@@ -19,7 +107,7 @@ Gmail Inboxes → GmailPoller (poll every 5 min)
 
 Runs on Cloud Run with `--no-allow-unauthenticated`, `256Mi` memory, `min-instances=1`, `max-instances=1`.
 
-## File Structure
+## v1 File Structure
 
 ```
 main.py                      # Entry point — scheduler, health server, JSON logging
@@ -184,13 +272,13 @@ Scopes: `gmail.readonly`, `gmail.labels`, `gmail.modify`, `gmail.send`, `spreads
 - Input sanitization before AI processing (control chars, null bytes)
 - Workload Identity Federation for CI/CD (no SA key in GitHub)
 
-## Testing
+## v1 Testing
 
 ```bash
 # Install dev dependencies
 pip install -r requirements-dev.txt
 
-# Run unit tests (no API keys needed) — 123 tests
+# Run unit tests (no API keys needed) — 131 tests
 pytest -m "not integration" -v
 
 # Run integration tests (requires ANTHROPIC_API_KEY)
@@ -200,7 +288,7 @@ pytest -m integration -v
 ./scripts/run_local.sh --once
 ```
 
-## Common Tasks
+## v1 Common Tasks
 
 ```bash
 python main.py --once         # Single poll cycle
@@ -208,4 +296,56 @@ python main.py --eod          # Trigger EOD report
 python main.py --sla          # Run SLA check
 python main.py --retry        # Run dead letter retry
 python main.py --init-sheet   # Initialize sheet headers + config tab
+```
+
+## Project Management (Taiga)
+
+### Instance & Access
+- **URL**: https://taiga.vidarbhainfotech.com/project/vipl-email-agent/
+- **Credentials**: Stored locally in `.taiga-credentials` (gitignored, never committed)
+- **API base**: `https://taiga.vidarbhainfotech.com/api/v1/`
+- **Auth**: `POST /api/v1/auth` with `{"type": "normal", "username": "...", "password": "..."}` → returns `auth_token` → use as `Authorization: Bearer {token}`
+
+### Project Structure
+- **Methodology**: Scrum with Kanban board enabled
+- **Project ID**: 14
+- **Owner**: Shreyas (user ID 23)
+
+### Current State (as of 2026-03-09)
+- **v1.x history**: 13 epics (all Done), 99 stories (all Archived), 10 sprints (all Closed)
+- **v2**: Phase 1 (Foundation) complete. Epics and stories being created for Phase 2+.
+
+### Key IDs (for API calls)
+```
+User Story Statuses: New=120, Ready=121, In Progress=122, Ready for Test=123, Done=124, Archived=125
+Epic Statuses:       New=64, Ready=65, In Progress=66, Ready for Test=67, Done=68
+Task Statuses:       New=60, In Progress=61, Ready for Test=62, Closed=63, Needs Info=64
+Issue Types:         Bug=37, Question=38, Enhancement=39, Task=40
+Priorities:          Low=37, Normal=38, High=39, Critical=40
+Points:              ½=147, 1=148, 2=149, 3=150, 5=151, 8=152, 10=153, 13=154
+Roles:               UX=69, Design=70, Front=71, Back=72, PO=73, Stakeholder=74
+```
+
+### Wiki Pages
+home, architecture, file-structure, configuration-guide, deployment-guide, development-guide, google-sheet-schema, version-history
+
+### Tags
+backend, ai, gmail, sheets, chat, sla, ci-cd, testing, security, docs, resilience, config
+
+### Working with Taiga API
+```bash
+# Authenticate (credentials in .taiga-credentials)
+curl -s -X POST "https://taiga.vidarbhainfotech.com/api/v1/auth" \
+  -H "Content-Type: application/json" \
+  -d '{"type": "normal", "username": "EMAIL", "password": "PASS"}'
+
+# List stories
+curl -s "https://taiga.vidarbhainfotech.com/api/v1/userstories?project=14" \
+  -H "Authorization: Bearer {token}"
+
+# Create story
+curl -s -X POST "https://taiga.vidarbhainfotech.com/api/v1/userstories" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {token}" \
+  -d '{"project": 14, "subject": "...", "status": 120}'
 ```
