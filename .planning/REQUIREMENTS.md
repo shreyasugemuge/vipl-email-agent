@@ -61,6 +61,13 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **INFR-11**: Admin can toggle feature flags (AI triage, Chat notifications, EOD email) without redeploy
 - [ ] **INFR-12**: Admin can manage team members (add/remove, set roles)
 
+### Migration + Cutover
+
+- [ ] **CUTV-01**: All historical email data migrated from production Sheet to PostgreSQL with zero data loss
+- [ ] **CUTV-02**: Both inboxes cut over from v1 to v2 with v1 fully stopped
+- [ ] **CUTV-03**: Cloud Run service decommissioned (no cost, no running instances)
+- [ ] **CUTV-04**: CI/CD pipeline targets VM only — no Cloud Run references remain
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -122,48 +129,52 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROC-01 | TBD | Pending |
-| PROC-02 | TBD | Pending |
-| PROC-03 | TBD | Pending |
-| PROC-04 | TBD | Pending |
-| PROC-05 | TBD | Pending |
-| PROC-06 | TBD | Pending |
-| ASGN-01 | TBD | Pending |
-| ASGN-02 | TBD | Pending |
-| ASGN-03 | TBD | Pending |
-| ASGN-04 | TBD | Pending |
-| ASGN-05 | TBD | Pending |
-| SLA-01 | TBD | Pending |
-| SLA-02 | TBD | Pending |
-| SLA-03 | TBD | Pending |
-| SLA-04 | TBD | Pending |
-| DASH-01 | TBD | Pending |
-| DASH-02 | TBD | Pending |
-| DASH-03 | TBD | Pending |
-| DASH-04 | TBD | Pending |
-| DASH-05 | TBD | Pending |
-| DASH-06 | TBD | Pending |
-| AUTH-01 | TBD | Pending |
-| AUTH-02 | TBD | Pending |
-| AUTH-03 | TBD | Pending |
-| INFR-01 | TBD | Pending |
-| INFR-02 | TBD | Pending |
-| INFR-03 | TBD | Pending |
-| INFR-04 | TBD | Pending |
-| INFR-05 | TBD | Pending |
-| INFR-06 | TBD | Pending |
-| INFR-07 | TBD | Pending |
-| INFR-08 | TBD | Pending |
-| INFR-09 | TBD | Pending |
-| INFR-10 | TBD | Pending |
-| INFR-11 | TBD | Pending |
-| INFR-12 | TBD | Pending |
+| PROC-01 | Phase 2 | Pending |
+| PROC-02 | Phase 2 | Pending |
+| PROC-03 | Phase 2 | Pending |
+| PROC-04 | Phase 2 | Pending |
+| PROC-05 | Phase 2 | Pending |
+| PROC-06 | Phase 2 | Pending |
+| ASGN-01 | Phase 3 | Pending |
+| ASGN-02 | Phase 3 | Pending |
+| ASGN-03 | Phase 4 | Pending |
+| ASGN-04 | Phase 4 | Pending |
+| ASGN-05 | Phase 3 | Pending |
+| SLA-01 | Phase 3 | Pending |
+| SLA-02 | Phase 4 | Pending |
+| SLA-03 | Phase 4 | Pending |
+| SLA-04 | Phase 4 | Pending |
+| DASH-01 | Phase 3 | Pending |
+| DASH-02 | Phase 3 | Pending |
+| DASH-03 | Phase 3 | Pending |
+| DASH-04 | Phase 3 | Pending |
+| DASH-05 | Phase 3 | Pending |
+| DASH-06 | Phase 3 | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| INFR-01 | Phase 1 | Pending |
+| INFR-02 | Phase 1 | Pending |
+| INFR-03 | Phase 1 | Pending |
+| INFR-04 | Phase 5 | Pending |
+| INFR-05 | Phase 5 | Pending |
+| INFR-06 | Phase 1 | Pending |
+| INFR-07 | Phase 5 | Pending |
+| INFR-08 | Phase 2 | Pending |
+| INFR-09 | Phase 4 | Pending |
+| INFR-10 | Phase 4 | Pending |
+| INFR-11 | Phase 2 | Pending |
+| INFR-12 | Phase 1 | Pending |
+| CUTV-01 | Phase 6 | Pending |
+| CUTV-02 | Phase 6 | Pending |
+| CUTV-03 | Phase 6 | Pending |
+| CUTV-04 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 36 total
-- Mapped to phases: 0
-- Unmapped: 36 (pending roadmap creation)
+- v1 requirements: 40 total
+- Mapped to phases: 40
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after initial definition*
+*Last updated: 2026-03-09 after roadmap creation*
