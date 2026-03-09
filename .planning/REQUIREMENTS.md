@@ -1,0 +1,169 @@
+# Requirements: VIPL Email Agent v2
+
+**Defined:** 2026-03-09
+**Core Value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
+
+## v1 Requirements
+
+Requirements for initial release. Each maps to roadmap phases.
+
+### Email Processing
+
+- [ ] **PROC-01**: System polls configured Gmail inboxes for new emails every 5 minutes
+- [ ] **PROC-02**: System triages emails with Claude AI (category, priority, summary, draft reply)
+- [ ] **PROC-03**: System pre-filters spam via regex patterns before AI processing (zero cost)
+- [ ] **PROC-04**: System extracts PDF attachment text for triage context
+- [ ] **PROC-05**: System detects email language (Hindi, Marathi, English) and writes summary in English
+- [ ] **PROC-06**: System logs failed triages to dead letter queue and retries up to 3 times
+
+### Assignment
+
+- [ ] **ASGN-01**: Manager can manually assign an email to a team member from the dashboard
+- [ ] **ASGN-02**: Manager can reassign an email to a different team member
+- [ ] **ASGN-03**: System auto-assigns emails based on category-to-person mapping rules
+- [ ] **ASGN-04**: System uses AI fallback for emails that don't match any assignment rule
+- [ ] **ASGN-05**: Assignment triggers notification to assignee via Google Chat + email
+
+### Status & SLA
+
+- [ ] **SLA-01**: Each email has a status: New, Acknowledged, Replied, Closed
+- [ ] **SLA-02**: System calculates SLA deadline per email based on priority and category
+- [ ] **SLA-03**: System detects SLA breaches and posts summary alerts (3x daily)
+- [ ] **SLA-04**: SLA breach alerts manager (Shreyas) via Chat + email
+
+### Dashboard
+
+- [ ] **DASH-01**: Dashboard shows all emails in a table with columns: date, from, subject, assignee, priority, status, SLA remaining
+- [ ] **DASH-02**: Dashboard supports filtering by status, assignee, priority, inbox
+- [ ] **DASH-03**: Dashboard supports sorting by any column
+- [ ] **DASH-04**: Dashboard shows unassigned queue as default manager view
+- [ ] **DASH-05**: Dashboard has activity log showing who did what (assignments, status changes)
+- [ ] **DASH-06**: Dashboard is desktop-first, usable on mobile
+
+### Auth
+
+- [ ] **AUTH-01**: Dashboard requires login (simple password auth for v1)
+- [ ] **AUTH-02**: Admin role (manager) can assign, reassign, configure
+- [ ] **AUTH-03**: User role (team member) sees their assignments and can acknowledge
+
+### Infrastructure
+
+- [ ] **INFR-01**: PostgreSQL is the source of truth for all email and assignment data
+- [ ] **INFR-02**: System deployed via Docker Compose on existing VM
+- [ ] **INFR-03**: CI/CD via GitHub Actions triggered by version tags
+- [ ] **INFR-04**: Google Sheets receives read-only sync (simplified: date, from, subject, assignee, status)
+- [ ] **INFR-05**: Daily EOD report sent via email + Chat card with stats from database
+- [ ] **INFR-06**: Health endpoint reports system status (uptime, failure count, last poll)
+- [ ] **INFR-07**: Admin can configure monitored inboxes without code changes
+- [ ] **INFR-08**: Admin can configure polling frequency, quiet hours, and business hours
+- [ ] **INFR-09**: Admin can configure SLA deadlines per category/priority
+- [ ] **INFR-10**: Admin can configure assignment rules (category-to-person mapping)
+- [ ] **INFR-11**: Admin can toggle feature flags (AI triage, Chat notifications, EOD email) without redeploy
+- [ ] **INFR-12**: Admin can manage team members (add/remove, set roles)
+
+## v2 Requirements
+
+Deferred to future release. Tracked but not in current roadmap.
+
+### Enhanced Auth
+
+- **AUTH-10**: Google OAuth SSO restricted to @vidarbhainfotech.com
+- **AUTH-11**: Session management with proper token expiry
+
+### Advanced Assignment
+
+- **ASGN-10**: AI feedback loop — corrections logged and used to improve future assignments
+- **ASGN-11**: Gmail thread monitoring to auto-detect when assignee replies
+- **ASGN-12**: Auto-update status to "Replied" when reply detected in Gmail thread
+
+### Advanced SLA
+
+- **SLA-10**: Two-tier SLA — separate acknowledgement deadline + response deadline
+- **SLA-11**: Escalation chain with auto-reassignment on repeated breach
+
+### Analytics
+
+- **ANLY-01**: Response time analytics with charts and trends
+- **ANLY-02**: Workload view showing open items per team member
+- **ANLY-03**: Volume trends by day, hour, category
+
+### Notifications
+
+- **NOTF-01**: WhatsApp/SMS for CRITICAL priority escalations
+- **NOTF-02**: Configurable notification preferences per user
+
+### Admin
+
+- **ADMN-01**: Assignment rule configuration from dashboard (moved to v1 as INFR-10)
+- **ADMN-02**: Inbox management from dashboard (moved to v1 as INFR-07)
+
+### Tender Intelligence
+
+- **TNDR-01**: MahaTender email parsing (8 notification types)
+- **TNDR-02**: Tender document scraping via Playwright
+- **TNDR-03**: CAPTCHA handling (human-in-the-loop or automated)
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Reply from dashboard | Team replies from Gmail directly — building compose UI is high effort, low value |
+| Round-robin assignment | Team is 3 people — category rules are more accurate than mechanical rotation |
+| CSAT surveys | Internal tool, not customer support platform |
+| Canned response templates | Gmail already has Templates feature |
+| Real-time collaboration | 3 users — collision is rare, "assigned to X" is sufficient |
+| Complex workflow states | 4 statuses max — no enterprise help desk bloat |
+| Multi-tenant / team hierarchy | Single company, single team |
+| Mobile native app | Responsive web + notifications via Chat/WhatsApp is sufficient |
+| Email conversation view in dashboard | Not rebuilding Gmail — show summary + "Open in Gmail" link |
+| Ticket numbering system | Nobody references ticket numbers in conversation — use email subject as identifier |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| PROC-01 | TBD | Pending |
+| PROC-02 | TBD | Pending |
+| PROC-03 | TBD | Pending |
+| PROC-04 | TBD | Pending |
+| PROC-05 | TBD | Pending |
+| PROC-06 | TBD | Pending |
+| ASGN-01 | TBD | Pending |
+| ASGN-02 | TBD | Pending |
+| ASGN-03 | TBD | Pending |
+| ASGN-04 | TBD | Pending |
+| ASGN-05 | TBD | Pending |
+| SLA-01 | TBD | Pending |
+| SLA-02 | TBD | Pending |
+| SLA-03 | TBD | Pending |
+| SLA-04 | TBD | Pending |
+| DASH-01 | TBD | Pending |
+| DASH-02 | TBD | Pending |
+| DASH-03 | TBD | Pending |
+| DASH-04 | TBD | Pending |
+| DASH-05 | TBD | Pending |
+| DASH-06 | TBD | Pending |
+| AUTH-01 | TBD | Pending |
+| AUTH-02 | TBD | Pending |
+| AUTH-03 | TBD | Pending |
+| INFR-01 | TBD | Pending |
+| INFR-02 | TBD | Pending |
+| INFR-03 | TBD | Pending |
+| INFR-04 | TBD | Pending |
+| INFR-05 | TBD | Pending |
+| INFR-06 | TBD | Pending |
+| INFR-07 | TBD | Pending |
+| INFR-08 | TBD | Pending |
+| INFR-09 | TBD | Pending |
+| INFR-10 | TBD | Pending |
+| INFR-11 | TBD | Pending |
+| INFR-12 | TBD | Pending |
+
+**Coverage:**
+- v1 requirements: 36 total
+- Mapped to phases: 0
+- Unmapped: 36 (pending roadmap creation)
+
+---
+*Requirements defined: 2026-03-09*
+*Last updated: 2026-03-09 after initial definition*
