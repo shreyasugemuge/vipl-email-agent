@@ -9,6 +9,10 @@ service-account*.json
 *-sa-key.json
 .taiga-credentials
 
+# Database
+db.sqlite3
+*.sqlite3
+
 # Python
 __pycache__/
 *.py[cod]
