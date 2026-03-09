@@ -12,7 +12,7 @@ Rebuild the VIPL email triage system from a Cloud Run + Google Sheets monitoring
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Django project, PostgreSQL schema, auth, Docker Compose deployment, health endpoint
+- [x] **Phase 1: Foundation** - Django project, PostgreSQL schema, auth, Docker Compose deployment, health endpoint
 - [ ] **Phase 2: Email Pipeline** - Port v1 agent modules to Django with ORM, background scheduler, Chat notifications
 - [ ] **Phase 3: Dashboard** - Email table view, manual assignment, status tracking, filtering, activity log
 - [ ] **Phase 4: Assignment Engine + SLA** - Auto-assignment rules, AI fallback, SLA deadlines, breach alerts, escalation
@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md -- Django project skeleton, PostgreSQL models, custom User with roles, auth views, health endpoint, test infrastructure
-- [ ] 01-02-PLAN.md -- Dockerfile, Docker Compose, Nginx reverse proxy, CI/CD pipeline (GitHub Actions SSH deploy)
+- [x] 01-02-PLAN.md -- Dockerfile, Docker Compose, Nginx reverse proxy, CI/CD pipeline (GitHub Actions SSH deploy)
 
 ### Phase 2: Email Pipeline
 **Goal**: Emails flow from Gmail into PostgreSQL -- polled, triaged by AI, spam-filtered, with dead letter retry and Chat notifications -- reaching functional parity with v1
@@ -122,7 +122,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 1/2 | In progress | - |
+| 1. Foundation | 2/2 | Complete | 2026-03-09 |
 | 2. Email Pipeline | 0/3 | Not started | - |
 | 3. Dashboard | 0/3 | Not started | - |
 | 4. Assignment Engine + SLA | 0/2 | Not started | - |

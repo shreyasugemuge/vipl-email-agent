@@ -49,8 +49,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Infrastructure
 
 - [x] **INFR-01**: PostgreSQL is the source of truth for all email and assignment data
-- [ ] **INFR-02**: System deployed via Docker Compose on existing VM
-- [ ] **INFR-03**: CI/CD via GitHub Actions triggered by version tags
+- [x] **INFR-02**: System deployed via Docker Compose on existing VM
+- [x] **INFR-03**: CI/CD via GitHub Actions triggered by version tags
 - [ ] **INFR-04**: Google Sheets receives read-only sync (simplified: date, from, subject, assignee, status)
 - [ ] **INFR-05**: Daily EOD report sent via email + Chat card with stats from database
 - [x] **INFR-06**: Health endpoint reports system status (uptime, failure count, last poll)
@@ -154,8 +154,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | AUTH-02 | Phase 1 | Complete (01-01) |
 | AUTH-03 | Phase 1 | Complete (01-01) |
 | INFR-01 | Phase 1 | Complete (01-01) |
-| INFR-02 | Phase 1 | Pending |
-| INFR-03 | Phase 1 | Pending |
+| INFR-02 | Phase 1 | Complete |
+| INFR-03 | Phase 1 | Complete |
 | INFR-04 | Phase 5 | Pending |
 | INFR-05 | Phase 5 | Pending |
 | INFR-06 | Phase 1 | Complete (01-01) |
