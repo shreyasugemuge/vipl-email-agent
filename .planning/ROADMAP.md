@@ -31,11 +31,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Application is running on the VM via Docker Compose, accessible at the configured subdomain
   4. Health endpoint returns system status (uptime, version) and is reachable
   5. CI/CD pipeline deploys a new version to the VM when a version tag is pushed
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Django project skeleton, PostgreSQL models, auth system
-- [ ] 01-02: Docker Compose, Nginx config, CI/CD pipeline, health endpoint
+- [ ] 01-01-PLAN.md -- Django project skeleton, PostgreSQL models, custom User with roles, auth views, health endpoint, test infrastructure
+- [ ] 01-02-PLAN.md -- Dockerfile, Docker Compose, Nginx reverse proxy, CI/CD pipeline (GitHub Actions SSH deploy)
 
 ### Phase 2: Email Pipeline
 **Goal**: Emails flow from Gmail into PostgreSQL -- polled, triaged by AI, spam-filtered, with dead letter retry and Chat notifications -- reaching functional parity with v1
@@ -122,7 +122,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/2 | Not started | - |
+| 1. Foundation | 0/2 | Planning complete | - |
 | 2. Email Pipeline | 0/3 | Not started | - |
 | 3. Dashboard | 0/3 | Not started | - |
 | 4. Assignment Engine + SLA | 0/2 | Not started | - |
