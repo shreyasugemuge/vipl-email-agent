@@ -7,7 +7,7 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 | Version | Status | Platform |
 |---------|--------|----------|
 | **v1.x** (main branch) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
-| **v2.0** (v2 branch) | **In Development** — Phase 2 complete, Phase 3 (dashboard) next | Self-hosted VM (Docker Compose) |
+| **v2.0** (v2 branch) | **In Development** — Phase 3 complete, Phase 4 (assignment engine + SLA) next | Self-hosted VM (Docker Compose) |
 
 ## v2 — What's Changing
 
@@ -97,7 +97,7 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **Phase 1** (Foundation): Complete — Django skeleton, auth, models, Docker, CI/CD
 - **Phase 2** (Email Pipeline): Complete — Gmail poller, AI processor, chat notifier, pipeline orchestrator, scheduler, 95 tests, UAT 6/6 passed
 - **Phase 2.5** (Dev Safety): Complete — `--once`/`--dry-run`, `test_pipeline`, dev inspector, fake data, dev-safe defaults
-- **Phase 3** (Dashboard): **In progress** — HTMX email triage UI (Wave 1 complete, Wave 2 executing)
+- **Phase 3** (Dashboard): Complete — Email card list, assignment workflow, detail panel, activity log MIS, premium UI, 136 tests, UAT 9/9 passed
 - **Phase 4** (Assignment + SLA): Not started
 - **Phase 5** (Reporting + Admin + Sheets Mirror): Not started
 - **Phase 6** (Migration + Cutover): Not started
