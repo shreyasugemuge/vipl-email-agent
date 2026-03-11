@@ -34,7 +34,7 @@ pytest.ini
 gunicorn.conf.py
 requirements.txt
 requirements-dev.txt
-.env.example
+.env.example                # Dev-safe defaults + prod template
 Dockerfile
 docker-compose.yml          # web + scheduler services
 .dockerignore
@@ -46,8 +46,10 @@ apps/
   __init__.py
   accounts/                 # Custom User model (admin/member roles), auth views, admin
   emails/                   # Email + AttachmentMetadata models, services, management commands
-    services/               # Phase 2: gmail_poller, ai_processor, chat_notifier, pipeline, spam_filter, pdf_extractor, dtos, state
-    management/commands/    # run_scheduler (APScheduler: poll, retry, heartbeat)
+    views.py                # Dev inspector view (/emails/inspect/)
+    urls.py                 # Email app URL routes
+    services/               # gmail_poller, ai_processor, chat_notifier, pipeline, spam_filter, pdf_extractor, dtos, state, fake_data
+    management/commands/    # run_scheduler, test_pipeline
   core/                     # SoftDeleteModel, TimestampedModel, SystemConfig, health endpoint
 
 prompts/
@@ -56,6 +58,7 @@ prompts/
 
 templates/
   base.html, registration/login.html, accounts/dashboard.html
+  emails/inspect.html       # Dev inspector template (dark-themed, no login)
 
 nginx/
   triage.conf               # Reverse proxy for triage.vidarbhainfotech.com
@@ -93,6 +96,7 @@ secrets/                    # Service account key (gitignored, mounted read-only
 ### v2 Phase Status
 - **Phase 1** (Foundation): Complete — Django skeleton, auth, models, Docker, CI/CD
 - **Phase 2** (Email Pipeline): Complete — Gmail poller, AI processor, chat notifier, pipeline orchestrator, scheduler, 95 tests, UAT 6/6 passed
+- **Phase 2.5** (Dev Safety): Complete — `--once`/`--dry-run`, `test_pipeline`, dev inspector, fake data, dev-safe defaults
 - **Phase 3** (Dashboard): Not started — HTMX email triage UI
 - **Phase 4** (Assignment + SLA): Not started
 - **Phase 5** (Reporting + Admin + Sheets Mirror): Not started
@@ -118,35 +122,82 @@ Gmail Inboxes → GmailPoller (domain-wide delegation)
 | `state.py` | Circuit breaker + EOD dedup | No |
 | `gmail_poller.py` | Gmail API, domain-wide delegation, labels | No |
 | `ai_processor.py` | Two-tier Claude (Haiku/Sonnet), tenacity retry | No |
-| `chat_notifier.py` | Google Chat Cards v2, quiet hours | Yes (Email model) |
+| `chat_notifier.py` | Google Chat Cards v2, quiet hours | Yes (SystemConfig) |
 | `pipeline.py` | Orchestrator: poll→filter→triage→save→label | Yes (ORM) |
+| `fake_data.py` | 11 sample emails (EN/HI/MR) + matched triages for dev/test | No |
+
+### v2 Management Commands
+| Command | Purpose | External Calls |
+|---------|---------|----------------|
+| `run_scheduler` | Production scheduler (poll + retry + heartbeat) | Gmail, Claude, Chat |
+| `run_scheduler --once` | Single poll cycle, then exit | Gmail, Claude, Chat |
+| `run_scheduler --once --dry-run` | Simulated cycle with fake data | **None** |
+| `test_pipeline` | Process fake emails through pipeline | **None** |
+| `test_pipeline --with-ai` | Fake emails + real Claude triage | Claude only |
+| `test_pipeline --with-chat` | Fake emails + real Chat webhook | Chat only |
+| `test_pipeline --count N` | Process N fake emails | Depends on flags |
 
 ### v2 SystemConfig (Runtime Config)
 Replaces v1's Google Sheets config tab. Key-value store with typed casting (str/int/bool/float/json).
-Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled`, `eod_email_enabled`, `poll_interval_minutes`, `quiet_hours_start/end`, `business_hours_start/end`, `max_consecutive_failures`, `monitored_inboxes`.
+Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled` (false), `eod_email_enabled`, `poll_interval_minutes`, `quiet_hours_start/end`, `business_hours_start/end`, `max_consecutive_failures`, `monitored_inboxes` (empty).
+
+**Dev-safe defaults**: `monitored_inboxes` is empty and `chat_notifications_enabled` is false in the seed migration. A fresh `migrate` on dev will not poll real inboxes or post to Chat. Production values are set via SystemConfig admin or environment variables.
 
 ### v2 Testing
 
 ```bash
 source .venv/bin/activate
 
+# --- Unit Tests (no API keys needed) ---
 pytest -v                           # All 95 tests (Phase 1: 33, Phase 2: 62)
 pytest apps/accounts -v             # Account/auth tests (19)
 pytest apps/emails -v               # Email pipeline tests (48)
 pytest apps/core -v                 # Core model + health + config tests (28)
+
+# --- Dev Pipeline Testing (no external calls by default) ---
+python manage.py test_pipeline                  # 1 fake email, all mocked
+python manage.py test_pipeline --count 5        # 5 fake emails, all mocked
+python manage.py test_pipeline --with-ai        # Real Claude (~$0.001/email)
+python manage.py run_scheduler --once --dry-run # Simulated cycle with fake data
+
+# --- Dev Inspector (visual output) ---
+python manage.py runserver 8100
+# → http://localhost:8100/emails/inspect/   (read-only, shows simulated Chat/reply output)
+
+# --- Docker ---
 docker compose build                # Verify Docker image builds
+```
+
+### v2 Dev Safety (Test Mode vs Production)
+
+| Concern | Test Mode (default) | Production |
+|---------|-------------------|------------|
+| Gmail polling | Fake emails from `fake_data.py` | Real Gmail API via SA key |
+| AI triage | Hardcoded `TriageResult` | Claude Haiku/Sonnet |
+| Chat notifications | Logged, not sent | Google Chat webhook |
+| Database | SQLite (local) | PostgreSQL on VM |
+| `monitored_inboxes` | Empty (seed default) | Set via SystemConfig |
+| `chat_notifications_enabled` | `false` (seed default) | `true` in prod |
+| Missing API keys | Warns, uses fallback | Required |
+
+**Credentials** (GCP Secret Manager, project `utilities-vipl`):
+```bash
+gcloud secrets versions access latest --secret=anthropic-api-key --project=utilities-vipl
+gcloud secrets versions access latest --secret=chat-webhook-url --project=utilities-vipl
+gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl > secrets/service-account.json
 ```
 
 ### v2 Common Tasks
 
 ```bash
 source .venv/bin/activate
-python manage.py runserver          # Local dev server
+python manage.py runserver 8100     # Local dev server + inspector at /emails/inspect/
 python manage.py createsuperuser    # Create admin user
 python manage.py migrate            # Apply migrations
-python manage.py run_scheduler      # Start email pipeline scheduler (poll + retry + heartbeat)
+python manage.py test_pipeline      # Quick pipeline smoke test (safe, no API calls)
+python manage.py run_scheduler      # Start production scheduler (poll + retry + heartbeat)
 python manage.py run_scheduler --once          # Single poll cycle then exit
-python manage.py run_scheduler --once --dry-run # Simulate with fake data (needs fake_data.py)
+python manage.py run_scheduler --once --dry-run # Simulate with fake data, no external calls
 docker compose build                # Build locally
 # Deploy only when ready — do NOT docker compose up on VM without approval
 ```
