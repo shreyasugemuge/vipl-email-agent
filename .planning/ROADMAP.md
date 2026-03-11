@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Django project, PostgreSQL schema, auth, Docker Compose deployment, health endpoint
 - [x] **Phase 2: Email Pipeline** - Port v1 agent modules to Django with ORM, background scheduler, Chat notifications
-- [ ] **Phase 3: Dashboard** - Email table view, manual assignment, status tracking, filtering, activity log
+- [ ] **Phase 3: Dashboard** - Email card view, manual assignment, status tracking, filtering, activity log
 - [ ] **Phase 4: Assignment Engine + SLA** - Auto-assignment rules, AI fallback, SLA deadlines, breach alerts, escalation
 - [ ] **Phase 5: Reporting + Admin + Sheets Mirror** - EOD reports, inbox/config management UI, Google Sheets read-only sync
 - [ ] **Phase 6: Migration + Cutover** - Production data migration, v1-to-v2 inbox rollover, Cloud Run decommission, CI/CD overhaul
@@ -64,12 +64,12 @@ Plans:
   3. Manager can reassign an email to a different person, and the new assignee gets notified
   4. Manager can filter the table by status, assignee, priority, and inbox -- and sort by any column
   5. Activity log shows who assigned/reassigned/changed status on each email
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Email list view with HTMX table, filters, sorting, unassigned queue
-- [ ] 03-02: Manual assignment, reassignment, status workflow, assignment notifications
-- [ ] 03-03: Activity log, mobile-responsive layout
+- [ ] 03-01-PLAN.md -- Base layout, email card list with HTMX filters/sorting/pagination, ActivityLog model, unassigned queue
+- [ ] 03-02-PLAN.md -- Assignment service, status changes, detail panel, Chat notifications
+- [ ] 03-03-PLAN.md -- Activity log page, mobile-responsive layout, visual verification
 
 ### Phase 4: Assignment Engine + SLA
 **Goal**: System auto-assigns emails and enforces SLA deadlines -- the manager only handles exceptions instead of every email
