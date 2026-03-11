@@ -50,7 +50,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Email model migration, SystemConfig model, DTOs, spam filter, PDF extractor, state manager, dependencies
+- [x] 02-01-PLAN.md -- Email model migration, SystemConfig model, DTOs, spam filter, PDF extractor, state manager, dependencies
 - [ ] 02-02-PLAN.md -- GmailPoller + AIProcessor service ports, pipeline orchestrator (poll-filter-triage-save-label)
 - [ ] 02-03-PLAN.md -- ChatNotifier, APScheduler management command, health endpoint update, Docker Compose scheduler service
 
@@ -123,7 +123,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-03-09 |
-| 2. Email Pipeline | 0/3 | Not started | - |
+| 2. Email Pipeline | 1/3 | In Progress | - |
 | 3. Dashboard | 0/3 | Not started | - |
 | 4. Assignment Engine + SLA | 0/2 | Not started | - |
 | 5. Reporting + Admin + Sheets Mirror | 0/1 | Not started | - |

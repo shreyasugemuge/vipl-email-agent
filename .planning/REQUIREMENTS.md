@@ -11,8 +11,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **PROC-01**: System polls configured Gmail inboxes for new emails every 5 minutes
 - [ ] **PROC-02**: System triages emails with Claude AI (category, priority, summary, draft reply)
-- [ ] **PROC-03**: System pre-filters spam via regex patterns before AI processing (zero cost)
-- [ ] **PROC-04**: System extracts PDF attachment text for triage context
+- [x] **PROC-03**: System pre-filters spam via regex patterns before AI processing (zero cost)
+- [x] **PROC-04**: System extracts PDF attachment text for triage context
 - [ ] **PROC-05**: System detects email language (Hindi, Marathi, English) and writes summary in English
 - [ ] **PROC-06**: System logs failed triages to dead letter queue and retries up to 3 times
 
@@ -55,10 +55,10 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **INFR-05**: Daily EOD report sent via email + Chat card with stats from database
 - [x] **INFR-06**: Health endpoint reports system status (uptime, failure count, last poll)
 - [ ] **INFR-07**: Admin can configure monitored inboxes without code changes
-- [ ] **INFR-08**: Admin can configure polling frequency, quiet hours, and business hours
+- [x] **INFR-08**: Admin can configure polling frequency, quiet hours, and business hours
 - [ ] **INFR-09**: Admin can configure SLA deadlines per category/priority
 - [ ] **INFR-10**: Admin can configure assignment rules (category-to-person mapping)
-- [ ] **INFR-11**: Admin can toggle feature flags (AI triage, Chat notifications, EOD email) without redeploy
+- [x] **INFR-11**: Admin can toggle feature flags (AI triage, Chat notifications, EOD email) without redeploy
 - [x] **INFR-12**: Admin can manage team members (add/remove, set roles)
 
 ### Migration + Cutover
@@ -131,8 +131,8 @@ Deferred to future release. Tracked but not in current roadmap.
 |-------------|-------|--------|
 | PROC-01 | Phase 2 | Pending |
 | PROC-02 | Phase 2 | Pending |
-| PROC-03 | Phase 2 | Pending |
-| PROC-04 | Phase 2 | Pending |
+| PROC-03 | Phase 2 | Complete (02-01) |
+| PROC-04 | Phase 2 | Complete (02-01) |
 | PROC-05 | Phase 2 | Pending |
 | PROC-06 | Phase 2 | Pending |
 | ASGN-01 | Phase 3 | Pending |
@@ -160,10 +160,10 @@ Deferred to future release. Tracked but not in current roadmap.
 | INFR-05 | Phase 5 | Pending |
 | INFR-06 | Phase 1 | Complete (01-01) |
 | INFR-07 | Phase 5 | Pending |
-| INFR-08 | Phase 2 | Pending |
+| INFR-08 | Phase 2 | Complete (02-01) |
 | INFR-09 | Phase 4 | Pending |
 | INFR-10 | Phase 4 | Pending |
-| INFR-11 | Phase 2 | Pending |
+| INFR-11 | Phase 2 | Complete (02-01) |
 | INFR-12 | Phase 1 | Complete (01-01) |
 | CUTV-01 | Phase 6 | Pending |
 | CUTV-02 | Phase 6 | Pending |
@@ -177,4 +177,4 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after plan 01-01 execution*
+*Last updated: 2026-03-11 after plan 02-01 execution*
