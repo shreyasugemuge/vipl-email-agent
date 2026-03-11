@@ -20,14 +20,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **ASGN-01**: Manager can manually assign an email to a team member from the dashboard
 - [x] **ASGN-02**: Manager can reassign an email to a different team member
-- [ ] **ASGN-03**: System auto-assigns emails based on category-to-person mapping rules
-- [ ] **ASGN-04**: System uses AI fallback for emails that don't match any assignment rule
+- [x] **ASGN-03**: System auto-assigns emails based on category-to-person mapping rules
+- [x] **ASGN-04**: System uses AI fallback for emails that don't match any assignment rule
 - [x] **ASGN-05**: Assignment triggers notification to assignee via Google Chat + email
 
 ### Status & SLA
 
 - [x] **SLA-01**: Each email has a status: New, Acknowledged, Replied, Closed
-- [ ] **SLA-02**: System calculates SLA deadline per email based on priority and category
+- [x] **SLA-02**: System calculates SLA deadline per email based on priority and category
 - [ ] **SLA-03**: System detects SLA breaches and posts summary alerts (3x daily)
 - [ ] **SLA-04**: SLA breach alerts manager (Shreyas) via Chat + email
 
@@ -56,8 +56,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **INFR-06**: Health endpoint reports system status (uptime, failure count, last poll)
 - [ ] **INFR-07**: Admin can configure monitored inboxes without code changes
 - [x] **INFR-08**: Admin can configure polling frequency, quiet hours, and business hours
-- [ ] **INFR-09**: Admin can configure SLA deadlines per category/priority
-- [ ] **INFR-10**: Admin can configure assignment rules (category-to-person mapping)
+- [x] **INFR-09**: Admin can configure SLA deadlines per category/priority
+- [x] **INFR-10**: Admin can configure assignment rules (category-to-person mapping)
 - [x] **INFR-11**: Admin can toggle feature flags (AI triage, Chat notifications, EOD email) without redeploy
 - [x] **INFR-12**: Admin can manage team members (add/remove, set roles)
 
@@ -137,11 +137,11 @@ Deferred to future release. Tracked but not in current roadmap.
 | PROC-06 | Phase 2 | Complete (02-03) |
 | ASGN-01 | Phase 3 | Complete (03-02) |
 | ASGN-02 | Phase 3 | Complete (03-02) |
-| ASGN-03 | Phase 4 | Pending |
-| ASGN-04 | Phase 4 | Pending |
+| ASGN-03 | Phase 4 | Complete |
+| ASGN-04 | Phase 4 | Complete |
 | ASGN-05 | Phase 3 | Complete (03-02) |
 | SLA-01 | Phase 3 | Complete (03-02) |
-| SLA-02 | Phase 4 | Pending |
+| SLA-02 | Phase 4 | Complete |
 | SLA-03 | Phase 4 | Pending |
 | SLA-04 | Phase 4 | Pending |
 | DASH-01 | Phase 3 | Complete (03-01) |
@@ -161,8 +161,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | INFR-06 | Phase 1 | Complete (01-01) |
 | INFR-07 | Phase 5 | Pending |
 | INFR-08 | Phase 2 | Complete (02-01) |
-| INFR-09 | Phase 4 | Pending |
-| INFR-10 | Phase 4 | Pending |
+| INFR-09 | Phase 4 | Complete |
+| INFR-10 | Phase 4 | Complete |
 | INFR-11 | Phase 2 | Complete (02-01) |
 | INFR-12 | Phase 1 | Complete (01-01) |
 | CUTV-01 | Phase 6 | Pending |

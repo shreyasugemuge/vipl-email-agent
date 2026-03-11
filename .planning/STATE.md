@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-11T16:44:17.554Z"
-last_activity: 2026-03-11 -- Phase 3 merged to v2, pushed to remote
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-11T17:55:45Z"
+last_activity: 2026-03-11 -- Phase 4 Plan 01 complete (models, SLA, auto-assign, AI suggestions)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 66
+  completed_plans: 8
+  percent: 72
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Phase 4: Assignment Engine + SLA (next)
+**Current focus:** Phase 4: Assignment Engine + SLA (in progress)
 
 ## Current Position
 
-Phase: 3 of 6 (Dashboard) -- COMPLETE
-Plan: 3 of 3 in current phase (03-01, 03-02, 03-03 done)
-Status: Phase 3 complete, ready for Phase 4
-Last activity: 2026-03-11 -- Phase 3 merged to v2, pushed to remote
+Phase: 4 of 6 (Assignment Engine + SLA) -- IN PROGRESS
+Plan: 1 of 3 in current phase (04-01 done, 04-02 and 04-03 remaining)
+Status: Plan 04-01 complete, ready for Plan 04-02 (UI + settings page)
+Last activity: 2026-03-11 -- Phase 4 Plan 01 complete (models, SLA, auto-assign, AI suggestions)
 
-Progress: [######....] 66%
+Progress: [#######...] 72%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 6.4 min
-- Total execution time: ~1 hour
+- Total plans completed: 11
+- Average duration: 6.5 min
+- Total execution time: ~1h 10m
 
 **By Phase:**
 
@@ -46,9 +46,10 @@ Progress: [######....] 66%
 | 1. Foundation | 2 | 12 min | 6 min |
 | 2. Email Pipeline | 3 | 17 min | 5.7 min |
 | 3. Dashboard | 3 | 25 min | 8.3 min |
+| 4. Assignment+SLA | 1/3 | 8 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (7 min), 02-03 (4 min), 03-01 (9 min), 03-02 (8 min), 03-03 (8 min)
+- Last 5 plans: 02-03 (4 min), 03-01 (9 min), 03-02 (8 min), 03-03 (8 min), 04-01 (8 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -87,6 +88,11 @@ Recent decisions affecting current work:
 - Fire-and-forget notifications: Chat and email never block or crash assignment
 - 40/60 list-detail split layout per CONTEXT.md
 - Service layer pattern: views call service functions, services handle ORM + notifications
+- ai_suggested_assignee changed from CharField to JSONField (data migration for existing rows)
+- Auto-assign uses optimistic locking (filter+update) to prevent race conditions
+- SLA business hours: 8AM-8PM IST Mon-Sat, zoneinfo.ZoneInfo for timezone
+- TRIAGE_TOOL_SCHEMA suggested_assignee is now object {name, reason} (backward-compat parsing)
+- Team workload injected into Claude prompt (~50 tokens per request)
 
 ### Pending Todos
 
@@ -99,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T16:44:17.551Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-assignment-engine-sla/04-CONTEXT.md
+Last session: 2026-03-11T17:55:45Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: .planning/phases/04-assignment-engine-sla/04-01-SUMMARY.md
