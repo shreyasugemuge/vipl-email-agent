@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-11T17:55:45Z"
-last_activity: 2026-03-11 -- Phase 4 Plan 01 complete (models, SLA, auto-assign, AI suggestions)
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-11T18:06:22Z"
+last_activity: 2026-03-11 -- Phase 4 Plan 02 complete (settings UI, SLA display, claim, AI suggestion endpoints)
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 72
+  total_plans: 11
+  completed_plans: 10
+  percent: 82
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Phase: 4 of 6 (Assignment Engine + SLA) -- IN PROGRESS
-Plan: 1 of 3 in current phase (04-01 done, 04-02 and 04-03 remaining)
-Status: Plan 04-01 complete, ready for Plan 04-02 (UI + settings page)
-Last activity: 2026-03-11 -- Phase 4 Plan 01 complete (models, SLA, auto-assign, AI suggestions)
+Plan: 2 of 3 in current phase (04-01, 04-02 done, 04-03 remaining)
+Status: Plan 04-02 complete, ready for Plan 04-03 (breach alerting)
+Last activity: 2026-03-11 -- Phase 4 Plan 02 complete (settings UI, SLA display, claim, AI suggestion endpoints)
 
-Progress: [#######...] 72%
+Progress: [########..] 82%
 
 ## Performance Metrics
 
@@ -46,10 +46,10 @@ Progress: [#######...] 72%
 | 1. Foundation | 2 | 12 min | 6 min |
 | 2. Email Pipeline | 3 | 17 min | 5.7 min |
 | 3. Dashboard | 3 | 25 min | 8.3 min |
-| 4. Assignment+SLA | 1/3 | 8 min | 8 min |
+| 4. Assignment+SLA | 2/3 | 15 min | 7.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-03 (4 min), 03-01 (9 min), 03-02 (8 min), 03-03 (8 min), 04-01 (8 min)
+- Last 5 plans: 03-01 (9 min), 03-02 (8 min), 03-03 (8 min), 04-01 (8 min), 04-02 (7 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -93,6 +93,9 @@ Recent decisions affecting current work:
 - SLA business hours: 8AM-8PM IST Mon-Sat, zoneinfo.ZoneInfo for timezone
 - TRIAGE_TOOL_SCHEMA suggested_assignee is now object {name, reason} (backward-compat parsing)
 - Team workload injected into Claude prompt (~50 tokens per request)
+- Settings sidebar link points to /emails/settings/ (app settings page) instead of Django admin
+- Sortable.js CDN for drag-to-reorder assignment rules (zero build step)
+- SLA color coding: emerald > 2h, amber 1-2h, orange 30m-1h, red < 30m, red+pulse breached
 
 ### Pending Todos
 
@@ -105,6 +108,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T17:55:45Z
-Stopped at: Completed 04-01-PLAN.md
-Resume file: .planning/phases/04-assignment-engine-sla/04-01-SUMMARY.md
+Last session: 2026-03-11T18:06:22Z
+Stopped at: Completed 04-02-PLAN.md
+Resume file: .planning/phases/04-assignment-engine-sla/04-02-SUMMARY.md
