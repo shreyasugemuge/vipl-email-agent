@@ -96,6 +96,43 @@ class Email(SoftDeleteModel, TimestampedModel):
         return f"{self.from_address}: {self.subject[:50]}"
 
 
+class ActivityLog(TimestampedModel):
+    """Append-only log of actions taken on an email (assignment, status change, etc.)."""
+
+    class Action(models.TextChoices):
+        ASSIGNED = "assigned", "Assigned"
+        REASSIGNED = "reassigned", "Reassigned"
+        STATUS_CHANGED = "status_changed", "Status Changed"
+        ACKNOWLEDGED = "acknowledged", "Acknowledged"
+        CLOSED = "closed", "Closed"
+
+    email = models.ForeignKey(
+        Email,
+        on_delete=models.CASCADE,
+        related_name="activity_logs",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="activity_logs",
+    )
+    action = models.CharField(
+        max_length=20,
+        choices=Action.choices,
+    )
+    detail = models.TextField(blank=True, default="")
+    old_value = models.CharField(max_length=255, blank=True, default="")
+    new_value = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.action} on {self.email_id} by {self.user_id}"
+
+
 class AttachmentMetadata(TimestampedModel):
     """Stores metadata about email attachments (actual files stay in Gmail)."""
 

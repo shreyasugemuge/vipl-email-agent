@@ -26,6 +26,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Third-party
+    "django_htmx",
     # Project apps
     "apps.core",
     "apps.accounts",
@@ -36,6 +38,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django_htmx.middleware.HtmxMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -71,7 +74,7 @@ AUTH_USER_MODEL = "accounts.User"
 
 # Auth URLs
 LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/accounts/dashboard/"
+LOGIN_REDIRECT_URL = "/emails/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 # Password validation
