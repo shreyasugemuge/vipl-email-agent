@@ -3,6 +3,10 @@
 from django.db import migrations
 
 
+# Dev-safe defaults: monitored_inboxes is empty and chat is off so that
+# running `python manage.py run_scheduler` on a fresh dev setup does NOT
+# accidentally poll real inboxes or post to Google Chat.  Production values
+# are set via SystemConfig admin or environment variables.
 SEED_DATA = [
     # Feature flags
     {
@@ -14,7 +18,7 @@ SEED_DATA = [
     },
     {
         "key": "chat_notifications_enabled",
-        "value": "true",
+        "value": "false",
         "value_type": "bool",
         "category": "feature_flags",
         "description": "Enable/disable Google Chat notifications",
@@ -43,10 +47,10 @@ SEED_DATA = [
     },
     {
         "key": "monitored_inboxes",
-        "value": "info@vidarbhainfotech.com,sales@vidarbhainfotech.com",
+        "value": "",
         "value_type": "str",
         "category": "polling",
-        "description": "Comma-separated list of monitored inbox addresses",
+        "description": "Comma-separated list of monitored inbox addresses (empty = safe for dev)",
     },
     # Quiet hours
     {

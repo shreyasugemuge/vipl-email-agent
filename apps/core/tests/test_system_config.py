@@ -74,7 +74,7 @@ class TestSystemConfigSeedData:
         """Verify data migration created feature flags and polling config."""
         # Feature flags
         assert SystemConfig.get("ai_triage_enabled") is True
-        assert SystemConfig.get("chat_notifications_enabled") is True
+        assert SystemConfig.get("chat_notifications_enabled") is False  # dev-safe default
         assert SystemConfig.get("eod_email_enabled") is True
 
         # Polling config

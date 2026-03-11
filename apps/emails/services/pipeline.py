@@ -147,7 +147,7 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
     # Read config
     ai_enabled = SystemConfig.get("ai_triage_enabled", True)
     chat_enabled = SystemConfig.get("chat_notifications_enabled", False)
-    inboxes_str = SystemConfig.get("monitored_inboxes", "info@vidarbhainfotech.com")
+    inboxes_str = SystemConfig.get("monitored_inboxes", "")
     max_failures = SystemConfig.get("max_consecutive_failures", 3)
 
     # Circuit breaker check

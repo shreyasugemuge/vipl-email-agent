@@ -72,18 +72,65 @@ def _retry_job(ai_processor, gmail_poller):
 class Command(BaseCommand):
     help = "Run the APScheduler-based email polling scheduler"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--once",
+            action="store_true",
+            help="Run a single poll cycle then exit (no APScheduler loop)",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Log what would happen without calling external APIs (Gmail, Claude, Chat)",
+        )
+
     def handle(self, **options):
-        # Initialize services
+        run_once = options.get("once", False)
+        dry_run = options.get("dry_run", False)
+
+        # Initialize services with graceful missing-credentials handling
         key_path = os.environ.get(
             "GOOGLE_SERVICE_ACCOUNT_KEY_PATH", "/app/secrets/service-account.json"
         )
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
         webhook_url = os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
 
+        # Warn about missing credentials instead of crashing
+        if not api_key:
+            logger.warning(
+                "ANTHROPIC_API_KEY not set — AI triage will use fallback mode"
+            )
+        if not os.path.exists(key_path):
+            logger.warning(
+                f"Service account key not found at {key_path} — Gmail polling will be disabled"
+            )
+
         gmail_poller = GmailPoller(service_account_key_path=key_path)
         ai_processor = AIProcessor(anthropic_api_key=api_key)
         chat_notifier = ChatNotifier(webhook_url=webhook_url)
         state_manager = StateManager()
+
+        # --once: run a single poll cycle and exit
+        if run_once:
+            from apps.emails.services.pipeline import process_poll_cycle
+
+            if dry_run:
+                self.stdout.write("DRY RUN: running single poll cycle with fake data...")
+                self._dry_run_cycle()
+            else:
+                self.stdout.write("Running single poll cycle...")
+                process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
+            self.stdout.write(self.style.SUCCESS("Single poll cycle complete."))
+            return
+
+        if dry_run:
+            self.stdout.write(
+                self.style.WARNING(
+                    "DRY RUN: --dry-run without --once is not supported. "
+                    "Use: python manage.py run_scheduler --once --dry-run"
+                )
+            )
+            return
 
         # Read poll interval from config (default 5 minutes)
         poll_interval = SystemConfig.get("poll_interval_minutes", 5)
@@ -143,3 +190,24 @@ class Command(BaseCommand):
         )
 
         scheduler.start()
+
+    def _dry_run_cycle(self):
+        """Simulate a poll cycle with fake data — no external API calls."""
+        from apps.emails.services.fake_data import make_fake_emails, make_fake_triage
+        from apps.emails.services.pipeline import save_email_to_db
+
+        fake_emails = make_fake_emails(3)
+        for i, email_msg in enumerate(fake_emails):
+            triage = make_fake_triage(index=i)
+            email_obj = save_email_to_db(email_msg, triage)
+            logger.info(
+                f"[DRY RUN] Saved: {email_obj.subject[:50]} -> "
+                f"{triage.category}/{triage.priority}"
+            )
+            self.stdout.write(
+                f"  [DRY RUN] Would poll Gmail: skipped\n"
+                f"  [DRY RUN] Would call Claude AI: skipped\n"
+                f"  [DRY RUN] Would notify Chat: skipped\n"
+                f"  [DRY RUN] Saved to DB: {email_obj.subject[:50]} "
+                f"({triage.category}/{triage.priority})"
+            )
