@@ -95,6 +95,79 @@ class ChatNotifier:
             logger.warning(f"Invalid quiet hours config: {e}")
             return False
 
+    def notify_assignment(self, email, assignee) -> bool:
+        """Post a notification card when an email is assigned to a team member.
+
+        Args:
+            email: Django Email model instance.
+            assignee: Django User model instance (the person assigned).
+
+        Returns:
+            True if posted successfully, False otherwise.
+        """
+        if self._is_quiet_hours():
+            logger.info("Quiet hours -- suppressing assignment notification for email %s", email.pk)
+            return False
+
+        pri = getattr(email, "priority", "MEDIUM") or "MEDIUM"
+        emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
+        subject = (getattr(email, "subject", "") or "")[:50]
+        category = getattr(email, "category", "") or ""
+        from_name = getattr(email, "from_name", "") or ""
+        from_address = getattr(email, "from_address", "") or ""
+        ai_summary = (getattr(email, "ai_summary", "") or "")[:200]
+
+        assignee_name = assignee.get_full_name() or assignee.username
+
+        tracker_url = SystemConfig.get(
+            "tracker_url", "https://triage.vidarbhainfotech.com"
+        )
+        dashboard_link = f"{tracker_url}/emails/?selected={email.pk}"
+
+        card = {
+            "header": {
+                "title": f"Assigned to {assignee_name}: {subject}",
+                "subtitle": f"{emoji} {pri} | {category}",
+            },
+            "sections": [
+                {
+                    "widgets": [
+                        {
+                            "decoratedText": {
+                                "topLabel": "From",
+                                "text": f"{from_name} <{from_address}>",
+                            }
+                        },
+                        {
+                            "decoratedText": {
+                                "topLabel": "Summary",
+                                "text": ai_summary or "(no summary)",
+                            }
+                        },
+                    ]
+                },
+                {
+                    "widgets": [
+                        {
+                            "buttonList": {
+                                "buttons": [
+                                    {
+                                        "text": "Open in Dashboard",
+                                        "onClick": {
+                                            "openLink": {"url": dashboard_link}
+                                        },
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+            ],
+        }
+
+        payload = {"cardsV2": [{"cardId": f"assign-{email.pk}", "card": card}]}
+        return self._post(payload)
+
     def notify_new_emails(self, emails) -> bool:
         """Post a summary card for newly processed emails.
 

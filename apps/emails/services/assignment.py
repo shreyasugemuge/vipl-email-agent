@@ -1,0 +1,150 @@
+"""Assignment service -- assign emails, change status, send notifications.
+
+Core action layer: manager assigns emails, team members acknowledge/close,
+everyone gets notified via Chat and email.
+"""
+
+import logging
+
+from django.conf import settings
+from django.core.mail import send_mail
+from django.utils import timezone
+
+from apps.core.models import SystemConfig
+from apps.emails.models import ActivityLog, Email
+from apps.emails.services.chat_notifier import ChatNotifier
+
+logger = logging.getLogger(__name__)
+
+
+def _user_display(user):
+    """Return best display name for a user."""
+    if user is None:
+        return ""
+    full = user.get_full_name()
+    return full if full.strip() else user.username
+
+
+def assign_email(email, assignee, assigned_by, note=""):
+    """Assign (or reassign) an email to a team member.
+
+    Sets assigned_to, assigned_by, assigned_at on the Email.
+    Creates an ActivityLog entry. Fires Chat + email notifications
+    (fire-and-forget -- failures logged, never crash).
+
+    Returns the updated Email instance.
+    """
+    old_assignee = email.assigned_to
+
+    # Update email fields
+    email.assigned_to = assignee
+    email.assigned_by = assigned_by
+    email.assigned_at = timezone.now()
+    email.save(update_fields=["assigned_to", "assigned_by", "assigned_at", "updated_at"])
+
+    # Determine action type
+    if old_assignee:
+        action = ActivityLog.Action.REASSIGNED
+        old_value = _user_display(old_assignee)
+    else:
+        action = ActivityLog.Action.ASSIGNED
+        old_value = ""
+
+    new_value = _user_display(assignee)
+
+    # Create activity log
+    ActivityLog.objects.create(
+        email=email,
+        user=assigned_by,
+        action=action,
+        detail=note,
+        old_value=old_value,
+        new_value=new_value,
+    )
+
+    # Fire-and-forget: Chat notification
+    try:
+        webhook_url = SystemConfig.get("chat_webhook_url", "")
+        notifier = ChatNotifier(webhook_url=webhook_url)
+        notifier.notify_assignment(email, assignee)
+    except Exception:
+        logger.exception("Chat notification failed for assignment of email %s", email.pk)
+
+    # Fire-and-forget: Email notification
+    try:
+        notify_assignment_email(email, assignee)
+    except Exception:
+        logger.exception("Email notification failed for assignment of email %s", email.pk)
+
+    return email
+
+
+def change_status(email, new_status, changed_by):
+    """Change the status of an email and log the activity.
+
+    Validates new_status against Email.Status.values.
+    Returns the updated Email instance.
+    """
+    valid_statuses = [s.value for s in Email.Status]
+    if new_status not in valid_statuses:
+        raise ValueError(f"Invalid status: {new_status}. Must be one of {valid_statuses}")
+
+    old_status = email.status
+    email.status = new_status
+    email.save(update_fields=["status", "updated_at"])
+
+    # Map status to activity log action
+    action_map = {
+        "acknowledged": ActivityLog.Action.ACKNOWLEDGED,
+        "closed": ActivityLog.Action.CLOSED,
+    }
+    action = action_map.get(new_status, ActivityLog.Action.STATUS_CHANGED)
+
+    ActivityLog.objects.create(
+        email=email,
+        user=changed_by,
+        action=action,
+        old_value=old_status,
+        new_value=new_status,
+    )
+
+    return email
+
+
+def notify_assignment_email(email, assignee):
+    """Send email notification to assignee about the assignment.
+
+    Returns True on success, False on failure. Never raises.
+    """
+    if not assignee.email:
+        logger.warning("Cannot send assignment email -- assignee %s has no email", assignee.username)
+        return False
+
+    subject = f"Email assigned to you: {email.subject[:60]}"
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "triage@vidarbhainfotech.com")
+
+    summary = (email.ai_summary or "")[:200]
+    dashboard_url = f"/emails/?selected={email.pk}"
+
+    body = (
+        f"An email has been assigned to you.\n\n"
+        f"From: {email.from_name} <{email.from_address}>\n"
+        f"Priority: {email.priority}\n"
+        f"Category: {email.category}\n"
+        f"Summary: {summary}\n\n"
+        f"View in dashboard: {dashboard_url}\n"
+    )
+
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=from_email,
+            recipient_list=[assignee.email],
+            fail_silently=False,
+        )
+        logger.info("Assignment email sent to %s for email %s", assignee.email, email.pk)
+        return True
+    except Exception:
+        logger.exception("Failed to send assignment email to %s", assignee.email)
+        return False
