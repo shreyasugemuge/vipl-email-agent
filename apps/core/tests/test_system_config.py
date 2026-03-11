@@ -53,15 +53,15 @@ class TestSystemConfigGetAllByCategory:
 
     def test_get_all_by_category(self):
         SystemConfig.objects.create(
-            key="flag_a", value="true", value_type="bool", category="feature_flags"
+            key="flag_a", value="true", value_type="bool", category="test_category"
         )
         SystemConfig.objects.create(
-            key="flag_b", value="false", value_type="bool", category="feature_flags"
+            key="flag_b", value="false", value_type="bool", category="test_category"
         )
         SystemConfig.objects.create(
-            key="other", value="123", value_type="int", category="polling"
+            key="other", value="123", value_type="int", category="other_category"
         )
-        result = SystemConfig.get_all_by_category("feature_flags")
+        result = SystemConfig.get_all_by_category("test_category")
         assert result == {"flag_a": True, "flag_b": False}
         assert "other" not in result
 

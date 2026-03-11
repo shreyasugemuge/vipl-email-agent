@@ -15,6 +15,13 @@ class Email(SoftDeleteModel, TimestampedModel):
         REPLIED = "replied", "Replied"
         CLOSED = "closed", "Closed"
 
+    class ProcessingStatus(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
+        COMPLETED = "completed", "Completed"
+        FAILED = "failed", "Failed"
+        EXHAUSTED = "exhausted", "Exhausted"
+
     # Gmail identifiers
     message_id = models.CharField(max_length=255, unique=True)
     gmail_id = models.CharField(max_length=255, blank=True, default="")
@@ -30,11 +37,35 @@ class Email(SoftDeleteModel, TimestampedModel):
     headers = models.JSONField(default=dict, blank=True)
     received_at = models.DateTimeField()
 
+    # HTML body (separate from plain text body)
+    body_html = models.TextField(blank=True, default="")
+
     # AI triage fields
     category = models.CharField(max_length=100, blank=True, default="")
     priority = models.CharField(max_length=50, blank=True, default="")
     ai_summary = models.TextField(blank=True, default="")
     ai_draft_reply = models.TextField(blank=True, default="")
+
+    # AI metadata (Phase 2)
+    language = models.CharField(max_length=20, blank=True, default="")
+    is_spam = models.BooleanField(default=False)
+    spam_score = models.FloatField(default=0.0)
+    ai_reasoning = models.TextField(blank=True, default="")
+    ai_model_used = models.CharField(max_length=100, blank=True, default="")
+    ai_tags = models.JSONField(default=list, blank=True)
+    ai_suggested_assignee = models.CharField(max_length=100, blank=True, default="")
+    ai_input_tokens = models.PositiveIntegerField(default=0)
+    ai_output_tokens = models.PositiveIntegerField(default=0)
+    gmail_link = models.URLField(max_length=500, blank=True, default="")
+
+    # Dead letter / retry tracking (Phase 2)
+    processing_status = models.CharField(
+        max_length=20,
+        choices=ProcessingStatus.choices,
+        default=ProcessingStatus.PENDING,
+    )
+    retry_count = models.PositiveSmallIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
 
     # Assignment
     status = models.CharField(

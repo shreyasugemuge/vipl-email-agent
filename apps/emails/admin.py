@@ -20,12 +20,19 @@ class EmailAdmin(admin.ModelAdmin):
         "category",
         "priority",
         "status",
+        "processing_status",
         "assigned_to",
         "received_at",
     )
-    list_filter = ("status", "priority", "category", "to_inbox")
+    list_filter = ("status", "priority", "category", "to_inbox", "processing_status", "is_spam")
     search_fields = ("from_address", "subject", "body")
-    readonly_fields = ("message_id", "gmail_id", "gmail_thread_id", "created_at", "updated_at")
+    readonly_fields = (
+        "message_id", "gmail_id", "gmail_thread_id",
+        "processing_status", "retry_count", "last_error",
+        "ai_reasoning", "ai_model_used", "ai_tags", "ai_suggested_assignee",
+        "ai_input_tokens", "ai_output_tokens", "gmail_link",
+        "created_at", "updated_at",
+    )
     inlines = [AttachmentInline]
 
 
