@@ -1,6 +1,10 @@
 {% load email_tags %}
 
-<div id="card-{{ email.pk }}" class="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors">
+<div id="card-{{ email.pk }}"
+     class="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
+     hx-get="{% url 'emails:email_detail' email.pk %}"
+     hx-target="#detail-panel"
+     hx-swap="innerHTML">
     <div class="flex items-start gap-4">
         <!-- Priority badge -->
         <span class="inline-flex items-center justify-center w-16 shrink-0 px-2 py-0.5 rounded text-xs font-semibold text-white bg-{{ email.priority|priority_color }}">
@@ -22,10 +26,12 @@
         </div>
 
         <!-- Right side: assignee + time -->
-        <div class="shrink-0 text-right text-xs text-gray-500 space-y-1">
+        <div class="shrink-0 text-right text-xs text-gray-500 space-y-1" onclick="event.stopPropagation();">
             <div>{{ email.created_at|time_ago }}</div>
             <div>
-                {% if email.assigned_to %}
+                {% if is_admin %}
+                    {% include "emails/_assign_dropdown.html" with email=email team_members=team_members %}
+                {% elif email.assigned_to %}
                 <span class="text-gray-700">{{ email.assigned_to.get_full_name|default:email.assigned_to.username }}</span>
                 {% else %}
                 <span class="text-amber-600 font-medium">Unassigned</span>

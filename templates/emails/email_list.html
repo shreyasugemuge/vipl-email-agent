@@ -100,9 +100,19 @@
         <span class="ml-auto text-sm text-gray-500">{{ total_count }} email{{ total_count|pluralize }}</span>
     </div>
 
-    <!-- Email list (HTMX target) -->
-    <div id="email-list" class="flex-1 overflow-auto">
-        {% include "emails/_email_list_body.html" %}
+    <!-- Main content: list + detail split -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Email list (40% width) -->
+        <div id="email-list" class="w-2/5 overflow-auto border-r border-gray-200">
+            {% include "emails/_email_list_body.html" %}
+        </div>
+
+        <!-- Detail panel (60% width, loaded via HTMX) -->
+        <div id="detail-panel" class="w-3/5 overflow-auto bg-white">
+            <div class="flex items-center justify-center h-full text-gray-400 text-sm">
+                Select an email to view details
+            </div>
+        </div>
     </div>
 
 </div>

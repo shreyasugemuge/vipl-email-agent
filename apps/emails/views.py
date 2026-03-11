@@ -1,21 +1,42 @@
-"""Email views: dashboard list + dev inspector.
+"""Email views: dashboard list, detail panel, assignment, status + dev inspector.
 
-/emails/         — Main email list dashboard (login required)
-/emails/inspect/ — Dev inspector (no login, dev/test only)
+/emails/              -- Main email list dashboard (login required)
+/emails/<pk>/detail/  -- Email detail panel (HTMX partial)
+/emails/<pk>/assign/  -- Assign email (POST, admin only)
+/emails/<pk>/status/  -- Change email status (POST)
+/emails/inspect/      -- Dev inspector (no login, dev/test only)
 """
 
 import json
+import logging
 
+import nh3
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.http import JsonResponse
-from django.shortcuts import render
+from django.http import HttpResponseForbidden, JsonResponse
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.accounts.models import User
 from apps.core.models import SystemConfig
-from apps.emails.models import Email
+from apps.emails.models import ActivityLog, Email
+from apps.emails.services.assignment import assign_email as _assign_email
+from apps.emails.services.assignment import change_status as _change_status
+
+logger = logging.getLogger(__name__)
+
+# Allowed HTML tags for body_html sanitization
+SAFE_TAGS = {
+    "p", "br", "strong", "em", "ul", "ol", "li", "a",
+    "h1", "h2", "h3", "h4", "table", "tr", "td", "th",
+    "thead", "tbody", "span", "div", "blockquote",
+}
+SAFE_ATTRIBUTES = {
+    "a": {"href"},
+    "span": {"style"},
+    "td": {"colspan", "rowspan"},
+}
 
 
 # ---------------------------------------------------------------------------
@@ -36,7 +57,7 @@ PER_PAGE = 25
 
 @login_required
 def email_list(request):
-    """Main email dashboard — card list with filtering, sorting, pagination."""
+    """Main email dashboard -- card list with filtering, sorting, pagination."""
     user = request.user
     is_admin = user.is_staff or user.role == User.Role.ADMIN
 
@@ -137,6 +158,146 @@ def email_list(request):
         return render(request, "emails/_email_list_body.html", context)
     return render(request, "emails/email_list.html", context)
 
+
+# ---------------------------------------------------------------------------
+# Email detail panel (HTMX partial)
+# ---------------------------------------------------------------------------
+
+
+@login_required
+def email_detail(request, pk):
+    """Return the email detail panel partial for HTMX swap."""
+    email = get_object_or_404(
+        Email.objects.select_related("assigned_to", "assigned_by"),
+        pk=pk,
+    )
+
+    # Sanitize HTML body
+    sanitized_body_html = ""
+    if email.body_html:
+        sanitized_body_html = nh3.clean(
+            email.body_html,
+            tags=SAFE_TAGS,
+            attributes=SAFE_ATTRIBUTES,
+        )
+
+    # Get attachments
+    attachments = email.attachments.all()
+
+    # Get activity logs (recent 20)
+    activity_logs = email.activity_logs.select_related("user").all()[:20]
+
+    # Team members for assign dropdown
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    team_members = []
+    if is_admin:
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    context = {
+        "email": email,
+        "sanitized_body_html": sanitized_body_html,
+        "attachments": attachments,
+        "activity_logs": activity_logs,
+        "team_members": team_members,
+        "is_admin": is_admin,
+    }
+
+    return render(request, "emails/_email_detail.html", context)
+
+
+# ---------------------------------------------------------------------------
+# Assignment endpoint (POST, admin only)
+# ---------------------------------------------------------------------------
+
+
+@login_required
+@require_POST
+def assign_email_view(request, pk):
+    """Assign an email to a team member. Admin only."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+
+    if not is_admin:
+        return HttpResponseForbidden("Only admins can assign emails.")
+
+    email = get_object_or_404(Email, pk=pk)
+    assignee_id = request.POST.get("assignee_id")
+
+    if not assignee_id:
+        return HttpResponseForbidden("Missing assignee_id.")
+
+    assignee = get_object_or_404(User, pk=assignee_id)
+    note = request.POST.get("note", "")
+
+    _assign_email(email, assignee, user, note=note)
+
+    # Reload with select_related for template
+    email = Email.objects.select_related("assigned_to").get(pk=pk)
+
+    return render(request, "emails/_email_card.html", {"email": email, "is_admin": is_admin})
+
+
+# ---------------------------------------------------------------------------
+# Status change endpoint (POST)
+# ---------------------------------------------------------------------------
+
+
+@login_required
+@require_POST
+def change_status_view(request, pk):
+    """Change the status of an email. Admins can change any; members can change their own."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+
+    email = get_object_or_404(
+        Email.objects.select_related("assigned_to", "assigned_by"),
+        pk=pk,
+    )
+
+    # Permission check: admin or assigned_to user
+    if not is_admin and email.assigned_to != user:
+        return HttpResponseForbidden("You can only change status on emails assigned to you.")
+
+    new_status = request.POST.get("new_status", "")
+    if not new_status:
+        return HttpResponseForbidden("Missing new_status.")
+
+    _change_status(email, new_status, user)
+
+    # Reload and return detail partial
+    email = Email.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
+
+    # Sanitize HTML body
+    sanitized_body_html = ""
+    if email.body_html:
+        sanitized_body_html = nh3.clean(
+            email.body_html,
+            tags=SAFE_TAGS,
+            attributes=SAFE_ATTRIBUTES,
+        )
+
+    attachments = email.attachments.all()
+    activity_logs = email.activity_logs.select_related("user").all()[:20]
+    team_members = []
+    if is_admin:
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    context = {
+        "email": email,
+        "sanitized_body_html": sanitized_body_html,
+        "attachments": attachments,
+        "activity_logs": activity_logs,
+        "team_members": team_members,
+        "is_admin": is_admin,
+    }
+
+    return render(request, "emails/_email_detail.html", context)
+
+
+# ---------------------------------------------------------------------------
+# Dev inspector
+# ---------------------------------------------------------------------------
 
 PRIORITY_EMOJI = {
     "CRITICAL": "\U0001f534",

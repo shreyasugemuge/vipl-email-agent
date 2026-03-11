@@ -1,0 +1,18 @@
+<!-- Inline assignment dropdown for email card (admin only) -->
+<form hx-post="{% url 'emails:assign_email' email.pk %}"
+      hx-target="#card-{{ email.pk }}"
+      hx-swap="outerHTML"
+      class="inline"
+      onclick="event.stopPropagation();">
+    {% csrf_token %}
+    <select name="assignee_id"
+            onchange="this.form.requestSubmit();"
+            class="text-xs border border-gray-200 rounded px-1 py-0.5 bg-white cursor-pointer">
+        <option value="">Unassigned</option>
+        {% for member in team_members %}
+        <option value="{{ member.pk }}" {% if email.assigned_to_id == member.pk %}selected{% endif %}>
+            {{ member.get_full_name|default:member.username }}
+        </option>
+        {% endfor %}
+    </select>
+</form>
