@@ -22,6 +22,22 @@
     <!-- Subject -->
     <div class="text-[13px] text-slate-700 truncate font-semibold leading-snug mb-1">{{ email.subject }}</div>
 
+    <!-- SLA countdown -->
+    {% if email.sla_ack_deadline or email.sla_respond_deadline %}
+    <div class="flex items-center gap-3 text-[10px] font-semibold mb-1.5">
+        {% if email.sla_ack_deadline %}
+        <span class="text-{{ email.sla_ack_deadline|sla_color }}-600">
+            Ack: {{ email.sla_ack_deadline|sla_countdown }}
+        </span>
+        {% endif %}
+        {% if email.sla_respond_deadline %}
+        <span class="text-{{ email.sla_respond_deadline|sla_color }}-600">
+            Resp: {{ email.sla_respond_deadline|sla_countdown }}
+        </span>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <!-- AI Summary -->
     {% if email.ai_summary %}
     <div class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed mb-2.5">{{ email.ai_summary }}</div>
@@ -31,7 +47,7 @@
 
     <!-- Bottom row: badges + assignee -->
     <div class="flex items-center justify-between">
-        <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-1.5 flex-wrap">
             <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-{{ email.priority|priority_base }}-50 text-{{ email.priority|priority_base }}-700 border border-{{ email.priority|priority_base }}-200/60">
                 {{ email.priority|default:"--" }}
             </span>
@@ -42,9 +58,26 @@
                 <span class="w-1 h-1 rounded-full bg-{{ email.status|status_base }}-500"></span>
                 {{ email.get_status_display }}
             </span>
+            {% if email.ai_suggested_assignee.name and not email.assigned_to %}
+            <span class="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-blue-50 text-blue-600 border border-blue-200/60">
+                AI: {{ email.ai_suggested_assignee.name }}
+            </span>
+            {% endif %}
         </div>
 
-        <div class="shrink-0" onclick="event.stopPropagation();">
+        <div class="shrink-0 flex items-center gap-1.5" onclick="event.stopPropagation();">
+            {% if not email.assigned_to and is_admin or not email.assigned_to and email.category in user_visible_categories %}
+            <form hx-post="{% url 'emails:claim_email' email.pk %}"
+                  hx-target="#card-{{ email.pk }}"
+                  hx-swap="outerHTML"
+                  class="inline">
+                {% csrf_token %}
+                <button type="submit" class="px-2.5 py-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 rounded-md border border-emerald-200/60 hover:bg-emerald-100 transition-colors active:scale-[0.97]">
+                    Claim
+                </button>
+            </form>
+            {% endif %}
+
             {% if is_admin %}
                 {% include "emails/_assign_dropdown.html" with email=email team_members=team_members %}
             {% elif email.assigned_to %}

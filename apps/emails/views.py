@@ -22,9 +22,13 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.accounts.models import User
 from apps.core.models import SystemConfig
-from apps.emails.models import ActivityLog, Email
+from apps.emails.models import (
+    ActivityLog, AssignmentRule, CategoryVisibility, Email, SLAConfig,
+)
 from apps.emails.services.assignment import assign_email as _assign_email
 from apps.emails.services.assignment import change_status as _change_status
+from apps.emails.services.assignment import claim_email as _claim_email
+from apps.emails.services.dtos import VALID_CATEGORIES, VALID_PRIORITIES
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +146,16 @@ def email_list(request):
     if is_admin:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
+    # Category visibility for claim button check on cards
+    if is_admin:
+        user_visible_categories = list(
+            Email.objects.values_list("category", flat=True).distinct()
+        )
+    else:
+        user_visible_categories = list(
+            CategoryVisibility.objects.filter(user=user).values_list("category", flat=True)
+        )
+
     # Build current query params (without page) for pagination links
     query_params = request.GET.copy()
     query_params.pop("page", None)
@@ -164,6 +178,7 @@ def email_list(request):
         "priorities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
         "query_params": query_params.urlencode(),
         "dash_stats": dash_stats,
+        "user_visible_categories": user_visible_categories,
     }
 
     if getattr(request, "htmx", False):
@@ -185,6 +200,24 @@ def _build_detail_context(email, request, is_admin, team_members):
             tags=SAFE_TAGS,
             attributes=SAFE_ATTRIBUTES,
         )
+
+    # Can this user claim the email?
+    can_claim = False
+    if email.assigned_to is None:
+        if is_admin:
+            can_claim = True
+        else:
+            can_claim = CategoryVisibility.objects.filter(
+                user=request.user,
+                category=email.category,
+            ).exists()
+
+    # AI suggestion dict (if present and non-empty)
+    ai_suggestion = None
+    suggestion_data = email.ai_suggested_assignee
+    if isinstance(suggestion_data, dict) and suggestion_data.get("name"):
+        ai_suggestion = suggestion_data
+
     return {
         "email": email,
         "sanitized_body_html": sanitized_body_html,
@@ -192,6 +225,8 @@ def _build_detail_context(email, request, is_admin, team_members):
         "activity_logs": email.activity_logs.select_related("user").all()[:20],
         "team_members": team_members,
         "is_admin": is_admin,
+        "can_claim": can_claim,
+        "ai_suggestion": ai_suggestion,
     }
 
 
@@ -264,6 +299,103 @@ def assign_email_view(request, pk):
 
 
 # ---------------------------------------------------------------------------
+# Claim endpoint (POST)
+# ---------------------------------------------------------------------------
+
+
+@login_required
+@require_POST
+def claim_email_view(request, pk):
+    """Allow a team member to self-claim an unassigned email."""
+    email = get_object_or_404(Email, pk=pk)
+
+    try:
+        _claim_email(email, request.user)
+    except (ValueError, PermissionError) as exc:
+        return HttpResponseForbidden(str(exc))
+
+    # Reload with relations
+    email = Email.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
+
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    team_members = []
+    if is_admin:
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # Primary: updated card
+    card_html = render_to_string(
+        "emails/_email_card.html",
+        {"email": email, "is_admin": is_admin, "team_members": team_members},
+        request=request,
+    )
+
+    # OOB: update detail panel
+    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    detail_html = render_to_string(
+        "emails/_email_detail.html", detail_context, request=request,
+    )
+    oob_detail = (
+        f'<div id="detail-panel" hx-swap-oob="innerHTML">{detail_html}</div>'
+    )
+
+    return _HttpResponse(card_html + oob_detail)
+
+
+# ---------------------------------------------------------------------------
+# AI suggestion accept/reject endpoints (POST, admin only)
+# ---------------------------------------------------------------------------
+
+
+@login_required
+@require_POST
+def accept_ai_suggestion(request, pk):
+    """Accept AI suggested assignee -- assigns the email to that user."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    if not is_admin:
+        return HttpResponseForbidden("Only admins can accept AI suggestions.")
+
+    email = get_object_or_404(
+        Email.objects.select_related("assigned_to", "assigned_by"), pk=pk,
+    )
+
+    suggestion = email.ai_suggested_assignee
+    if not isinstance(suggestion, dict) or not suggestion.get("user_id"):
+        return HttpResponseForbidden("No valid AI suggestion to accept.")
+
+    assignee = get_object_or_404(User, pk=suggestion["user_id"])
+    _assign_email(email, assignee, user, note="Accepted AI suggestion")
+
+    # Reload
+    email = Email.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    return render(request, "emails/_email_detail.html", detail_context)
+
+
+@login_required
+@require_POST
+def reject_ai_suggestion(request, pk):
+    """Dismiss AI suggested assignee -- clears the suggestion."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    if not is_admin:
+        return HttpResponseForbidden("Only admins can dismiss AI suggestions.")
+
+    email = get_object_or_404(
+        Email.objects.select_related("assigned_to", "assigned_by"), pk=pk,
+    )
+
+    email.ai_suggested_assignee = {}
+    email.save(update_fields=["ai_suggested_assignee", "updated_at"])
+
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    return render(request, "emails/_email_detail.html", detail_context)
+
+
+# ---------------------------------------------------------------------------
 # Status change endpoint (POST)
 # ---------------------------------------------------------------------------
 
@@ -311,6 +443,207 @@ def change_status_view(request, pk):
     )
 
     return _HttpResponse(detail_html + card_html)
+
+
+# ---------------------------------------------------------------------------
+# Admin settings page
+# ---------------------------------------------------------------------------
+
+
+def _require_admin(user):
+    """Return True if user is admin/staff."""
+    return user.is_staff or user.role == User.Role.ADMIN
+
+
+@login_required
+def settings_view(request):
+    """Admin settings page with tabs for rules, visibility, SLA config."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+    active_tab = request.GET.get("tab", "rules")
+
+    # Assignment rules grouped by category
+    rules_by_category = {}
+    for cat in VALID_CATEGORIES:
+        rules_by_category[cat] = list(
+            AssignmentRule.objects.filter(category=cat, is_active=True)
+            .select_related("assignee")
+            .order_by("priority_order")
+        )
+
+    # Category visibility grouped by user
+    visibility_by_user = {}
+    for member in team_members:
+        visibility_by_user[member.pk] = set(
+            CategoryVisibility.objects.filter(user=member).values_list("category", flat=True)
+        )
+
+    # SLA config as list
+    sla_configs = {
+        (c.priority, c.category): c
+        for c in SLAConfig.objects.all()
+    }
+    sla_matrix = []
+    for priority in VALID_PRIORITIES:
+        for category in VALID_CATEGORIES:
+            cfg = sla_configs.get((priority, category))
+            sla_matrix.append({
+                "priority": priority,
+                "category": category,
+                "ack_hours": cfg.ack_hours if cfg else 1.0,
+                "respond_hours": cfg.respond_hours if cfg else 24.0,
+                "exists": cfg is not None,
+            })
+
+    context = {
+        "active_tab": active_tab,
+        "team_members": team_members,
+        "rules_by_category": rules_by_category,
+        "visibility_by_user": visibility_by_user,
+        "sla_matrix": sla_matrix,
+        "valid_categories": VALID_CATEGORIES,
+        "valid_priorities": VALID_PRIORITIES,
+    }
+    return render(request, "emails/settings.html", context)
+
+
+@login_required
+@require_POST
+def settings_rules_save(request):
+    """Save assignment rules: add, remove, or reorder."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    action = request.POST.get("action", "")
+    category = request.POST.get("category", "")
+
+    if action == "add":
+        assignee_id = request.POST.get("assignee_id")
+        if assignee_id and category:
+            assignee = get_object_or_404(User, pk=assignee_id)
+            max_order = (
+                AssignmentRule.objects.filter(category=category)
+                .order_by("-priority_order")
+                .values_list("priority_order", flat=True)
+                .first()
+            ) or 0
+            AssignmentRule.objects.get_or_create(
+                category=category,
+                assignee=assignee,
+                defaults={"priority_order": max_order + 1},
+            )
+
+    elif action == "remove":
+        assignee_id = request.POST.get("assignee_id")
+        if assignee_id and category:
+            AssignmentRule.objects.filter(
+                category=category, assignee_id=assignee_id,
+            ).delete()
+
+    elif action == "reorder":
+        assignee_ids = request.POST.getlist("assignee_ids[]")
+        for idx, aid in enumerate(assignee_ids):
+            AssignmentRule.objects.filter(
+                category=category, assignee_id=aid,
+            ).update(priority_order=idx)
+
+    # Return partial for the category
+    rules = list(
+        AssignmentRule.objects.filter(category=category, is_active=True)
+        .select_related("assignee")
+        .order_by("priority_order")
+    )
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+    return render(request, "emails/_assignment_rules.html", {
+        "category": category,
+        "rules": rules,
+        "team_members": team_members,
+    })
+
+
+@login_required
+@require_POST
+def settings_visibility_save(request):
+    """Save category visibility for a user (replace all)."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    user_id = request.POST.get("user_id")
+    categories = request.POST.getlist("categories[]")
+
+    if user_id:
+        target_user = get_object_or_404(User, pk=user_id)
+        # Delete existing and recreate
+        CategoryVisibility.objects.filter(user=target_user).delete()
+        CategoryVisibility.objects.bulk_create([
+            CategoryVisibility(user=target_user, category=cat)
+            for cat in categories
+            if cat in VALID_CATEGORIES
+        ])
+
+    # Return updated partial
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+    visibility_by_user = {}
+    for member in team_members:
+        visibility_by_user[member.pk] = set(
+            CategoryVisibility.objects.filter(user=member).values_list("category", flat=True)
+        )
+    return render(request, "emails/_category_visibility.html", {
+        "team_members": team_members,
+        "visibility_by_user": visibility_by_user,
+        "valid_categories": VALID_CATEGORIES,
+    })
+
+
+@login_required
+@require_POST
+def settings_sla_save(request):
+    """Save SLA config for a priority x category pair."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    priority = request.POST.get("priority", "")
+    category = request.POST.get("category", "")
+    ack_hours = request.POST.get("ack_hours", "1.0")
+    respond_hours = request.POST.get("respond_hours", "24.0")
+
+    if priority and category:
+        try:
+            ack_h = float(ack_hours)
+            resp_h = float(respond_hours)
+        except (ValueError, TypeError):
+            ack_h, resp_h = 1.0, 24.0
+
+        SLAConfig.objects.update_or_create(
+            priority=priority,
+            category=category,
+            defaults={"ack_hours": ack_h, "respond_hours": resp_h},
+        )
+
+    # Return updated SLA table partial
+    sla_configs = {
+        (c.priority, c.category): c
+        for c in SLAConfig.objects.all()
+    }
+    sla_matrix = []
+    for p in VALID_PRIORITIES:
+        for c in VALID_CATEGORIES:
+            cfg = sla_configs.get((p, c))
+            sla_matrix.append({
+                "priority": p,
+                "category": c,
+                "ack_hours": cfg.ack_hours if cfg else 1.0,
+                "respond_hours": cfg.respond_hours if cfg else 24.0,
+                "exists": cfg is not None,
+            })
+
+    return render(request, "emails/_sla_config.html", {
+        "sla_matrix": sla_matrix,
+        "valid_priorities": VALID_PRIORITIES,
+        "valid_categories": VALID_CATEGORIES,
+    })
 
 
 # ---------------------------------------------------------------------------

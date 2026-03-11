@@ -1,6 +1,7 @@
 """Custom template tags and filters for the email dashboard."""
 
 from django import template
+from django.utils import timezone
 from django.utils.timesince import timesince
 
 register = template.Library()
@@ -67,3 +68,77 @@ def time_ago(value):
     if not value:
         return ""
     return f"{timesince(value)} ago"
+
+
+# ---------------------------------------------------------------------------
+# SLA filters
+# ---------------------------------------------------------------------------
+
+
+@register.filter
+def sla_color(deadline):
+    """Return Tailwind color string based on time remaining to SLA deadline.
+
+    Returns color family names used in class composition:
+      - "slate"  -- no deadline set
+      - "red animate-pulse" -- breached (flashing)
+      - "emerald" -- > 2 hours remaining
+      - "amber"   -- 1-2 hours remaining
+      - "orange"  -- 30min to 1 hour
+      - "red"     -- < 30 minutes
+    """
+    if deadline is None:
+        return "slate"
+
+    now = timezone.now()
+    if now >= deadline:
+        return "red animate-pulse"
+
+    remaining = (deadline - now).total_seconds()
+    hours = remaining / 3600
+
+    if hours > 2:
+        return "emerald"
+    elif hours > 1:
+        return "amber"
+    elif remaining > 1800:  # 30 minutes
+        return "orange"
+    else:
+        return "red"
+
+
+@register.filter
+def sla_countdown(deadline):
+    """Return human-readable countdown string for an SLA deadline.
+
+    None -> "--"
+    Breached -> "-Xh Ym"
+    Under 1 hour -> "Ym"
+    Otherwise -> "Xh Ym"
+    """
+    if deadline is None:
+        return "--"
+
+    now = timezone.now()
+    diff = (deadline - now).total_seconds()
+
+    if diff <= 0:
+        # Breached -- show negative time
+        abs_seconds = abs(diff)
+        hours = int(abs_seconds // 3600)
+        minutes = int((abs_seconds % 3600) // 60)
+        if hours > 0:
+            return f"-{hours}h {minutes}m"
+        return f"-{minutes}m"
+
+    hours = int(diff // 3600)
+    minutes = int((diff % 3600) // 60)
+    if hours > 0:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
+
+
+@register.filter
+def sla_ack_countdown(email):
+    """Shorthand: return sla_countdown for the email's ack deadline."""
+    return sla_countdown(getattr(email, "sla_ack_deadline", None))
