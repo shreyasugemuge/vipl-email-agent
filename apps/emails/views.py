@@ -15,6 +15,7 @@ import nh3
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse as _HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_GET, require_POST
@@ -107,7 +108,7 @@ def email_list(request):
         sort = "-created_at"
     qs = qs.order_by(sort)
 
-    # --- Counts for filter dropdowns ---
+    # --- Counts for filter dropdowns + dashboard stats ---
     completed_qs = Email.objects.filter(
         processing_status=Email.ProcessingStatus.COMPLETED,
     )
@@ -121,6 +122,15 @@ def email_list(request):
         .distinct()
         .order_by("to_inbox")
     )
+
+    # Dashboard quick stats
+    dash_stats = {
+        "total": completed_qs.count(),
+        "unassigned": completed_qs.filter(assigned_to__isnull=True).count(),
+        "critical": completed_qs.filter(priority="CRITICAL").count(),
+        "high": completed_qs.filter(priority="HIGH").count(),
+        "pending": completed_qs.filter(status="new").count(),
+    }
 
     # --- Pagination ---
     paginator = Paginator(qs, PER_PAGE)
@@ -153,6 +163,7 @@ def email_list(request):
         "statuses": Email.Status.choices,
         "priorities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
         "query_params": query_params.urlencode(),
+        "dash_stats": dash_stats,
     }
 
     if getattr(request, "htmx", False):
@@ -165,6 +176,25 @@ def email_list(request):
 # ---------------------------------------------------------------------------
 
 
+def _build_detail_context(email, request, is_admin, team_members):
+    """Build shared context dict for the email detail partial."""
+    sanitized_body_html = ""
+    if email.body_html:
+        sanitized_body_html = nh3.clean(
+            email.body_html,
+            tags=SAFE_TAGS,
+            attributes=SAFE_ATTRIBUTES,
+        )
+    return {
+        "email": email,
+        "sanitized_body_html": sanitized_body_html,
+        "attachments": email.attachments.all(),
+        "activity_logs": email.activity_logs.select_related("user").all()[:20],
+        "team_members": team_members,
+        "is_admin": is_admin,
+    }
+
+
 @login_required
 def email_detail(request, pk):
     """Return the email detail panel partial for HTMX swap."""
@@ -173,37 +203,13 @@ def email_detail(request, pk):
         pk=pk,
     )
 
-    # Sanitize HTML body
-    sanitized_body_html = ""
-    if email.body_html:
-        sanitized_body_html = nh3.clean(
-            email.body_html,
-            tags=SAFE_TAGS,
-            attributes=SAFE_ATTRIBUTES,
-        )
-
-    # Get attachments
-    attachments = email.attachments.all()
-
-    # Get activity logs (recent 20)
-    activity_logs = email.activity_logs.select_related("user").all()[:20]
-
-    # Team members for assign dropdown
     user = request.user
     is_admin = user.is_staff or user.role == User.Role.ADMIN
     team_members = []
     if is_admin:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
-    context = {
-        "email": email,
-        "sanitized_body_html": sanitized_body_html,
-        "attachments": attachments,
-        "activity_logs": activity_logs,
-        "team_members": team_members,
-        "is_admin": is_admin,
-    }
-
+    context = _build_detail_context(email, request, is_admin, team_members)
     return render(request, "emails/_email_detail.html", context)
 
 
@@ -234,9 +240,27 @@ def assign_email_view(request, pk):
     _assign_email(email, assignee, user, note=note)
 
     # Reload with select_related for template
-    email = Email.objects.select_related("assigned_to").get(pk=pk)
+    email = Email.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
 
-    return render(request, "emails/_email_card.html", {"email": email, "is_admin": is_admin})
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # Primary: updated card
+    card_html = render_to_string(
+        "emails/_email_card.html",
+        {"email": email, "is_admin": is_admin, "team_members": team_members},
+        request=request,
+    )
+
+    # OOB: update detail panel if it's open
+    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    detail_html = render_to_string(
+        "emails/_email_detail.html", detail_context, request=request,
+    )
+    oob_detail = (
+        f'<div id="detail-panel" hx-swap-oob="innerHTML">{detail_html}</div>'
+    )
+
+    return _HttpResponse(card_html + oob_detail)
 
 
 # ---------------------------------------------------------------------------
@@ -266,34 +290,27 @@ def change_status_view(request, pk):
 
     _change_status(email, new_status, user)
 
-    # Reload and return detail partial
+    # Reload
     email = Email.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
 
-    # Sanitize HTML body
-    sanitized_body_html = ""
-    if email.body_html:
-        sanitized_body_html = nh3.clean(
-            email.body_html,
-            tags=SAFE_TAGS,
-            attributes=SAFE_ATTRIBUTES,
-        )
-
-    attachments = email.attachments.all()
-    activity_logs = email.activity_logs.select_related("user").all()[:20]
     team_members = []
     if is_admin:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
-    context = {
-        "email": email,
-        "sanitized_body_html": sanitized_body_html,
-        "attachments": attachments,
-        "activity_logs": activity_logs,
-        "team_members": team_members,
-        "is_admin": is_admin,
-    }
+    # Primary: updated detail panel
+    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    detail_html = render_to_string(
+        "emails/_email_detail.html", detail_context, request=request,
+    )
 
-    return render(request, "emails/_email_detail.html", context)
+    # OOB: update the card in the list
+    card_html = render_to_string(
+        "emails/_email_card.html",
+        {"email": email, "is_admin": is_admin, "team_members": team_members, "oob": True},
+        request=request,
+    )
+
+    return _HttpResponse(detail_html + card_html)
 
 
 # ---------------------------------------------------------------------------
@@ -317,13 +334,49 @@ def activity_log(request):
 
         qs = qs.filter(Q(user=user) | Q(email__assigned_to=user))
 
+    # Filter by action type
+    action_filter = request.GET.get("action", "")
+    if action_filter and action_filter in dict(ActivityLog.Action.choices):
+        qs = qs.filter(action=action_filter)
+
     paginator = Paginator(qs, ACTIVITY_PER_PAGE)
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
+    # Group entries by date for display
+    from itertools import groupby
+    from django.utils import timezone
+
+    grouped_entries = []
+    for date_key, entries in groupby(page_obj, key=lambda e: timezone.localdate(e.created_at)):
+        grouped_entries.append((date_key, list(entries)))
+
+    today = timezone.localdate()
+    from datetime import timedelta
+    yesterday = today - timedelta(days=1)
+
+    # MIS stats
+    all_logs = ActivityLog.objects.all()
+    if not is_admin and not getattr(user, "can_see_all_emails", False):
+        from django.db.models import Q as _Q
+        all_logs = all_logs.filter(_Q(user=user) | _Q(email__assigned_to=user))
+
+    mis_stats = {
+        "total": all_logs.count(),
+        "today": all_logs.filter(created_at__date=today).count(),
+        "assignments": all_logs.filter(action__in=["assigned", "reassigned"]).count(),
+        "status_changes": all_logs.filter(action__in=["status_changed", "acknowledged", "closed"]).count(),
+    }
+
     context = {
         "page_obj": page_obj,
+        "grouped_entries": grouped_entries,
         "total_count": paginator.count,
+        "mis_stats": mis_stats,
+        "action_filter": action_filter,
+        "action_choices": ActivityLog.Action.choices,
+        "today": today,
+        "yesterday": yesterday,
     }
 
     if getattr(request, "htmx", False):

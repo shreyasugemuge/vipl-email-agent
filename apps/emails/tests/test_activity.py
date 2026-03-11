@@ -107,7 +107,7 @@ class TestActivityLogView:
         url = reverse("emails:activity_log")
         resp = admin_client.get(url)
         content = resp.content.decode()
-        assert "Activity Log" in content
+        assert "Activity" in content
 
     def test_entries_ordered_newest_first(self, admin_client, admin_user):
         """Test 6: entries ordered by -created_at (newest first)."""

@@ -1,45 +1,62 @@
 {% load email_tags %}
 
 <div id="card-{{ email.pk }}"
-     class="px-4 md:px-6 py-3 md:py-4 hover:bg-gray-50 cursor-pointer transition-colors"
+     {% if oob %}hx-swap-oob="outerHTML"{% endif %}
+     class="card-hover border-l-[3px] {{ email.priority|priority_border }} bg-white mx-2.5 my-1.5 rounded-xl px-4 py-3.5 cursor-pointer shadow-sm border border-slate-200/40"
      hx-get="{% url 'emails:email_detail' email.pk %}"
      hx-target="#detail-panel"
-     hx-swap="innerHTML">
-    <div class="flex items-start gap-3 md:gap-4">
-        <!-- Priority badge -->
-        <span class="inline-flex items-center justify-center w-14 md:w-16 shrink-0 px-2 py-0.5 rounded text-xs font-semibold text-white bg-{{ email.priority|priority_color }}">
-            {{ email.priority|default:"--" }}
-        </span>
+     hx-swap="innerHTML"
+     onclick="document.querySelectorAll('.card-selected').forEach(c=>c.classList.remove('card-selected'));this.classList.add('card-selected');">
 
-        <!-- Main content -->
-        <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-0.5">
-                <span class="text-sm font-medium text-gray-900 truncate">{{ email.from_name|default:email.from_address }}</span>
-                {% if email.category %}
-                <span class="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600 shrink-0 hidden sm:inline">{{ email.category }}</span>
-                {% endif %}
+    <!-- Top row: sender + time -->
+    <div class="flex items-center justify-between mb-1.5">
+        <div class="flex items-center gap-2 min-w-0">
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-{{ email.priority|priority_base }}-400 to-{{ email.priority|priority_base }}-500 flex items-center justify-center text-white text-[9px] font-bold shrink-0 shadow-sm">
+                {{ email.from_name.0|default:"?" }}
             </div>
-            <div class="text-sm text-gray-800 truncate">{{ email.subject }}</div>
-            {% if email.ai_summary %}
-            <div class="text-xs text-gray-500 mt-1 line-clamp-2">{{ email.ai_summary }}</div>
-            {% endif %}
+            <span class="text-[13px] font-semibold text-slate-800 truncate">{{ email.from_name|default:email.from_address }}</span>
         </div>
+        <span class="text-[10px] font-medium text-slate-400 shrink-0 ml-2 tabular-nums">{{ email.created_at|time_ago }}</span>
+    </div>
 
-        <!-- Right side: assignee + time -->
-        <div class="shrink-0 text-right text-xs text-gray-500 space-y-1" onclick="event.stopPropagation();">
-            <div>{{ email.created_at|time_ago }}</div>
-            <div>
-                {% if is_admin %}
-                    {% include "emails/_assign_dropdown.html" with email=email team_members=team_members %}
-                {% elif email.assigned_to %}
-                <span class="text-gray-700">{{ email.assigned_to.get_full_name|default:email.assigned_to.username }}</span>
-                {% else %}
-                <span class="text-amber-600 font-medium">Unassigned</span>
-                {% endif %}
-            </div>
-            <span class="inline-block px-1.5 py-0.5 rounded text-xs bg-{{ email.status|status_color }} text-white">
+    <!-- Subject -->
+    <div class="text-[13px] text-slate-700 truncate font-semibold leading-snug mb-1">{{ email.subject }}</div>
+
+    <!-- AI Summary -->
+    {% if email.ai_summary %}
+    <div class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed mb-2.5">{{ email.ai_summary }}</div>
+    {% else %}
+    <div class="mb-2.5"></div>
+    {% endif %}
+
+    <!-- Bottom row: badges + assignee -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-1.5">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-{{ email.priority|priority_base }}-50 text-{{ email.priority|priority_base }}-700 border border-{{ email.priority|priority_base }}-200/60">
+                {{ email.priority|default:"--" }}
+            </span>
+            {% if email.category %}
+            <span class="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-slate-50 text-slate-500 border border-slate-200/60 hidden sm:inline">{{ email.category }}</span>
+            {% endif %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-semibold bg-{{ email.status|status_base }}-50 text-{{ email.status|status_base }}-600 border border-{{ email.status|status_base }}-200/60">
+                <span class="w-1 h-1 rounded-full bg-{{ email.status|status_base }}-500"></span>
                 {{ email.get_status_display }}
             </span>
+        </div>
+
+        <div class="shrink-0" onclick="event.stopPropagation();">
+            {% if is_admin %}
+                {% include "emails/_assign_dropdown.html" with email=email team_members=team_members %}
+            {% elif email.assigned_to %}
+            <div class="flex items-center gap-1.5">
+                <div class="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-[8px] font-bold">
+                    {{ email.assigned_to.first_name.0|default:email.assigned_to.username.0|upper }}
+                </div>
+                <span class="text-[10px] font-semibold text-slate-500">{{ email.assigned_to.first_name|default:email.assigned_to.username }}</span>
+            </div>
+            {% else %}
+            <span class="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">Unassigned</span>
+            {% endif %}
         </div>
     </div>
 </div>

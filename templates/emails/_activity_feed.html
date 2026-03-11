@@ -1,82 +1,111 @@
 {% load email_tags %}
 
-{% if page_obj %}
-<div class="space-y-1">
-    {% for log in page_obj %}
-    <div class="flex items-start gap-3 px-4 py-3 rounded-md hover:bg-gray-50 transition-colors">
-        <!-- Action icon -->
-        <div class="shrink-0 mt-0.5">
-            {% if log.action == "assigned" or log.action == "reassigned" %}
-            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-600">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                </svg>
-            </span>
-            {% elif log.action == "acknowledged" %}
-            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-600">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-            </span>
-            {% elif log.action == "closed" %}
-            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 text-gray-600">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-            </span>
-            {% else %}
-            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-600">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-            </span>
-            {% endif %}
+{% if grouped_entries %}
+<div>
+    {% for date, entries in grouped_entries %}
+    <div class="{% if not forloop.first %}border-t border-slate-100{% endif %}">
+        <!-- Date header -->
+        <div class="px-5 py-2.5 bg-slate-50/80 flex items-center justify-between">
+            <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">
+                {% if date == today %}Today{% elif date == yesterday %}Yesterday{% else %}{{ date|date:"M j, Y" }}{% endif %}
+            </h3>
+            <span class="text-[10px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-full tabular-nums">{{ entries|length }}</span>
         </div>
 
-        <!-- Content -->
-        <div class="flex-1 min-w-0">
-            <div class="text-sm">
-                <span class="font-medium text-gray-900">{{ log.user.get_full_name|default:log.user.username|default:"System" }}</span>
-                <span class="text-gray-600">{{ log.get_action_display|lower }}</span>
-                {% if log.email %}
-                <a href="{% url 'emails:email_list' %}?selected={{ log.email.pk }}"
-                   class="font-medium text-gray-900 hover:text-blue-600 truncate">{{ log.email.subject|truncatechars:60 }}</a>
-                {% endif %}
-            </div>
-            {% if log.old_value or log.new_value %}
-            <div class="text-xs text-gray-500 mt-0.5">
-                {% if log.old_value %}{{ log.old_value }}{% endif %}
-                {% if log.old_value and log.new_value %} &rarr; {% endif %}
-                {% if log.new_value %}{{ log.new_value }}{% endif %}
-            </div>
-            {% endif %}
-            {% if log.detail %}
-            <div class="text-xs text-gray-500 mt-0.5">{{ log.detail }}</div>
-            {% endif %}
-        </div>
+        <!-- Entries -->
+        <div class="relative">
+            {% for log in entries %}
+            <div class="flex items-start gap-3.5 px-5 py-3 hover:bg-slate-50/50 transition-colors border-b border-slate-100/80 last:border-b-0">
+                <!-- Icon -->
+                <div class="shrink-0 mt-0.5">
+                    {% if log.action == "assigned" or log.action == "reassigned" %}
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center border border-blue-200/40">
+                        <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </div>
+                    {% elif log.action == "acknowledged" %}
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center border border-emerald-200/40">
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                    {% elif log.action == "closed" %}
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-200 to-slate-100 flex items-center justify-center border border-slate-300/40">
+                        <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    {% else %}
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center border border-amber-200/40">
+                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </div>
+                    {% endif %}
+                </div>
 
-        <!-- Timestamp -->
-        <div class="shrink-0 text-xs text-gray-400">
-            {{ log.created_at|time_ago }}
+                <!-- Content -->
+                <div class="flex-1 min-w-0">
+                    <div class="text-[13px] leading-relaxed">
+                        <span class="font-bold text-slate-800">{{ log.user.get_full_name|default:log.user.username|default:"System" }}</span>
+                        <span class="text-slate-500 font-medium">{{ log.get_action_display|lower }}</span>
+                        {% if log.email %}
+                        <a href="{% url 'emails:email_list' %}?selected={{ log.email.pk }}"
+                           class="font-semibold text-slate-700 hover:text-indigo-600 transition-colors">{{ log.email.subject|truncatechars:50 }}</a>
+                        {% endif %}
+                    </div>
+                    {% if log.old_value or log.new_value %}
+                    <div class="flex items-center gap-2 mt-1.5">
+                        {% if log.old_value %}
+                        <span class="text-[11px] font-medium text-slate-400 line-through bg-red-50/60 px-2 py-0.5 rounded">{{ log.old_value }}</span>
+                        {% endif %}
+                        {% if log.old_value and log.new_value %}
+                        <svg class="w-3 h-3 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                        </svg>
+                        {% endif %}
+                        {% if log.new_value %}
+                        <span class="text-[11px] font-semibold text-slate-600 bg-emerald-50/60 px-2 py-0.5 rounded">{{ log.new_value }}</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if log.detail %}
+                    <div class="text-[11px] text-slate-400 italic mt-1">"{{ log.detail }}"</div>
+                    {% endif %}
+                </div>
+
+                <!-- Time -->
+                <div class="shrink-0 text-[10px] font-bold text-slate-300 tabular-nums mt-0.5">
+                    {{ log.created_at|time:"H:i" }}
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
     {% endfor %}
 </div>
 
-<!-- Pagination -->
+<!-- Load more -->
 {% if page_obj.has_next %}
-<div class="flex justify-center py-4">
-    <button hx-get="{% url 'emails:activity_log' %}?page={{ page_obj.next_page_number }}"
+<div class="flex justify-center py-4 border-t border-slate-100">
+    <button hx-get="{% url 'emails:activity_log' %}?page={{ page_obj.next_page_number }}{% if action_filter %}&action={{ action_filter }}{% endif %}"
             hx-target="#activity-feed"
             hx-swap="innerHTML"
-            class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+            class="px-5 py-2 text-xs font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 transition-all">
         Load more
     </button>
 </div>
 {% endif %}
 
 {% else %}
-<div class="flex items-center justify-center py-12 text-gray-400 text-sm">
-    No activity yet
+<div class="flex flex-col items-center justify-center py-16 text-slate-300">
+    <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+    </div>
+    <span class="text-sm font-medium text-slate-400">No activity recorded yet</span>
+    <span class="text-xs text-slate-300 mt-1">Actions will appear here as they happen</span>
 </div>
 {% endif %}
