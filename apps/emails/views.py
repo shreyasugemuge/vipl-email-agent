@@ -464,14 +464,15 @@ def settings_view(request):
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
     active_tab = request.GET.get("tab", "rules")
 
-    # Assignment rules grouped by category
-    rules_by_category = {}
+    # Assignment rules grouped by category (list of tuples for template iteration)
+    rules_by_category = []
     for cat in VALID_CATEGORIES:
-        rules_by_category[cat] = list(
+        cat_rules = list(
             AssignmentRule.objects.filter(category=cat, is_active=True)
             .select_related("assignee")
             .order_by("priority_order")
         )
+        rules_by_category.append((cat, cat_rules))
 
     # Category visibility grouped by user
     visibility_by_user = {}

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load email_tags %}
+
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+
+    <!-- Tab bar -->
+    <div class="bg-white/80 backdrop-blur-sm border-b border-slate-200/40 px-4 md:px-6 py-2.5 shrink-0">
+        <div class="flex items-center gap-1">
+            <button onclick="switchTab('rules')" id="tab-rules"
+                    class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 bg-slate-900 text-white shadow-md shadow-slate-900/20">
+                Assignment Rules
+            </button>
+            <button onclick="switchTab('visibility')" id="tab-visibility"
+                    class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 text-slate-500 hover:text-slate-700 hover:bg-slate-100">
+                Category Visibility
+            </button>
+            <button onclick="switchTab('sla')" id="tab-sla"
+                    class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 text-slate-500 hover:text-slate-700 hover:bg-slate-100">
+                SLA Configuration
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab content -->
+    <div class="flex-1 overflow-auto p-4 md:p-6">
+
+        <!-- Assignment Rules tab -->
+        <div id="panel-rules" class="tab-panel">
+            <div class="grid gap-4 md:grid-cols-2">
+                {% for category, rules in rules_by_category %}
+                <div id="rules-{{ forloop.counter }}" class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
+                    {% include "emails/_assignment_rules.html" with category=category rules=rules team_members=team_members %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Category Visibility tab -->
+        <div id="panel-visibility" class="tab-panel hidden">
+            <div id="visibility-matrix">
+                {% include "emails/_category_visibility.html" with team_members=team_members visibility_by_user=visibility_by_user valid_categories=valid_categories %}
+            </div>
+        </div>
+
+        <!-- SLA Configuration tab -->
+        <div id="panel-sla" class="tab-panel hidden">
+            <div id="sla-matrix">
+                {% include "emails/_sla_config.html" with sla_matrix=sla_matrix valid_priorities=valid_priorities valid_categories=valid_categories %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+<script>
+function switchTab(tab) {
+    // Hide all panels, deactivate all tabs
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.add('hidden'); });
+    document.querySelectorAll('.tab-btn').forEach(function(b) {
+        b.className = 'tab-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 text-slate-500 hover:text-slate-700 hover:bg-slate-100';
+    });
+    // Show selected
+    document.getElementById('panel-' + tab).classList.remove('hidden');
+    var activeBtn = document.getElementById('tab-' + tab);
+    activeBtn.className = 'tab-btn px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 bg-slate-900 text-white shadow-md shadow-slate-900/20';
+}
+
+// Initialize Sortable on rule lists after page load
+document.addEventListener('DOMContentLoaded', function() {
+    initSortables();
+});
+document.addEventListener('htmx:afterSwap', function() {
+    initSortables();
+});
+
+function initSortables() {
+    document.querySelectorAll('.sortable-rules').forEach(function(el) {
+        if (el._sortable) return;
+        el._sortable = new Sortable(el, {
+            animation: 150,
+            ghostClass: 'bg-indigo-50',
+            onEnd: function(evt) {
+                var category = el.dataset.category;
+                var items = el.querySelectorAll('[data-assignee-id]');
+                var ids = Array.from(items).map(function(i) { return i.dataset.assigneeId; });
+                var form = new FormData();
+                form.append('action', 'reorder');
+                form.append('category', category);
+                ids.forEach(function(id) { form.append('assignee_ids[]', id); });
+                htmx.ajax('POST', '{% url "emails:settings_rules_save" %}', {
+                    target: el.closest('.rules-container'),
+                    swap: 'innerHTML',
+                    values: Object.fromEntries(form)
+                });
+            }
+        });
+    });
+}
+
+{% if active_tab != "rules" %}
+switchTab('{{ active_tab }}');
+{% endif %}
+</script>
+{% endblock %}
