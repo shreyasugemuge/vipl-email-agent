@@ -37,8 +37,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **DASH-02**: Dashboard supports filtering by status, assignee, priority, inbox
 - [x] **DASH-03**: Dashboard supports sorting by any column
 - [x] **DASH-04**: Dashboard shows unassigned queue as default manager view
-- [ ] **DASH-05**: Dashboard has activity log showing who did what (assignments, status changes)
-- [ ] **DASH-06**: Dashboard is desktop-first, usable on mobile
+- [x] **DASH-05**: Dashboard has activity log showing who did what (assignments, status changes)
+- [x] **DASH-06**: Dashboard is desktop-first, usable on mobile
 
 ### Auth
 
@@ -148,8 +148,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | DASH-02 | Phase 3 | Complete (03-01) |
 | DASH-03 | Phase 3 | Complete (03-01) |
 | DASH-04 | Phase 3 | Complete (03-01) |
-| DASH-05 | Phase 3 | Pending |
-| DASH-06 | Phase 3 | Pending |
+| DASH-05 | Phase 3 | Complete |
+| DASH-06 | Phase 3 | Complete |
 | AUTH-01 | Phase 1 | Complete (01-01) |
 | AUTH-02 | Phase 1 | Complete (01-01) |
 | AUTH-03 | Phase 1 | Complete (01-01) |
