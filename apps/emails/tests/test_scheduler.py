@@ -36,8 +36,8 @@ class TestSchedulerCommand:
         with pytest.raises(KeyboardInterrupt):
             cmd.handle()
 
-        # Should have 3 add_job calls: heartbeat, poll, retry
-        assert mock_scheduler.add_job.call_count == 3
+        # Should have 5 add_job calls: heartbeat, poll, retry, auto_assign, sla_breach_summary
+        assert mock_scheduler.add_job.call_count == 5
 
     @pytest.mark.django_db
     def test_heartbeat_writes_to_system_config(self):

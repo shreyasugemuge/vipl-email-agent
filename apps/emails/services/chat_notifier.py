@@ -287,3 +287,137 @@ class ChatNotifier:
 
         payload = {"cardsV2": [{"cardId": f"poll-{count}", "card": card}]}
         return self._post(payload)
+
+    def notify_breach_summary(self, summary_data: dict) -> bool:
+        """Post a manager-level SLA breach summary card to Chat.
+
+        Shows total breach counts, top 3 worst offenders, per-assignee breakdown.
+        This is the MANAGER view -- full summary of all breaches.
+
+        Args:
+            summary_data: Dict from build_breach_summary() with keys:
+                total_respond_breached, total_ack_breached,
+                top_offenders, per_assignee.
+
+        Returns:
+            True if posted successfully, False otherwise.
+        """
+        if self._is_quiet_hours():
+            logger.info("Quiet hours -- suppressing SLA breach summary")
+            return False
+
+        total = summary_data.get("total_respond_breached", 0) + summary_data.get("total_ack_breached", 0)
+        top_offenders = summary_data.get("top_offenders", [])
+        per_assignee = summary_data.get("per_assignee", {})
+
+        # Top offenders widgets
+        offender_widgets = []
+        for offender in top_offenders:
+            emoji = PRIORITY_EMOJI.get(offender.get("priority", "MEDIUM"), PRIORITY_EMOJI["MEDIUM"])
+            offender_widgets.append({
+                "decoratedText": {
+                    "topLabel": f"{offender.get('assignee_name', 'Unknown')} | {offender.get('overdue_str', '?')} overdue",
+                    "text": f"{emoji} {offender.get('subject', '')}",
+                }
+            })
+
+        # Per-assignee breakdown widgets
+        assignee_widgets = []
+        for name, emails in sorted(per_assignee.items()):
+            assignee_widgets.append({
+                "decoratedText": {
+                    "topLabel": name,
+                    "text": f"{len(emails)} breached email(s)",
+                }
+            })
+
+        sections = []
+        if offender_widgets:
+            sections.append({
+                "header": "Top Offenders (most overdue)",
+                "widgets": offender_widgets,
+            })
+        if assignee_widgets:
+            sections.append({
+                "header": "Per-Assignee Breakdown",
+                "widgets": assignee_widgets,
+            })
+
+        # Tracker URL
+        tracker_url = SystemConfig.get(
+            "tracker_url", "https://triage.vidarbhainfotech.com"
+        )
+        sections.append({
+            "widgets": [{
+                "buttonList": {
+                    "buttons": [{
+                        "text": "Open Dashboard",
+                        "onClick": {"openLink": {"url": tracker_url}},
+                    }]
+                }
+            }]
+        })
+
+        card = {
+            "header": {
+                "title": f"\u26a0\ufe0f SLA Breach Summary: {total} breach(es)",
+                "subtitle": f"Respond: {summary_data.get('total_respond_breached', 0)} | Ack: {summary_data.get('total_ack_breached', 0)}",
+            },
+            "sections": sections,
+        }
+
+        payload = {"cardsV2": [{"cardId": "sla-breach-summary", "card": card}]}
+        return self._post(payload)
+
+    def notify_personal_breach(self, assignee_name: str, breached_emails: list) -> bool:
+        """Post a personal SLA breach alert for a specific assignee.
+
+        Each assignee gets a separate message listing only THEIR breached emails.
+        Per CONTEXT.md: "each assignee gets personal alert (their breached emails only)".
+
+        Note: Google Chat webhook posts to the same space (no per-user DM).
+        The personal alert is a separate message naming the assignee.
+
+        Args:
+            assignee_name: Display name of the assignee.
+            breached_emails: List of dicts with subject, priority, overdue_minutes.
+
+        Returns:
+            True if posted successfully, False otherwise.
+        """
+        if self._is_quiet_hours():
+            logger.info("Quiet hours -- suppressing personal breach alert for %s", assignee_name)
+            return False
+
+        count = len(breached_emails)
+
+        email_widgets = []
+        for item in breached_emails:
+            pri = item.get("priority", "MEDIUM")
+            emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
+            overdue_min = item.get("overdue_minutes", 0)
+            # Format overdue
+            if overdue_min < 60:
+                overdue_str = f"{int(overdue_min)}m"
+            else:
+                h = int(overdue_min // 60)
+                m = int(overdue_min % 60)
+                overdue_str = f"{h}h {m}m" if m else f"{h}h"
+
+            email_widgets.append({
+                "decoratedText": {
+                    "topLabel": f"{emoji} {pri} | {overdue_str} overdue",
+                    "text": item.get("subject", "")[:50],
+                }
+            })
+
+        card = {
+            "header": {
+                "title": f"@{assignee_name}: {count} SLA breach(es) need attention",
+                "subtitle": "Please respond to these overdue emails",
+            },
+            "sections": [{"widgets": email_widgets}],
+        }
+
+        payload = {"cardsV2": [{"cardId": f"breach-personal-{assignee_name[:20]}", "card": card}]}
+        return self._post(payload)

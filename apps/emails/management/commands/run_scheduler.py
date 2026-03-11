@@ -20,6 +20,7 @@ from django.db import close_old_connections
 from django.utils import timezone
 
 from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from apps.core.models import SystemConfig
 from apps.emails.services.chat_notifier import ChatNotifier
@@ -67,6 +68,28 @@ def _retry_job(ai_processor, gmail_poller):
         retry_failed_emails(ai_processor, gmail_poller)
     except Exception as e:
         logger.error(f"Retry job failed: {e}")
+
+
+def _auto_assign_job():
+    """Run auto-assign batch job."""
+    close_old_connections()
+    try:
+        from apps.emails.services.assignment import auto_assign_batch
+
+        auto_assign_batch()
+    except Exception as e:
+        logger.error(f"Auto-assign job failed: {e}")
+
+
+def _sla_summary_job(chat_notifier):
+    """Run SLA breach check, escalation, and Chat summary."""
+    close_old_connections()
+    try:
+        from apps.emails.services.sla import check_and_escalate_breaches
+
+        check_and_escalate_breaches(chat_notifier=chat_notifier)
+    except Exception as e:
+        logger.error(f"SLA summary job failed: {e}")
 
 
 class Command(BaseCommand):
@@ -171,6 +194,26 @@ class Command(BaseCommand):
             coalesce=True,
         )
 
+        # Auto-assign: every 3 minutes
+        scheduler.add_job(
+            _auto_assign_job,
+            "interval",
+            minutes=3,
+            id="auto_assign",
+            max_instances=1,
+            coalesce=True,
+        )
+
+        # SLA breach summary: 9 AM, 1 PM, 5 PM IST
+        scheduler.add_job(
+            _sla_summary_job,
+            CronTrigger(hour="9,13,17", minute=0, timezone="Asia/Kolkata"),
+            args=[chat_notifier],
+            id="sla_breach_summary",
+            max_instances=1,
+            coalesce=True,
+        )
+
         # Graceful shutdown
         def shutdown_handler(signum, frame):
             logger.info(f"Received signal {signum}, shutting down scheduler...")
@@ -181,11 +224,13 @@ class Command(BaseCommand):
 
         logger.info(
             f"Starting scheduler: poll every {poll_interval}min, "
-            f"retry every 30min, heartbeat every 1min"
+            f"retry every 30min, auto-assign every 3min, "
+            f"SLA summary at 9/13/17 IST, heartbeat every 1min"
         )
         self.stdout.write(
             self.style.SUCCESS(
-                f"Scheduler started (poll={poll_interval}min, retry=30min, heartbeat=1min)"
+                f"Scheduler started (poll={poll_interval}min, retry=30min, "
+                f"auto-assign=3min, SLA=9/13/17 IST, heartbeat=1min)"
             )
         )
 

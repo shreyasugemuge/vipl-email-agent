@@ -1,4 +1,4 @@
-"""SLA calculator and breach detection for VIPL Email Agent v2.
+"""SLA calculator, breach detection, and auto-escalation for VIPL Email Agent v2.
 
 Business hours: 8 AM - 8 PM IST, Monday through Saturday.
 Sunday is not a business day.
@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from django.utils import timezone as tz
 
-from apps.emails.models import Email, SLAConfig
+from apps.emails.models import ActivityLog, Email, SLAConfig
 
 logger = logging.getLogger(__name__)
 
@@ -175,3 +175,176 @@ def get_breached_emails(breach_type: str = "respond"):
     ).exclude(
         status=Email.Status.CLOSED,
     )
+
+
+# Priority escalation map: one level up on breach
+PRIORITY_ESCALATION = {
+    "LOW": "MEDIUM",
+    "MEDIUM": "HIGH",
+    "HIGH": "CRITICAL",
+    "CRITICAL": "CRITICAL",
+}
+
+
+def _format_overdue(minutes: float) -> str:
+    """Format overdue minutes as human-readable string."""
+    if minutes < 60:
+        return f"{int(minutes)}m"
+    hours = int(minutes // 60)
+    mins = int(minutes % 60)
+    if mins:
+        return f"{hours}h {mins}m"
+    return f"{hours}h"
+
+
+def build_breach_summary(breached_respond, breached_ack) -> dict:
+    """Build a summary dict of SLA breaches for Chat notification.
+
+    Args:
+        breached_respond: QuerySet of emails that breached respond deadline.
+        breached_ack: QuerySet of emails that breached ack deadline.
+
+    Returns dict with:
+        - total_respond_breached, total_ack_breached
+        - per_assignee: {name -> list of {subject, priority, overdue_minutes}}
+        - top_offenders: list of top 3 most overdue [{subject, assignee_name, priority, overdue_str, overdue_minutes}]
+    """
+    now = tz.now()
+    per_assignee = {}
+    all_overdue = []
+
+    # Process both respond and ack breaches
+    for breach_type, qs in [("respond", breached_respond), ("ack", breached_ack)]:
+        deadline_attr = "sla_respond_deadline" if breach_type == "respond" else "sla_ack_deadline"
+
+        for email in qs:
+            deadline = getattr(email, deadline_attr)
+            overdue_minutes = (now - deadline).total_seconds() / 60.0
+
+            assignee = email.assigned_to
+            if assignee:
+                name = assignee.get_full_name() or assignee.username
+            else:
+                name = "Unassigned"
+
+            entry = {
+                "subject": email.subject[:50],
+                "priority": email.priority,
+                "overdue_minutes": overdue_minutes,
+            }
+
+            per_assignee.setdefault(name, []).append(entry)
+
+            all_overdue.append({
+                "subject": email.subject[:50],
+                "assignee_name": name,
+                "priority": email.priority,
+                "overdue_str": _format_overdue(overdue_minutes),
+                "overdue_minutes": overdue_minutes,
+            })
+
+    # Sort by most overdue first, take top 3
+    all_overdue.sort(key=lambda x: x["overdue_minutes"], reverse=True)
+    top_offenders = all_overdue[:3]
+
+    return {
+        "total_respond_breached": breached_respond.count(),
+        "total_ack_breached": breached_ack.count(),
+        "per_assignee": per_assignee,
+        "top_offenders": top_offenders,
+    }
+
+
+def check_and_escalate_breaches(chat_notifier=None):
+    """Detect SLA breaches, escalate priority, and send Chat alerts.
+
+    For each breached email (not already breached in last 24h):
+    1. Bump priority one level via PRIORITY_ESCALATION map
+    2. Log PRIORITY_BUMPED and SLA_BREACHED to ActivityLog
+    3. Build breach summary
+    4. Call chat_notifier.notify_breach_summary (manager view)
+    5. Call chat_notifier.notify_personal_breach per assignee
+
+    Args:
+        chat_notifier: Optional ChatNotifier instance. If None, no Chat alerts.
+    """
+    now = tz.now()
+    cutoff_24h = now - timedelta(hours=24)
+
+    breached_respond = get_breached_emails("respond")
+    breached_ack = get_breached_emails("ack")
+
+    # Combine unique emails from both breach types
+    all_breached_pks = set(breached_respond.values_list("pk", flat=True)) | set(
+        breached_ack.values_list("pk", flat=True)
+    )
+
+    if not all_breached_pks:
+        logger.info("SLA breach check: no breaches found")
+        return
+
+    # Escalate each breached email
+    for email in Email.objects.filter(pk__in=all_breached_pks):
+        # Check if already breached in last 24 hours (skip re-bump)
+        recently_breached = ActivityLog.objects.filter(
+            email=email,
+            action=ActivityLog.Action.SLA_BREACHED,
+            created_at__gte=cutoff_24h,
+        ).exists()
+
+        if recently_breached:
+            continue
+
+        # Determine breach type for log detail
+        is_respond = breached_respond.filter(pk=email.pk).exists()
+        is_ack = breached_ack.filter(pk=email.pk).exists()
+        breach_detail_parts = []
+        if is_ack:
+            breach_detail_parts.append("Ack deadline breached")
+        if is_respond:
+            breach_detail_parts.append("Respond deadline breached")
+
+        # Bump priority
+        old_priority = email.priority
+        new_priority = PRIORITY_ESCALATION.get(old_priority, old_priority)
+
+        if old_priority != new_priority:
+            email.priority = new_priority
+            email.save(update_fields=["priority", "updated_at"])
+
+            ActivityLog.objects.create(
+                email=email,
+                user=None,
+                action=ActivityLog.Action.PRIORITY_BUMPED,
+                detail=f"SLA breach: {old_priority} -> {new_priority}",
+                old_value=old_priority,
+                new_value=new_priority,
+            )
+
+        # Log SLA_BREACHED
+        ActivityLog.objects.create(
+            email=email,
+            user=None,
+            action=ActivityLog.Action.SLA_BREACHED,
+            detail="; ".join(breach_detail_parts),
+        )
+
+    # Build summary and send Chat alerts
+    summary = build_breach_summary(breached_respond, breached_ack)
+
+    logger.info(
+        "SLA breach check: %d respond breaches, %d ack breaches",
+        summary["total_respond_breached"], summary["total_ack_breached"],
+    )
+
+    if chat_notifier and (summary["total_respond_breached"] or summary["total_ack_breached"]):
+        try:
+            chat_notifier.notify_breach_summary(summary)
+        except Exception:
+            logger.exception("Failed to send breach summary to Chat")
+
+        for assignee_name, assignee_emails in summary["per_assignee"].items():
+            try:
+                chat_notifier.notify_personal_breach(assignee_name, assignee_emails)
+            except Exception:
+                logger.exception("Failed to send personal breach alert for %s", assignee_name)
