@@ -1,0 +1,41 @@
+{% load email_tags %}
+
+{% if emails %}
+<div class="divide-y divide-gray-100">
+    {% for email in emails %}
+        {% include "emails/_email_card.html" with email=email %}
+    {% endfor %}
+</div>
+{% else %}
+<div class="flex items-center justify-center h-64 text-gray-400 text-sm">
+    No emails matching your filters.
+</div>
+{% endif %}
+
+{% if page_obj.has_other_pages %}
+<div class="flex items-center justify-between px-6 py-3 bg-white border-t border-gray-200">
+    <div class="text-sm text-gray-500">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </div>
+    <div class="flex gap-2">
+        {% if page_obj.has_previous %}
+        <a href="{% url 'emails:email_list' %}?page={{ page_obj.previous_page_number }}{% if query_params %}&{{ query_params }}{% endif %}"
+           hx-get="{% url 'emails:email_list' %}?page={{ page_obj.previous_page_number }}{% if query_params %}&{{ query_params }}{% endif %}"
+           hx-target="#email-list"
+           hx-push-url="true"
+           class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">
+            Previous
+        </a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="{% url 'emails:email_list' %}?page={{ page_obj.next_page_number }}{% if query_params %}&{{ query_params }}{% endif %}"
+           hx-get="{% url 'emails:email_list' %}?page={{ page_obj.next_page_number }}{% if query_params %}&{{ query_params }}{% endif %}"
+           hx-target="#email-list"
+           hx-push-url="true"
+           class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">
+            Next
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
