@@ -124,8 +124,6 @@ conftest.py                      # Root test config
 gunicorn.conf.py                 # Production WSGI server
 Dockerfile                       # Django + Gunicorn container
 docker-compose.yml               # Production: web + scheduler services
-docker-compose.dev.yml           # Local dev: adds Caddy reverse proxy
-Caddyfile                        # Caddy config for local dev
 
 config/                          # Django project config
   settings/ (base.py, dev.py, prod.py), urls.py, wsgi.py, asgi.py
