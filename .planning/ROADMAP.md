@@ -47,12 +47,12 @@ Plans:
   3. Spam emails are filtered out before hitting the AI (zero cost for junk)
   4. Failed triages appear in the dead letter queue and are retried automatically
   5. Admin can toggle feature flags (AI triage on/off, Chat notifications on/off) without redeploying
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Gmail poller, AI processor, spam filter (port v1 modules to Django ORM)
-- [ ] 02-02: APScheduler process, dead letter retry, Chat notifications, feature flags
-- [ ] 02-03: PDF extraction, multi-language detection, config hot-reload (polling frequency, quiet hours)
+- [ ] 02-01-PLAN.md -- Email model migration, SystemConfig model, DTOs, spam filter, PDF extractor, state manager, dependencies
+- [ ] 02-02-PLAN.md -- GmailPoller + AIProcessor service ports, pipeline orchestrator (poll-filter-triage-save-label)
+- [ ] 02-03-PLAN.md -- ChatNotifier, APScheduler management command, health endpoint update, Docker Compose scheduler service
 
 ### Phase 3: Dashboard
 **Goal**: Manager can see every email, assign it to a team member, and track status -- the core workflow that v1 lacks
