@@ -417,54 +417,6 @@ python main.py --retry        # Run dead letter retry
 python main.py --init-sheet   # Initialize sheet headers + config tab
 ```
 
-## Project Management (Taiga)
+## Project Management
 
-### Instance & Access
-- **URL**: https://taiga.vidarbhainfotech.com/project/vipl-email-agent/
-- **Credentials**: Stored locally in `.taiga-credentials` (gitignored, never committed)
-- **API base**: `https://taiga.vidarbhainfotech.com/api/v1/`
-- **Auth**: `POST /api/v1/auth` with `{"type": "normal", "username": "...", "password": "..."}` → returns `auth_token` → use as `Authorization: Bearer {token}`
-
-### Project Structure
-- **Methodology**: Scrum with Kanban board enabled
-- **Project ID**: 14
-- **Owner**: Shreyas (user ID 23)
-
-### Current State (as of 2026-03-11)
-- **v1.x history**: 13 epics (Done), 99 stories (Archived), 10 sprints (Closed)
-- **v2**: Phase 1-2 complete. Phase 3 (Dashboard) next.
-
-### Key IDs (for API calls)
-```
-User Story Statuses: New=120, Ready=121, In Progress=122, Ready for Test=123, Done=124, Archived=125
-Epic Statuses:       New=64, Ready=65, In Progress=66, Ready for Test=67, Done=68
-Task Statuses:       New=60, In Progress=61, Ready for Test=62, Closed=63, Needs Info=64
-Issue Types:         Bug=37, Question=38, Enhancement=39, Task=40
-Priorities:          Low=37, Normal=38, High=39, Critical=40
-Points:              ½=147, 1=148, 2=149, 3=150, 5=151, 8=152, 10=153, 13=154
-Roles:               UX=69, Design=70, Front=71, Back=72, PO=73, Stakeholder=74
-```
-
-### Wiki Pages
-home, architecture, file-structure, configuration-guide, deployment-guide, development-guide, google-sheet-schema, version-history
-
-### Tags
-backend, ai, gmail, sheets, chat, sla, ci-cd, testing, security, docs, resilience, config
-
-### Working with Taiga API
-```bash
-# Authenticate (credentials in .taiga-credentials)
-curl -s -X POST "https://taiga.vidarbhainfotech.com/api/v1/auth" \
-  -H "Content-Type: application/json" \
-  -d '{"type": "normal", "username": "EMAIL", "password": "PASS"}'
-
-# List stories
-curl -s "https://taiga.vidarbhainfotech.com/api/v1/userstories?project=14" \
-  -H "Authorization: Bearer {token}"
-
-# Create story
-curl -s -X POST "https://taiga.vidarbhainfotech.com/api/v1/userstories" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer {token}" \
-  -d '{"project": 14, "subject": "...", "status": 120}'
-```
+Tracked via GitHub issues and CLAUDE.md phase status. Taiga instance exists at taiga.vidarbhainfotech.com but is not actively used for v2 development.
