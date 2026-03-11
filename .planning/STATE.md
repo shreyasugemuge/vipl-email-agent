@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-11T18:06:22Z"
-last_activity: 2026-03-11 -- Phase 4 Plan 02 complete (settings UI, SLA display, claim, AI suggestion endpoints)
+stopped_at: Completed 04-03-PLAN.md (Task 2 checkpoint pending)
+last_updated: "2026-03-11T18:13:25Z"
+last_activity: 2026-03-11 -- Phase 4 Plan 03 complete (breach alerting, auto-escalation, scheduler jobs)
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 10
-  percent: 82
+  completed_plans: 11
+  percent: 91
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 
 ## Current Position
 
-Phase: 4 of 6 (Assignment Engine + SLA) -- IN PROGRESS
-Plan: 2 of 3 in current phase (04-01, 04-02 done, 04-03 remaining)
-Status: Plan 04-02 complete, ready for Plan 04-03 (breach alerting)
-Last activity: 2026-03-11 -- Phase 4 Plan 02 complete (settings UI, SLA display, claim, AI suggestion endpoints)
+Phase: 4 of 6 (Assignment Engine + SLA) -- COMPLETE (checkpoint pending)
+Plan: 3 of 3 in current phase (all done, Task 2 human-verify checkpoint pending)
+Status: Plan 04-03 complete, Phase 4 checkpoint pending
+Last activity: 2026-03-11 -- Phase 4 Plan 03 complete (breach alerting, auto-escalation, scheduler jobs)
 
-Progress: [########..] 82%
+Progress: [#########.] 91%
 
 ## Performance Metrics
 
@@ -46,11 +46,11 @@ Progress: [########..] 82%
 | 1. Foundation | 2 | 12 min | 6 min |
 | 2. Email Pipeline | 3 | 17 min | 5.7 min |
 | 3. Dashboard | 3 | 25 min | 8.3 min |
-| 4. Assignment+SLA | 2/3 | 15 min | 7.5 min |
+| 4. Assignment+SLA | 3/3 | 19 min | 6.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (9 min), 03-02 (8 min), 03-03 (8 min), 04-01 (8 min), 04-02 (7 min)
-- Trend: Stable
+- Last 5 plans: 03-02 (8 min), 03-03 (8 min), 04-01 (8 min), 04-02 (7 min), 04-03 (4 min)
+- Trend: Stable/Accelerating
 
 *Updated after each plan completion*
 
@@ -91,6 +91,9 @@ Recent decisions affecting current work:
 - ai_suggested_assignee changed from CharField to JSONField (data migration for existing rows)
 - Auto-assign uses optimistic locking (filter+update) to prevent race conditions
 - SLA business hours: 8AM-8PM IST Mon-Sat, zoneinfo.ZoneInfo for timezone
+- 24h dedup on SLA_BREACHED ActivityLog prevents re-bumping priority on every check cycle
+- Personal breach alerts post to same Chat space (no per-user DM) -- true DMs need Chat API with user auth (deferred)
+- CronTrigger for SLA summary (9,13,17 IST) separate from interval-based breach status updates
 - TRIAGE_TOOL_SCHEMA suggested_assignee is now object {name, reason} (backward-compat parsing)
 - Team workload injected into Claude prompt (~50 tokens per request)
 - Settings sidebar link points to /emails/settings/ (app settings page) instead of Django admin
@@ -108,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T18:06:22Z
-Stopped at: Completed 04-02-PLAN.md
-Resume file: .planning/phases/04-assignment-engine-sla/04-02-SUMMARY.md
+Last session: 2026-03-11T18:13:25Z
+Stopped at: Completed 04-03-PLAN.md (Task 2 checkpoint pending)
+Resume file: .planning/phases/04-assignment-engine-sla/04-03-SUMMARY.md

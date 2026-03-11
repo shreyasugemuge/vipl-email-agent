@@ -28,8 +28,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **SLA-01**: Each email has a status: New, Acknowledged, Replied, Closed
 - [x] **SLA-02**: System calculates SLA deadline per email based on priority and category
-- [ ] **SLA-03**: System detects SLA breaches and posts summary alerts (3x daily)
-- [ ] **SLA-04**: SLA breach alerts manager (Shreyas) via Chat + email
+- [x] **SLA-03**: System detects SLA breaches and posts summary alerts (3x daily)
+- [x] **SLA-04**: SLA breach alerts manager (Shreyas) via Chat + email
 
 ### Dashboard
 
@@ -142,8 +142,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | ASGN-05 | Phase 3 | Complete (03-02) |
 | SLA-01 | Phase 3 | Complete (03-02) |
 | SLA-02 | Phase 4 | Complete |
-| SLA-03 | Phase 4 | Pending |
-| SLA-04 | Phase 4 | Pending |
+| SLA-03 | Phase 4 | Complete |
+| SLA-04 | Phase 4 | Complete |
 | DASH-01 | Phase 3 | Complete (03-01) |
 | DASH-02 | Phase 3 | Complete (03-01) |
 | DASH-03 | Phase 3 | Complete (03-01) |

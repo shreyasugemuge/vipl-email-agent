@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Django project, PostgreSQL schema, auth, Docker Compose deployment, health endpoint
 - [x] **Phase 2: Email Pipeline** - Port v1 agent modules to Django with ORM, background scheduler, Chat notifications
 - [x] **Phase 3: Dashboard** - Email card view, manual assignment, status tracking, filtering, activity log
-- [ ] **Phase 4: Assignment Engine + SLA** - Auto-assignment rules, AI fallback, SLA deadlines, breach alerts, escalation
+- [x] **Phase 4: Assignment Engine + SLA** - Auto-assignment rules, AI fallback, SLA deadlines, breach alerts, escalation (completed 2026-03-11)
 - [ ] **Phase 5: Reporting + Admin + Sheets Mirror** - EOD reports, inbox/config management UI, Google Sheets read-only sync
 - [ ] **Phase 6: Migration + Cutover** - Production data migration, v1-to-v2 inbox rollover, Cloud Run decommission, CI/CD overhaul
 
@@ -126,6 +126,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Foundation | 2/2 | Complete | 2026-03-09 |
 | 2. Email Pipeline | 3/3 | Complete | 2026-03-11 |
 | 3. Dashboard | 3/3 | Complete | 2026-03-11 |
-| 4. Assignment Engine + SLA | 2/3 | In Progress|  |
+| 4. Assignment Engine + SLA | 3/3 | Complete   | 2026-03-11 |
 | 5. Reporting + Admin + Sheets Mirror | 0/1 | Not started | - |
 | 6. Migration + Cutover | 0/1 | Not started | - |
