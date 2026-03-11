@@ -81,11 +81,12 @@ Plans:
   3. Each email shows its SLA deadline based on priority and category, with a visible countdown
   4. SLA breach summary posts to Chat and emails the manager 3x daily (9 AM, 1 PM, 5 PM)
   5. Admin can configure assignment rules and SLA deadlines per category/priority from the admin interface
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Category-to-person assignment rules, AI fallback assignment
-- [ ] 04-02: SLA deadline calculation, breach detection, breach alerts to manager
+- [ ] 04-01-PLAN.md -- New models (AssignmentRule, SLAConfig, CategoryVisibility), SLA calculator with business hours, auto-assign batch job, claim service, pipeline SLA integration
+- [ ] 04-02-PLAN.md -- SLA countdown display on cards/detail, claim/AI-suggestion endpoints, admin settings page (rules, visibility, SLA config with tabs)
+- [ ] 04-03-PLAN.md -- Breach detection with auto-escalation, Chat breach summary (3x daily), scheduler jobs (auto-assign 3min, SLA summary 9/13/17), visual verification
 
 ### Phase 5: Reporting + Admin + Sheets Mirror
 **Goal**: Daily reporting from real database, admin self-service for inbox and config management, and Sheets mirror for legacy access
@@ -125,6 +126,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Foundation | 2/2 | Complete | 2026-03-09 |
 | 2. Email Pipeline | 3/3 | Complete | 2026-03-11 |
 | 3. Dashboard | 3/3 | Complete | 2026-03-11 |
-| 4. Assignment Engine + SLA | 0/2 | Not started | - |
+| 4. Assignment Engine + SLA | 0/3 | Not started | - |
 | 5. Reporting + Admin + Sheets Mirror | 0/1 | Not started | - |
 | 6. Migration + Cutover | 0/1 | Not started | - |
