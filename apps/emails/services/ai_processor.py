@@ -1,7 +1,8 @@
 """AI Processor -- Cost-optimized email triage via Claude API.
 
 Ported from v1's agent/ai_processor.py. Two-tier AI with prompt caching.
-Django-agnostic: no Django ORM imports. Returns TriageResult DTOs.
+Returns TriageResult DTOs. Team workload context injected for assignee
+suggestions (Phase 4).
 
 KEY COST OPTIMIZATIONS:
 1. Two-tier AI: Haiku (cheap) for all emails, Sonnet only if CRITICAL
@@ -77,8 +78,19 @@ TRIAGE_TOOL = {
                 "description": "Brief explanation of why this category and priority were chosen.",
             },
             "suggested_assignee": {
-                "type": "string",
-                "description": "Suggested team member to handle this, or empty string if unclear.",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name of the suggested team member, or empty string if unclear.",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Brief reason for this suggestion based on email content, category, and team workload.",
+                    },
+                },
+                "required": ["name", "reason"],
+                "description": "Suggested team member and reasoning.",
             },
             "tags": {
                 "type": "array",
@@ -94,6 +106,57 @@ TRIAGE_TOOL = {
         "required": ["category", "priority", "summary", "draft_reply", "reasoning", "tags", "language"],
     },
 }
+
+
+def _get_team_workload() -> list:
+    """Get open email counts per active team member.
+
+    Returns list of dicts: [{"name": "Rahul", "email": "rahul@...", "open_count": 5}, ...]
+    Wrapped in try/except so it never crashes the AI processor.
+    """
+    try:
+        from apps.accounts.models import User
+        from apps.emails.models import Email
+
+        result = []
+        for user in User.objects.filter(is_active=True):
+            open_count = Email.objects.filter(
+                assigned_to=user,
+                status__in=["new", "acknowledged"],
+            ).count()
+            name = user.get_full_name() or user.email
+            result.append({
+                "name": name,
+                "email": user.email,
+                "open_count": open_count,
+            })
+        return result
+    except Exception:
+        logger.debug("Could not fetch team workload (expected in tests without DB)")
+        return []
+
+
+def _parse_suggested_assignee(raw) -> dict:
+    """Parse suggested_assignee from Claude response into structured dict.
+
+    Handles both new format (dict with name + reason) and old format (plain string).
+    Returns empty dict for empty/None values.
+    """
+    if not raw:
+        return {}
+
+    if isinstance(raw, dict):
+        return {
+            "name": raw.get("name", ""),
+            "reason": raw.get("reason", ""),
+        }
+
+    if isinstance(raw, str):
+        if raw.strip():
+            return {"name": raw.strip(), "reason": ""}
+        return {}
+
+    return {}
 
 
 class AIProcessor:
@@ -182,6 +245,14 @@ class AIProcessor:
         if pdf_text:
             pdf_section = f"\n\n--- ATTACHED PDF CONTENT ---\n{self._sanitize(pdf_text)}\n--- END PDF ---"
 
+        # Build team workload section (~50 tokens)
+        workload = _get_team_workload()
+        if workload:
+            workload_lines = [f"- {w['name']}: {w['open_count']} open emails" for w in workload]
+            workload_section = "\n\n--- TEAM WORKLOAD ---\n" + "\n".join(workload_lines) + "\n--- END WORKLOAD ---"
+        else:
+            workload_section = "\n\nTeam workload: No team data available"
+
         return (
             f"--- INCOMING EMAIL ---\n"
             f"Inbox: {email.inbox}\n"
@@ -193,6 +264,7 @@ class AIProcessor:
             f"{body}\n"
             f"--- END ---"
             f"{pdf_section}"
+            f"{workload_section}"
         )
 
     # ----------------------------------------------------------------
@@ -253,13 +325,19 @@ class AIProcessor:
                     logger.warning(f"Invalid priority from Claude: '{priority}', defaulting to MEDIUM")
                     priority = "MEDIUM"
 
+                # Parse structured assignee suggestion
+                raw_assignee = data.get("suggested_assignee", "")
+                assignee_detail = _parse_suggested_assignee(raw_assignee)
+                assignee_name = assignee_detail.get("name", "") if assignee_detail else ""
+
                 return TriageResult(
                     category=category,
                     priority=priority,
                     summary=data.get("summary", ""),
                     draft_reply=data.get("draft_reply", ""),
                     reasoning=data.get("reasoning", ""),
-                    suggested_assignee=data.get("suggested_assignee", ""),
+                    suggested_assignee=assignee_name,
+                    suggested_assignee_detail=assignee_detail,
                     tags=data.get("tags", []),
                     language=data.get("language", "English"),
                     model_used=model,

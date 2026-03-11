@@ -28,16 +28,33 @@ def _map_suggested_assignee(triage: TriageResult) -> dict:
 
     Prefers suggested_assignee_detail (structured) if available.
     Falls back to suggested_assignee string wrapped in {"name": ...}.
+    Tries to match name to a User for user_id.
     Returns empty dict if nothing available.
     """
     detail = getattr(triage, "suggested_assignee_detail", {})
-    if detail:
-        return detail
+    if not detail and triage.suggested_assignee:
+        detail = {"name": triage.suggested_assignee}
 
-    if triage.suggested_assignee:
-        return {"name": triage.suggested_assignee}
+    if not detail:
+        return {}
 
-    return {}
+    # Try to resolve user_id from name
+    if detail.get("name") and "user_id" not in detail:
+        try:
+            from apps.accounts.models import User
+            from django.db.models import Q
+
+            name = detail["name"]
+            user = User.objects.filter(
+                Q(first_name__icontains=name) | Q(last_name__icontains=name) | Q(username__icontains=name),
+                is_active=True,
+            ).first()
+            if user:
+                detail["user_id"] = user.pk
+        except Exception:
+            pass  # Non-critical -- user_id is a convenience field
+
+    return detail
 
 
 def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:

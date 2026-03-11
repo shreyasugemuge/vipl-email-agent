@@ -61,6 +61,7 @@ class TriageResult:
     language: str = "English"
     tags: list = field(default_factory=list)
     suggested_assignee: str = ""
+    suggested_assignee_detail: dict = field(default_factory=dict)
     model_used: str = ""
     input_tokens: int = 0
     output_tokens: int = 0
