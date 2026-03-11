@@ -1,12 +1,12 @@
-"""Tests for SLA calculation, business hours, and breach detection."""
+"""Tests for SLA calculation, business hours, breach detection, and escalation."""
 
 import pytest
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock, call
 from zoneinfo import ZoneInfo
 
 from apps.accounts.models import User
-from apps.emails.models import Email, SLAConfig
+from apps.emails.models import Email, SLAConfig, ActivityLog
 
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -306,3 +306,347 @@ class TestBreachDetection:
         )
         breached = get_breached_emails(breach_type="ack")
         assert email in breached
+
+
+# ===========================================================================
+# Breach Summary Tests (NEW -- Plan 04-03)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestBreachSummary:
+    """Test build_breach_summary returns correct structure."""
+
+    def test_summary_structure(self):
+        """build_breach_summary returns correct keys and types."""
+        from apps.emails.services.sla import build_breach_summary
+        from django.utils import timezone as tz
+
+        user = User.objects.create_user(
+            username="member1", password="pass", email="m1@vidarbhainfotech.com",
+            first_name="Alice", last_name="Dev",
+        )
+        past = tz.now() - timedelta(hours=3)
+        e1 = _create_email(
+            None, message_id="msg_summary_1",
+            sla_respond_deadline=past, assigned_to=user, priority="HIGH",
+        )
+
+        respond_qs = Email.objects.filter(pk=e1.pk)
+        ack_qs = Email.objects.none()
+
+        summary = build_breach_summary(respond_qs, ack_qs)
+
+        assert "total_respond_breached" in summary
+        assert "total_ack_breached" in summary
+        assert "per_assignee" in summary
+        assert "top_offenders" in summary
+        assert summary["total_respond_breached"] == 1
+        assert summary["total_ack_breached"] == 0
+
+    def test_top_offenders_sorted_by_overdue(self):
+        """Top 3 offenders are sorted most-overdue-first."""
+        from apps.emails.services.sla import build_breach_summary
+        from django.utils import timezone as tz
+
+        user = User.objects.create_user(
+            username="member_top", password="pass", email="mt@vidarbhainfotech.com",
+        )
+        now = tz.now()
+        # Create 4 breached emails with different overdue amounts
+        emails = []
+        for i, hours_overdue in enumerate([1, 5, 2, 10]):
+            e = _create_email(
+                None,
+                message_id=f"msg_top_{i}",
+                sla_respond_deadline=now - timedelta(hours=hours_overdue),
+                assigned_to=user,
+                priority="HIGH",
+                subject=f"Email overdue {hours_overdue}h",
+            )
+            emails.append(e)
+
+        respond_qs = Email.objects.filter(pk__in=[e.pk for e in emails])
+        summary = build_breach_summary(respond_qs, Email.objects.none())
+
+        assert len(summary["top_offenders"]) == 3
+        # Most overdue first (10h, 5h, 2h)
+        overdue_vals = [o["overdue_minutes"] for o in summary["top_offenders"]]
+        assert overdue_vals == sorted(overdue_vals, reverse=True)
+
+    def test_per_assignee_grouping(self):
+        """per_assignee groups breached emails by assignee name."""
+        from apps.emails.services.sla import build_breach_summary
+        from django.utils import timezone as tz
+
+        u1 = User.objects.create_user(
+            username="alice_g", password="pass", first_name="Alice", last_name="G",
+        )
+        u2 = User.objects.create_user(
+            username="bob_g", password="pass", first_name="Bob", last_name="G",
+        )
+        past = tz.now() - timedelta(hours=2)
+        _create_email(None, message_id="msg_grp_1", sla_respond_deadline=past, assigned_to=u1)
+        _create_email(None, message_id="msg_grp_2", sla_respond_deadline=past, assigned_to=u1)
+        _create_email(None, message_id="msg_grp_3", sla_respond_deadline=past, assigned_to=u2)
+
+        respond_qs = Email.objects.filter(message_id__startswith="msg_grp_")
+        summary = build_breach_summary(respond_qs, Email.objects.none())
+
+        assert "Alice G" in summary["per_assignee"]
+        assert "Bob G" in summary["per_assignee"]
+        assert len(summary["per_assignee"]["Alice G"]) == 2
+        assert len(summary["per_assignee"]["Bob G"]) == 1
+
+
+# ===========================================================================
+# Check and Escalate Tests (NEW -- Plan 04-03)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestCheckAndEscalate:
+    """Test check_and_escalate_breaches priority bumping and activity logging."""
+
+    def test_bumps_medium_to_high(self):
+        """MEDIUM priority bumps to HIGH on breach."""
+        from apps.emails.services.sla import check_and_escalate_breaches
+        from django.utils import timezone as tz
+
+        past = tz.now() - timedelta(hours=2)
+        email = _create_email(
+            None, message_id="msg_esc_1",
+            sla_respond_deadline=past, priority="MEDIUM",
+        )
+
+        check_and_escalate_breaches(chat_notifier=None)
+
+        email.refresh_from_db()
+        assert email.priority == "HIGH"
+
+    def test_critical_stays_critical(self):
+        """CRITICAL does not escalate further."""
+        from apps.emails.services.sla import check_and_escalate_breaches
+        from django.utils import timezone as tz
+
+        past = tz.now() - timedelta(hours=2)
+        email = _create_email(
+            None, message_id="msg_esc_2",
+            sla_respond_deadline=past, priority="CRITICAL",
+        )
+
+        check_and_escalate_breaches(chat_notifier=None)
+
+        email.refresh_from_db()
+        assert email.priority == "CRITICAL"
+
+    def test_skip_rebump_within_24h(self):
+        """Does not re-bump if SLA_BREACHED logged within 24 hours."""
+        from apps.emails.services.sla import check_and_escalate_breaches
+        from django.utils import timezone as tz
+
+        past = tz.now() - timedelta(hours=2)
+        email = _create_email(
+            None, message_id="msg_esc_3",
+            sla_respond_deadline=past, priority="MEDIUM",
+        )
+
+        # Create a recent SLA_BREACHED log (within 24h)
+        ActivityLog.objects.create(
+            email=email, user=None,
+            action=ActivityLog.Action.SLA_BREACHED,
+            detail="Already breached",
+        )
+
+        check_and_escalate_breaches(chat_notifier=None)
+
+        email.refresh_from_db()
+        # Should remain MEDIUM because it was already breached recently
+        assert email.priority == "MEDIUM"
+
+    def test_creates_activity_log_entries(self):
+        """Creates PRIORITY_BUMPED and SLA_BREACHED ActivityLog entries."""
+        from apps.emails.services.sla import check_and_escalate_breaches
+        from django.utils import timezone as tz
+
+        past = tz.now() - timedelta(hours=2)
+        email = _create_email(
+            None, message_id="msg_esc_4",
+            sla_respond_deadline=past, priority="LOW",
+        )
+
+        check_and_escalate_breaches(chat_notifier=None)
+
+        bumped = ActivityLog.objects.filter(
+            email=email, action=ActivityLog.Action.PRIORITY_BUMPED,
+        )
+        breached = ActivityLog.objects.filter(
+            email=email, action=ActivityLog.Action.SLA_BREACHED,
+        )
+        assert bumped.exists()
+        assert breached.exists()
+        assert "LOW" in bumped.first().detail
+        assert "MEDIUM" in bumped.first().detail
+
+
+# ===========================================================================
+# Chat Breach Summary Tests (NEW -- Plan 04-03)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestChatBreachSummary:
+    """Test ChatNotifier.notify_breach_summary builds correct Cards v2 payload."""
+
+    def test_notify_breach_summary_posts_card(self):
+        """notify_breach_summary calls _post with Cards v2 payload."""
+        from apps.emails.services.chat_notifier import ChatNotifier
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        summary = {
+            "total_respond_breached": 3,
+            "total_ack_breached": 1,
+            "top_offenders": [
+                {"subject": "Urgent ticket", "assignee_name": "Alice", "priority": "HIGH", "overdue_str": "2h 30m", "overdue_minutes": 150},
+                {"subject": "Another one", "assignee_name": "Bob", "priority": "MEDIUM", "overdue_str": "1h", "overdue_minutes": 60},
+            ],
+            "per_assignee": {
+                "Alice": [{"subject": "Urgent ticket", "priority": "HIGH", "overdue_minutes": 150}],
+                "Bob": [{"subject": "Another one", "priority": "MEDIUM", "overdue_minutes": 60},
+                         {"subject": "Third", "priority": "LOW", "overdue_minutes": 30}],
+            },
+        }
+
+        with patch.object(notifier, "_post", return_value=True) as mock_post:
+            with patch.object(notifier, "_is_quiet_hours", return_value=False):
+                result = notifier.notify_breach_summary(summary)
+
+        assert result is True
+        mock_post.assert_called_once()
+        payload = mock_post.call_args[0][0]
+        assert "cardsV2" in payload
+        card = payload["cardsV2"][0]["card"]
+        # Header should mention breach count
+        assert "4" in card["header"]["title"] or "breach" in card["header"]["title"].lower()
+
+    def test_breach_summary_quiet_hours_skipped(self):
+        """notify_breach_summary skips during quiet hours."""
+        from apps.emails.services.chat_notifier import ChatNotifier
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+
+        with patch.object(notifier, "_post") as mock_post:
+            with patch.object(notifier, "_is_quiet_hours", return_value=True):
+                result = notifier.notify_breach_summary({"total_respond_breached": 1})
+
+        assert result is False
+        mock_post.assert_not_called()
+
+
+# ===========================================================================
+# Chat Personal Breach Tests (NEW -- Plan 04-03)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestChatPersonalBreach:
+    """Test ChatNotifier.notify_personal_breach per-assignee alert."""
+
+    def test_personal_breach_posts_card(self):
+        """notify_personal_breach posts Cards v2 with assignee name and their emails."""
+        from apps.emails.services.chat_notifier import ChatNotifier
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        breached_emails = [
+            {"subject": "Overdue ticket A", "priority": "HIGH", "overdue_minutes": 120},
+            {"subject": "Overdue ticket B", "priority": "MEDIUM", "overdue_minutes": 60},
+        ]
+
+        with patch.object(notifier, "_post", return_value=True) as mock_post:
+            with patch.object(notifier, "_is_quiet_hours", return_value=False):
+                result = notifier.notify_personal_breach("Alice Dev", breached_emails)
+
+        assert result is True
+        mock_post.assert_called_once()
+        payload = mock_post.call_args[0][0]
+        card = payload["cardsV2"][0]["card"]
+        assert "Alice Dev" in card["header"]["title"]
+        assert "2" in card["header"]["title"]
+
+    def test_personal_breach_quiet_hours(self):
+        """notify_personal_breach skips during quiet hours."""
+        from apps.emails.services.chat_notifier import ChatNotifier
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+
+        with patch.object(notifier, "_post") as mock_post:
+            with patch.object(notifier, "_is_quiet_hours", return_value=True):
+                result = notifier.notify_personal_breach("Alice", [{"subject": "x"}])
+
+        assert result is False
+        mock_post.assert_not_called()
+
+    def test_personal_breach_lists_only_their_emails(self):
+        """Personal alert contains only the passed emails, not all breaches."""
+        from apps.emails.services.chat_notifier import ChatNotifier
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        alice_emails = [
+            {"subject": "Alice Ticket", "priority": "HIGH", "overdue_minutes": 90},
+        ]
+
+        with patch.object(notifier, "_post", return_value=True) as mock_post:
+            with patch.object(notifier, "_is_quiet_hours", return_value=False):
+                notifier.notify_personal_breach("Alice", alice_emails)
+
+        payload = mock_post.call_args[0][0]
+        card = payload["cardsV2"][0]["card"]
+        # Should have 1 email widget in sections
+        widgets = card["sections"][0]["widgets"]
+        assert len(widgets) == 1
+
+
+# ===========================================================================
+# Breach Notification Flow Tests (NEW -- Plan 04-03)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestBreachNotificationFlow:
+    """Test check_and_escalate_breaches calls both summary and personal alerts."""
+
+    def test_calls_summary_and_personal_for_each_assignee(self):
+        """check_and_escalate_breaches calls notify_breach_summary once and
+        notify_personal_breach once per assignee with breaches."""
+        from apps.emails.services.sla import check_and_escalate_breaches
+        from django.utils import timezone as tz
+
+        u1 = User.objects.create_user(
+            username="flow_alice", password="pass", first_name="Alice", last_name="F",
+        )
+        u2 = User.objects.create_user(
+            username="flow_bob", password="pass", first_name="Bob", last_name="F",
+        )
+
+        past = tz.now() - timedelta(hours=2)
+        _create_email(None, message_id="msg_flow_1", sla_respond_deadline=past, assigned_to=u1, priority="MEDIUM")
+        _create_email(None, message_id="msg_flow_2", sla_respond_deadline=past, assigned_to=u2, priority="MEDIUM")
+
+        mock_notifier = MagicMock()
+        mock_notifier.notify_breach_summary.return_value = True
+        mock_notifier.notify_personal_breach.return_value = True
+
+        check_and_escalate_breaches(chat_notifier=mock_notifier)
+
+        mock_notifier.notify_breach_summary.assert_called_once()
+        assert mock_notifier.notify_personal_breach.call_count == 2
+
+    def test_no_notification_when_no_breaches(self):
+        """No Chat notifications when no emails are breached."""
+        from apps.emails.services.sla import check_and_escalate_breaches
+
+        mock_notifier = MagicMock()
+        check_and_escalate_breaches(chat_notifier=mock_notifier)
+
+        mock_notifier.notify_breach_summary.assert_not_called()
+        mock_notifier.notify_personal_breach.assert_not_called()
