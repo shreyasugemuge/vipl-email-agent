@@ -2,7 +2,7 @@
 # VIPL Email Agent v2 -- Docker Compose
 # ============================================================
 # Single service: Django + Gunicorn
-# Connects to host PostgreSQL via host.docker.internal
+# Joins Taiga's Docker network to reach PostgreSQL (taiga-docker-taiga-db-1)
 # Nginx on the host proxies triage.vidarbhainfotech.com to port 8100
 # ============================================================
 
@@ -17,8 +17,9 @@ services:
       - DJANGO_SETTINGS_MODULE=config.settings.prod
     ports:
       - "8100:8000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - taiga
     volumes:
       - static_files:/app/staticfiles
     healthcheck:
@@ -29,3 +30,8 @@ services:
 
 volumes:
   static_files:
+
+networks:
+  taiga:
+    external: true
+    name: taiga-docker_taiga
