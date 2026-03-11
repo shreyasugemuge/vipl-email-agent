@@ -13,7 +13,7 @@ Rebuild the VIPL email triage system from a Cloud Run + Google Sheets monitoring
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Django project, PostgreSQL schema, auth, Docker Compose deployment, health endpoint
-- [ ] **Phase 2: Email Pipeline** - Port v1 agent modules to Django with ORM, background scheduler, Chat notifications
+- [x] **Phase 2: Email Pipeline** - Port v1 agent modules to Django with ORM, background scheduler, Chat notifications
 - [ ] **Phase 3: Dashboard** - Email table view, manual assignment, status tracking, filtering, activity log
 - [ ] **Phase 4: Assignment Engine + SLA** - Auto-assignment rules, AI fallback, SLA deadlines, breach alerts, escalation
 - [ ] **Phase 5: Reporting + Admin + Sheets Mirror** - EOD reports, inbox/config management UI, Google Sheets read-only sync
@@ -51,8 +51,8 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md -- Email model migration, SystemConfig model, DTOs, spam filter, PDF extractor, state manager, dependencies
-- [ ] 02-02-PLAN.md -- GmailPoller + AIProcessor service ports, pipeline orchestrator (poll-filter-triage-save-label)
-- [ ] 02-03-PLAN.md -- ChatNotifier, APScheduler management command, health endpoint update, Docker Compose scheduler service
+- [x] 02-02-PLAN.md -- GmailPoller + AIProcessor service ports, pipeline orchestrator (poll-filter-triage-save-label)
+- [x] 02-03-PLAN.md -- ChatNotifier, APScheduler management command, health endpoint update, Docker Compose scheduler service
 
 ### Phase 3: Dashboard
 **Goal**: Manager can see every email, assign it to a team member, and track status -- the core workflow that v1 lacks
@@ -123,7 +123,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-03-09 |
-| 2. Email Pipeline | 2/3 | In Progress|  |
+| 2. Email Pipeline | 3/3 | Complete | 2026-03-11 |
 | 3. Dashboard | 0/3 | Not started | - |
 | 4. Assignment Engine + SLA | 0/2 | Not started | - |
 | 5. Reporting + Admin + Sheets Mirror | 0/1 | Not started | - |
