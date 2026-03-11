@@ -57,9 +57,16 @@ def health_check(request):
         # SystemConfig table may not exist yet (before migrations)
         scheduler_status = "unknown"
 
+    # Operating mode
+    try:
+        operating_mode = SystemConfig.get("operating_mode", "unknown")
+    except Exception:
+        operating_mode = "unknown"
+
     status = {
         "status": overall_status,
         "version": VERSION,
+        "mode": operating_mode,
         "uptime_seconds": int(time.time() - _start_time),
         "database": "connected" if db_ok else "error",
         "scheduler": scheduler_status,

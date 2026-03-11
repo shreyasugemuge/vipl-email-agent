@@ -12,6 +12,7 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_GET
 
+from apps.core.models import SystemConfig
 from apps.emails.models import Email
 
 
@@ -58,10 +59,13 @@ def inspect(request):
         stats["by_category"][e.category] = stats["by_category"].get(e.category, 0) + 1
         stats["by_inbox"][e.to_inbox] = stats["by_inbox"].get(e.to_inbox, 0) + 1
 
+    current_mode = SystemConfig.get("operating_mode", "unknown")
+
     return render(request, "emails/inspect.html", {
         "emails": emails,
         "stats": stats,
         "priority_order": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "current_mode": current_mode,
     })
 
 

@@ -136,6 +136,22 @@ Gmail Inboxes → GmailPoller (domain-wide delegation)
 | `test_pipeline --with-ai` | Fake emails + real Claude triage | Claude only |
 | `test_pipeline --with-chat` | Fake emails + real Chat webhook | Chat only |
 | `test_pipeline --count N` | Process N fake emails | Depends on flags |
+| `set_mode` | Show current operating mode + config table | **None** |
+| `set_mode off` | All disabled: no Gmail, no AI, no Chat | **None** |
+| `set_mode dev` | Local dev: info@ inbox, real AI, no Chat | Claude only |
+| `set_mode production` | Full pipeline: both inboxes, AI, Chat | Gmail, Claude, Chat |
+
+### v2 Operating Modes
+
+Switch with `python manage.py set_mode <mode>`. Each mode atomically sets `operating_mode`, `ai_triage_enabled`, `chat_notifications_enabled`, and `monitored_inboxes` in SystemConfig.
+
+| Config | `off` | `dev` | `production` |
+|--------|-------|-------|-------------|
+| `ai_triage_enabled` | `false` | `true` | `true` |
+| `chat_notifications_enabled` | `false` | `false` | `true` |
+| `monitored_inboxes` | _(empty)_ | `info@vidarbhainfotech.com` | `info@,sales@vidarbhainfotech.com` |
+
+Fresh installs default to **off** mode (seeded via migration). Mode is visible in `/health/` JSON, `/emails/inspect/` badge, and poll cycle logs.
 
 ### v2 SystemConfig (Runtime Config)
 Replaces v1's Google Sheets config tab. Key-value store with typed casting (str/int/bool/float/json).
@@ -168,17 +184,16 @@ python manage.py runserver 8100
 docker compose build                # Verify Docker image builds
 ```
 
-### v2 Dev Safety (Test Mode vs Production)
+### v2 Dev Safety (Mode-Based)
 
-| Concern | Test Mode (default) | Production |
-|---------|-------------------|------------|
-| Gmail polling | Fake emails from `fake_data.py` | Real Gmail API via SA key |
-| AI triage | Hardcoded `TriageResult` | Claude Haiku/Sonnet |
-| Chat notifications | Logged, not sent | Google Chat webhook |
-| Database | SQLite (local) | PostgreSQL on VM |
-| `monitored_inboxes` | Empty (seed default) | Set via SystemConfig |
-| `chat_notifications_enabled` | `false` (seed default) | `true` in prod |
-| Missing API keys | Warns, uses fallback | Required |
+| Concern | `off` (default) | `dev` | `production` |
+|---------|----------------|-------|-------------|
+| Gmail polling | Nothing polled (no inboxes) | info@ only | Both inboxes |
+| AI triage | Disabled (fallback result) | Claude Haiku/Sonnet | Claude Haiku/Sonnet |
+| Chat notifications | Off | Off | Google Chat webhook |
+| Database | SQLite (local) | SQLite (local) | PostgreSQL on VM |
+| External API calls | **None** | Claude only | Gmail + Claude + Chat |
+| Missing API keys | Warns, uses fallback | Warns, uses fallback | Required |
 
 **Credentials** (GCP Secret Manager, project `utilities-vipl`):
 ```bash

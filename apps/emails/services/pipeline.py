@@ -145,6 +145,9 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
     close_old_connections()
 
     # Read config
+    mode = SystemConfig.get("operating_mode", "unknown")
+    logger.info(f"Poll cycle starting (mode={mode})")
+
     ai_enabled = SystemConfig.get("ai_triage_enabled", True)
     chat_enabled = SystemConfig.get("chat_notifications_enabled", False)
     inboxes_str = SystemConfig.get("monitored_inboxes", "")
