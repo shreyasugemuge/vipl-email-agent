@@ -53,7 +53,7 @@ class Email(SoftDeleteModel, TimestampedModel):
     ai_reasoning = models.TextField(blank=True, default="")
     ai_model_used = models.CharField(max_length=100, blank=True, default="")
     ai_tags = models.JSONField(default=list, blank=True)
-    ai_suggested_assignee = models.CharField(max_length=100, blank=True, default="")
+    ai_suggested_assignee = models.JSONField(default=dict, blank=True)
     ai_input_tokens = models.PositiveIntegerField(default=0)
     ai_output_tokens = models.PositiveIntegerField(default=0)
     gmail_link = models.URLField(max_length=500, blank=True, default="")
@@ -89,6 +89,10 @@ class Email(SoftDeleteModel, TimestampedModel):
     )
     assigned_at = models.DateTimeField(null=True, blank=True)
 
+    # SLA deadlines (Phase 4)
+    sla_ack_deadline = models.DateTimeField(null=True, blank=True)
+    sla_respond_deadline = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ["-received_at"]
 
@@ -105,6 +109,10 @@ class ActivityLog(TimestampedModel):
         STATUS_CHANGED = "status_changed", "Status Changed"
         ACKNOWLEDGED = "acknowledged", "Acknowledged"
         CLOSED = "closed", "Closed"
+        AUTO_ASSIGNED = "auto_assigned", "Auto-Assigned"
+        CLAIMED = "claimed", "Claimed"
+        SLA_BREACHED = "sla_breached", "SLA Breached"
+        PRIORITY_BUMPED = "priority_bumped", "Priority Bumped"
 
     email = models.ForeignKey(
         Email,
@@ -119,7 +127,7 @@ class ActivityLog(TimestampedModel):
         related_name="activity_logs",
     )
     action = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=Action.choices,
     )
     detail = models.TextField(blank=True, default="")
@@ -148,3 +156,62 @@ class AttachmentMetadata(TimestampedModel):
 
     def __str__(self):
         return f"{self.filename} ({self.mime_type})"
+
+
+class AssignmentRule(TimestampedModel):
+    """Category-to-person assignment rule with priority ordering.
+
+    Rules are matched by category. Within a category, the lowest
+    priority_order wins (first person in the list gets the email).
+    """
+
+    category = models.CharField(max_length=100, db_index=True)
+    assignee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="assignment_rules",
+    )
+    priority_order = models.PositiveSmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["category", "priority_order"]
+        unique_together = [("category", "assignee")]
+
+    def __str__(self):
+        return f"{self.category} -> {self.assignee} (order={self.priority_order})"
+
+
+class SLAConfig(TimestampedModel):
+    """SLA configuration per priority x category combination.
+
+    Defines acknowledge and respond hours for business-hours SLA calculation.
+    """
+
+    priority = models.CharField(max_length=20)
+    category = models.CharField(max_length=100)
+    ack_hours = models.FloatField(default=1.0)
+    respond_hours = models.FloatField(default=24.0)
+
+    class Meta:
+        unique_together = [("priority", "category")]
+
+    def __str__(self):
+        return f"SLA {self.priority}/{self.category}: ack={self.ack_hours}h, respond={self.respond_hours}h"
+
+
+class CategoryVisibility(TimestampedModel):
+    """Which categories a team member can see and claim emails from."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="visible_categories",
+    )
+    category = models.CharField(max_length=100)
+
+    class Meta:
+        unique_together = [("user", "category")]
+
+    def __str__(self):
+        return f"{self.user} can see {self.category}"
