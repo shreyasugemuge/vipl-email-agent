@@ -2,6 +2,9 @@ import json
 
 import pytest
 from django.test import Client
+from django.utils import timezone
+
+from apps.core.models import SystemConfig
 
 
 @pytest.mark.django_db
@@ -21,6 +24,7 @@ class TestHealthEndpoint:
         assert "version" in data
         assert "uptime_seconds" in data
         assert "database" in data
+        assert "scheduler" in data
 
     def test_health_status_healthy_when_db_connected(self, client):
         response = client.get("/health/")
@@ -32,3 +36,39 @@ class TestHealthEndpoint:
         response = client.get("/health/")
         data = json.loads(response.content)
         assert data["uptime_seconds"] >= 0
+
+    def test_scheduler_not_started_when_no_heartbeat(self, client):
+        """No heartbeat = scheduler not started yet (healthy, not degraded)."""
+        response = client.get("/health/")
+        data = json.loads(response.content)
+        assert data["scheduler"] == "not_started"
+        assert data["status"] == "healthy"
+
+    def test_scheduler_running_with_fresh_heartbeat(self, client):
+        """Fresh heartbeat = scheduler running."""
+        SystemConfig.objects.update_or_create(
+            key="scheduler_heartbeat",
+            defaults={
+                "value": timezone.now().isoformat(),
+                "value_type": "str",
+            },
+        )
+        response = client.get("/health/")
+        data = json.loads(response.content)
+        assert data["scheduler"] == "running"
+        assert data["status"] == "healthy"
+
+    def test_scheduler_stale_with_old_heartbeat(self, client):
+        """Old heartbeat = scheduler stale = degraded."""
+        old_time = timezone.now() - timezone.timedelta(minutes=10)
+        SystemConfig.objects.update_or_create(
+            key="scheduler_heartbeat",
+            defaults={
+                "value": old_time.isoformat(),
+                "value_type": "str",
+            },
+        )
+        response = client.get("/health/")
+        data = json.loads(response.content)
+        assert data["scheduler"] == "stale"
+        assert data["status"] == "degraded"
