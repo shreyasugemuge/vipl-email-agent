@@ -97,7 +97,7 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **Phase 1** (Foundation): Complete — Django skeleton, auth, models, Docker, CI/CD
 - **Phase 2** (Email Pipeline): Complete — Gmail poller, AI processor, chat notifier, pipeline orchestrator, scheduler, 95 tests, UAT 6/6 passed
 - **Phase 2.5** (Dev Safety): Complete — `--once`/`--dry-run`, `test_pipeline`, dev inspector, fake data, dev-safe defaults
-- **Phase 3** (Dashboard): Not started — HTMX email triage UI
+- **Phase 3** (Dashboard): **In progress** — HTMX email triage UI (Wave 1 complete, Wave 2 executing)
 - **Phase 4** (Assignment + SLA): Not started
 - **Phase 5** (Reporting + Admin + Sheets Mirror): Not started
 - **Phase 6** (Migration + Cutover): Not started
@@ -200,6 +200,41 @@ docker compose build                # Verify Docker image builds
 gcloud secrets versions access latest --secret=anthropic-api-key --project=utilities-vipl
 gcloud secrets versions access latest --secret=chat-webhook-url --project=utilities-vipl
 gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl > secrets/service-account.json
+```
+
+### v2 Dashboard (Phase 3)
+
+```
+/emails/              → Email card list (filters, sorting, pagination, HTMX)
+/emails/?view=unassigned  → Default manager view (unassigned queue)
+/emails/?view=mine    → Team member's assigned emails
+/emails/<pk>/detail/  → Slide-out detail panel (email body, draft reply, activity)
+/emails/<pk>/assign/  → POST: Assign/reassign email (admin only)
+/emails/<pk>/status/  → POST: Change status (Acknowledge/Close)
+/emails/activity/     → Activity log (assignments, status changes)
+```
+
+**Dashboard stack**: Django templates + HTMX 2.0 (CDN) + Tailwind CSS v4 (CDN play script)
+- `django-htmx` middleware for `request.htmx` detection (partials vs full pages)
+- `nh3` for HTML sanitization of email body content (XSS protection)
+- Card-based layout (Linear/Trello style) with slide-out detail panel
+- URL-based filter state (bookmarkable: `/emails/?status=new&priority=HIGH`)
+- ActivityLog model tracks all assignment and status change events
+- Assignment notifications via Google Chat + Django email
+
+**Template structure:**
+```
+templates/
+  base.html                    # Sidebar + topbar layout, Tailwind/HTMX CDN
+  emails/
+    email_list.html            # Full page: tabs + filters + card list + detail panel
+    _email_card.html           # Partial: single email card
+    _email_list_body.html      # Partial: card list + pagination (HTMX swap target)
+    _email_detail.html         # Partial: slide-out detail panel
+    _assign_dropdown.html      # Partial: assignee dropdown
+    _activity_feed.html        # Partial: activity log entries
+    activity_log.html          # Full page: activity log
+    inspect.html               # Dev inspector (Phase 2.5)
 ```
 
 ### v2 Common Tasks
