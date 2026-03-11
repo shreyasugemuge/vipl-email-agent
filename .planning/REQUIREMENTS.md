@@ -9,11 +9,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Email Processing
 
-- [ ] **PROC-01**: System polls configured Gmail inboxes for new emails every 5 minutes
-- [ ] **PROC-02**: System triages emails with Claude AI (category, priority, summary, draft reply)
+- [x] **PROC-01**: System polls configured Gmail inboxes for new emails every 5 minutes
+- [x] **PROC-02**: System triages emails with Claude AI (category, priority, summary, draft reply)
 - [x] **PROC-03**: System pre-filters spam via regex patterns before AI processing (zero cost)
 - [x] **PROC-04**: System extracts PDF attachment text for triage context
-- [ ] **PROC-05**: System detects email language (Hindi, Marathi, English) and writes summary in English
+- [x] **PROC-05**: System detects email language (Hindi, Marathi, English) and writes summary in English
 - [ ] **PROC-06**: System logs failed triages to dead letter queue and retries up to 3 times
 
 ### Assignment
@@ -129,11 +129,11 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROC-01 | Phase 2 | Pending |
-| PROC-02 | Phase 2 | Pending |
+| PROC-01 | Phase 2 | Complete |
+| PROC-02 | Phase 2 | Complete |
 | PROC-03 | Phase 2 | Complete (02-01) |
 | PROC-04 | Phase 2 | Complete (02-01) |
-| PROC-05 | Phase 2 | Pending |
+| PROC-05 | Phase 2 | Complete |
 | PROC-06 | Phase 2 | Pending |
 | ASGN-01 | Phase 3 | Pending |
 | ASGN-02 | Phase 3 | Pending |

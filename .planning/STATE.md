@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-11T10:03:09Z"
-last_activity: 2026-03-11 -- Plan 02-01 executed (pipeline foundation models, DTOs, services)
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-11T10:14:00Z"
+last_activity: 2026-03-11 -- Plan 02-02 executed (GmailPoller, AIProcessor, pipeline orchestrator)
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 3
-  completed_plans: 3
-  percent: 25
+  completed_plans: 4
+  percent: 33
 ---
 
 # Project State
@@ -26,28 +26,28 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Phase: 2 of 6 (Email Pipeline)
-Plan: 1 of 3 in current phase (02-01 done)
+Plan: 2 of 3 in current phase (02-02 done)
 Status: Executing Phase 2
-Last activity: 2026-03-11 -- Plan 02-01 executed (pipeline foundation models, DTOs, services)
+Last activity: 2026-03-11 -- Plan 02-02 executed (GmailPoller, AIProcessor, pipeline orchestrator)
 
-Progress: [###.......] 25%
+Progress: [####......] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: 6 min
-- Total execution time: 0.30 hours
+- Total execution time: 0.38 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. Foundation | 2 | 12 min | 6 min |
-| 2. Email Pipeline | 1 | 6 min | 6 min |
+| 2. Email Pipeline | 2 | 13 min | 6.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (9 min), 01-02 (3 min), 02-01 (6 min)
+- Last 5 plans: 01-01 (9 min), 01-02 (3 min), 02-01 (6 min), 02-02 (7 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -73,6 +73,9 @@ Recent decisions affecting current work:
 - Spam filter category="Spam" (not "General Inquiry" like v1)
 - TriageResult DTO simplified: dropped raw_response/success/error from v1
 - StateManager SLA tracking deferred to Phase 4
+- AIProcessor takes explicit api_key param (not env var) for testability
+- Spam filter called by pipeline orchestrator, not AIProcessor (separation of concerns)
+- Pipeline is the ONLY module with Django ORM imports (GmailPoller/AIProcessor Django-agnostic)
 
 ### Pending Todos
 
@@ -85,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T10:03:09Z
-Stopped at: Completed 02-01-PLAN.md
-Resume file: .planning/phases/02-email-pipeline/02-01-SUMMARY.md
+Last session: 2026-03-11T10:14:00Z
+Stopped at: Completed 02-02-PLAN.md
+Resume file: .planning/phases/02-email-pipeline/02-02-SUMMARY.md
