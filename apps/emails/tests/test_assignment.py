@@ -222,3 +222,141 @@ class TestNotifyAssignmentEmail:
         # Check recipient
         recipients = call_args[1].get("recipient_list", call_args[0][3] if len(call_args[0]) > 3 else [])
         assert member_user.email in recipients
+
+
+# ===========================================================================
+# View-level tests
+# ===========================================================================
+
+
+@pytest.fixture
+def admin_client(admin_user):
+    """Authenticated client logged in as admin."""
+    c = Client()
+    c.login(username="admin", password="testpass123")
+    return c
+
+
+@pytest.fixture
+def member_client(member_user):
+    """Authenticated client logged in as member."""
+    c = Client()
+    c.login(username="member", password="testpass123")
+    return c
+
+
+@pytest.mark.django_db
+class TestAssignEmailView:
+    """Test assign_email_view endpoint."""
+
+    def test_non_admin_returns_403(self, member_client, member_user, admin_user):
+        """View Test 1: Non-admin POST to assign returns 403."""
+        email = _create_email(None, message_id="msg_v_assign_1")
+        response = member_client.post(
+            reverse("emails:assign_email", args=[email.pk]),
+            {"assignee_id": admin_user.pk},
+        )
+        assert response.status_code == 403
+
+    def test_admin_assigns_successfully(self, admin_client, admin_user, member_user):
+        """View Test 2: Admin POST to assign returns 200 and updates assignee."""
+        email = _create_email(None, message_id="msg_v_assign_2")
+        response = admin_client.post(
+            reverse("emails:assign_email", args=[email.pk]),
+            {"assignee_id": member_user.pk},
+        )
+        assert response.status_code == 200
+        email.refresh_from_db()
+        assert email.assigned_to == member_user
+
+
+@pytest.mark.django_db
+class TestChangeStatusView:
+    """Test change_status_view endpoint."""
+
+    def test_member_cannot_change_others_email(self, member_client, member_user, admin_user):
+        """View Test 3: Member cannot change status on email not assigned to them."""
+        email = _create_email(None, message_id="msg_v_status_3", assigned_to=admin_user)
+        response = member_client.post(
+            reverse("emails:change_status", args=[email.pk]),
+            {"new_status": "acknowledged"},
+        )
+        assert response.status_code == 403
+
+    def test_member_acknowledges_own_email(self, member_client, member_user):
+        """View Test 4: Member can acknowledge their own assigned email."""
+        email = _create_email(None, message_id="msg_v_status_4", assigned_to=member_user)
+        response = member_client.post(
+            reverse("emails:change_status", args=[email.pk]),
+            {"new_status": "acknowledged"},
+        )
+        assert response.status_code == 200
+        email.refresh_from_db()
+        assert email.status == "acknowledged"
+
+    def test_member_closes_own_email(self, member_client, member_user):
+        """View Test 5: Member can close their own assigned email."""
+        email = _create_email(
+            None, message_id="msg_v_status_5",
+            assigned_to=member_user,
+            status=Email.Status.ACKNOWLEDGED,
+        )
+        response = member_client.post(
+            reverse("emails:change_status", args=[email.pk]),
+            {"new_status": "closed"},
+        )
+        assert response.status_code == 200
+        email.refresh_from_db()
+        assert email.status == "closed"
+
+    def test_admin_changes_any_email_status(self, admin_client, admin_user, member_user):
+        """View Test 6: Admin can change status on any email."""
+        email = _create_email(None, message_id="msg_v_status_6", assigned_to=member_user)
+        response = admin_client.post(
+            reverse("emails:change_status", args=[email.pk]),
+            {"new_status": "acknowledged"},
+        )
+        assert response.status_code == 200
+        email.refresh_from_db()
+        assert email.status == "acknowledged"
+
+
+@pytest.mark.django_db
+class TestEmailDetailView:
+    """Test email_detail view."""
+
+    def test_sanitizes_body_html(self, admin_client, admin_user):
+        """View Test 7: body_html with script tags is sanitized."""
+        email = _create_email(
+            None, message_id="msg_v_detail_7",
+            body_html="<p>Hello</p><script>alert('xss')</script><strong>safe</strong>",
+        )
+        response = admin_client.get(
+            reverse("emails:email_detail", args=[email.pk]),
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "<script>" not in content
+        assert "<p>Hello</p>" in content
+        assert "<strong>safe</strong>" in content
+
+    def test_returns_detail_with_activity_log(self, admin_client, admin_user, member_user):
+        """View Test 8: email_detail returns email body, attachments, activity log."""
+        email = _create_email(
+            None, message_id="msg_v_detail_8",
+            body="Detailed test body",
+            subject="Detail test subject",
+        )
+        # Create an activity log entry
+        ActivityLog.objects.create(
+            email=email,
+            user=admin_user,
+            action=ActivityLog.Action.ASSIGNED,
+            new_value=member_user.username,
+        )
+        response = admin_client.get(
+            reverse("emails:email_detail", args=[email.pk]),
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "Detail test subject" in content
