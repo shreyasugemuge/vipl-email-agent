@@ -6,21 +6,21 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v1.x** (main branch) | Production — will be shut down after v2 migration | Google Cloud Run |
-| **v2.0** (v2 branch) | **In Development** — full-stack rebuild | Self-hosted VM (Docker Compose) |
+| **v1.x** (main branch) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
+| **v2.0** (v2 branch) | **In Development** — Phase 2 (email pipeline) in progress | Self-hosted VM (Docker Compose) |
 
 ## v2 — What's Changing
 
 Full-stack rebuild: Django backend with HTMX server-rendered frontend + PostgreSQL, deployed on the existing VIPL VM (already hosts Taiga + internal tools). Google Sheets becomes a read-only sync mirror, not the source of truth. Cloud Run will be shut down once v2 is live.
 
 ### v2 Target Stack
-- **Backend**: Django 5.2 LTS + PostgreSQL (already on VM)
+- **Backend**: Django 4.2 LTS + PostgreSQL 12.3 (Taiga's existing DB container)
 - **Frontend**: Django templates + HTMX + Tailwind CSS (server-rendered, no React/Node)
-- **Deployment**: Docker Compose (single container: Django + Gunicorn), Nginx on host
+- **Deployment**: Docker Compose (web + scheduler containers), Nginx on host
 - **Auth**: Simple password auth (Django built-in), Google OAuth deferred
 - **Subdomain**: triage.vidarbhainfotech.com (configured, SSL via Let's Encrypt)
 
-## v2 Architecture (Phase 1 Complete)
+## v2 Architecture
 
 ### v2 File Structure
 
@@ -33,7 +33,7 @@ requirements.txt
 requirements-dev.txt
 .env.example
 Dockerfile
-docker-compose.yml
+docker-compose.yml          # web + scheduler services
 .dockerignore
 
 config/
@@ -41,43 +41,66 @@ config/
 
 apps/
   __init__.py
-  accounts/    # Custom User model (admin/member roles), auth views, admin
-  emails/      # Email + AttachmentMetadata models (ready for Phase 2)
-  core/        # SoftDeleteModel, TimestampedModel, health endpoint
+  accounts/                 # Custom User model (admin/member roles), auth views, admin
+  emails/                   # Email + AttachmentMetadata models, services, management commands
+    services/               # Phase 2: gmail_poller, ai_processor, chat_notifier, pipeline, spam_filter, pdf_extractor, dtos, state
+    management/commands/    # run_scheduler (APScheduler: poll, retry, heartbeat)
+  core/                     # SoftDeleteModel, TimestampedModel, SystemConfig, health endpoint
+
+prompts/
+  triage_prompt.txt         # v1 system prompt
+  triage_prompt_v2.txt      # v2 system prompt for Django pipeline
 
 templates/
-  base.html, registration/login.html
+  base.html, registration/login.html, accounts/dashboard.html
 
 nginx/
-  triage.conf  # Reverse proxy for triage.vidarbhainfotech.com
+  triage.conf               # Reverse proxy for triage.vidarbhainfotech.com
+
+secrets/                    # Service account key (gitignored, mounted read-only in Docker)
 
 .github/workflows/
-  deploy.yml   # v2 CI/CD: tag → test → SSH deploy → docker compose up
+  deploy.yml                # v2 CI/CD: tag → test → SSH deploy → docker compose up
 ```
 
 ### VM Details
 - **VM**: `taiga` in GCP project `cm-sec-455407`, zone `asia-south1-b`, IP `35.207.237.47`
-- **SSH user**: `shreyas_vidarbhainfotech_com` (gcloud compute ssh)
+- **SSH**: `gcloud compute ssh shreyas_vidarbhainfotech_com@taiga --project=cm-sec-455407 --zone=asia-south1-b`
+- **Direct SSH**: `ssh -i ~/.ssh/google_compute_engine shreyas_vidarbhainfotech_com@35.207.237.47`
 - **PostgreSQL**: Runs inside Taiga's Docker container (`taiga-docker-taiga-db-1`, postgres:12.3)
   - DB: `vipl_email_agent`, user: `vipl_agent`
-  - Network: `taiga-docker_taiga` (172.18.0.0/16), DB IP: 172.18.0.6
-- **Nginx**: Port 8100 → `triage.vidarbhainfotech.com` (SSL via Let's Encrypt)
+  - Network: `taiga-docker_taiga` (172.18.0.0/16)
+  - Docker Compose joins this network so web/scheduler containers reach DB by hostname
+- **Nginx**: Port 8100 → `triage.vidarbhainfotech.com` (SSL via Let's Encrypt, HTTP→HTTPS redirect)
+- **Deploy dir**: `/opt/vipl-email-agent/` (cloned, v2 branch, .env ready)
+- **Other containers on VM**: vipl-backend(:5000), vipl-frontend(:8080), full Taiga stack(:9000)
+- **Resources**: 2 vCPU, 12 GiB RAM, 96 GB disk (23% used)
 
-### v2 Key Design Decisions (Phase 1)
-- Python 3.13 venv required locally (system 3.9.6 too old for Django 5.2)
+### v2 Key Design Decisions
+- Django 4.2 LTS (downgraded from 5.2 — PostgreSQL 12.3 on VM not supported by Django 5.2+)
+- Python 3.13 venv locally, 3.11 in Docker
 - SQLite for local dev/tests, PostgreSQL via `DATABASE_URL` in prod
 - SoftDeleteModel base class (nothing ever truly deleted)
-- APScheduler as separate management command (not inside Gunicorn)
+- SystemConfig model for runtime config (replaces Google Sheets config tab)
+- APScheduler as separate `run_scheduler` management command (not inside Gunicorn)
+- Two Docker services from same image: `web` (Gunicorn) + `scheduler` (APScheduler)
+- Secrets volume mount: `./secrets:/app/secrets:ro` for service account key
 - CI/CD: GitHub secrets set (`VM_HOST`, `VM_USER`, `VM_SSH_KEY` deploy key)
+
+### v2 Phase Status
+- **Phase 1** (Foundation): Complete — Django skeleton, auth, models, Docker, CI/CD
+- **Phase 2** (Email Pipeline): In progress — Gmail poller, AI processor, chat notifier, pipeline orchestrator, scheduler command. 95 tests.
 
 ### v2 Testing
 
 ```bash
-# Activate venv first
 source .venv/bin/activate
 
-# Run v2 tests
-pytest -v
+pytest -v                           # All 95 tests
+pytest apps/accounts -v             # Account tests only
+pytest apps/emails -v               # Email pipeline tests
+pytest apps/core -v                 # Core model + health tests
+docker compose build                # Verify Docker image builds
 ```
 
 ### v2 Common Tasks
@@ -87,12 +110,16 @@ source .venv/bin/activate
 python manage.py runserver          # Local dev server
 python manage.py createsuperuser    # Create admin user
 python manage.py migrate            # Apply migrations
-docker compose up -d                # Start production container
+python manage.py run_scheduler      # Start email pipeline scheduler
+docker compose build                # Build locally
+# Deploy only when ready — do NOT docker compose up on VM without approval
 ```
 
-## v1 — Current Production (main branch)
+## v1 — Frozen (main branch, v1.1.3)
 
-Monitors Gmail shared inboxes (info@vidarbhainfotech.com, sales@vidarbhainfotech.com), triages emails using Claude AI, logs to a Google Sheet tracker, posts notifications to Google Chat, monitors SLA compliance, and sends daily EOD summary reports.
+Cloud Run service has been decommissioned. v1 deploy workflow is frozen. Code preserved on `main` branch for reference during v2 migration.
+
+Previously monitored Gmail shared inboxes (info@vidarbhainfotech.com, sales@vidarbhainfotech.com), triaged emails using Claude AI, logged to a Google Sheet tracker, posted notifications to Google Chat, monitored SLA compliance, and sent daily EOD summary reports.
 
 ### v1 Architecture
 
@@ -105,7 +132,7 @@ Gmail Inboxes → GmailPoller (poll every 5 min)
     → EODReporter (daily 7 PM IST + startup during business hours)
 ```
 
-Runs on Cloud Run with `--no-allow-unauthenticated`, `256Mi` memory, `min-instances=1`, `max-instances=1`.
+Ran on Cloud Run (now shut down) with `--no-allow-unauthenticated`, `256Mi` memory, `min-instances=1`, `max-instances=1`.
 
 ## v1 File Structure
 
@@ -247,18 +274,23 @@ GOOGLE_CHAT_WEBHOOK_URL      # Chat space webhook
 
 ## Deployment
 
-### CI/CD
-Single workflow (`deploy.yml`) triggered by version tags only:
+### v2 CI/CD (deploy.yml on v2 branch)
 ```
-Tag v*.*.* → test → build → deploy to Cloud Run → GitHub Release
+Tag v*.*.* → test → SSH deploy to VM → docker compose build → up → migrate
 ```
-Push to `main` does NOT deploy. Pull requests run tests only.
+Pull requests to `v2` run tests only. No Cloud Run — all VM-based.
 
-### GCP Project
-- Project: `utilities-vipl`
-- Region: `asia-south1`
-- Registry: `asia-south1-docker.pkg.dev/utilities-vipl/vipl-repo/vipl-email-agent`
+### v1 CI/CD (FROZEN on main branch)
+v1 workflow `Deploy & Release (v1 - FROZEN)` — will not deploy. Cloud Run shut down.
+
+### GCP Projects
+- **cm-sec-455407** (cm-sec): VMs — taiga, cm-sec-app-server, cm-sec-db-server
+- **utilities-vipl**: v1 artifacts (Artifact Registry `vipl-repo` 741MB, Secret Manager: anthropic-api-key, chat-webhook-url, sa-key)
 - Service account: `vipl-email-agent@utilities-vipl.iam.gserviceaccount.com`
+
+### GitHub Secrets (10)
+VM_HOST, VM_USER, VM_SSH_KEY, WIF_PROVIDER, WIF_SERVICE_ACCOUNT,
+GOOGLE_SHEET_ID, GOOGLE_CHAT_WEBHOOK_URL, MONITORED_INBOXES, ADMIN_EMAIL, EOD_RECIPIENTS
 
 ## Security
 
@@ -311,9 +343,9 @@ python main.py --init-sheet   # Initialize sheet headers + config tab
 - **Project ID**: 14
 - **Owner**: Shreyas (user ID 23)
 
-### Current State (as of 2026-03-09)
-- **v1.x history**: 13 epics (all Done), 99 stories (all Archived), 10 sprints (all Closed)
-- **v2**: Phase 1 (Foundation) complete. Epics and stories being created for Phase 2+.
+### Current State (as of 2026-03-11)
+- **v1.x history**: 13 epics (Done), 99 stories (Archived), 10 sprints (Closed)
+- **v2**: Phase 1 complete, Phase 2 (email pipeline) in progress.
 
 ### Key IDs (for API calls)
 ```
