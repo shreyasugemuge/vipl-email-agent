@@ -7,7 +7,7 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 | Version | Status | Platform |
 |---------|--------|----------|
 | **v1.x** (main branch) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
-| **v2.0** (v2 branch) | **In Development** — Phase 2 (email pipeline) in progress | Self-hosted VM (Docker Compose) |
+| **v2.0** (v2 branch) | **In Development** — Phase 2 complete, Phase 3 (dashboard) next | Self-hosted VM (Docker Compose) |
 
 ## v2 — What's Changing
 
@@ -16,6 +16,9 @@ Full-stack rebuild: Django backend with HTMX server-rendered frontend + PostgreS
 ### v2 Target Stack
 - **Backend**: Django 4.2 LTS + PostgreSQL 12.3 (Taiga's existing DB container)
 - **Frontend**: Django templates + HTMX + Tailwind CSS (server-rendered, no React/Node)
+- **Email Pipeline**: Gmail poller → spam filter → Claude AI triage → PostgreSQL → Gmail label
+- **Scheduler**: APScheduler management command (poll 5min, retry 30min, heartbeat 1min)
+- **Notifications**: Google Chat Cards v2 webhook with quiet hours
 - **Deployment**: Docker Compose (web + scheduler containers), Nginx on host
 - **Auth**: Simple password auth (Django built-in), Google OAuth deferred
 - **Subdomain**: triage.vidarbhainfotech.com (configured, SSL via Let's Encrypt)
@@ -89,17 +92,48 @@ secrets/                    # Service account key (gitignored, mounted read-only
 
 ### v2 Phase Status
 - **Phase 1** (Foundation): Complete — Django skeleton, auth, models, Docker, CI/CD
-- **Phase 2** (Email Pipeline): In progress — Gmail poller, AI processor, chat notifier, pipeline orchestrator, scheduler command. 95 tests.
+- **Phase 2** (Email Pipeline): Complete — Gmail poller, AI processor, chat notifier, pipeline orchestrator, scheduler, 95 tests, UAT 6/6 passed
+- **Phase 3** (Dashboard): Not started — HTMX email triage UI
+- **Phase 4** (Assignment + SLA): Not started
+- **Phase 5** (Reporting + Admin + Sheets Mirror): Not started
+- **Phase 6** (Migration + Cutover): Not started
+
+### v2 Email Pipeline Architecture (Phase 2)
+```
+Gmail Inboxes → GmailPoller (domain-wide delegation)
+    → SpamFilter (13 regex patterns, $0 cost)
+    → AIProcessor (Haiku default, Sonnet for CRITICAL, prompt caching)
+    → Pipeline (save to PostgreSQL → label Gmail — label-after-persist safety)
+    → ChatNotifier (Google Chat Cards v2, quiet hours via SystemConfig)
+    → Dead Letter Retry (every 30min, max 3 attempts → exhausted)
+    → Circuit Breaker (3 consecutive failures → skip cycles)
+```
+
+### v2 Service Modules (`apps/emails/services/`)
+| Module | Purpose | Django imports? |
+|--------|---------|-----------------|
+| `dtos.py` | EmailMessage + TriageResult dataclasses | No |
+| `spam_filter.py` | 13 regex patterns, returns TriageResult | No |
+| `pdf_extractor.py` | pypdf, 3 pages, 1000 chars, 5MB limit | No |
+| `state.py` | Circuit breaker + EOD dedup | No |
+| `gmail_poller.py` | Gmail API, domain-wide delegation, labels | No |
+| `ai_processor.py` | Two-tier Claude (Haiku/Sonnet), tenacity retry | No |
+| `chat_notifier.py` | Google Chat Cards v2, quiet hours | Yes (Email model) |
+| `pipeline.py` | Orchestrator: poll→filter→triage→save→label | Yes (ORM) |
+
+### v2 SystemConfig (Runtime Config)
+Replaces v1's Google Sheets config tab. Key-value store with typed casting (str/int/bool/float/json).
+Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled`, `eod_email_enabled`, `poll_interval_minutes`, `quiet_hours_start/end`, `business_hours_start/end`, `max_consecutive_failures`, `monitored_inboxes`.
 
 ### v2 Testing
 
 ```bash
 source .venv/bin/activate
 
-pytest -v                           # All 95 tests
-pytest apps/accounts -v             # Account tests only
-pytest apps/emails -v               # Email pipeline tests
-pytest apps/core -v                 # Core model + health tests
+pytest -v                           # All 95 tests (Phase 1: 33, Phase 2: 62)
+pytest apps/accounts -v             # Account/auth tests (19)
+pytest apps/emails -v               # Email pipeline tests (48)
+pytest apps/core -v                 # Core model + health + config tests (28)
 docker compose build                # Verify Docker image builds
 ```
 
@@ -110,7 +144,9 @@ source .venv/bin/activate
 python manage.py runserver          # Local dev server
 python manage.py createsuperuser    # Create admin user
 python manage.py migrate            # Apply migrations
-python manage.py run_scheduler      # Start email pipeline scheduler
+python manage.py run_scheduler      # Start email pipeline scheduler (poll + retry + heartbeat)
+python manage.py run_scheduler --once          # Single poll cycle then exit
+python manage.py run_scheduler --once --dry-run # Simulate with fake data (needs fake_data.py)
 docker compose build                # Build locally
 # Deploy only when ready — do NOT docker compose up on VM without approval
 ```
@@ -345,7 +381,7 @@ python main.py --init-sheet   # Initialize sheet headers + config tab
 
 ### Current State (as of 2026-03-11)
 - **v1.x history**: 13 epics (Done), 99 stories (Archived), 10 sprints (Closed)
-- **v2**: Phase 1 complete, Phase 2 (email pipeline) in progress.
+- **v2**: Phase 1-2 complete. Phase 3 (Dashboard) next.
 
 ### Key IDs (for API calls)
 ```

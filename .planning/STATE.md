@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Phase 2: Email Pipeline
+**Current focus:** Phase 3: Dashboard (next up)
 
 ## Current Position
 
