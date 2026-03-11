@@ -165,9 +165,9 @@ Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled` (false), `eod
 source .venv/bin/activate
 
 # --- Unit Tests (no API keys needed) ---
-pytest -v                           # All 95 tests (Phase 1: 33, Phase 2: 62)
+pytest -v                           # All 136 tests (accounts:19, emails:89, core:28)
 pytest apps/accounts -v             # Account/auth tests (19)
-pytest apps/emails -v               # Email pipeline tests (48)
+pytest apps/emails -v               # Email + dashboard tests (89)
 pytest apps/core -v                 # Core model + health + config tests (28)
 
 # --- Dev Pipeline Testing (no external calls by default) ---

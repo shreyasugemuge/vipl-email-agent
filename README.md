@@ -18,8 +18,8 @@
 
 | Version | Branch | Status | Platform |
 |---------|--------|--------|----------|
-| **v1.x** | `main` | Production (v1.1.3) — will be shut down after v2 migration | Google Cloud Run |
-| **v2.0** | `v2` | **In Development** — full-stack rebuild | Self-hosted VM (Docker Compose) |
+| **v1.x** | `main` | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
+| **v2.0** | `v2` | **In Development** — Phase 3 complete, Phase 4 next | Self-hosted VM (Docker Compose) |
 
 ### v2 — What's Changing
 
@@ -27,13 +27,13 @@ Full-stack rebuild: Django backend with HTMX server-rendered frontend + PostgreS
 
 | Layer | v1 | v2 |
 |-------|----|----|
-| **Backend** | Python scripts + Google Sheets as DB | Django 5.2 LTS + PostgreSQL |
+| **Backend** | Python scripts + Google Sheets as DB | Django 4.2 LTS + PostgreSQL |
 | **Frontend** | Google Sheets + Chat cards | Django templates + HTMX + Tailwind CSS |
 | **Deployment** | Cloud Run (serverless) | Docker Compose on self-hosted VM |
 | **Auth** | Service account only | Django built-in auth (domain-restricted) |
 | **URL** | Cloud Run endpoint | `triage.vidarbhainfotech.com` |
 
-**v2 Phase 1 (Foundation)** is complete: Django project skeleton, custom User model, Email/Attachment models, auth views, health endpoint, Docker/Nginx/CI-CD config, and test infrastructure.
+**v2 Progress** — Phases 1-3 complete (Foundation, Email Pipeline, Dashboard). 136 tests passing. Phase 4 (Assignment Engine + SLA) is next.
 
 ---
 
@@ -123,17 +123,31 @@ manage.py                        # Django management
 conftest.py                      # Root test config
 gunicorn.conf.py                 # Production WSGI server
 Dockerfile                       # Django + Gunicorn container
-docker-compose.yml               # Single-service compose
+docker-compose.yml               # web + scheduler services
 
 config/                          # Django project config
   settings/ (base.py, dev.py, prod.py), urls.py, wsgi.py, asgi.py
 
 apps/
   accounts/                      # Custom User model (admin/member roles), auth views
-  emails/                        # Email + AttachmentMetadata models
-  core/                          # SoftDeleteModel, TimestampedModel, health endpoint
+  emails/                        # Email pipeline, dashboard views, assignment service
+    services/                    # gmail_poller, ai_processor, chat_notifier, pipeline, spam_filter
+    management/commands/         # run_scheduler, test_pipeline, set_mode
+    templatetags/email_tags.py   # Priority/status color helpers
+  core/                          # SoftDeleteModel, TimestampedModel, SystemConfig, health
 
-templates/                       # Django templates (base, login, dashboard)
+templates/
+  base.html                      # Dark sidebar layout, Tailwind v4 + HTMX 2.0 CDN
+  registration/login.html        # Glassmorphism login
+  emails/
+    email_list.html              # Dashboard: stats bar, tabs, filters, card list + detail panel
+    activity_log.html            # MIS activity log with stats and filters
+    _email_card.html             # Email card partial (HTMX OOB swap support)
+    _email_detail.html           # Detail panel partial (timeline activity, draft reply)
+    _email_list_body.html        # Card list + pagination partial
+    _activity_feed.html          # Activity feed entries partial
+    inspect.html                 # Dev inspector (Phase 2.5)
+
 nginx/triage.conf                # Reverse proxy for triage.vidarbhainfotech.com
 .github/workflows/deploy.yml     # v2 CI/CD: tag → test → SSH deploy → docker compose up
 ```
