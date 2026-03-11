@@ -1,7 +1,9 @@
 # ============================================================
 # VIPL Email Agent v2 -- Docker Compose
 # ============================================================
-# Single service: Django + Gunicorn
+# Two services from the same image:
+#   web       -- Django + Gunicorn (HTTP)
+#   scheduler -- APScheduler (poll, retry, heartbeat)
 # Joins Taiga's Docker network to reach PostgreSQL (taiga-docker-taiga-db-1)
 # Nginx on the host proxies triage.vidarbhainfotech.com to port 8100
 # ============================================================
@@ -22,11 +24,30 @@ services:
       - taiga
     volumes:
       - static_files:/app/staticfiles
+      - ./secrets:/app/secrets:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+  scheduler:
+    build: .
+    container_name: vipl-email-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
+    networks:
+      - default
+      - taiga
+    volumes:
+      - ./secrets:/app/secrets:ro
+    command: python manage.py run_scheduler
+    depends_on:
+      web:
+        condition: service_healthy
 
 volumes:
   static_files:
