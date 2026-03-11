@@ -1,11 +1,12 @@
 # ============================================================
 # VIPL Email Agent v2 -- Caddy (Local Development)
 # ============================================================
-# Local reverse proxy for dev/testing at http://localhost:8100
+# Local reverse proxy for dev/testing at http://triage.local
+# Add to /etc/hosts: 127.0.0.1 triage.local
 # Production uses Nginx on the VM (nginx/triage.conf)
 # ============================================================
 
-:80 {
+http://triage.local {
 	# Reverse proxy to Gunicorn
 	reverse_proxy web:8000
 
