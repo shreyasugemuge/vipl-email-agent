@@ -1,21 +1,16 @@
 # ============================================================
-# VIPL Email Agent — CI/CD Pipeline
+# VIPL Email Agent v1 — CI/CD Pipeline (FROZEN)
 # ============================================================
-# Single workflow for test, deploy, and release.
+# DEPLOY FREEZE: v1 deployments are frozen while v2 is in
+# development. Remove this freeze after v2 migration is complete
+# and Cloud Run is decommissioned.
 #
-# Triggers:
-#   - Version tags (v*.*.*): test → deploy → release
-#   - Pull requests: test only (no deploy)
-#
-# Auth: Workload Identity Federation (no SA key stored in GitHub)
+# v2 deployment pipeline lives on the v2 branch.
 # ============================================================
 
-name: Deploy & Release
+name: Deploy & Release (v1 - FROZEN)
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
   pull_request:
     branches: [main]
 
