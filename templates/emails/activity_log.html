@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load email_tags %}
+
+{% block page_title %}Activity Log{% endblock %}
+{% block nav_activity_active %}bg-gray-100 text-gray-900{% endblock %}
+
+{% block content %}
+<div class="p-4 md:p-6 max-w-4xl">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-800">Activity Log</h2>
+        <span class="text-sm text-gray-500">{{ total_count }} event{{ total_count|pluralize }}</span>
+    </div>
+
+    <div id="activity-feed">
+        {% include "emails/_activity_feed.html" %}
+    </div>
+</div>
+{% endblock %}

@@ -16,10 +16,25 @@
 <body class="h-screen flex overflow-hidden bg-gray-50 font-sans text-gray-900"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
+    <!-- Mobile sidebar overlay (hidden by default) -->
+    <div id="sidebar-overlay"
+         class="fixed inset-0 bg-black/50 z-40 hidden md:hidden"
+         onclick="toggleSidebar()"></div>
+
     <!-- Sidebar -->
-    <aside class="w-56 bg-white border-r border-gray-200 flex flex-col shrink-0">
+    <aside id="sidebar"
+           class="w-56 bg-white border-r border-gray-200 flex flex-col shrink-0
+                  fixed inset-y-0 left-0 z-50 -translate-x-full transition-transform duration-200
+                  md:relative md:translate-x-0">
         <div class="h-14 flex items-center px-5 border-b border-gray-200">
             <span class="text-lg font-semibold tracking-tight text-gray-800">VIPL Triage</span>
+            <!-- Close button (mobile only) -->
+            <button onclick="toggleSidebar()"
+                    class="ml-auto md:hidden text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
         </div>
         <nav class="flex-1 py-4 px-3 space-y-1">
             <a href="{% url 'emails:email_list' %}"
@@ -30,6 +45,15 @@
                           d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
                 Emails
+            </a>
+            <a href="{% url 'emails:activity_log' %}"
+               class="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium
+                      {% block nav_activity_active %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endblock %}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Activity
             </a>
             {% if user.is_staff or user.is_admin_role %}
             <a href="{% url 'admin:index' %}"
@@ -51,11 +75,20 @@
     <!-- Main area -->
     <div class="flex-1 flex flex-col overflow-hidden">
         <!-- Top bar -->
-        <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
-            <h1 class="text-base font-semibold text-gray-800">{% block page_title %}Dashboard{% endblock %}</h1>
+        <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 shrink-0">
+            <!-- Hamburger menu (mobile only) -->
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()"
+                        class="md:hidden text-gray-600 hover:text-gray-900">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <h1 class="text-base font-semibold text-gray-800">{% block page_title %}Dashboard{% endblock %}</h1>
+            </div>
             <div class="flex items-center gap-4 text-sm text-gray-600">
                 {% if user.is_authenticated %}
-                <span>{{ user.get_full_name|default:user.username }}</span>
+                <span class="hidden sm:inline">{{ user.get_full_name|default:user.username }}</span>
                 <a href="{% url 'logout' %}" class="text-gray-400 hover:text-gray-600">Logout</a>
                 {% endif %}
             </div>
@@ -67,6 +100,20 @@
         </main>
     </div>
 
+    <script>
+    function toggleSidebar() {
+        var sidebar = document.getElementById('sidebar');
+        var overlay = document.getElementById('sidebar-overlay');
+        var isOpen = !sidebar.classList.contains('-translate-x-full');
+        if (isOpen) {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        } else {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('hidden');
+        }
+    }
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

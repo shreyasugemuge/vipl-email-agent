@@ -8,26 +8,26 @@
 <div class="flex flex-col h-full">
 
     <!-- Tab bar -->
-    <div class="bg-white border-b border-gray-200 px-6 py-2 flex items-center gap-1 overflow-x-auto shrink-0">
+    <div class="bg-white border-b border-gray-200 px-3 md:px-6 py-2 flex items-center gap-1 overflow-x-auto shrink-0">
         <a href="{% url 'emails:email_list' %}?view=all{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
            hx-get="{% url 'emails:email_list' %}?view=all{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
            hx-target="#email-list"
            hx-push-url="true"
-           class="px-3 py-1.5 rounded text-sm font-medium {% if current_view == 'all' %}bg-gray-900 text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+           class="px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap {% if current_view == 'all' %}bg-gray-900 text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
             All
         </a>
         <a href="{% url 'emails:email_list' %}?view=unassigned{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
            hx-get="{% url 'emails:email_list' %}?view=unassigned{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
            hx-target="#email-list"
            hx-push-url="true"
-           class="px-3 py-1.5 rounded text-sm font-medium {% if current_view == 'unassigned' %}bg-gray-900 text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+           class="px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap {% if current_view == 'unassigned' %}bg-gray-900 text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
             Unassigned
         </a>
         <a href="{% url 'emails:email_list' %}?view=mine{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
            hx-get="{% url 'emails:email_list' %}?view=mine{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
            hx-target="#email-list"
            hx-push-url="true"
-           class="px-3 py-1.5 rounded text-sm font-medium {% if current_view == 'mine' %}bg-gray-900 text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+           class="px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap {% if current_view == 'mine' %}bg-gray-900 text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
             My Emails
         </a>
         {% if is_admin %}
@@ -36,7 +36,7 @@
                hx-get="{% url 'emails:email_list' %}?view={{ member.pk }}"
                hx-target="#email-list"
                hx-push-url="true"
-               class="px-3 py-1.5 rounded text-sm font-medium {% if current_view == member.pk|stringformat:'d' %}bg-gray-900 text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+               class="px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap {% if current_view == member.pk|stringformat:'d' %}bg-gray-900 text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
                 {{ member.get_full_name|default:member.username }}
             </a>
             {% endfor %}
@@ -44,13 +44,13 @@
     </div>
 
     <!-- Filters -->
-    <div class="bg-white border-b border-gray-200 px-6 py-2 flex items-center gap-3 shrink-0">
+    <div class="bg-white border-b border-gray-200 px-3 md:px-6 py-2 flex flex-wrap items-center gap-2 md:gap-3 shrink-0">
         <select name="status"
                 hx-get="{% url 'emails:email_list' %}"
                 hx-target="#email-list"
                 hx-push-url="true"
                 hx-include="[name='priority'],[name='category'],[name='inbox'],[name='view'],[name='sort']"
-                class="text-sm border border-gray-300 rounded px-2 py-1.5 bg-white">
+                class="text-sm border border-gray-300 rounded px-2 py-1.5 bg-white flex-1 min-w-[120px] md:flex-none">
             <option value="">All Statuses</option>
             {% for value, label in statuses %}
             <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
@@ -62,7 +62,7 @@
                 hx-target="#email-list"
                 hx-push-url="true"
                 hx-include="[name='status'],[name='category'],[name='inbox'],[name='view'],[name='sort']"
-                class="text-sm border border-gray-300 rounded px-2 py-1.5 bg-white">
+                class="text-sm border border-gray-300 rounded px-2 py-1.5 bg-white flex-1 min-w-[120px] md:flex-none">
             <option value="">All Priorities</option>
             {% for p in priorities %}
             <option value="{{ p }}" {% if current_priority == p %}selected{% endif %}>{{ p }}</option>
@@ -74,7 +74,7 @@
                 hx-target="#email-list"
                 hx-push-url="true"
                 hx-include="[name='status'],[name='priority'],[name='inbox'],[name='view'],[name='sort']"
-                class="text-sm border border-gray-300 rounded px-2 py-1.5 bg-white">
+                class="text-sm border border-gray-300 rounded px-2 py-1.5 bg-white flex-1 min-w-[120px] md:flex-none">
             <option value="">All Categories</option>
             {% for cat in categories %}
             <option value="{{ cat }}" {% if current_category == cat %}selected{% endif %}>{{ cat }}</option>
@@ -86,7 +86,7 @@
                 hx-target="#email-list"
                 hx-push-url="true"
                 hx-include="[name='status'],[name='priority'],[name='category'],[name='view'],[name='sort']"
-                class="text-sm border border-gray-300 rounded px-2 py-1.5 bg-white">
+                class="text-sm border border-gray-300 rounded px-2 py-1.5 bg-white flex-1 min-w-[120px] md:flex-none">
             <option value="">All Inboxes</option>
             {% for ib in inboxes %}
             <option value="{{ ib }}" {% if current_inbox == ib %}selected{% endif %}>{{ ib }}</option>
@@ -97,18 +97,18 @@
         <input type="hidden" name="view" value="{{ current_view }}">
         <input type="hidden" name="sort" value="{{ current_sort }}">
 
-        <span class="ml-auto text-sm text-gray-500">{{ total_count }} email{{ total_count|pluralize }}</span>
+        <span class="ml-auto text-sm text-gray-500 whitespace-nowrap">{{ total_count }} email{{ total_count|pluralize }}</span>
     </div>
 
     <!-- Main content: list + detail split -->
     <div class="flex flex-1 overflow-hidden">
-        <!-- Email list (40% width) -->
-        <div id="email-list" class="w-2/5 overflow-auto border-r border-gray-200">
+        <!-- Email list (full on mobile, 40% on desktop) -->
+        <div id="email-list" class="w-full md:w-2/5 overflow-auto md:border-r border-gray-200">
             {% include "emails/_email_list_body.html" %}
         </div>
 
-        <!-- Detail panel (60% width, loaded via HTMX) -->
-        <div id="detail-panel" class="w-3/5 overflow-auto bg-white">
+        <!-- Detail panel (hidden on mobile, 60% on desktop, loaded via HTMX) -->
+        <div id="detail-panel" class="hidden md:block md:w-3/5 overflow-auto bg-white">
             <div class="flex items-center justify-center h-full text-gray-400 text-sm">
                 Select an email to view details
             </div>

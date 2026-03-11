@@ -1,9 +1,10 @@
-"""Email views: dashboard list, detail panel, assignment, status + dev inspector.
+"""Email views: dashboard list, detail panel, assignment, status, activity log + dev inspector.
 
 /emails/              -- Main email list dashboard (login required)
 /emails/<pk>/detail/  -- Email detail panel (HTMX partial)
 /emails/<pk>/assign/  -- Assign email (POST, admin only)
 /emails/<pk>/status/  -- Change email status (POST)
+/emails/activity/     -- Activity log (login required)
 /emails/inspect/      -- Dev inspector (no login, dev/test only)
 """
 
@@ -293,6 +294,41 @@ def change_status_view(request, pk):
     }
 
     return render(request, "emails/_email_detail.html", context)
+
+
+# ---------------------------------------------------------------------------
+# Activity log
+# ---------------------------------------------------------------------------
+
+ACTIVITY_PER_PAGE = 50
+
+
+@login_required
+def activity_log(request):
+    """Global activity log -- paginated list of all assignment/status events."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+
+    qs = ActivityLog.objects.select_related("email", "user").order_by("-created_at")
+
+    # Non-admin members without can_see_all_emails: own activity or activity on own emails
+    if not is_admin and not getattr(user, "can_see_all_emails", False):
+        from django.db.models import Q
+
+        qs = qs.filter(Q(user=user) | Q(email__assigned_to=user))
+
+    paginator = Paginator(qs, ACTIVITY_PER_PAGE)
+    page_number = request.GET.get("page", 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "total_count": paginator.count,
+    }
+
+    if getattr(request, "htmx", False):
+        return render(request, "emails/_activity_feed.html", context)
+    return render(request, "emails/activity_log.html", context)
 
 
 # ---------------------------------------------------------------------------
