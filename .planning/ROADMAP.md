@@ -68,7 +68,7 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md -- Base layout, email card list with HTMX filters/sorting/pagination, ActivityLog model, unassigned queue
-- [ ] 03-02-PLAN.md -- Assignment service, status changes, detail panel, Chat notifications
+- [x] 03-02-PLAN.md -- Assignment service, status changes, detail panel, Chat notifications
 - [ ] 03-03-PLAN.md -- Activity log page, mobile-responsive layout, visual verification
 
 ### Phase 4: Assignment Engine + SLA
@@ -124,7 +124,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-03-09 |
 | 2. Email Pipeline | 3/3 | Complete | 2026-03-11 |
-| 3. Dashboard | 1/3 | In progress | - |
+| 3. Dashboard | 2/3 | In progress | - |
 | 4. Assignment Engine + SLA | 0/2 | Not started | - |
 | 5. Reporting + Admin + Sheets Mirror | 0/1 | Not started | - |
 | 6. Migration + Cutover | 0/1 | Not started | - |

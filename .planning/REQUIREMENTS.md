@@ -18,25 +18,25 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Assignment
 
-- [ ] **ASGN-01**: Manager can manually assign an email to a team member from the dashboard
-- [ ] **ASGN-02**: Manager can reassign an email to a different team member
+- [x] **ASGN-01**: Manager can manually assign an email to a team member from the dashboard
+- [x] **ASGN-02**: Manager can reassign an email to a different team member
 - [ ] **ASGN-03**: System auto-assigns emails based on category-to-person mapping rules
 - [ ] **ASGN-04**: System uses AI fallback for emails that don't match any assignment rule
-- [ ] **ASGN-05**: Assignment triggers notification to assignee via Google Chat + email
+- [x] **ASGN-05**: Assignment triggers notification to assignee via Google Chat + email
 
 ### Status & SLA
 
-- [ ] **SLA-01**: Each email has a status: New, Acknowledged, Replied, Closed
+- [x] **SLA-01**: Each email has a status: New, Acknowledged, Replied, Closed
 - [ ] **SLA-02**: System calculates SLA deadline per email based on priority and category
 - [ ] **SLA-03**: System detects SLA breaches and posts summary alerts (3x daily)
 - [ ] **SLA-04**: SLA breach alerts manager (Shreyas) via Chat + email
 
 ### Dashboard
 
-- [ ] **DASH-01**: Dashboard shows all emails in a table with columns: date, from, subject, assignee, priority, status, SLA remaining
-- [ ] **DASH-02**: Dashboard supports filtering by status, assignee, priority, inbox
-- [ ] **DASH-03**: Dashboard supports sorting by any column
-- [ ] **DASH-04**: Dashboard shows unassigned queue as default manager view
+- [x] **DASH-01**: Dashboard shows all emails in a table with columns: date, from, subject, assignee, priority, status, SLA remaining
+- [x] **DASH-02**: Dashboard supports filtering by status, assignee, priority, inbox
+- [x] **DASH-03**: Dashboard supports sorting by any column
+- [x] **DASH-04**: Dashboard shows unassigned queue as default manager view
 - [ ] **DASH-05**: Dashboard has activity log showing who did what (assignments, status changes)
 - [ ] **DASH-06**: Dashboard is desktop-first, usable on mobile
 
@@ -135,19 +135,19 @@ Deferred to future release. Tracked but not in current roadmap.
 | PROC-04 | Phase 2 | Complete (02-01) |
 | PROC-05 | Phase 2 | Complete |
 | PROC-06 | Phase 2 | Complete (02-03) |
-| ASGN-01 | Phase 3 | Pending |
-| ASGN-02 | Phase 3 | Pending |
+| ASGN-01 | Phase 3 | Complete (03-02) |
+| ASGN-02 | Phase 3 | Complete (03-02) |
 | ASGN-03 | Phase 4 | Pending |
 | ASGN-04 | Phase 4 | Pending |
-| ASGN-05 | Phase 3 | Pending |
-| SLA-01 | Phase 3 | Pending |
+| ASGN-05 | Phase 3 | Complete (03-02) |
+| SLA-01 | Phase 3 | Complete (03-02) |
 | SLA-02 | Phase 4 | Pending |
 | SLA-03 | Phase 4 | Pending |
 | SLA-04 | Phase 4 | Pending |
-| DASH-01 | Phase 3 | Pending |
-| DASH-02 | Phase 3 | Pending |
-| DASH-03 | Phase 3 | Pending |
-| DASH-04 | Phase 3 | Pending |
+| DASH-01 | Phase 3 | Complete (03-01) |
+| DASH-02 | Phase 3 | Complete (03-01) |
+| DASH-03 | Phase 3 | Complete (03-01) |
+| DASH-04 | Phase 3 | Complete (03-01) |
 | DASH-05 | Phase 3 | Pending |
 | DASH-06 | Phase 3 | Pending |
 | AUTH-01 | Phase 1 | Complete (01-01) |
@@ -177,4 +177,4 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-11 after plan 02-03 execution (Phase 2 complete)*
+*Last updated: 2026-03-11 after plan 03-02 execution (assignment workflow + detail panel)*
