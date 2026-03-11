@@ -19,7 +19,7 @@ Full-stack rebuild: Django backend with HTMX server-rendered frontend + PostgreS
 - **Email Pipeline**: Gmail poller → spam filter → Claude AI triage → PostgreSQL → Gmail label
 - **Scheduler**: APScheduler management command (poll 5min, retry 30min, heartbeat 1min)
 - **Notifications**: Google Chat Cards v2 webhook with quiet hours
-- **Deployment**: Docker Compose (web + scheduler containers), Nginx on host
+- **Deployment**: Docker Compose (web + scheduler containers), Nginx on host (Caddy for local dev)
 - **Auth**: Simple password auth (Django built-in), Google OAuth deferred
 - **Subdomain**: triage.vidarbhainfotech.com (configured, SSL via Let's Encrypt)
 
@@ -36,7 +36,9 @@ requirements.txt
 requirements-dev.txt
 .env.example                # Dev-safe defaults + prod template
 Dockerfile
-docker-compose.yml          # web + scheduler services
+docker-compose.yml          # Production: web + scheduler services
+docker-compose.dev.yml      # Local dev: adds Caddy reverse proxy
+Caddyfile                   # Caddy config for local dev (used by docker-compose.dev.yml)
 .dockerignore
 
 config/
@@ -61,7 +63,7 @@ templates/
   emails/inspect.html       # Dev inspector template (dark-themed, no login)
 
 nginx/
-  triage.conf               # Reverse proxy for triage.vidarbhainfotech.com
+  triage.conf               # Production reverse proxy for triage.vidarbhainfotech.com
 
 secrets/                    # Service account key (gitignored, mounted read-only in Docker)
 
@@ -90,6 +92,8 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - SystemConfig model for runtime config (replaces Google Sheets config tab)
 - APScheduler as separate `run_scheduler` management command (not inside Gunicorn)
 - Two Docker services from same image: `web` (Gunicorn) + `scheduler` (APScheduler)
+- Local dev: `docker-compose.dev.yml` adds Caddy reverse proxy (http://localhost:8100)
+- Production: `docker-compose.yml` exposes port 8100 directly, Nginx on host handles SSL
 - Secrets volume mount: `./secrets:/app/secrets:ro` for service account key
 - CI/CD: GitHub secrets set (`VM_HOST`, `VM_USER`, `VM_SSH_KEY` deploy key)
 
@@ -248,7 +252,8 @@ python manage.py test_pipeline      # Quick pipeline smoke test (safe, no API ca
 python manage.py run_scheduler      # Start production scheduler (poll + retry + heartbeat)
 python manage.py run_scheduler --once          # Single poll cycle then exit
 python manage.py run_scheduler --once --dry-run # Simulate with fake data, no external calls
-docker compose build                # Build locally
+docker compose build                              # Build locally
+docker compose -f docker-compose.dev.yml up       # Local dev with Caddy at http://localhost:8100
 # Deploy only when ready — do NOT docker compose up on VM without approval
 ```
 

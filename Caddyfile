@@ -1,0 +1,34 @@
+# ============================================================
+# VIPL Email Agent v2 -- Caddy (Local Development)
+# ============================================================
+# Local reverse proxy for dev/testing at http://localhost:8100
+# Production uses Nginx on the VM (nginx/triage.conf)
+# ============================================================
+
+:80 {
+	# Reverse proxy to Gunicorn
+	reverse_proxy web:8000
+
+	# Static files
+	handle_path /static/* {
+		root * /srv/staticfiles
+		file_server
+	}
+
+	# Compression
+	encode gzip zstd
+
+	# Security headers (match production)
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

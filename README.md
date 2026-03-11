@@ -123,7 +123,9 @@ manage.py                        # Django management
 conftest.py                      # Root test config
 gunicorn.conf.py                 # Production WSGI server
 Dockerfile                       # Django + Gunicorn container
-docker-compose.yml               # web + scheduler services
+docker-compose.yml               # Production: web + scheduler services
+docker-compose.dev.yml           # Local dev: adds Caddy reverse proxy
+Caddyfile                        # Caddy config for local dev
 
 config/                          # Django project config
   settings/ (base.py, dev.py, prod.py), urls.py, wsgi.py, asgi.py
@@ -148,7 +150,7 @@ templates/
     _activity_feed.html          # Activity feed entries partial
     inspect.html                 # Dev inspector (Phase 2.5)
 
-nginx/triage.conf                # Reverse proxy for triage.vidarbhainfotech.com
+nginx/triage.conf                # Production reverse proxy for triage.vidarbhainfotech.com
 .github/workflows/deploy.yml     # v2 CI/CD: tag → test → SSH deploy → docker compose up
 ```
 
