@@ -10,8 +10,10 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
 
+from django.db import close_old_connections
+
 from apps.core.models import SystemConfig
-from apps.emails.models import ActivityLog, Email
+from apps.emails.models import ActivityLog, AssignmentRule, CategoryVisibility, Email
 from apps.emails.services.chat_notifier import ChatNotifier
 
 logger = logging.getLogger(__name__)
@@ -148,3 +150,126 @@ def notify_assignment_email(email, assignee):
     except Exception:
         logger.exception("Failed to send assignment email to %s", assignee.email)
         return False
+
+
+def auto_assign_batch():
+    """Auto-assign unassigned emails to team members based on assignment rules.
+
+    Finds unassigned, NEW, COMPLETED, non-spam emails and matches them
+    to AssignmentRule entries by category. Assigns to the first-priority
+    active person. Uses optimistic locking to prevent race conditions.
+
+    Returns the number of emails assigned.
+    """
+    close_old_connections()
+
+    unassigned = Email.objects.filter(
+        assigned_to__isnull=True,
+        status=Email.Status.NEW,
+        processing_status=Email.ProcessingStatus.COMPLETED,
+        is_spam=False,
+    )
+
+    assigned_count = 0
+
+    for email in unassigned:
+        # Find matching rules for this category
+        rule = (
+            AssignmentRule.objects.filter(
+                category=email.category,
+                is_active=True,
+                assignee__is_active=True,
+            )
+            .order_by("priority_order")
+            .first()
+        )
+
+        if not rule:
+            continue
+
+        # Optimistic locking: re-check unassigned before update
+        updated = Email.objects.filter(
+            pk=email.pk,
+            assigned_to__isnull=True,
+        ).update(
+            assigned_to=rule.assignee,
+            assigned_by=None,
+            assigned_at=timezone.now(),
+        )
+
+        if updated:
+            # Create activity log
+            ActivityLog.objects.create(
+                email=email,
+                user=None,  # system action
+                action=ActivityLog.Action.AUTO_ASSIGNED,
+                detail=f"Auto-assigned by category rule: {email.category}",
+                new_value=_user_display(rule.assignee),
+            )
+
+            # Fire-and-forget notifications
+            try:
+                webhook_url = SystemConfig.get("chat_webhook_url", "")
+                notifier = ChatNotifier(webhook_url=webhook_url)
+                notifier.notify_assignment(email, rule.assignee)
+            except Exception:
+                logger.exception("Chat notification failed for auto-assign of email %s", email.pk)
+
+            try:
+                notify_assignment_email(email, rule.assignee)
+            except Exception:
+                logger.exception("Email notification failed for auto-assign of email %s", email.pk)
+
+            assigned_count += 1
+            logger.info(
+                "Auto-assigned email %s (%s) to %s",
+                email.pk, email.category, _user_display(rule.assignee),
+            )
+
+    logger.info("Auto-assign batch complete: %d emails assigned", assigned_count)
+    return assigned_count
+
+
+def claim_email(email, claimed_by):
+    """Allow a team member to self-claim an unassigned email.
+
+    Validates:
+    1. Email is not already assigned (raises ValueError)
+    2. User has CategoryVisibility for the email's category,
+       unless user is admin/staff (raises PermissionError)
+
+    Uses assign_email() internally, then updates the ActivityLog
+    action to CLAIMED.
+
+    Returns the updated Email instance.
+    """
+    if email.assigned_to is not None:
+        raise ValueError(
+            f"Email {email.pk} is already assigned to {_user_display(email.assigned_to)}"
+        )
+
+    # Admin/staff bypasses visibility check
+    if not (claimed_by.is_staff or claimed_by.role == "admin"):
+        has_visibility = CategoryVisibility.objects.filter(
+            user=claimed_by,
+            category=email.category,
+        ).exists()
+        if not has_visibility:
+            raise PermissionError(
+                f"User {claimed_by.username} lacks category visibility for '{email.category}'"
+            )
+
+    # Use existing assign_email for the heavy lifting
+    result = assign_email(email, claimed_by, assigned_by=claimed_by, note="Self-claimed")
+
+    # Update the last activity log entry from ASSIGNED to CLAIMED
+    last_log = ActivityLog.objects.filter(
+        email=email,
+        action=ActivityLog.Action.ASSIGNED,
+    ).order_by("-created_at").first()
+
+    if last_log:
+        last_log.action = ActivityLog.Action.CLAIMED
+        last_log.save(update_fields=["action"])
+
+    return result

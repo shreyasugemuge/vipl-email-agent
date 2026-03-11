@@ -17,9 +17,27 @@ from apps.core.models import SystemConfig
 from apps.emails.models import AttachmentMetadata, Email
 from apps.emails.services.ai_processor import AIProcessor
 from apps.emails.services.dtos import EmailMessage, TriageResult
+from apps.emails.services.sla import set_sla_deadlines
 from apps.emails.services.spam_filter import is_spam as spam_filter_fn_default
 
 logger = logging.getLogger(__name__)
+
+
+def _map_suggested_assignee(triage: TriageResult) -> dict:
+    """Map TriageResult suggested_assignee fields to JSONField-compatible dict.
+
+    Prefers suggested_assignee_detail (structured) if available.
+    Falls back to suggested_assignee string wrapped in {"name": ...}.
+    Returns empty dict if nothing available.
+    """
+    detail = getattr(triage, "suggested_assignee_detail", {})
+    if detail:
+        return detail
+
+    if triage.suggested_assignee:
+        return {"name": triage.suggested_assignee}
+
+    return {}
 
 
 def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
@@ -48,7 +66,7 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
             "ai_reasoning": triage.reasoning,
             "ai_model_used": triage.model_used,
             "ai_tags": triage.tags,
-            "ai_suggested_assignee": triage.suggested_assignee,
+            "ai_suggested_assignee": _map_suggested_assignee(triage),
             "ai_input_tokens": triage.input_tokens,
             "ai_output_tokens": triage.output_tokens,
             "language": triage.language,
@@ -70,6 +88,12 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
                 mime_type=att.get("mime_type", ""),
                 gmail_attachment_id=att.get("attachment_id", ""),
             )
+
+    # Set SLA deadlines (non-critical -- failure should not crash pipeline)
+    try:
+        set_sla_deadlines(email_obj)
+    except Exception:
+        logger.exception("Failed to set SLA deadlines for email %s", email_obj.pk)
 
     action = "Created" if created else "Updated"
     logger.info(f"{action} email {email_msg.message_id}: {triage.category}/{triage.priority}")
@@ -246,7 +270,7 @@ def retry_failed_emails(ai_processor, gmail_poller):
             email_obj.ai_reasoning = triage.reasoning
             email_obj.ai_model_used = triage.model_used
             email_obj.ai_tags = triage.tags
-            email_obj.ai_suggested_assignee = triage.suggested_assignee
+            email_obj.ai_suggested_assignee = _map_suggested_assignee(triage)
             email_obj.ai_input_tokens = triage.input_tokens
             email_obj.ai_output_tokens = triage.output_tokens
             email_obj.language = triage.language
