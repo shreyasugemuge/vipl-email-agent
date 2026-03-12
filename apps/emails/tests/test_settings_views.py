@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone as dj_timezone
 
 from apps.accounts.models import User
+from apps.core.models import SystemConfig
 from apps.emails.models import (
     AssignmentRule, CategoryVisibility, Email, SLAConfig,
 )
@@ -360,3 +361,68 @@ class TestSLAFilters:
         result = sla_countdown(future)
         assert "h" not in result
         assert "m" in result
+
+
+# ---------------------------------------------------------------------------
+# Inboxes tab
+# ---------------------------------------------------------------------------
+
+
+class TestInboxesTab:
+    def test_inboxes_tab_renders(self, admin_client, db):
+        SystemConfig.objects.update_or_create(
+            key="monitored_inboxes",
+            defaults={"value": "info@vidarbhainfotech.com", "value_type": "str", "category": "email"},
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=inboxes")
+        assert response.status_code == 200
+        assert "info@vidarbhainfotech.com" in response.content.decode()
+
+    def test_inboxes_add(self, admin_client, db):
+        SystemConfig.objects.update_or_create(
+            key="monitored_inboxes",
+            defaults={"value": "", "value_type": "str", "category": "email"},
+        )
+        response = admin_client.post(
+            reverse("emails:settings_inboxes_save"),
+            {"action": "add", "inbox_email": "test@example.com"},
+        )
+        assert response.status_code == 200
+        cfg = SystemConfig.objects.get(key="monitored_inboxes")
+        assert "test@example.com" in cfg.value
+
+    def test_inboxes_add_duplicate(self, admin_client, db):
+        SystemConfig.objects.update_or_create(
+            key="monitored_inboxes",
+            defaults={"value": "test@example.com", "value_type": "str", "category": "email"},
+        )
+        response = admin_client.post(
+            reverse("emails:settings_inboxes_save"),
+            {"action": "add", "inbox_email": "test@example.com"},
+        )
+        assert response.status_code == 200
+        cfg = SystemConfig.objects.get(key="monitored_inboxes")
+        # Should not have duplicates
+        parts = [p.strip() for p in cfg.value.split(",") if p.strip()]
+        assert parts.count("test@example.com") == 1
+
+    def test_inboxes_remove(self, admin_client, db):
+        SystemConfig.objects.update_or_create(
+            key="monitored_inboxes",
+            defaults={"value": "info@vidarbhainfotech.com,test@example.com", "value_type": "str", "category": "email"},
+        )
+        response = admin_client.post(
+            reverse("emails:settings_inboxes_save"),
+            {"action": "remove", "inbox_email": "test@example.com"},
+        )
+        assert response.status_code == 200
+        cfg = SystemConfig.objects.get(key="monitored_inboxes")
+        assert "test@example.com" not in cfg.value
+        assert "info@vidarbhainfotech.com" in cfg.value
+
+    def test_inboxes_admin_required(self, member_client, db):
+        response = member_client.post(
+            reverse("emails:settings_inboxes_save"),
+            {"action": "add", "inbox_email": "test@example.com"},
+        )
+        assert response.status_code == 403
