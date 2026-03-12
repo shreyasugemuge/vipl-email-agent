@@ -148,5 +148,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 4.5 -> 5 -> 6
 | 3. Dashboard | 3/3 | Complete | 2026-03-11 |
 | 4. Assignment Engine + SLA | 3/3 | Complete | 2026-03-11 |
 | 4.5. Integration Fixes + Tech Debt | 2/2 | Complete | 2026-03-12 |
-| 5. Reporting + Admin + Sheets Mirror | 3/3 | Complete   | 2026-03-12 |
+| 5. Reporting + Admin + Sheets Mirror | 3/3 | Complete    | 2026-03-12 |
 | 6. Migration + Cutover | 0/1 | Not started | - |
