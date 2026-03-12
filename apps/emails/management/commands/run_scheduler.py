@@ -1,4 +1,4 @@
-"""APScheduler management command -- runs email polling, dead letter retry, and heartbeat.
+"""APScheduler management command -- runs email polling, dead letter retry, EOD, and heartbeat.
 
 Usage: python manage.py run_scheduler
 
@@ -9,6 +9,7 @@ Jobs:
 - Heartbeat: every 1 minute -- writes timestamp to SystemConfig
 - Poll: every 5 minutes (configurable) -- calls process_poll_cycle
 - Retry: every 30 minutes -- calls retry_failed_emails
+- EOD: daily at 7 PM IST -- sends daily summary email + Chat card
 """
 
 import logging
@@ -90,6 +91,23 @@ def _sla_summary_job(chat_notifier):
         check_and_escalate_breaches(chat_notifier=chat_notifier)
     except Exception as e:
         logger.error(f"SLA summary job failed: {e}")
+
+
+def _eod_job(chat_notifier, state_manager, key_path, sender_email):
+    """Run daily EOD report -- email + Chat card."""
+    close_old_connections()
+    try:
+        from apps.emails.services.eod_reporter import EODReporter
+
+        reporter = EODReporter(
+            chat_notifier=chat_notifier,
+            state_manager=state_manager,
+            service_account_key_path=key_path,
+            sender_email=sender_email,
+        )
+        reporter.send_report()
+    except Exception as e:
+        logger.error(f"EOD job failed: {e}")
 
 
 class Command(BaseCommand):
@@ -214,6 +232,23 @@ class Command(BaseCommand):
             coalesce=True,
         )
 
+        # EOD report: 7 PM IST daily
+        sender_email = (
+            os.environ.get("ADMIN_EMAIL", "")
+            or SystemConfig.get("admin_email", "")
+        )
+        scheduler.add_job(
+            _eod_job,
+            CronTrigger(hour=19, minute=0, timezone="Asia/Kolkata"),
+            args=[chat_notifier, state_manager, key_path, sender_email],
+            id="eod_report",
+            max_instances=1,
+            coalesce=True,
+        )
+
+        # Startup catch-up: fire EOD if missed today
+        self._eod_startup_catchup(chat_notifier, state_manager, key_path, sender_email)
+
         # Graceful shutdown
         def shutdown_handler(signum, frame):
             logger.info(f"Received signal {signum}, shutting down scheduler...")
@@ -225,16 +260,47 @@ class Command(BaseCommand):
         logger.info(
             f"Starting scheduler: poll every {poll_interval}min, "
             f"retry every 30min, auto-assign every 3min, "
-            f"SLA summary at 9/13/17 IST, heartbeat every 1min"
+            f"SLA summary at 9/13/17 IST, eod=19:00 IST, heartbeat every 1min"
         )
         self.stdout.write(
             self.style.SUCCESS(
                 f"Scheduler started (poll={poll_interval}min, retry=30min, "
-                f"auto-assign=3min, SLA=9/13/17 IST, heartbeat=1min)"
+                f"auto-assign=3min, SLA=9/13/17 IST, eod=19:00 IST, heartbeat=1min)"
             )
         )
 
         scheduler.start()
+
+    def _eod_startup_catchup(self, chat_notifier, state_manager, key_path, sender_email):
+        """Check if today's EOD was missed and fire it if within business hours.
+
+        Catches the case where scheduler restarted after 7 PM and missed today's EOD.
+        Dedup in send_report() prevents double-sends even if this races with cron.
+        """
+        import zoneinfo
+        from datetime import datetime
+
+        ist = zoneinfo.ZoneInfo("Asia/Kolkata")
+        now_ist = timezone.now().astimezone(ist)
+
+        # Only catch up during business hours (8 AM - 9 PM IST)
+        if not (8 <= now_ist.hour < 21):
+            return
+
+        # Check if EOD was already sent today
+        last_sent_str = SystemConfig.get("last_eod_sent", "")
+        if last_sent_str:
+            try:
+                last_sent = datetime.fromisoformat(last_sent_str)
+                last_sent_ist = last_sent.astimezone(ist)
+                if last_sent_ist.date() == now_ist.date():
+                    logger.info("EOD startup catch-up: already sent today, skipping")
+                    return
+            except (ValueError, TypeError):
+                pass  # Invalid timestamp -- proceed
+
+        logger.info("EOD startup catch-up: today's EOD was missed, firing now")
+        _eod_job(chat_notifier, state_manager, key_path, sender_email)
 
     def _dry_run_cycle(self):
         """Simulate a poll cycle with fake data — no external API calls."""

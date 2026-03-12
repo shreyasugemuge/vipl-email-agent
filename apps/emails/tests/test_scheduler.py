@@ -18,11 +18,12 @@ class TestSchedulerCommand:
         "ANTHROPIC_API_KEY": "test-key",
         "GOOGLE_CHAT_WEBHOOK_URL": "https://chat.googleapis.com/test",
         "MONITORED_INBOXES": "info@test.com",
+        "ADMIN_EMAIL": "admin@test.com",
     })
     def test_command_creates_scheduler_jobs(
         self, mock_config, mock_state, mock_chat, mock_ai, mock_gmail, mock_scheduler_cls
     ):
-        """Verify add_job is called 3 times: heartbeat, poll, retry."""
+        """Verify add_job is called for all scheduled jobs."""
         from apps.emails.management.commands.run_scheduler import Command
 
         mock_scheduler = MagicMock()
@@ -30,14 +31,16 @@ class TestSchedulerCommand:
         mock_config.get.return_value = 5
 
         cmd = Command()
+        # Mock startup catch-up to avoid DB access
+        cmd._eod_startup_catchup = MagicMock()
         # Scheduler.start() will block -- raise to exit
         mock_scheduler.start.side_effect = KeyboardInterrupt
 
         with pytest.raises(KeyboardInterrupt):
             cmd.handle()
 
-        # Should have 5 add_job calls: heartbeat, poll, retry, auto_assign, sla_breach_summary
-        assert mock_scheduler.add_job.call_count == 5
+        # Should have 6 add_job calls: heartbeat, poll, retry, auto_assign, sla_breach_summary, eod_report
+        assert mock_scheduler.add_job.call_count == 6
 
     @pytest.mark.django_db
     def test_heartbeat_writes_to_system_config(self):
@@ -63,6 +66,7 @@ class TestSchedulerCommand:
         "ANTHROPIC_API_KEY": "test-key",
         "GOOGLE_CHAT_WEBHOOK_URL": "https://chat.googleapis.com/test",
         "MONITORED_INBOXES": "info@test.com",
+        "ADMIN_EMAIL": "admin@test.com",
     })
     def test_signal_handlers_registered(
         self, mock_config, mock_state, mock_chat, mock_ai, mock_gmail,
@@ -77,6 +81,7 @@ class TestSchedulerCommand:
         mock_scheduler.start.side_effect = KeyboardInterrupt
 
         cmd = Command()
+        cmd._eod_startup_catchup = MagicMock()
         with pytest.raises(KeyboardInterrupt):
             cmd.handle()
 
