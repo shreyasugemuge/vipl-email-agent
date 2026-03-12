@@ -16,6 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Email Pipeline** - Port v1 agent modules to Django with ORM, background scheduler, Chat notifications
 - [x] **Phase 3: Dashboard** - Email card view, manual assignment, status tracking, filtering, activity log
 - [x] **Phase 4: Assignment Engine + SLA** - Auto-assignment rules, AI fallback, SLA deadlines, breach alerts, escalation (completed 2026-03-11)
+- [ ] **Phase 4.5: Integration Fixes + Tech Debt** - INSERTED: body_html pipeline, chat webhook seed, quiet hours fix, OOB card update, dead code cleanup (gap closure from v1.0 audit)
 - [ ] **Phase 5: Reporting + Admin + Sheets Mirror** - EOD reports, inbox/config management UI, Google Sheets read-only sync
 - [ ] **Phase 6: Migration + Cutover** - Production data migration, v1-to-v2 inbox rollover, Cloud Run decommission, CI/CD overhaul
 
@@ -84,9 +85,25 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md -- New models (AssignmentRule, SLAConfig, CategoryVisibility), SLA calculator with business hours, auto-assign batch job, claim service, pipeline SLA integration
-- [ ] 04-02-PLAN.md -- SLA countdown display on cards/detail, claim/AI-suggestion endpoints, admin settings page (rules, visibility, SLA config with tabs)
-- [ ] 04-03-PLAN.md -- Breach detection with auto-escalation, Chat breach summary (3x daily), scheduler jobs (auto-assign 3min, SLA summary 9/13/17), visual verification
+- [x] 04-01-PLAN.md -- New models (AssignmentRule, SLAConfig, CategoryVisibility), SLA calculator with business hours, auto-assign batch job, claim service, pipeline SLA integration
+- [x] 04-02-PLAN.md -- SLA countdown display on cards/detail, claim/AI-suggestion endpoints, admin settings page (rules, visibility, SLA config with tabs)
+- [x] 04-03-PLAN.md -- Breach detection with auto-escalation, Chat breach summary (3x daily), scheduler jobs (auto-assign 3min, SLA summary 9/13/17), visual verification
+
+### Phase 4.5: Integration Fixes + Tech Debt (INSERTED)
+**Goal**: Close integration gaps and tech debt identified by v1.0 milestone audit -- HTML email rendering, Chat webhook wiring, quiet hours config, OOB card updates, dead code removal
+**Depends on**: Phase 4
+**Requirements**: DASH-03 (fix), ASGN-05 (fix), SLA-04 (fix), ASGN-04 (fix)
+**Gap Closure**: Closes all gaps from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. HTML email bodies render correctly in the detail panel (body_html populated by pipeline)
+  2. Chat assignment notifications work without manual SystemConfig setup (webhook seeded or env fallback)
+  3. Quiet hours suppress Chat notifications between 8 PM and 8 AM IST
+  4. Accepting an AI suggestion updates both the detail panel AND the card (OOB swap)
+  5. No dead code: DashboardView removed, stale comments cleaned, activity timeline colors correct for all action types
+**Plans**: TBD
+
+Plans:
+- [ ] 04.5-01: body_html pipeline fix, chat webhook seed, quiet hours fix, accept_ai OOB, dead code cleanup
 
 ### Phase 5: Reporting + Admin + Sheets Mirror
 **Goal**: Daily reporting from real database, admin self-service for inbox and config management, and Sheets mirror for legacy access
@@ -119,13 +136,14 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 4.5 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-03-09 |
 | 2. Email Pipeline | 3/3 | Complete | 2026-03-11 |
-| 3. Dashboard | 3/3 | Complete   | 2026-03-11 |
-| 4. Assignment Engine + SLA | 3/3 | Complete   | 2026-03-11 |
+| 3. Dashboard | 3/3 | Complete | 2026-03-11 |
+| 4. Assignment Engine + SLA | 3/3 | Complete | 2026-03-11 |
+| 4.5. Integration Fixes + Tech Debt | 0/1 | Not started | - |
 | 5. Reporting + Admin + Sheets Mirror | 0/1 | Not started | - |
 | 6. Migration + Cutover | 0/1 | Not started | - |
