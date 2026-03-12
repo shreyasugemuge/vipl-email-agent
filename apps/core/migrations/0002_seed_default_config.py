@@ -55,17 +55,25 @@ SEED_DATA = [
     # Quiet hours
     {
         "key": "quiet_hours_start",
-        "value": "20",
-        "value_type": "int",
+        "value": "20:00",
+        "value_type": "str",
         "category": "quiet_hours",
-        "description": "Quiet hours start (24h IST)",
+        "description": "Quiet hours start (HH:MM IST)",
     },
     {
         "key": "quiet_hours_end",
-        "value": "8",
-        "value_type": "int",
+        "value": "08:00",
+        "value_type": "str",
         "category": "quiet_hours",
-        "description": "Quiet hours end (24h IST)",
+        "description": "Quiet hours end (HH:MM IST)",
+    },
+    # Notifications
+    {
+        "key": "chat_webhook_url",
+        "value": "",
+        "value_type": "str",
+        "category": "notifications",
+        "description": "Google Chat webhook URL for notifications (set via GOOGLE_CHAT_WEBHOOK_URL env var or admin)",
     },
     # Business hours
     {

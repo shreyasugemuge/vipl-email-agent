@@ -43,6 +43,7 @@ class EmailMessage:
     attachment_names: list = field(default_factory=list)
     attachment_details: list = field(default_factory=list)
     gmail_link: str = ""
+    body_html: str = ""
 
 
 @dataclass

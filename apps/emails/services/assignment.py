@@ -5,6 +5,7 @@ everyone gets notified via Chat and email.
 """
 
 import logging
+import os
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -66,7 +67,7 @@ def assign_email(email, assignee, assigned_by, note=""):
 
     # Fire-and-forget: Chat notification
     try:
-        webhook_url = SystemConfig.get("chat_webhook_url", "")
+        webhook_url = SystemConfig.get("chat_webhook_url", "") or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
         notifier = ChatNotifier(webhook_url=webhook_url)
         notifier.notify_assignment(email, assignee)
     except Exception:
@@ -209,7 +210,7 @@ def auto_assign_batch():
 
             # Fire-and-forget notifications
             try:
-                webhook_url = SystemConfig.get("chat_webhook_url", "")
+                webhook_url = SystemConfig.get("chat_webhook_url", "") or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
                 notifier = ChatNotifier(webhook_url=webhook_url)
                 notifier.notify_assignment(email, rule.assignee)
             except Exception:

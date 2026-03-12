@@ -73,6 +73,7 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
             "to_inbox": email_msg.inbox,
             "subject": email_msg.subject,
             "body": email_msg.body,
+            "body_html": email_msg.body_html,
             "received_at": email_msg.timestamp,
             "gmail_link": email_msg.gmail_link,
             # AI triage fields
@@ -166,6 +167,7 @@ def process_single_email(
                     "to_inbox": email_msg.inbox,
                     "subject": email_msg.subject,
                     "body": email_msg.body,
+                    "body_html": getattr(email_msg, 'body_html', ''),
                     "received_at": email_msg.timestamp,
                     "gmail_link": email_msg.gmail_link,
                     "processing_status": Email.ProcessingStatus.FAILED,
@@ -231,7 +233,7 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
             if email_obj:
                 processed_items.append(email_obj)
 
-        # Chat notification (placeholder -- Chat notifier built in Plan 03)
+        # Send Chat notifications for newly processed emails
         if chat_enabled and processed_items and chat_notifier:
             try:
                 chat_notifier.notify_new_emails(processed_items)
@@ -275,6 +277,7 @@ def retry_failed_emails(ai_processor, gmail_poller):
                 body=email_obj.body,
                 timestamp=email_obj.received_at,
                 gmail_link=email_obj.gmail_link,
+                body_html=getattr(email_obj, 'body_html', ''),
             )
 
             triage = ai_processor.process(email_msg, gmail_poller=gmail_poller)

@@ -125,6 +125,9 @@ class GmailPoller:
             if len(body) > 2000:
                 body = body[:2000] + "\n[...truncated...]"
 
+            # Extract raw HTML body for rich display in detail panel
+            html_body = self._extract_html_body(msg_data.get("payload", {}))
+
             # Count attachments
             attachments = []
             attachment_details = []
@@ -147,6 +150,7 @@ class GmailPoller:
                 attachment_names=attachments,
                 attachment_details=attachment_details,
                 gmail_link=gmail_link,
+                body_html=html_body,
             )
         except Exception as e:
             logger.error(f"Failed to parse message: {e}")
@@ -192,6 +196,37 @@ class GmailPoller:
         text = html_module.unescape(text)
         text = re.sub(r"\s+", " ", text).strip()
         return text
+
+    def _extract_html_body(self, payload: dict) -> str:
+        """Recursively extract raw HTML body from a Gmail message payload.
+
+        Returns the raw HTML (no tag stripping) from text/html parts.
+        Truncates at 50000 chars to bound storage size.
+        """
+        mime_type = payload.get("mimeType", "")
+
+        if mime_type == "text/html" and "body" in payload:
+            data = payload["body"].get("data", "")
+            if data:
+                html = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+                return html[:50000]
+
+        parts = payload.get("parts", [])
+        # Prefer text/html parts first
+        for part in parts:
+            if part.get("mimeType") == "text/html":
+                result = self._extract_html_body(part)
+                if result:
+                    return result
+
+        # Recurse into multipart/* parts
+        for part in parts:
+            if part.get("mimeType", "").startswith("multipart/"):
+                result = self._extract_html_body(part)
+                if result:
+                    return result
+
+        return ""
 
     def _find_attachments(self, payload: dict, names: list, details: list):
         """Recursively find attachment filenames and metadata."""

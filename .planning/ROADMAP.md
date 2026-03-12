@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Email Pipeline** - Port v1 agent modules to Django with ORM, background scheduler, Chat notifications
 - [x] **Phase 3: Dashboard** - Email card view, manual assignment, status tracking, filtering, activity log
 - [x] **Phase 4: Assignment Engine + SLA** - Auto-assignment rules, AI fallback, SLA deadlines, breach alerts, escalation (completed 2026-03-11)
-- [ ] **Phase 4.5: Integration Fixes + Tech Debt** - INSERTED: body_html pipeline, chat webhook seed, quiet hours fix, OOB card update, dead code cleanup (gap closure from v1.0 audit)
+- [x] **Phase 4.5: Integration Fixes + Tech Debt** - INSERTED: body_html pipeline, chat webhook seed, quiet hours fix, OOB card update, dead code cleanup (gap closure from v1.0 audit) (completed 2026-03-12)
 - [ ] **Phase 5: Reporting + Admin + Sheets Mirror** - EOD reports, inbox/config management UI, Google Sheets read-only sync
 - [ ] **Phase 6: Migration + Cutover** - Production data migration, v1-to-v2 inbox rollover, Cloud Run decommission, CI/CD overhaul
 
@@ -103,8 +103,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04.5-01-PLAN.md -- Pipeline body_html fix, chat webhook seed, quiet hours config fix, accept_ai OOB swap
-- [ ] 04.5-02-PLAN.md -- Dead code removal (DashboardView), activity timeline color mappings for Phase 4 actions
+- [x] 04.5-01-PLAN.md -- Pipeline body_html fix, chat webhook seed, quiet hours config fix, accept_ai OOB swap
+- [x] 04.5-02-PLAN.md -- Dead code removal (DashboardView), activity timeline color mappings for Phase 4 actions
 
 ### Phase 5: Reporting + Admin + Sheets Mirror
 **Goal**: Daily reporting from real database, admin self-service for inbox and config management, and Sheets mirror for legacy access
@@ -145,6 +145,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 4.5 -> 5 -> 6
 | 2. Email Pipeline | 3/3 | Complete | 2026-03-11 |
 | 3. Dashboard | 3/3 | Complete | 2026-03-11 |
 | 4. Assignment Engine + SLA | 3/3 | Complete | 2026-03-11 |
-| 4.5. Integration Fixes + Tech Debt | 0/2 | Not started | - |
+| 4.5. Integration Fixes + Tech Debt | 2/2 | Complete | 2026-03-12 |
 | 5. Reporting + Admin + Sheets Mirror | 0/1 | Not started | - |
 | 6. Migration + Cutover | 0/1 | Not started | - |

@@ -370,8 +370,22 @@ def accept_ai_suggestion(request, pk):
     # Reload
     email = Email.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # Primary: updated card
+    card_html = render_to_string(
+        "emails/_email_card.html",
+        {"email": email, "is_admin": is_admin, "team_members": team_members},
+        request=request,
+    )
+    # OOB: update detail panel
     detail_context = _build_detail_context(email, request, is_admin, team_members)
-    return render(request, "emails/_email_detail.html", detail_context)
+    detail_html = render_to_string(
+        "emails/_email_detail.html", detail_context, request=request,
+    )
+    oob_detail = (
+        f'<div id="detail-panel" hx-swap-oob="innerHTML">{detail_html}</div>'
+    )
+    return _HttpResponse(card_html + oob_detail)
 
 
 @login_required
@@ -391,8 +405,22 @@ def reject_ai_suggestion(request, pk):
     email.save(update_fields=["ai_suggested_assignee", "updated_at"])
 
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # Primary: updated card (AI badge cleared)
+    card_html = render_to_string(
+        "emails/_email_card.html",
+        {"email": email, "is_admin": is_admin, "team_members": team_members},
+        request=request,
+    )
+    # OOB: update detail panel
     detail_context = _build_detail_context(email, request, is_admin, team_members)
-    return render(request, "emails/_email_detail.html", detail_context)
+    detail_html = render_to_string(
+        "emails/_email_detail.html", detail_context, request=request,
+    )
+    oob_detail = (
+        f'<div id="detail-panel" hx-swap-oob="innerHTML">{detail_html}</div>'
+    )
+    return _HttpResponse(card_html + oob_detail)
 
 
 # ---------------------------------------------------------------------------

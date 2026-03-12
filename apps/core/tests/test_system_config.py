@@ -81,9 +81,12 @@ class TestSystemConfigSeedData:
         assert SystemConfig.get("poll_interval_minutes") == 5
         assert SystemConfig.get("max_consecutive_failures") == 3
 
-        # Quiet hours
-        assert SystemConfig.get("quiet_hours_start") == 20
-        assert SystemConfig.get("quiet_hours_end") == 8
+        # Quiet hours (HH:MM string format)
+        assert SystemConfig.get("quiet_hours_start") == "20:00"
+        assert SystemConfig.get("quiet_hours_end") == "08:00"
+
+        # Chat webhook URL (empty default)
+        assert SystemConfig.get("chat_webhook_url") == ""
 
         # Business hours
         assert SystemConfig.get("business_hours_start") == 8

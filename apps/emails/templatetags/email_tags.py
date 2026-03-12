@@ -16,10 +16,20 @@ PRIORITY_BASE = {
 }
 
 STATUS_BASE = {
+    # Email statuses
     "new": "blue",
     "acknowledged": "violet",
     "replied": "emerald",
     "closed": "slate",
+    # ActivityLog actions (Phase 3)
+    "assigned": "blue",
+    "reassigned": "amber",
+    "status_changed": "violet",
+    # ActivityLog actions (Phase 4)
+    "auto_assigned": "cyan",
+    "claimed": "teal",
+    "sla_breached": "red",
+    "priority_bumped": "orange",
 }
 
 PRIORITY_BORDER = {

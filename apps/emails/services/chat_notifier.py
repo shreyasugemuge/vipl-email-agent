@@ -80,6 +80,24 @@ class ChatNotifier:
         if not start_str or not end_str:
             return False
 
+        # Normalize: accept both int ("20") and "HH:MM" ("20:00") formats
+        def _normalize_time(val):
+            if val is None:
+                return None
+            val = str(val).strip()
+            if ":" not in val:
+                try:
+                    return f"{int(val):02d}:00"
+                except (ValueError, TypeError):
+                    return None
+            return val
+
+        start_str = _normalize_time(start_str)
+        end_str = _normalize_time(end_str)
+
+        if not start_str or not end_str:
+            return False
+
         try:
             now = datetime.now(IST).time()
             start = datetime.strptime(start_str, "%H:%M").time()
