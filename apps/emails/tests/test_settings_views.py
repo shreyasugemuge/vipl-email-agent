@@ -426,3 +426,54 @@ class TestInboxesTab:
             {"action": "add", "inbox_email": "test@example.com"},
         )
         assert response.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Config editor tab
+# ---------------------------------------------------------------------------
+
+
+class TestConfigEditor:
+    def test_config_tab_renders(self, admin_client, db):
+        SystemConfig.objects.create(
+            key="test_key", value="test_val", value_type="str",
+            category="testing", description="A test config",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "test_key" in content
+        assert "testing" in content
+
+    def test_config_save(self, admin_client, db):
+        SystemConfig.objects.create(
+            key="my_setting", value="old", value_type="str", category="demo",
+        )
+        response = admin_client.post(
+            reverse("emails:settings_config_save"),
+            {"category": "demo", "config_my_setting": "new_value"},
+        )
+        assert response.status_code == 200
+        cfg = SystemConfig.objects.get(key="my_setting")
+        assert cfg.value == "new_value"
+
+    def test_config_save_preserves_type(self, admin_client, db):
+        SystemConfig.objects.create(
+            key="flag_enabled", value="true", value_type="bool", category="flags",
+        )
+        # Submit with checkbox unchecked (no field sent)
+        response = admin_client.post(
+            reverse("emails:settings_config_save"),
+            {"category": "flags"},
+        )
+        assert response.status_code == 200
+        cfg = SystemConfig.objects.get(key="flag_enabled")
+        assert cfg.value_type == "bool"  # type preserved
+        assert cfg.value == "false"  # unchecked = false
+
+    def test_config_editor_admin_required(self, member_client, db):
+        response = member_client.post(
+            reverse("emails:settings_config_save"),
+            {"category": "demo", "config_something": "val"},
+        )
+        assert response.status_code == 403
