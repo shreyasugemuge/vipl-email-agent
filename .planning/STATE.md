@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-12T11:19:22.753Z"
-last_activity: 2026-03-12 -- Phase 5 Plan 02 complete (EOD reporter + scheduler integration)
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-03-12T11:24:29Z"
+last_activity: 2026-03-12 -- Phase 5 complete (all 3 plans: settings UI, EOD reporter, Sheets mirror)
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 14
-  completed_plans: 13
-  percent: 93
+  completed_plans: 14
+  percent: 100
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Phase 5: Reporting + Admin + Sheets Mirror (in progress)
+**Current focus:** Phase 5 complete. Phase 6: Migration + Cutover next.
 
 ## Current Position
 
-Phase: 5 of 6 (Reporting + Admin + Sheets Mirror) -- IN PROGRESS
-Plan: 2 of 3 in current phase
-Status: Plans 05-01 and 05-02 complete, plan 05-03 remaining
-Last activity: 2026-03-12 -- Phase 5 Plan 02 complete (EOD reporter + scheduler integration)
+Phase: 5 of 6 (Reporting + Admin + Sheets Mirror) -- COMPLETE
+Plan: 3 of 3 in current phase (all complete)
+Status: Phase 5 complete -- all 3 plans done (settings UI, EOD reporter, Sheets mirror)
+Last activity: 2026-03-12 -- Phase 5 Plan 03 complete (Sheets sync mirror + scheduler)
 
-Progress: [#########.] 93%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: 6.1 min
-- Total execution time: ~1h 19m
+- Total plans completed: 14
+- Average duration: 5.9 min
+- Total execution time: ~1h 23m
 
 **By Phase:**
 
@@ -47,14 +47,14 @@ Progress: [#########.] 93%
 | 2. Email Pipeline | 3 | 17 min | 5.7 min |
 | 3. Dashboard | 3 | 25 min | 8.3 min |
 | 4. Assignment+SLA | 3/3 | 19 min | 6.3 min |
-| 5. Reporting+Admin | 2/3 | 9 min | 4.5 min |
+| 5. Reporting+Admin | 3/3 | 13 min | 4.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (8 min), 04-02 (7 min), 04-03 (4 min), 05-01 (3 min), 05-02 (6 min)
+- Last 5 plans: 04-02 (7 min), 04-03 (4 min), 05-01 (3 min), 05-02 (6 min), 05-03 (4 min)
 - Trend: Accelerating
 
 *Updated after each plan completion*
-| Phase 05 P02 | 6 | 2 tasks | 6 files |
+| Phase 05 P03 | 4 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -106,6 +106,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Bool configs use checkbox with unchecked=false convention
 - [Phase 05]: Inboxes stored as comma-separated string in existing monitored_inboxes SystemConfig key
 - [Phase 05]: Dual dedup: in-memory StateManager + persistent SystemConfig.last_eod_sent for cross-restart EOD dedup
+- [Phase 05]: Message ID as 10th column in Sheet for programmatic row matching
+- [Phase 05]: Conditional scheduler registration: sheets_sync only added when GOOGLE_SHEET_ID env var is set
 
 ### Pending Todos
 
@@ -118,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T11:19:22.752Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-03-12T11:24:29Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None

@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Dashboard** - Email card view, manual assignment, status tracking, filtering, activity log
 - [x] **Phase 4: Assignment Engine + SLA** - Auto-assignment rules, AI fallback, SLA deadlines, breach alerts, escalation (completed 2026-03-11)
 - [x] **Phase 4.5: Integration Fixes + Tech Debt** - INSERTED: body_html pipeline, chat webhook seed, quiet hours fix, OOB card update, dead code cleanup (gap closure from v1.0 audit) (completed 2026-03-12)
-- [ ] **Phase 5: Reporting + Admin + Sheets Mirror** - EOD reports, inbox/config management UI, Google Sheets read-only sync
+- [x] **Phase 5: Reporting + Admin + Sheets Mirror** - EOD reports, inbox/config management UI, Google Sheets read-only sync (completed 2026-03-12)
 - [ ] **Phase 6: Migration + Cutover** - Production data migration, v1-to-v2 inbox rollover, Cloud Run decommission, CI/CD overhaul
 
 ## Phase Details
@@ -148,5 +148,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 4.5 -> 5 -> 6
 | 3. Dashboard | 3/3 | Complete | 2026-03-11 |
 | 4. Assignment Engine + SLA | 3/3 | Complete | 2026-03-11 |
 | 4.5. Integration Fixes + Tech Debt | 2/2 | Complete | 2026-03-12 |
-| 5. Reporting + Admin + Sheets Mirror | 1/3 | In progress | - |
+| 5. Reporting + Admin + Sheets Mirror | 3/3 | Complete   | 2026-03-12 |
 | 6. Migration + Cutover | 0/1 | Not started | - |
