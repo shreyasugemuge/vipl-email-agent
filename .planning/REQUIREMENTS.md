@@ -52,7 +52,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **INFR-02**: System deployed via Docker Compose on existing VM
 - [x] **INFR-03**: CI/CD via GitHub Actions triggered by version tags
 - [ ] **INFR-04**: Google Sheets receives read-only sync (simplified: date, from, subject, assignee, status)
-- [ ] **INFR-05**: Daily EOD report sent via email + Chat card with stats from database
+- [x] **INFR-05**: Daily EOD report sent via email + Chat card with stats from database
 - [x] **INFR-06**: Health endpoint reports system status (uptime, failure count, last poll)
 - [x] **INFR-07**: Admin can configure monitored inboxes without code changes
 - [x] **INFR-08**: Admin can configure polling frequency, quiet hours, and business hours
@@ -157,7 +157,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | INFR-02 | Phase 1 | Complete |
 | INFR-03 | Phase 1 | Complete |
 | INFR-04 | Phase 5 | Pending |
-| INFR-05 | Phase 5 | Pending |
+| INFR-05 | Phase 5 | Complete |
 | INFR-06 | Phase 1 | Complete (01-01) |
 | INFR-07 | Phase 5 | Complete (05-01) |
 | INFR-08 | Phase 2 | Complete (02-01) |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-12T11:10:17Z"
-last_activity: 2026-03-12 -- Phase 5 Plan 01 complete (admin settings inboxes + config editor)
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-12T11:19:22.753Z"
+last_activity: 2026-03-12 -- Phase 5 Plan 02 complete (EOD reporter + scheduler integration)
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 14
-  completed_plans: 12
-  percent: 86
+  completed_plans: 13
+  percent: 93
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Phase: 5 of 6 (Reporting + Admin + Sheets Mirror) -- IN PROGRESS
-Plan: 1 of 3 in current phase
-Status: Plan 05-01 complete (admin settings), plans 05-02 and 05-03 remaining
-Last activity: 2026-03-12 -- Phase 5 Plan 01 complete (admin settings inboxes + config editor)
+Plan: 2 of 3 in current phase
+Status: Plans 05-01 and 05-02 complete, plan 05-03 remaining
+Last activity: 2026-03-12 -- Phase 5 Plan 02 complete (EOD reporter + scheduler integration)
 
-Progress: [########..] 86%
+Progress: [#########.] 93%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 6.1 min
-- Total execution time: ~1h 13m
+- Total execution time: ~1h 19m
 
 **By Phase:**
 
@@ -47,13 +47,14 @@ Progress: [########..] 86%
 | 2. Email Pipeline | 3 | 17 min | 5.7 min |
 | 3. Dashboard | 3 | 25 min | 8.3 min |
 | 4. Assignment+SLA | 3/3 | 19 min | 6.3 min |
-| 5. Reporting+Admin | 1/3 | 3 min | 3 min |
+| 5. Reporting+Admin | 2/3 | 9 min | 4.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-03 (8 min), 04-01 (8 min), 04-02 (7 min), 04-03 (4 min), 05-01 (3 min)
+- Last 5 plans: 04-01 (8 min), 04-02 (7 min), 04-03 (4 min), 05-01 (3 min), 05-02 (6 min)
 - Trend: Accelerating
 
 *Updated after each plan completion*
+| Phase 05 P02 | 6 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,7 @@ Recent decisions affecting current work:
 - [Phase 05]: Config editor saves per category group, not per individual key
 - [Phase 05]: Bool configs use checkbox with unchecked=false convention
 - [Phase 05]: Inboxes stored as comma-separated string in existing monitored_inboxes SystemConfig key
+- [Phase 05]: Dual dedup: in-memory StateManager + persistent SystemConfig.last_eod_sent for cross-restart EOD dedup
 
 ### Pending Todos
 
@@ -116,6 +118,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-12T11:10:17Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-03-12T11:19:22.752Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
