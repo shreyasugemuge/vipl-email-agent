@@ -142,3 +142,19 @@ def sla_countdown(deadline):
 def sla_ack_countdown(email):
     """Shorthand: return sla_countdown for the email's ack deadline."""
     return sla_countdown(getattr(email, "sla_ack_deadline", None))
+
+
+@register.filter
+def dict_get(dictionary, key):
+    """Look up a key in a dictionary. Returns None if not found or not a dict."""
+    if isinstance(dictionary, dict):
+        return dictionary.get(key)
+    return None
+
+
+@register.filter
+def in_set(value, the_set):
+    """Check if a value is in a set/list/tuple."""
+    if the_set is None:
+        return False
+    return value in the_set

@@ -1,3 +1,5 @@
+{% load email_tags %}
+
 <div class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
     <div class="px-4 py-3 bg-slate-50/60 border-b border-slate-200/40">
         <h3 class="text-xs font-bold text-slate-700">Category Visibility per Team Member</h3>
@@ -7,7 +9,7 @@
         <table class="w-full text-xs">
             <thead>
                 <tr class="border-b border-slate-200/40">
-                    <th class="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] sticky left-0 bg-white">Member</th>
+                    <th class="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] sticky left-0 bg-white z-10">Member</th>
                     {% for cat in valid_categories %}
                     <th class="px-2 py-2.5 font-semibold text-slate-500 text-[10px] text-center whitespace-nowrap">{{ cat }}</th>
                     {% endfor %}
@@ -16,22 +18,23 @@
             </thead>
             <tbody>
                 {% for member in team_members %}
+                {% with user_cats=visibility_by_user|dict_get:member.pk %}
                 <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
                     <form hx-post="{% url 'emails:settings_visibility_save' %}"
                           hx-target="#visibility-matrix" hx-swap="innerHTML">
                         {% csrf_token %}
                         <input type="hidden" name="user_id" value="{{ member.pk }}">
-                        <td class="px-4 py-2.5 font-semibold text-slate-700 sticky left-0 bg-white whitespace-nowrap">
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 sticky left-0 bg-white whitespace-nowrap z-10">
                             {{ member.get_full_name|default:member.username }}
+                            {% if user_cats %}
+                            <span class="ml-1.5 text-[9px] font-medium text-indigo-400 tabular-nums">{{ user_cats|length }}</span>
+                            {% endif %}
                         </td>
                         {% for cat in valid_categories %}
                         <td class="px-2 py-2.5 text-center">
                             <input type="checkbox" name="categories[]" value="{{ cat }}"
-                                   {% if cat in visibility_by_user|default_if_none:"" %}
-                                   {% with user_cats=visibility_by_user %}
-                                   {% endwith %}
-                                   {% endif %}
-                                   class="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20">
+                                   {% if cat|in_set:user_cats %}checked{% endif %}
+                                   class="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 cursor-pointer">
                         </td>
                         {% endfor %}
                         <td class="px-3 py-2.5">
@@ -41,6 +44,7 @@
                         </td>
                     </form>
                 </tr>
+                {% endwith %}
                 {% endfor %}
             </tbody>
         </table>
