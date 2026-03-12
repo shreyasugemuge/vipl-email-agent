@@ -15,7 +15,7 @@
             {% if email.category %}
             <span class="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-slate-100 text-slate-500">{{ email.category }}</span>
             {% endif %}
-            {% if email.inbox %}
+            {% if email.to_inbox %}
             <span class="px-2 py-0.5 rounded-md text-[9px] font-medium bg-slate-50 text-slate-400">{{ email.to_inbox }}</span>
             {% endif %}
         </div>
