@@ -1,10 +1,11 @@
 ---
 phase: 4
 slug: assignment-engine-sla
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-11
+audited: 2026-03-12
 ---
 
 # Phase 4 — Validation Strategy
@@ -21,7 +22,7 @@ created: 2026-03-11
 | **Config file** | pytest.ini |
 | **Quick run command** | `pytest apps/emails -v -x` |
 | **Full suite command** | `pytest -v` |
-| **Estimated runtime** | ~8 seconds |
+| **Actual runtime** | ~9 seconds (232 tests) |
 
 ---
 
@@ -38,13 +39,13 @@ created: 2026-03-11
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 04-01-T1 | 01 | 1 | ASGN-03, SLA-02, INFR-09, INFR-10 | unit | `pytest apps/emails/tests/test_sla.py apps/emails/tests/test_auto_assignment.py -v` | W0 | pending |
-| 04-01-T2 | 01 | 1 | ASGN-03, INFR-09 | unit | `pytest apps/emails/tests/test_auto_assignment.py apps/emails/tests/test_claiming.py -v` | W0 | pending |
-| 04-01-T3 | 01 | 1 | ASGN-04 | unit | `pytest apps/emails/tests/test_ai_suggestion.py -v` | W0 | pending |
-| 04-02-T1 | 02 | 2 | ASGN-03, ASGN-04, SLA-02 | unit | `pytest apps/emails/tests/ -v -k "not test_settings"` | W0 | pending |
-| 04-02-T2 | 02 | 2 | INFR-09, INFR-10 | unit | `pytest apps/emails/tests/test_settings_views.py -v` | W0 | pending |
-| 04-03-T1 | 03 | 3 | SLA-03, SLA-04 | unit | `pytest apps/emails/tests/test_sla.py -v` | W0 | pending |
-| 04-03-T2 | 03 | 3 | SLA-03, SLA-04 | manual | Visual verification checkpoint | n/a | pending |
+| 04-01-T1 | 01 | 1 | ASGN-03, SLA-02, INFR-09, INFR-10 | unit | `pytest apps/emails/tests/test_sla.py apps/emails/tests/test_auto_assignment.py -v` | Yes (35+15 tests) | green |
+| 04-01-T2 | 01 | 1 | ASGN-03, INFR-09 | unit | `pytest apps/emails/tests/test_auto_assignment.py apps/emails/tests/test_claiming.py -v` | Yes (15+5 tests) | green |
+| 04-01-T3 | 01 | 1 | ASGN-04 | unit | `pytest apps/emails/tests/test_ai_suggestion.py -v` | Yes (10 tests) | green |
+| 04-02-T1 | 02 | 2 | ASGN-03, ASGN-04, SLA-02 | unit | `pytest apps/emails/tests/ -v -k "not test_settings"` | Yes | green |
+| 04-02-T2 | 02 | 2 | INFR-09, INFR-10 | unit | `pytest apps/emails/tests/test_settings_views.py -v` | Yes (31 tests) | green |
+| 04-03-T1 | 03 | 3 | SLA-03, SLA-04 | unit | `pytest apps/emails/tests/test_sla.py -v` | Yes (35 tests) | green |
+| 04-03-T2 | 03 | 3 | SLA-03, SLA-04 | manual | Visual verification checkpoint | n/a | approved |
 
 *Status: pending / green / red / flaky*
 
@@ -52,13 +53,28 @@ created: 2026-03-11
 
 ## Wave 0 Requirements
 
-- [ ] `apps/emails/tests/test_sla.py` — stubs for SLA calculator, breach detection, breach summary, escalation
-- [ ] `apps/emails/tests/test_auto_assignment.py` — stubs for AssignmentRule model, auto-assign batch, rule matching
-- [ ] `apps/emails/tests/test_claiming.py` — stubs for claim service, category visibility checks
-- [ ] `apps/emails/tests/test_ai_suggestion.py` — stubs for AI workload context injection, structured suggestion parsing
-- [ ] `apps/emails/tests/test_settings_views.py` — stubs for settings CRUD, claim endpoint, AI accept/reject
+- [x] `apps/emails/tests/test_sla.py` — 35 tests: SLA calculator, business hours, deadlines, breach detection, escalation, Chat summary, personal alerts
+- [x] `apps/emails/tests/test_auto_assignment.py` — 15 tests: AssignmentRule/SLAConfig/CategoryVisibility models, auto-assign batch, rule matching, priority order
+- [x] `apps/emails/tests/test_claiming.py` — 5 tests: claim service, category visibility checks, admin bypass, activity log
+- [x] `apps/emails/tests/test_ai_suggestion.py` — 10 tests: AI workload context injection, structured suggestion parsing, backward compat
+- [x] `apps/emails/tests/test_settings_views.py` — 31 tests: settings CRUD, claim endpoint, AI accept/reject, SLA template filters
+- [x] `apps/emails/tests/test_scheduler.py` — 3 tests: scheduler job count (5 jobs), signal handlers, heartbeat
 
-*Existing test infrastructure (conftest.py, pytest.ini) covers framework needs.*
+*All test files exist with comprehensive coverage. Total: 96 Phase 4-specific tests + 3 scheduler tests.*
+
+---
+
+## Requirement Coverage Detail
+
+| Requirement | Description | Test Files | Test Count | Status |
+|-------------|-------------|------------|------------|--------|
+| ASGN-03 | Auto-assign by category rules | test_auto_assignment.py, test_claiming.py, test_settings_views.py | 27 | COVERED |
+| ASGN-04 | AI-suggested assignee with workload | test_ai_suggestion.py, test_settings_views.py | 15 | COVERED |
+| SLA-02 | SLA deadlines (business hours) | test_sla.py | 21 | COVERED |
+| SLA-03 | Breach detection + auto-escalation | test_sla.py | 4 | COVERED |
+| SLA-04 | Breach summary Chat notifications | test_sla.py | 7 | COVERED |
+| INFR-09 | Admin settings page | test_settings_views.py | 12 | COVERED |
+| INFR-10 | Settings CRUD + endpoints | test_settings_views.py, test_scheduler.py | 13 | COVERED |
 
 ---
 
@@ -75,11 +91,24 @@ created: 2026-03-11
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s (actual: ~4s for Phase 4 tests, ~9s full suite)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete (audited 2026-03-12)
+
+---
+
+## Validation Audit 2026-03-12
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+| Total Phase 4 tests | 99 |
+| Full suite tests | 232 |
+| All passing | Yes |
