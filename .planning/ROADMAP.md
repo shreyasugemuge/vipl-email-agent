@@ -100,10 +100,11 @@ Plans:
   3. Quiet hours suppress Chat notifications between 8 PM and 8 AM IST
   4. Accepting an AI suggestion updates both the detail panel AND the card (OOB swap)
   5. No dead code: DashboardView removed, stale comments cleaned, activity timeline colors correct for all action types
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04.5-01: body_html pipeline fix, chat webhook seed, quiet hours fix, accept_ai OOB, dead code cleanup
+- [ ] 04.5-01-PLAN.md -- Pipeline body_html fix, chat webhook seed, quiet hours config fix, accept_ai OOB swap
+- [ ] 04.5-02-PLAN.md -- Dead code removal (DashboardView), activity timeline color mappings for Phase 4 actions
 
 ### Phase 5: Reporting + Admin + Sheets Mirror
 **Goal**: Daily reporting from real database, admin self-service for inbox and config management, and Sheets mirror for legacy access
@@ -144,6 +145,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 4.5 -> 5 -> 6
 | 2. Email Pipeline | 3/3 | Complete | 2026-03-11 |
 | 3. Dashboard | 3/3 | Complete | 2026-03-11 |
 | 4. Assignment Engine + SLA | 3/3 | Complete | 2026-03-11 |
-| 4.5. Integration Fixes + Tech Debt | 0/1 | Not started | - |
+| 4.5. Integration Fixes + Tech Debt | 0/2 | Not started | - |
 | 5. Reporting + Admin + Sheets Mirror | 0/1 | Not started | - |
 | 6. Migration + Cutover | 0/1 | Not started | - |
