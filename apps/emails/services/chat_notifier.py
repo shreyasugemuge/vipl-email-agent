@@ -387,6 +387,104 @@ class ChatNotifier:
         payload = {"cardsV2": [{"cardId": "sla-breach-summary", "card": card}]}
         return self._post(payload)
 
+    def notify_eod_summary(self, stats: dict) -> bool:
+        """Post a daily EOD summary card to Google Chat.
+
+        Args:
+            stats: Dict from EODReporter.generate_stats() with keys:
+                date, received_today, closed_today, total_open, unassigned,
+                sla_breaches, by_priority, by_category, avg_time_to_acknowledge,
+                avg_time_to_respond, worst_overdue.
+
+        Returns:
+            True if posted successfully, False otherwise.
+        """
+        if self._is_quiet_hours():
+            logger.info("Quiet hours -- suppressing EOD summary")
+            return False
+
+        date_str = stats.get("date", "")
+        received = stats.get("received_today", 0)
+        closed = stats.get("closed_today", 0)
+        total_open = stats.get("total_open", 0)
+        unassigned = stats.get("unassigned", 0)
+        sla_breaches = stats.get("sla_breaches", 0)
+        avg_ack = stats.get("avg_time_to_acknowledge", "N/A")
+        avg_resp = stats.get("avg_time_to_respond", "N/A")
+        worst_overdue = stats.get("worst_overdue", [])
+
+        # Stats grid section
+        stats_widgets = [
+            {
+                "columns": {
+                    "columnItems": [
+                        {"horizontalSizeStyle": "FILL_AVAILABLE_SPACE", "horizontalAlignment": "CENTER", "verticalAlignment": "CENTER", "widgets": [
+                            {"decoratedText": {"topLabel": "Received", "text": str(received)}},
+                        ]},
+                        {"horizontalSizeStyle": "FILL_AVAILABLE_SPACE", "horizontalAlignment": "CENTER", "verticalAlignment": "CENTER", "widgets": [
+                            {"decoratedText": {"topLabel": "Closed", "text": str(closed)}},
+                        ]},
+                        {"horizontalSizeStyle": "FILL_AVAILABLE_SPACE", "horizontalAlignment": "CENTER", "verticalAlignment": "CENTER", "widgets": [
+                            {"decoratedText": {"topLabel": "Open", "text": str(total_open)}},
+                        ]},
+                        {"horizontalSizeStyle": "FILL_AVAILABLE_SPACE", "horizontalAlignment": "CENTER", "verticalAlignment": "CENTER", "widgets": [
+                            {"decoratedText": {"topLabel": "Unassigned", "text": str(unassigned)}},
+                        ]},
+                    ]
+                }
+            },
+        ]
+
+        sections = [{"header": "Today's Stats", "widgets": stats_widgets}]
+
+        # SLA section
+        sla_widgets = [
+            {"decoratedText": {"topLabel": "SLA Breaches", "text": str(sla_breaches)}},
+            {"decoratedText": {"topLabel": "Avg Acknowledge Time", "text": str(avg_ack)}},
+            {"decoratedText": {"topLabel": "Avg Response Time", "text": str(avg_resp)}},
+        ]
+        sections.append({"header": "SLA Metrics", "widgets": sla_widgets})
+
+        # Worst overdue
+        if worst_overdue:
+            overdue_widgets = []
+            for item in worst_overdue:
+                pri = item.get("priority", "MEDIUM")
+                emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
+                overdue_widgets.append({
+                    "decoratedText": {
+                        "topLabel": f"{item.get('assignee_name', 'Unknown')} | {item.get('overdue_str', '?')} overdue",
+                        "text": f"{emoji} {item.get('subject', '')}",
+                    }
+                })
+            sections.append({"header": "Worst Overdue", "widgets": overdue_widgets})
+
+        # Tracker button
+        tracker_url = stats.get("tracker_url", SystemConfig.get(
+            "tracker_url", "https://triage.vidarbhainfotech.com"
+        ))
+        sections.append({
+            "widgets": [{
+                "buttonList": {
+                    "buttons": [{
+                        "text": "Open Dashboard",
+                        "onClick": {"openLink": {"url": tracker_url}},
+                    }]
+                }
+            }]
+        })
+
+        card = {
+            "header": {
+                "title": f"\U0001f4ca Daily Summary -- {date_str}",
+                "subtitle": f"Received: {received} | Closed: {closed} | Open: {total_open}",
+            },
+            "sections": sections,
+        }
+
+        payload = {"cardsV2": [{"cardId": "eod-summary", "card": card}]}
+        return self._post(payload)
+
     def notify_personal_breach(self, assignee_name: str, breached_emails: list) -> bool:
         """Post a personal SLA breach alert for a specific assignee.
 
