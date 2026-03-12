@@ -16,6 +16,8 @@ urlpatterns = [
     path("settings/rules/", views.settings_rules_save, name="settings_rules_save"),
     path("settings/visibility/", views.settings_visibility_save, name="settings_visibility_save"),
     path("settings/sla/", views.settings_sla_save, name="settings_sla_save"),
+    path("settings/inboxes/", views.settings_inboxes_save, name="settings_inboxes_save"),
+    path("settings/config/", views.settings_config_save, name="settings_config_save"),
     path("activity/", views.activity_log, name="activity_log"),
     path("inspect/", views.inspect, name="inspect"),
 ]

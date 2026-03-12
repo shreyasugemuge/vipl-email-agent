@@ -526,6 +526,20 @@ def settings_view(request):
                 "exists": cfg is not None,
             })
 
+    # Monitored inboxes for Inboxes tab
+    raw_inboxes = SystemConfig.get("monitored_inboxes", "") or ""
+    if isinstance(raw_inboxes, str):
+        monitored_inboxes = [i.strip() for i in raw_inboxes.split(",") if i.strip()]
+    else:
+        monitored_inboxes = []
+
+    # Config groups for System tab
+    all_configs = SystemConfig.objects.all().order_by("category", "key")
+    config_groups = {}
+    for cfg in all_configs:
+        cat = cfg.category or "general"
+        config_groups.setdefault(cat, []).append(cfg)
+
     context = {
         "active_tab": active_tab,
         "team_members": team_members,
@@ -534,6 +548,8 @@ def settings_view(request):
         "sla_matrix": sla_matrix,
         "valid_categories": VALID_CATEGORIES,
         "valid_priorities": VALID_PRIORITIES,
+        "monitored_inboxes": monitored_inboxes,
+        "config_groups": config_groups,
     }
     return render(request, "emails/settings.html", context)
 
@@ -672,6 +688,69 @@ def settings_sla_save(request):
         "sla_matrix": sla_matrix,
         "valid_priorities": VALID_PRIORITIES,
         "valid_categories": VALID_CATEGORIES,
+    })
+
+
+@login_required
+@require_POST
+def settings_inboxes_save(request):
+    """Add or remove a monitored inbox email address."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    action = request.POST.get("action", "")
+    inbox_email = request.POST.get("inbox_email", "").strip()
+
+    cfg, _created = SystemConfig.objects.get_or_create(
+        key="monitored_inboxes",
+        defaults={"value": "", "value_type": "str", "category": "email"},
+    )
+    current = [i.strip() for i in cfg.value.split(",") if i.strip()]
+
+    if action == "add" and inbox_email and inbox_email not in current:
+        current.append(inbox_email)
+    elif action == "remove" and inbox_email in current:
+        current.remove(inbox_email)
+
+    cfg.value = ",".join(current)
+    cfg.save(update_fields=["value", "updated_at"])
+
+    return render(request, "emails/_inboxes_tab.html", {
+        "monitored_inboxes": current,
+    })
+
+
+@login_required
+@require_POST
+def settings_config_save(request):
+    """Save SystemConfig values for a category group."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    category = request.POST.get("category", "")
+    configs_in_cat = SystemConfig.objects.filter(category=category) if category else SystemConfig.objects.none()
+
+    for cfg in configs_in_cat:
+        field_name = f"config_{cfg.key}"
+        if field_name in request.POST:
+            new_val = request.POST.get(field_name, "")
+            cfg.value = new_val
+            cfg.save(update_fields=["value", "updated_at"])
+        elif cfg.value_type == "bool":
+            # Unchecked checkbox means false
+            cfg.value = "false"
+            cfg.save(update_fields=["value", "updated_at"])
+
+    # Rebuild config_groups for full re-render
+    all_configs = SystemConfig.objects.all().order_by("category", "key")
+    config_groups = {}
+    for c in all_configs:
+        cat = c.category or "general"
+        config_groups.setdefault(cat, []).append(c)
+
+    return render(request, "emails/_config_editor.html", {
+        "config_groups": config_groups,
+        "save_success": True,
     })
 
 

@@ -1,0 +1,50 @@
+{% load email_tags %}
+
+<div id="inboxes-list">
+    <!-- Add inbox form -->
+    <form hx-post="{% url 'emails:settings_inboxes_save' %}"
+          hx-target="#inboxes-list" hx-swap="innerHTML"
+          class="flex items-center gap-2 mb-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+        <input type="email" name="inbox_email" placeholder="email@example.com" required
+               class="flex-1 text-sm border border-slate-200/80 rounded-lg px-3 py-2 bg-white text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none">
+        <button type="submit"
+                class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
+            Add Inbox
+        </button>
+    </form>
+
+    <!-- Current inboxes list -->
+    {% if monitored_inboxes %}
+    <div class="space-y-2">
+        {% for inbox in monitored_inboxes %}
+        <div class="flex items-center justify-between gap-2 px-4 py-3 bg-white border border-slate-200/60 rounded-lg">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                <span class="text-sm font-medium text-slate-700">{{ inbox }}</span>
+            </div>
+            <form hx-post="{% url 'emails:settings_inboxes_save' %}"
+                  hx-target="#inboxes-list" hx-swap="innerHTML"
+                  class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="remove">
+                <input type="hidden" name="inbox_email" value="{{ inbox }}">
+                <button type="submit" class="text-slate-300 hover:text-red-500 transition-colors" title="Remove inbox">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-sm text-slate-400 italic py-4 text-center">
+        No monitored inboxes configured. Add one above.
+    </div>
+    {% endif %}
+</div>
