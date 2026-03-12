@@ -58,6 +58,9 @@ def sync_service(mock_sheets_service):
     """Create SheetsSyncService with mocked Sheets API."""
     with patch(
         "apps.emails.services.sheets_sync.build", return_value=mock_sheets_service
+    ), patch(
+        "apps.emails.services.sheets_sync.service_account.Credentials.from_service_account_file",
+        return_value=MagicMock(),
     ):
         service = SheetsSyncService(
             service_account_key_path="/fake/key.json",
