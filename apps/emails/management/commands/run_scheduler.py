@@ -1,4 +1,4 @@
-"""APScheduler management command -- runs email polling, dead letter retry, EOD, and heartbeat.
+"""APScheduler management command -- runs email polling, dead letter retry, EOD, Sheets sync, and heartbeat.
 
 Usage: python manage.py run_scheduler
 
@@ -10,6 +10,7 @@ Jobs:
 - Poll: every 5 minutes (configurable) -- calls process_poll_cycle
 - Retry: every 30 minutes -- calls retry_failed_emails
 - EOD: daily at 7 PM IST -- sends daily summary email + Chat card
+- Sheets sync: every 5 minutes -- syncs emails to Google Sheets "v2 Mirror" tab
 """
 
 import logging
@@ -108,6 +109,21 @@ def _eod_job(chat_notifier, state_manager, key_path, sender_email):
         reporter.send_report()
     except Exception as e:
         logger.error(f"EOD job failed: {e}")
+
+
+def _sheets_sync_job(key_path, sheet_id):
+    """Sync emails to Google Sheets 'v2 Mirror' tab (fire-and-forget)."""
+    close_old_connections()
+    try:
+        from apps.emails.services.sheets_sync import SheetsSyncService
+
+        sync = SheetsSyncService(
+            service_account_key_path=key_path,
+            spreadsheet_id=sheet_id,
+        )
+        sync.sync_changed_emails()
+    except Exception as e:
+        logger.error(f"Sheets sync job failed: {e}")
 
 
 class Command(BaseCommand):
@@ -246,6 +262,23 @@ class Command(BaseCommand):
             coalesce=True,
         )
 
+        # Sheets sync: every 5 minutes (only if GOOGLE_SHEET_ID is configured)
+        sheet_id = os.environ.get("GOOGLE_SHEET_ID", "")
+        sheets_sync_label = ""
+        if sheet_id:
+            scheduler.add_job(
+                _sheets_sync_job,
+                "interval",
+                minutes=5,
+                args=[key_path, sheet_id],
+                id="sheets_sync",
+                max_instances=1,
+                coalesce=True,
+            )
+            sheets_sync_label = ", sheets_sync=5min"
+        else:
+            logger.info("GOOGLE_SHEET_ID not set — Sheets sync disabled")
+
         # Startup catch-up: fire EOD if missed today
         self._eod_startup_catchup(chat_notifier, state_manager, key_path, sender_email)
 
@@ -261,11 +294,13 @@ class Command(BaseCommand):
             f"Starting scheduler: poll every {poll_interval}min, "
             f"retry every 30min, auto-assign every 3min, "
             f"SLA summary at 9/13/17 IST, eod=19:00 IST, heartbeat every 1min"
+            f"{sheets_sync_label}"
         )
         self.stdout.write(
             self.style.SUCCESS(
                 f"Scheduler started (poll={poll_interval}min, retry=30min, "
-                f"auto-assign=3min, SLA=9/13/17 IST, eod=19:00 IST, heartbeat=1min)"
+                f"auto-assign=3min, SLA=9/13/17 IST, eod=19:00 IST, heartbeat=1min"
+                f"{sheets_sync_label})"
             )
         )
 
