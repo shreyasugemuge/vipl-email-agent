@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-03-11T18:48:16.986Z"
-last_activity: 2026-03-11 -- Phase 4 Plan 03 complete (breach alerting, auto-escalation, scheduler jobs)
+status: in-progress
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-12T11:10:17Z"
+last_activity: 2026-03-12 -- Phase 5 Plan 01 complete (admin settings inboxes + config editor)
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
-  percent: 91
+  total_plans: 14
+  completed_plans: 12
+  percent: 86
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Phase 4: Assignment Engine + SLA (in progress)
+**Current focus:** Phase 5: Reporting + Admin + Sheets Mirror (in progress)
 
 ## Current Position
 
-Phase: 4 of 6 (Assignment Engine + SLA) -- COMPLETE (checkpoint pending)
-Plan: 3 of 3 in current phase (all done, Task 2 human-verify checkpoint pending)
-Status: Plan 04-03 complete, Phase 4 checkpoint pending
-Last activity: 2026-03-11 -- Phase 4 Plan 03 complete (breach alerting, auto-escalation, scheduler jobs)
+Phase: 5 of 6 (Reporting + Admin + Sheets Mirror) -- IN PROGRESS
+Plan: 1 of 3 in current phase
+Status: Plan 05-01 complete (admin settings), plans 05-02 and 05-03 remaining
+Last activity: 2026-03-12 -- Phase 5 Plan 01 complete (admin settings inboxes + config editor)
 
-Progress: [#########.] 91%
+Progress: [########..] 86%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
-- Average duration: 6.5 min
-- Total execution time: ~1h 10m
+- Total plans completed: 12
+- Average duration: 6.1 min
+- Total execution time: ~1h 13m
 
 **By Phase:**
 
@@ -47,10 +47,11 @@ Progress: [#########.] 91%
 | 2. Email Pipeline | 3 | 17 min | 5.7 min |
 | 3. Dashboard | 3 | 25 min | 8.3 min |
 | 4. Assignment+SLA | 3/3 | 19 min | 6.3 min |
+| 5. Reporting+Admin | 1/3 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (8 min), 03-03 (8 min), 04-01 (8 min), 04-02 (7 min), 04-03 (4 min)
-- Trend: Stable/Accelerating
+- Last 5 plans: 03-03 (8 min), 04-01 (8 min), 04-02 (7 min), 04-03 (4 min), 05-01 (3 min)
+- Trend: Accelerating
 
 *Updated after each plan completion*
 
@@ -100,6 +101,9 @@ Recent decisions affecting current work:
 - Sortable.js CDN for drag-to-reorder assignment rules (zero build step)
 - SLA color coding: emerald > 2h, amber 1-2h, orange 30m-1h, red < 30m, red+pulse breached
 - [Phase 03]: Desktop-first responsive: default styles = desktop, responsive overrides for mobile
+- [Phase 05]: Config editor saves per category group, not per individual key
+- [Phase 05]: Bool configs use checkbox with unchecked=false convention
+- [Phase 05]: Inboxes stored as comma-separated string in existing monitored_inboxes SystemConfig key
 
 ### Pending Todos
 
@@ -112,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-11T18:33:00.319Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-03-12T11:10:17Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None

@@ -117,7 +117,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md -- Settings page expansion: Inboxes management tab + SystemConfig editor tab (HTMX)
+- [x] 05-01-PLAN.md -- Settings page expansion: Inboxes management tab + SystemConfig editor tab (HTMX)
 - [ ] 05-02-PLAN.md -- EOD reporter service: stats aggregation, HTML email, Chat card, scheduler integration
 - [ ] 05-03-PLAN.md -- Google Sheets read-only sync mirror: append/update rows, fire-and-forget scheduler job
 
@@ -148,5 +148,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 4.5 -> 5 -> 6
 | 3. Dashboard | 3/3 | Complete | 2026-03-11 |
 | 4. Assignment Engine + SLA | 3/3 | Complete | 2026-03-11 |
 | 4.5. Integration Fixes + Tech Debt | 2/2 | Complete | 2026-03-12 |
-| 5. Reporting + Admin + Sheets Mirror | 0/3 | Not started | - |
+| 5. Reporting + Admin + Sheets Mirror | 1/3 | In progress | - |
 | 6. Migration + Cutover | 0/1 | Not started | - |
