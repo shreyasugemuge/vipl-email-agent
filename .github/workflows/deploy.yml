@@ -3,7 +3,7 @@
 # ============================================================
 # Triggers:
 #   - Version tags (v*.*.*): test -> deploy via SSH to VM
-#   - Pull requests to v2:   test only (no deploy)
+#   - Pull requests to main: test only (no deploy)
 #
 # VM deployment via SSH to taiga VM.
 # ============================================================
@@ -15,7 +15,7 @@ on:
     tags:
       - 'v*.*.*'
   pull_request:
-    branches: [v2]
+    branches: [main]
 
 jobs:
   # ---- Job 1: Run tests (always) ----
