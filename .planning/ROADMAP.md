@@ -134,7 +134,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md -- Fix deploy.yml (sudo, sleep, remove Cloud Run refs), update CUTV-01 requirement wording
+- [x] 06-01-PLAN.md -- Fix deploy.yml (sudo, sleep, remove Cloud Run refs), update CUTV-01 requirement wording
 - [ ] 06-02-PLAN.md -- Pre-deploy verification, first deploy (v2.0.0-rc1), smoke test, go-live, Artifact Registry cleanup
 
 ## Progress
@@ -150,4 +150,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 4.5 -> 5 -> 6
 | 4. Assignment Engine + SLA | 3/3 | Complete | 2026-03-11 |
 | 4.5. Integration Fixes + Tech Debt | 2/2 | Complete | 2026-03-12 |
 | 5. Reporting + Admin + Sheets Mirror | 3/3 | Complete    | 2026-03-12 |
-| 6. Migration + Cutover | 0/2 | Not started | - |
+| 6. Migration + Cutover | 1/2 | In progress | - |

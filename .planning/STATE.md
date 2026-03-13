@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-13T17:45:37.464Z"
-last_activity: 2026-03-12 -- Phase 5 Plan 03 complete (Sheets sync mirror + scheduler)
+status: in_progress
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-13T17:59:18Z"
+last_activity: 2026-03-13 -- Phase 6 Plan 01 complete (deploy.yml fix + CUTV-01 update)
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 16
-  completed_plans: 16
-  percent: 100
+  total_plans: 18
+  completed_plans: 17
+  percent: 94
 ---
 
 # Project State
@@ -21,21 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Phase 5 complete. Phase 6: Migration + Cutover next.
+**Current focus:** Phase 6 in progress. Plan 01 (deploy.yml fix) complete, Plan 02 (first deploy) next.
 
 ## Current Position
 
-Phase: 5 of 6 (Reporting + Admin + Sheets Mirror) -- COMPLETE
-Plan: 3 of 3 in current phase (all complete)
-Status: Phase 5 complete -- all 3 plans done (settings UI, EOD reporter, Sheets mirror)
-Last activity: 2026-03-12 -- Phase 5 Plan 03 complete (Sheets sync mirror + scheduler)
+Phase: 6 of 6 (Migration + Cutover) -- IN PROGRESS
+Plan: 1 of 2 in current phase (1 complete)
+Status: Plan 01 complete (deploy.yml fix + CUTV-01 update), Plan 02 next (first deploy)
+Last activity: 2026-03-13 -- Phase 6 Plan 01 complete (deploy.yml fix + CUTV-01 update)
 
-Progress: [##########] 100%
+Progress: [#########-] 94%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 5.9 min
 - Total execution time: ~1h 23m
 
@@ -55,6 +55,7 @@ Progress: [##########] 100%
 
 *Updated after each plan completion*
 | Phase 05 P03 | 4 | 2 tasks | 3 files |
+| Phase 06 P01 | 1 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,7 @@ Recent decisions affecting current work:
 - [Phase 05]: Dual dedup: in-memory StateManager + persistent SystemConfig.last_eod_sent for cross-restart EOD dedup
 - [Phase 05]: Message ID as 10th column in Sheet for programmatic row matching
 - [Phase 05]: Conditional scheduler registration: sheets_sync only added when GOOGLE_SHEET_ID env var is set
+- [Phase 06]: ROADMAP already had correct fresh-start wording for CUTV-01 -- only REQUIREMENTS.md needed update
 
 ### Pending Todos
 
@@ -120,6 +122,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-13T17:45:37.463Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-migration-cutover/06-CONTEXT.md
+Last session: 2026-03-13T17:59:18Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: .planning/phases/06-migration-cutover/06-01-SUMMARY.md
