@@ -63,9 +63,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Migration + Cutover
 
-- [ ] **CUTV-01**: v2 starts fresh — production Sheet preserved as read-only archive, no data migration needed
-- [ ] **CUTV-02**: Both inboxes cut over from v1 to v2 with v1 fully stopped
-- [ ] **CUTV-03**: Cloud Run service decommissioned (no cost, no running instances)
+- [x] **CUTV-01**: v2 starts fresh — production Sheet preserved as read-only archive, no data migration needed
+- [x] **CUTV-02**: Both inboxes cut over from v1 to v2 with v1 fully stopped
+- [x] **CUTV-03**: Cloud Run service decommissioned (no cost, no running instances)
 - [x] **CUTV-04**: CI/CD pipeline targets VM only — no Cloud Run references remain
 
 ## v2 Requirements
@@ -165,9 +165,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | INFR-10 | Phase 4 | Complete |
 | INFR-11 | Phase 2 | Complete (02-01) |
 | INFR-12 | Phase 1 | Complete (01-01) |
-| CUTV-01 | Phase 6 | Pending |
-| CUTV-02 | Phase 6 | Pending |
-| CUTV-03 | Phase 6 | Pending |
+| CUTV-01 | Phase 6 | Complete (06-02) |
+| CUTV-02 | Phase 6 | Complete (06-02) |
+| CUTV-03 | Phase 6 | Complete (06-02) |
 | CUTV-04 | Phase 6 | Complete (06-01) |
 
 **Coverage:**
