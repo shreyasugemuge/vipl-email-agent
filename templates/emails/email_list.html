@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% load email_tags %}
+
+{% block page_title %}Inbox{% endblock %}
+{% block nav_emails_active %}nav-active{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+
+    <!-- Dashboard stats bar -->
+    <div class="bg-white/60 backdrop-blur-sm border-b border-slate-200/40 px-4 md:px-6 py-3 shrink-0">
+        <div class="flex items-center gap-3 overflow-x-auto">
+            <div class="stat-card flex items-center gap-3 px-4 py-2.5 bg-white rounded-xl border border-slate-200/60 shadow-sm min-w-[130px]">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
+                    <svg class="w-4.5 h-4.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-lg font-extrabold text-slate-800 leading-none">{{ dash_stats.total }}</div>
+                    <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Total</div>
+                </div>
+            </div>
+
+            <div class="stat-card flex items-center gap-3 px-4 py-2.5 bg-white rounded-xl border border-amber-200/60 shadow-sm min-w-[130px]">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center">
+                    <svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-lg font-extrabold text-amber-700 leading-none">{{ dash_stats.unassigned }}</div>
+                    <div class="text-[10px] font-semibold text-amber-500/70 uppercase tracking-wider mt-0.5">Unassigned</div>
+                </div>
+            </div>
+
+            <div class="stat-card flex items-center gap-3 px-4 py-2.5 bg-white rounded-xl border border-red-200/60 shadow-sm min-w-[130px]">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-red-100 to-red-50 flex items-center justify-center">
+                    <svg class="w-4.5 h-4.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-lg font-extrabold text-red-700 leading-none">{{ dash_stats.critical|add:dash_stats.high }}</div>
+                    <div class="text-[10px] font-semibold text-red-400/70 uppercase tracking-wider mt-0.5">Urgent</div>
+                </div>
+            </div>
+
+            <div class="stat-card flex items-center gap-3 px-4 py-2.5 bg-white rounded-xl border border-blue-200/60 shadow-sm min-w-[130px]">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center">
+                    <svg class="w-4.5 h-4.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-lg font-extrabold text-blue-700 leading-none">{{ dash_stats.pending }}</div>
+                    <div class="text-[10px] font-semibold text-blue-400/70 uppercase tracking-wider mt-0.5">Pending</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab bar + filters combined -->
+    <div class="bg-white/80 backdrop-blur-sm border-b border-slate-200/40 px-4 md:px-6 py-2.5 shrink-0">
+        <div class="flex items-center gap-6">
+            <!-- Tabs -->
+            <div class="flex items-center gap-1 overflow-x-auto">
+                <a href="{% url 'emails:email_list' %}?view=all{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
+                   hx-get="{% url 'emails:email_list' %}?view=all{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
+                   hx-target="#email-list" hx-push-url="true"
+                   class="px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 {% if current_view == 'all' %}bg-slate-900 text-white shadow-md shadow-slate-900/20{% else %}text-slate-500 hover:text-slate-700 hover:bg-slate-100{% endif %}">
+                    All
+                </a>
+                <a href="{% url 'emails:email_list' %}?view=unassigned{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
+                   hx-get="{% url 'emails:email_list' %}?view=unassigned{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
+                   hx-target="#email-list" hx-push-url="true"
+                   class="px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 {% if current_view == 'unassigned' %}bg-slate-900 text-white shadow-md shadow-slate-900/20{% else %}text-slate-500 hover:text-slate-700 hover:bg-slate-100{% endif %}">
+                    Unassigned
+                </a>
+                <a href="{% url 'emails:email_list' %}?view=mine{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
+                   hx-get="{% url 'emails:email_list' %}?view=mine{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
+                   hx-target="#email-list" hx-push-url="true"
+                   class="px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 {% if current_view == 'mine' %}bg-slate-900 text-white shadow-md shadow-slate-900/20{% else %}text-slate-500 hover:text-slate-700 hover:bg-slate-100{% endif %}">
+                    My Emails
+                </a>
+                {% if is_admin %}
+                    {% for member in team_members %}
+                    <a href="{% url 'emails:email_list' %}?view={{ member.pk }}"
+                       hx-get="{% url 'emails:email_list' %}?view={{ member.pk }}"
+                       hx-target="#email-list" hx-push-url="true"
+                       class="px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 {% if current_view == member.pk|stringformat:'d' %}bg-slate-900 text-white shadow-md shadow-slate-900/20{% else %}text-slate-500 hover:text-slate-700 hover:bg-slate-100{% endif %}">
+                        {{ member.first_name|default:member.username }}
+                    </a>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="w-px h-6 bg-slate-200/60 hidden md:block"></div>
+
+            <!-- Filters -->
+            <div class="hidden md:flex items-center gap-2 flex-1">
+                <select name="status"
+                        hx-get="{% url 'emails:email_list' %}" hx-target="#email-list" hx-push-url="true"
+                        hx-include="[name='priority'],[name='category'],[name='inbox'],[name='view'],[name='sort']"
+                        class="text-xs font-medium border border-slate-200/80 rounded-lg px-2.5 py-1.5 bg-white/80 text-slate-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all">
+                    <option value="">Status</option>
+                    {% for value, label in statuses %}
+                    <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <select name="priority"
+                        hx-get="{% url 'emails:email_list' %}" hx-target="#email-list" hx-push-url="true"
+                        hx-include="[name='status'],[name='category'],[name='inbox'],[name='view'],[name='sort']"
+                        class="text-xs font-medium border border-slate-200/80 rounded-lg px-2.5 py-1.5 bg-white/80 text-slate-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all">
+                    <option value="">Priority</option>
+                    {% for p in priorities %}
+                    <option value="{{ p }}" {% if current_priority == p %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                </select>
+                <select name="category"
+                        hx-get="{% url 'emails:email_list' %}" hx-target="#email-list" hx-push-url="true"
+                        hx-include="[name='status'],[name='priority'],[name='inbox'],[name='view'],[name='sort']"
+                        class="text-xs font-medium border border-slate-200/80 rounded-lg px-2.5 py-1.5 bg-white/80 text-slate-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all">
+                    <option value="">Category</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if current_category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+                <select name="inbox"
+                        hx-get="{% url 'emails:email_list' %}" hx-target="#email-list" hx-push-url="true"
+                        hx-include="[name='status'],[name='priority'],[name='category'],[name='view'],[name='sort']"
+                        class="text-xs font-medium border border-slate-200/80 rounded-lg px-2.5 py-1.5 bg-white/80 text-slate-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all">
+                    <option value="">Inbox</option>
+                    {% for ib in inboxes %}
+                    <option value="{{ ib }}" {% if current_inbox == ib %}selected{% endif %}>{{ ib }}</option>
+                    {% endfor %}
+                </select>
+                <input type="hidden" name="view" value="{{ current_view }}">
+                <input type="hidden" name="sort" value="{{ current_sort }}">
+            </div>
+
+            <span class="ml-auto text-[11px] font-bold text-slate-400 whitespace-nowrap tabular-nums">{{ total_count }} email{{ total_count|pluralize }}</span>
+        </div>
+    </div>
+
+    <!-- Main content: list + detail split -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Email list -->
+        <div id="email-list" class="w-full md:w-[38%] overflow-auto">
+            {% include "emails/_email_list_body.html" %}
+        </div>
+
+        <!-- Detail panel -->
+        <div id="detail-panel" class="hidden md:flex md:w-[62%] overflow-auto bg-white border-l border-slate-200/60">
+            <div class="flex flex-col items-center justify-center w-full h-full">
+                <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                    <svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <span class="text-sm font-medium text-slate-400">Select an email to view</span>
+                <span class="text-xs text-slate-300 mt-1">Click any card on the left</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

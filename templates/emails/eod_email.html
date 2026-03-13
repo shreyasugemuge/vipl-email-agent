@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: Arial, sans-serif; color: #333; max-width: 650px; margin: 0 auto; padding: 0; }
+  .header { background: #1a4587; color: #fff; padding: 18px 24px; border-radius: 6px 6px 0 0; }
+  .header h1 { margin: 0; font-size: 20px; }
+  .header p { margin: 4px 0 0; opacity: 0.85; font-size: 13px; }
+  .body { padding: 20px 24px; background: #f8f9fa; }
+  .stats-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: #fff; border-radius: 6px; padding: 14px 18px; flex: 1 1 140px; border-left: 4px solid #1a4587; }
+  .stat-card .value { font-size: 28px; font-weight: bold; color: #1a4587; }
+  .stat-card .label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card.breach { border-left-color: #d93025; }
+  .stat-card.breach .value { color: #d93025; }
+  .section { margin-top: 20px; }
+  .section h2 { font-size: 15px; color: #1a4587; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #e8edf3; text-align: left; padding: 8px 10px; }
+  td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+  .footer { padding: 16px 24px; font-size: 12px; color: #888; text-align: center; }
+  a.btn { display: inline-block; background: #1a4587; color: #fff; padding: 10px 20px; border-radius: 4px; text-decoration: none; margin-top: 12px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>VIPL Email Agent &mdash; Daily Summary</h1>
+    <p>{{ date }}</p>
+  </div>
+  <div class="body">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="value">{{ received_today }}</div>
+        <div class="label">Received Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">{{ closed_today }}</div>
+        <div class="label">Closed Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">{{ total_open }}</div>
+        <div class="label">Total Open</div>
+      </div>
+      <div class="stat-card{% if sla_breaches > 0 %} breach{% endif %}">
+        <div class="value">{{ sla_breaches }}</div>
+        <div class="label">SLA Breaches</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">{{ unassigned }}</div>
+        <div class="label">Unassigned</div>
+      </div>
+    </div>
+
+    {% if by_priority %}
+    <div class="section">
+      <h2>Priority Breakdown</h2>
+      <table>
+        <tr><th>Priority</th><th>Count</th></tr>
+        {% for priority, count in by_priority.items %}
+        <tr><td>{{ priority }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    {% if by_category %}
+    <div class="section">
+      <h2>Category Breakdown</h2>
+      <table>
+        <tr><th>Category</th><th>Count</th></tr>
+        {% for category, count in by_category.items %}
+        <tr><td>{{ category }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    <div class="section">
+      <h2>SLA Metrics</h2>
+      <table>
+        <tr><td>Active Breaches</td><td style="{% if sla_breaches > 0 %}color:#d93025;font-weight:bold;{% endif %}">{{ sla_breaches }}</td></tr>
+        <tr><td>Avg Time to Acknowledge</td><td>{{ avg_time_to_acknowledge }}</td></tr>
+        <tr><td>Avg Time to Respond</td><td>{{ avg_time_to_respond }}</td></tr>
+      </table>
+    </div>
+
+    {% if worst_overdue %}
+    <div class="section">
+      <h2>Worst Overdue</h2>
+      <table>
+        <tr><th>Subject</th><th>Assignee</th><th>Overdue</th></tr>
+        {% for item in worst_overdue %}
+        <tr>
+          <td>{{ item.subject }}</td>
+          <td>{{ item.assignee_name }}</td>
+          <td style="color:#d93025;font-weight:bold;">{{ item.overdue_str }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    <div style="text-align:center;margin-top:24px;">
+      <a class="btn" href="{{ tracker_url }}">Open Dashboard</a>
+    </div>
+  </div>
+  <div class="footer">
+    VIPL Email Agent &mdash; Automated daily report<br>
+    Vidarbha Infotech Private Limited
+  </div>
+</body>
+</html>

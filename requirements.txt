@@ -1,13 +1,21 @@
-# VIPL Email Agent — Dependencies
-google-api-python-client==2.114.0
-google-auth==2.27.0
-google-auth-httplib2==0.2.0
-anthropic==0.42.0
-httpx==0.27.0
-pyyaml==6.0.1
-apscheduler==3.10.4
-jinja2==3.1.3
-python-dateutil==2.8.2
-pytz==2024.1
-tenacity==8.2.3
-pymupdf==1.24.3
+# VIPL Email Agent v2 -- Production Dependencies
+django>=4.2,<4.3
+psycopg[binary]>=3.2
+gunicorn>=23.0
+whitenoise>=6.8
+dj-database-url>=2.3
+python-dotenv>=1.0
+
+# Phase 2: Email pipeline dependencies
+anthropic>=0.49
+google-api-python-client>=2.150
+google-auth>=2.35
+tenacity>=9.0
+APScheduler>=3.10,<4.0
+httpx>=0.27
+pypdf>=5.0
+pytz>=2024.1
+
+# Phase 3: Dashboard dependencies
+django-htmx>=1.17,<2.0
+nh3>=0.2,<1.0

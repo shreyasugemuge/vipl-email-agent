@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VIPL Email Agent — Dev Inspector</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.5; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; }
+  .subtitle { color: #94a3b8; margin-bottom: 24px; font-size: 0.875rem; }
+
+  /* Stats bar */
+  .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; }
+  .stat-card { background: #1e293b; border-radius: 8px; padding: 16px 20px; min-width: 120px; }
+  .stat-card .label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+  .stat-card .breakdown { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+
+  /* Email cards */
+  .email-card { background: #1e293b; border-radius: 10px; margin-bottom: 16px; overflow: hidden; border: 1px solid #334155; }
+  .email-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; cursor: pointer; }
+  .email-header:hover { background: #253044; }
+  .priority-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: #fff; white-space: nowrap; }
+  .category-badge { background: #334155; color: #cbd5e1; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; }
+  .email-subject { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .email-meta { font-size: 0.75rem; color: #64748b; white-space: nowrap; }
+  .expand-icon { color: #475569; font-size: 1.2rem; transition: transform 0.2s; }
+  .email-card.open .expand-icon { transform: rotate(90deg); }
+
+  .email-body { display: none; border-top: 1px solid #334155; }
+  .email-card.open .email-body { display: block; }
+
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  @media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; } }
+
+  .detail-section { padding: 16px 20px; }
+  .detail-section + .detail-section { border-left: 1px solid #334155; }
+  @media (max-width: 768px) { .detail-section + .detail-section { border-left: none; border-top: 1px solid #334155; } }
+  .detail-section h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 8px; }
+  .detail-section p, .detail-section pre { font-size: 0.875rem; color: #cbd5e1; }
+
+  .field { margin-bottom: 12px; }
+  .field .label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+  .field .value { margin-top: 2px; }
+
+  /* Chat preview */
+  .chat-preview { background: #0f172a; border-radius: 8px; padding: 14px; border: 1px solid #334155; }
+  .chat-preview .chat-header { font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
+  .chat-preview .chat-sub { font-size: 0.8rem; color: #94a3b8; margin-bottom: 10px; }
+  .chat-preview .chat-field { margin-bottom: 6px; }
+  .chat-preview .chat-field-label { font-size: 0.7rem; color: #64748b; }
+  .chat-preview .chat-field-value { font-size: 0.85rem; }
+
+  /* Draft reply */
+  .draft-reply { background: #0f172a; border-radius: 8px; padding: 14px; border: 1px solid #334155; font-size: 0.875rem; white-space: pre-wrap; }
+
+  /* JSON preview */
+  pre.json { background: #0f172a; border-radius: 8px; padding: 12px; font-size: 0.75rem; overflow-x: auto; border: 1px solid #334155; color: #94a3b8; max-height: 200px; }
+
+  /* Tags */
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { background: #334155; color: #94a3b8; padding: 1px 8px; border-radius: 4px; font-size: 0.7rem; }
+
+  .spam-badge { background: #991b1b; color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+  .model-badge { background: #1e3a5f; color: #7dd3fc; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
+
+  .full-row { grid-column: 1 / -1; border-top: 1px solid #334155; }
+
+  .empty { text-align: center; padding: 60px; color: #475569; }
+
+  /* Mode badge */
+  .mode-badge { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; vertical-align: middle; margin-left: 12px; }
+  .mode-off { background: #166534; color: #bbf7d0; }
+  .mode-dev { background: #854d0e; color: #fef08a; }
+  .mode-production { background: #991b1b; color: #fca5a5; }
+  .mode-unknown { background: #334155; color: #94a3b8; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>VIPL Email Agent — Dev Inspector<span class="mode-badge mode-{{ current_mode|default:'unknown' }}">{{ current_mode|default:"unknown" }}</span></h1>
+  <p class="subtitle">Read-only view of triaged emails. Simulated Chat & draft reply output. No external calls.</p>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">Total Emails</div>
+      <div class="value">{{ stats.total }}</div>
+    </div>
+    {% for pri, cnt in stats.by_priority.items %}
+    <div class="stat-card">
+      <div class="label">{{ pri }}</div>
+      <div class="value" style="color: {% if pri == 'CRITICAL' %}#dc2626{% elif pri == 'HIGH' %}#ea580c{% elif pri == 'MEDIUM' %}#ca8a04{% else %}#16a34a{% endif %}">{{ cnt }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Email list -->
+  {% if emails %}
+  {% for email in emails %}
+  <div class="email-card" id="email-{{ email.pk }}">
+    <div class="email-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="priority-badge" style="background: {{ email.priority_color }}">{{ email.priority_emoji }} {{ email.priority }}</span>
+      <span class="category-badge">{{ email.category }}</span>
+      <span class="email-subject">{{ email.subject }}</span>
+      <span class="email-meta">{{ email.from_name }} &middot; {{ email.received_at|date:"d M H:i" }}</span>
+      {% if email.is_spam %}<span class="spam-badge">SPAM</span>{% endif %}
+      {% if email.ai_model_used %}<span class="model-badge">{{ email.ai_model_used }}</span>{% endif %}
+      <span class="expand-icon">&#9654;</span>
+    </div>
+    <div class="email-body">
+      <div class="detail-grid">
+        <!-- Left: Email details + AI summary -->
+        <div class="detail-section">
+          <h3>Email Details</h3>
+          <div class="field"><div class="label">From</div><div class="value">{{ email.from_name }} &lt;{{ email.from_address }}&gt;</div></div>
+          <div class="field"><div class="label">To Inbox</div><div class="value">{{ email.to_inbox }}</div></div>
+          <div class="field"><div class="label">Received</div><div class="value">{{ email.received_at|date:"d M Y H:i:s" }}</div></div>
+          {% if email.ai_suggested_assignee %}<div class="field"><div class="label">Suggested Assignee</div><div class="value">{{ email.ai_suggested_assignee }}</div></div>{% endif %}
+          {% if email.ai_tags %}<div class="field"><div class="label">Tags</div><div class="tags">{% for tag in email.ai_tags %}<span class="tag">{{ tag }}</span>{% endfor %}</div></div>{% endif %}
+          {% if email.language %}<div class="field"><div class="label">Language</div><div class="value">{{ email.language }}</div></div>{% endif %}
+          <div class="field"><div class="label">AI Summary</div><div class="value">{{ email.ai_summary|default:"(none)" }}</div></div>
+          <div class="field"><div class="label">AI Reasoning</div><div class="value" style="color:#64748b">{{ email.ai_reasoning|default:"(none)" }}</div></div>
+        </div>
+
+        <!-- Right: Simulated Chat card + Draft reply -->
+        <div class="detail-section">
+          <h3>Simulated Chat Notification</h3>
+          <div class="chat-preview">
+            <div class="chat-header">{{ email.priority_emoji }} {{ email.priority }}: {{ email.subject|truncatechars:60 }}</div>
+            <div class="chat-sub">{{ email.category }} &#8594; {{ email.ai_suggested_assignee|default:"Unassigned" }}</div>
+            <div class="chat-field"><span class="chat-field-label">From:</span> <span class="chat-field-value">{{ email.from_name }} &lt;{{ email.from_address }}&gt;</span></div>
+            <div class="chat-field"><span class="chat-field-label">Inbox:</span> <span class="chat-field-value">{{ email.to_inbox }}</span></div>
+            <div class="chat-field"><span class="chat-field-label">Summary:</span> <span class="chat-field-value">{{ email.ai_summary|default:"(none)" }}</span></div>
+          </div>
+
+          {% if email.ai_draft_reply %}
+          <h3 style="margin-top: 16px;">Draft Reply Preview</h3>
+          <div class="draft-reply">{{ email.ai_draft_reply }}</div>
+          {% endif %}
+
+          <h3 style="margin-top: 16px;">Chat Webhook Payload</h3>
+          <pre class="json">{{ email.chat_card_json }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="empty">
+    <p>No emails yet. Run:</p>
+    <pre style="margin-top:12px; display:inline-block; text-align:left; background:#1e293b; padding:12px 16px; border-radius:8px; font-size:0.85rem;">python manage.py test_pipeline --count 5</pre>
+  </div>
+  {% endif %}
+</div>
+</body>
+</html>

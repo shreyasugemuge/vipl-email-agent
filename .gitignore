@@ -3,8 +3,15 @@
 *.json
 !tests/sample_emails.json
 !package.json
+!.planning/**/*.json
+!.planning/*.json
 service-account*.json
 *-sa-key.json
+.taiga-credentials
+
+# Database
+db.sqlite3
+*.sqlite3
 
 # Python
 __pycache__/
@@ -34,6 +41,12 @@ state.json
 
 # Temp / deleted files (local-only, never commit)
 to_delete/
+
+# Claude / MCP / Swarm runtime (local-only)
+.claude/
+.claude-flow/
+.swarm/
+.mcp.json
 
 # OS
 .DS_Store
