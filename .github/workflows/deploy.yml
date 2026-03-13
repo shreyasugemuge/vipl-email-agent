@@ -5,7 +5,7 @@
 #   - Version tags (v*.*.*): test -> deploy via SSH to VM
 #   - Pull requests to v2:   test only (no deploy)
 #
-# Replaces v1 Cloud Run deployment with VM SSH deploy.
+# VM deployment via SSH to taiga VM.
 # ============================================================
 
 name: Deploy & Release
@@ -56,7 +56,8 @@ jobs:
             cd /opt/vipl-email-agent
             git fetch --tags
             git checkout ${{ github.ref_name }}
-            docker compose build --no-cache
-            docker compose up -d
-            docker compose exec -T web python manage.py migrate --noinput
+            sudo docker compose build --no-cache
+            sudo docker compose up -d
+            sleep 5
+            sudo docker compose exec -T web python manage.py migrate --noinput
             echo "Deployed ${{ github.ref_name }}"
