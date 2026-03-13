@@ -1,24 +1,20 @@
 # ============================================================
-# VIPL Email Agent v2 -- CI/CD Pipeline
+# VIPL Email Agent -- Deploy on Release
 # ============================================================
-# Triggers:
-#   - Version tags (v*.*.*): test -> deploy via SSH to VM
-#   - Pull requests to main: test only (no deploy)
+# Triggers when a GitHub Release is published.
+# Flow: test → deploy to VM via SSH.
 #
-# VM deployment via SSH to taiga VM.
+# To deploy: Create a release on GitHub (or `gh release create`).
+# This ensures every deploy is intentional and documented.
 # ============================================================
 
-name: Deploy & Release
+name: Deploy
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
-  pull_request:
-    branches: [main]
+  release:
+    types: [published]
 
 jobs:
-  # ---- Job 1: Run tests (always) ----
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -36,11 +32,9 @@ jobs:
       - name: Run tests
         run: pytest --tb=short -q
 
-  # ---- Job 2: Deploy to VM via SSH (tags only) ----
   deploy:
     name: Deploy to VM
     needs: test
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
 
     steps:
@@ -55,9 +49,9 @@ jobs:
           script: |
             cd /opt/vipl-email-agent
             git fetch --tags
-            git checkout ${{ github.ref_name }}
+            git checkout ${{ github.event.release.tag_name }}
             sudo docker compose build --no-cache
             sudo docker compose up -d
             sleep 5
             sudo docker compose exec -T web python manage.py migrate --noinput
-            echo "Deployed ${{ github.ref_name }}"
+            echo "Deployed ${{ github.event.release.tag_name }}"

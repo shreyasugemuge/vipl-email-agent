@@ -1,7 +1,8 @@
 """Tests for the EOD Reporter service."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch, PropertyMock
+import zoneinfo
 
 import pytest
 from django.utils import timezone
@@ -33,11 +34,17 @@ def eod_reporter(chat_notifier, state_manager):
     )
 
 
+def _noon_ist():
+    """Return noon IST today — safe anchor for time-sensitive tests."""
+    ist = zoneinfo.ZoneInfo("Asia/Kolkata")
+    return datetime.now(ist).replace(hour=12, minute=0, second=0, microsecond=0)
+
+
 def _create_emails(db):
     """Create 5 test emails with varied statuses/priorities."""
     from apps.emails.models import Email
 
-    now = timezone.now()
+    now = _noon_ist()
     emails = []
 
     emails.append(Email.objects.create(
@@ -109,9 +116,11 @@ def _create_emails(db):
 class TestGenerateStats:
     def test_generate_stats(self, eod_reporter):
         """With 5 emails (various statuses/priorities), generate_stats returns correct counts."""
+        frozen_now = _noon_ist()
         _create_emails(db=True)
 
-        stats = eod_reporter.generate_stats()
+        with patch("django.utils.timezone.now", return_value=frozen_now):
+            stats = eod_reporter.generate_stats()
 
         # 4 non-spam completed emails received today
         assert stats["received_today"] == 4
@@ -147,8 +156,10 @@ class TestGenerateStats:
 class TestRenderEmail:
     def test_render_email(self, eod_reporter):
         """render_email produces HTML string containing key stats values."""
+        frozen_now = _noon_ist()
         _create_emails(db=True)
-        stats = eod_reporter.generate_stats()
+        with patch("django.utils.timezone.now", return_value=frozen_now):
+            stats = eod_reporter.generate_stats()
         html = eod_reporter.render_email(stats)
 
         assert isinstance(html, str)
