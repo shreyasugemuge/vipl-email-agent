@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Assignment Engine + SLA** - Auto-assignment rules, AI fallback, SLA deadlines, breach alerts, escalation (completed 2026-03-11)
 - [x] **Phase 4.5: Integration Fixes + Tech Debt** - INSERTED: body_html pipeline, chat webhook seed, quiet hours fix, OOB card update, dead code cleanup (gap closure from v1.0 audit) (completed 2026-03-12)
 - [x] **Phase 5: Reporting + Admin + Sheets Mirror** - EOD reports, inbox/config management UI, Google Sheets read-only sync (completed 2026-03-12)
-- [ ] **Phase 6: Migration + Cutover** - Production data migration, v1-to-v2 inbox rollover, Cloud Run decommission, CI/CD overhaul
+- [ ] **Phase 6: Migration + Cutover** - Deploy v2 to VM, smoke test, go live, clean up v1 GCP artifacts, fix CI/CD
 
 ## Phase Details
 
@@ -118,23 +118,24 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md -- Settings page expansion: Inboxes management tab + SystemConfig editor tab (HTMX)
-- [ ] 05-02-PLAN.md -- EOD reporter service: stats aggregation, HTML email, Chat card, scheduler integration
-- [ ] 05-03-PLAN.md -- Google Sheets read-only sync mirror: append/update rows, fire-and-forget scheduler job
+- [x] 05-02-PLAN.md -- EOD reporter service: stats aggregation, HTML email, Chat card, scheduler integration
+- [x] 05-03-PLAN.md -- Google Sheets read-only sync mirror: append/update rows, fire-and-forget scheduler job
 
 ### Phase 6: Migration + Cutover
-**Goal**: Migrate production data from Sheets to PostgreSQL, cut inboxes over from v1 to v2, decommission Cloud Run, and finalize CI/CD for VM-only deployment
+**Goal**: Deploy v2 to the VM for the first time, verify it works, switch inboxes to production mode, clean up v1 GCP resources, and fix CI/CD for VM deploy
 **Depends on**: Phase 5
 **Requirements**: CUTV-01, CUTV-02, CUTV-03, CUTV-04
 **Success Criteria** (what must be TRUE):
-  1. All historical email data from production Google Sheet is migrated to PostgreSQL with zero data loss
+  1. v2 starts fresh -- production Sheet preserved as read-only archive, no data migration needed
   2. Both inboxes (info@, sales@) are being processed by v2, with v1 fully stopped
-  3. Cloud Run service is decommissioned (no cost, no running instances)
+  3. Cloud Run service is decommissioned (no cost, no running instances) and Artifact Registry cleaned up
   4. CI/CD pipeline (deploy.yml) targets VM only -- no Cloud Run references remain
-  5. Rollback plan tested: can revert to v1 within 15 minutes if critical issues found
-**Plans**: TBD
+  5. Rollback plan: `docker compose down` (emails accumulate unlabeled in Gmail, safe)
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: Data migration script, v1/v2 cutover plan, Cloud Run decommission, CI/CD overhaul
+- [ ] 06-01-PLAN.md -- Fix deploy.yml (sudo, sleep, remove Cloud Run refs), update CUTV-01 requirement wording
+- [ ] 06-02-PLAN.md -- Pre-deploy verification, first deploy (v2.0.0-rc1), smoke test, go-live, Artifact Registry cleanup
 
 ## Progress
 
@@ -149,4 +150,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 4.5 -> 5 -> 6
 | 4. Assignment Engine + SLA | 3/3 | Complete | 2026-03-11 |
 | 4.5. Integration Fixes + Tech Debt | 2/2 | Complete | 2026-03-12 |
 | 5. Reporting + Admin + Sheets Mirror | 3/3 | Complete    | 2026-03-12 |
-| 6. Migration + Cutover | 0/1 | Not started | - |
+| 6. Migration + Cutover | 0/2 | Not started | - |
