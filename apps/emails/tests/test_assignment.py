@@ -172,8 +172,9 @@ class TestChatNotifierAssignment:
 
         email = _create_email(None, message_id="msg_chat_10", subject="Test assignment chat")
 
-        with patch.object(notifier, "_post", return_value=True) as mock_post:
-            result = notifier.notify_assignment(email, member_user)
+        with patch.object(notifier, "_is_quiet_hours", return_value=False):
+            with patch.object(notifier, "_post", return_value=True) as mock_post:
+                result = notifier.notify_assignment(email, member_user)
 
         assert result is True
         mock_post.assert_called_once()

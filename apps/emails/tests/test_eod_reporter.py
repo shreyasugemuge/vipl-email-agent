@@ -240,8 +240,9 @@ class TestNotifyEodSummary:
             "worst_overdue": [],
         }
 
-        with patch.object(notifier, "_post", return_value=True) as mock_post:
-            result = notifier.notify_eod_summary(stats)
+        with patch.object(notifier, "_is_quiet_hours", return_value=False):
+            with patch.object(notifier, "_post", return_value=True) as mock_post:
+                result = notifier.notify_eod_summary(stats)
 
         assert result is True
         mock_post.assert_called_once()
