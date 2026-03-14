@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: — Polish & Hardening
-status: completed
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-14T16:35:29.633Z"
-last_activity: 2026-03-14 — Phase 2 Plan 2 complete
+status: in-progress
+stopped_at: Phase 3 Plan 2 complete
+last_updated: "2026-03-14T16:57:12.000Z"
+last_activity: 2026-03-14 — Phase 3 Plan 2 complete
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
-  percent: 75
+  total_plans: 5
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-14)
 
 ## Current Position
 
-Phase: 2 of 4 — Settings & Spam Whitelist (COMPLETE)
+Phase: 3 of 4 — VIPL Branding (IN PROGRESS)
 Plan: 2 of 2 (done)
-Status: Phase 2 complete, ready for Phase 3
-Last activity: 2026-03-14 — Phase 2 Plan 2 complete
+Status: Phase 3 Plan 2 complete (chat card branding)
+Last activity: 2026-03-14 — Phase 3 Plan 2 complete
 
-Progress: [########░░] 75%
+Progress: [########░░] 80%
 
 ## Accumulated Context
 
@@ -52,6 +52,9 @@ Progress: [########░░] 75%
 - [Phase 02-02]: Whitelist sender un-spams all existing emails from that sender
 - [Phase 02-02]: No delete confirmation on whitelist entries -- immediate delete for snappier UX
 - [Phase 02-02]: OOB swap pattern for whitelist action (refreshes detail + all cards from sender)
+- [Phase 03-02]: Cached tracker_url in ChatNotifier.__init__ to avoid duplicate SystemConfig.get calls
+- [Phase 03-02]: VIPL_FOOTER_SECTION as module-level constant (never varies per instance)
+- [Phase 03-02]: Defensive None fallback for SystemConfig.get returning None in tests/empty DB
 
 ### Pending Todos
 
@@ -59,7 +62,7 @@ None.
 
 ### Blockers/Concerns
 
-- VIPL logo asset needed from Google Drive before Phase 3
+None.
 
 ## Performance Metrics
 
@@ -68,9 +71,10 @@ None.
 | 01 | 01 | 7min | 3 | 21 |
 | 02 | 01 | 4min | 2 | 7 |
 | 02 | 02 | multi-session | 3 | 17 |
+| 03 | 02 | 4min | 1 | 2 |
 
 ## Session Continuity
 
-Last session: 2026-03-14T16:35:29.631Z
-Stopped at: Phase 3 context gathered
-Next: Execute Phase 3 (Branding)
+Last session: 2026-03-14T16:57:12.000Z
+Stopped at: Phase 3 Plan 2 complete
+Next: Verify Phase 3 or continue remaining plans

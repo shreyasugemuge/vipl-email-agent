@@ -16,10 +16,10 @@
   Plans:
   - [x] 02-01-PLAN.md — SpamWhitelist model, pipeline whitelist integration, bool normalization, config editor improvements
   - [ ] 02-02-PLAN.md — Whitelist settings tab, whitelist sender button, SLA save feedback
-- [ ] Phase 3: VIPL Branding (0/2 plans) — planned
+- [ ] Phase 3: VIPL Branding (1/2 plans) — in progress
   Plans:
   - [ ] 03-01-PLAN.md — Logo assets, favicon, brand palette, template color replacement
-  - [ ] 03-02-PLAN.md — Google Chat card branding (header icon + footer)
+  - [x] 03-02-PLAN.md — Google Chat card branding (header icon + footer)
 - [ ] Phase 4: Chat Notification Polish (0/0 plans) — not started
 
 <details>
@@ -151,7 +151,7 @@
 |-------|-----------|----------------|--------|-----------|
 | 1. Google OAuth SSO | v2.2 | 0/1 | Checkpoint pending | — |
 | 2. Settings + Spam Whitelist | 2/2 | Complete   | 2026-03-14 | — |
-| 3. VIPL Branding | v2.2 | 0/2 | Planned | — |
+| 3. VIPL Branding | v2.2 | 1/2 | In progress | — |
 | 4. Chat Notification Polish | v2.2 | 0/0 | Not started | — |
 | 1. Foundation | v2.1 | 2/2 | Complete | 2026-03-09 |
 | 2. Email Pipeline | v2.1 | 3/3 | Complete | 2026-03-11 |
