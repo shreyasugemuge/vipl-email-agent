@@ -638,6 +638,62 @@ class TestOpenButtonsAcrossCards:
                     found_button = True
         assert found_button, "New emails card should have inline Open button per email"
 
+    @pytest.mark.skip(reason="manual validation helper")
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_dump_card_payloads_for_validation(self, mock_config_cls, mock_post):
+        """Print full JSON payloads for manual validation in Google Chat Card Builder.
+
+        Run with: pytest apps/emails/tests/test_chat_notifier.py -k test_dump_card_payloads --no-header -rN -s
+        """
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+
+        # --- Personal breach card ---
+        breached = [
+            {"subject": "Invoice overdue - Acme Corp", "priority": "HIGH", "overdue_minutes": 150, "pk": 42},
+            {"subject": "Support ticket #1234", "priority": "CRITICAL", "overdue_minutes": 300, "pk": 43},
+        ]
+        notifier.notify_personal_breach("Alice Dev", breached)
+        personal_payload = mock_post.call_args.kwargs["json"]
+        print("\n=== PERSONAL BREACH CARD ===")
+        print(json.dumps(personal_payload, indent=2))
+        mock_post.reset_mock()
+
+        # --- Breach summary card ---
+        summary = {
+            "total_respond_breached": 3,
+            "total_ack_breached": 1,
+            "top_offenders": [
+                {"subject": "Invoice overdue - Acme Corp", "assignee_name": "Alice Dev",
+                 "priority": "HIGH", "overdue_str": "2h 30m", "overdue_minutes": 150, "pk": 42},
+                {"subject": "Support ticket #1234", "assignee_name": "Bob Ops",
+                 "priority": "CRITICAL", "overdue_str": "5h", "overdue_minutes": 300, "pk": 43},
+            ],
+            "per_assignee": {
+                "Alice Dev": [{"subject": "Invoice overdue", "priority": "HIGH", "overdue_minutes": 150}],
+                "Bob Ops": [{"subject": "Support ticket", "priority": "CRITICAL", "overdue_minutes": 300}],
+            },
+        }
+        notifier.notify_breach_summary(summary)
+        summary_payload = mock_post.call_args.kwargs["json"]
+        print("\n=== BREACH SUMMARY CARD ===")
+        print(json.dumps(summary_payload, indent=2))
+        mock_post.reset_mock()
+
+        # --- New emails card ---
+        emails = [
+            self._make_email(pk=55, subject="New vendor inquiry", priority="HIGH", category="Sales Lead"),
+            self._make_email(pk=56, subject="Server alert notification", priority="CRITICAL", category="Technical"),
+            self._make_email(pk=57, subject="Meeting request", priority="LOW", category="General Inquiry"),
+        ]
+        notifier.notify_new_emails(emails)
+        new_payload = mock_post.call_args.kwargs["json"]
+        print("\n=== NEW EMAILS CARD ===")
+        print(json.dumps(new_payload, indent=2))
+
 
 # ===========================================================================
 # Urgency Label Consistency Tests (NEW -- Plan 04-01)
