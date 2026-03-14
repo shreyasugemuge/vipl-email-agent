@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: — Polish & Hardening
 status: in-progress
-stopped_at: Phase 3 Plan 2 complete
-last_updated: "2026-03-14T16:57:12.000Z"
-last_activity: 2026-03-14 — Phase 3 Plan 2 complete
+stopped_at: Phase 3 complete (both plans)
+last_updated: "2026-03-14T17:03:36Z"
+last_activity: 2026-03-14 — Phase 3 Plan 1 complete (branding)
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-14)
 
 ## Current Position
 
-Phase: 3 of 4 — VIPL Branding (IN PROGRESS)
+Phase: 3 of 4 — VIPL Branding (COMPLETE)
 Plan: 2 of 2 (done)
-Status: Phase 3 Plan 2 complete (chat card branding)
-Last activity: 2026-03-14 — Phase 3 Plan 2 complete
+Status: Phase 3 complete -- all branding applied
+Last activity: 2026-03-14 — Phase 3 Plan 1 complete (brand palette + logo assets + 17 templates)
 
-Progress: [########░░] 80%
+Progress: [##########] 100%
 
 ## Accumulated Context
 
@@ -55,6 +55,9 @@ Progress: [########░░] 80%
 - [Phase 03-02]: Cached tracker_url in ChatNotifier.__init__ to avoid duplicate SystemConfig.get calls
 - [Phase 03-02]: VIPL_FOOTER_SECTION as module-level constant (never varies per instance)
 - [Phase 03-02]: Defensive None fallback for SystemConfig.get returning None in tests/empty DB
+- [Phase 03-01]: Brand palette: plum 600=#a83362 derived from logo, 50-900 scale
+- [Phase 03-01]: favicon.ico via macOS sips (zero-dependency, native ICO)
+- [Phase 03-01]: Dev inspector left as-is (separate dark theme, no indigo/violet)
 
 ### Pending Todos
 
@@ -71,10 +74,11 @@ None.
 | 01 | 01 | 7min | 3 | 21 |
 | 02 | 01 | 4min | 2 | 7 |
 | 02 | 02 | multi-session | 3 | 17 |
+| 03 | 01 | 10min | 2 | 22 |
 | 03 | 02 | 4min | 1 | 2 |
 
 ## Session Continuity
 
-Last session: 2026-03-14T16:57:12.000Z
-Stopped at: Phase 3 Plan 2 complete
-Next: Verify Phase 3 or continue remaining plans
+Last session: 2026-03-14T17:03:36Z
+Stopped at: Completed 03-01-PLAN.md (Phase 3 fully complete)
+Next: Verify Phase 3 visually or proceed to Phase 4
