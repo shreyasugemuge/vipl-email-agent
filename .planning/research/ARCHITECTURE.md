@@ -1,481 +1,440 @@
-# Architecture Patterns
-
-**Domain:** AI-powered shared inbox management system (v2 rebuild)
-**Researched:** 2026-03-09
-**Updated:** 2026-03-09 (revised from FastAPI+React to Django+HTMX based on stack research)
-
-## Recommended Architecture
-
-**Pattern:** Monolithic Django application with embedded scheduler, server-rendered templates with HTMX for interactivity, deployed as a single Docker container behind the VM's existing Nginx reverse proxy.
-
-This is NOT a two-application system. With 4-5 users and a single company, a Django monolith is the correct choice. No separate frontend app, no JSON API consumed by an SPA, no CORS, no JWT tokens. Django serves HTML directly.
-
-### High-Level Structure
-
-```
-                    Internet
-                       |
-                Nginx (existing on VM, shared with Taiga)
-                       |
-        triage.vidarbhainfotech.com
-                       |
-              +-----------------+
-              | Django App      |
-              | (Gunicorn)      |
-              |                 |
-              | - Views (HTML)  |
-              | - HTMX partials |
-              | - APScheduler   |
-              | - Agent modules |
-              +-----------------+
-                       |
-              +------------------+
-              | PostgreSQL       |
-              | (existing on VM, |
-              |  shared w/Taiga) |
-              +------------------+
-```
-
-**Why 1 container, not 2?** Django serves its own HTML. There is no separate frontend to containerize. Nginx (already running on the VM for Taiga) proxies requests to Gunicorn and serves static files from a shared volume. This is the simplest possible deployment.
-
-**Why NOT a separate PostgreSQL container?** PostgreSQL already runs on the VM for Taiga. Running a second PostgreSQL in Docker is wasteful. Create a new database on the existing instance.
-
-### Component Boundaries
-
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| **Django Views** | Serve HTML pages and HTMX partial fragments | Django ORM, Templates |
-| **Django Templates + HTMX** | Render email tables, filters, assignment controls | Django Views (same-origin HTTP) |
-| **Gmail Poller** | Fetches unprocessed emails from Gmail API on schedule | AI Processor, Django ORM |
-| **AI Processor** | Triages emails via Claude (spam filter + two-tier model) | Django ORM |
-| **Assignment Engine** | Assigns emails to team members (rules + AI fallback) | Django ORM, AI Processor |
-| **Thread Monitor** | Watches Gmail threads for assignee responses | Django ORM, Gmail API |
-| **SLA Monitor** | Checks deadlines, escalates breaches | Django ORM, Notification Hub |
-| **Notification Hub** | Dispatches alerts to Chat, Email, WhatsApp/SMS | External APIs |
-| **EOD Reporter** | Generates daily summary reports | Django ORM, Notification Hub |
-| **Sheets Sync** | One-way sync of simplified data to Google Sheets | Django ORM, Sheets API |
-| **Auth (django-allauth)** | Google OAuth SSO, session management, domain restriction | Google OAuth API, Django sessions |
-
-### Internal Module Structure
-
-```
-vipl_email_agent/                  # Django project root
-  manage.py
-  vipl/                            # Project settings package
-    settings.py                    # Django settings + django-environ
-    urls.py                        # URL routing
-    wsgi.py                        # Gunicorn entry point
-
-  dashboard/                       # Django app: web UI
-    views/
-      emails.py                    # Email list, detail, filters
-      assignments.py               # Assignment controls, reassignment
-      analytics.py                 # Stats, charts, response times
-    templates/
-      dashboard/
-        base.html                  # Layout with Tailwind + HTMX
-        email_list.html            # Full page: email table
-        partials/
-          email_table.html         # HTMX partial: table body (for filtering)
-          email_row.html           # HTMX partial: single row (for updates)
-          email_detail.html        # HTMX partial: slide-out detail panel
-          assignment_form.html     # HTMX partial: reassign dropdown
-    templatetags/
-      dashboard_tags.py            # Custom tags (priority badges, SLA countdown)
-    urls.py
-    forms.py                       # Django forms for assignment, status changes
-
-  inbox/                           # Django app: data models + business logic
-    models/
-      email.py                     # Email model (replaces Sheet rows)
-      assignment.py                # Assignment + history models
-      sla.py                       # SLA config + status models
-      config.py                    # Runtime config model
-    services/
-      gmail_poller.py              # Adapted from v1 agent/gmail_poller.py
-      ai_processor.py              # Adapted from v1 agent/ai_processor.py
-      assignment_engine.py         # NEW: rules + AI assignment
-      thread_monitor.py            # NEW: Gmail thread watch for responses
-      sla_monitor.py               # Adapted from v1 agent/sla_monitor.py
-      notification_hub.py          # Consolidates v1 chat_notifier + email sending
-      eod_reporter.py              # Adapted from v1 agent/eod_reporter.py
-      sheets_sync.py               # NEW: one-way DB -> Sheets mirror
-    management/
-      commands/
-        runscheduler.py            # Management command: starts APScheduler
-        migrate_from_sheets.py     # One-time: import v1 Sheet data into DB
-        init_sla_config.py         # One-time: seed SLA config from v1
-    admin.py                       # Django admin for SLA config, users, rules
-
-  prompts/
-    triage_prompt.txt              # System prompt (carried from v1)
-
-  templates/
-    eod_email.html                 # Jinja2 EOD template (carried from v1)
-
-  static/
-    css/output.css                 # Compiled Tailwind CSS
-    js/htmx.min.js                 # HTMX (single file, no npm)
-    js/alpine.min.js               # Alpine.js for dropdowns/modals
-```
-
-## Data Flow
-
-### Email Processing Pipeline (unchanged pattern from v1, new persistence target)
-
-```
-Gmail API  -->  GmailPoller.poll_all()
-                    |
-                    v
-            DB dedup check (Django ORM: Email.objects.filter(thread_id=...).exists())
-                    |
-                    v
-            AIProcessor.is_spam() --> skip if spam
-                    |
-                    v
-            AIProcessor.process() --> Claude triage
-                    |
-                    v
-            AssignmentEngine.assign() --> rules check, then AI fallback
-                    |
-                    v
-            Email.objects.create(...) --> Django ORM write
-                    |
-                    v
-            Gmail label "Agent/Processed" (AFTER DB write -- same safety pattern as v1)
-                    |
-                    v
-            NotificationHub.notify() --> Chat webhook + any urgent channels
-                    |
-                    v
-            SheetsSync.sync_email() --> mirror row to Google Sheet (fire-and-forget)
-```
-
-### Dashboard Request Flow (HTMX)
-
-```
-Browser --> GET /emails/?status=open&assignee=X
-                    |
-                Django session middleware (checks auth cookie)
-                    |
-                Django view: EmailListView
-                    |
-                if request.htmx:
-                    return render("partials/email_table.html", ...)  # Just the table body
-                else:
-                    return render("email_list.html", ...)            # Full page with layout
-                    |
-                Django ORM query with django-filter
-                    |
-                HTML response --> browser swaps table body via HTMX
-```
-
-This is the key HTMX pattern: the same view handles both full page loads and HTMX partial updates. The `request.htmx` check (provided by django-htmx middleware) determines which template to render.
-
-### Assignment + Reassignment Flow
-
-```
-[Automatic on triage]
-AIProcessor result --> AssignmentEngine
-  1. Check AssignmentRule objects: category "Government/Tender" -> Assignee X
-  2. If no rule match: AI fallback (content analysis + workload via ORM aggregate)
-  3. Email.objects.create(assignee=..., assignment_reason=...)
-
-[Manual reassignment from dashboard]
-User clicks "Reassign" dropdown (HTMX form) --> POST /emails/{id}/reassign/
-  1. AssignmentHistory.objects.create(old_assignee=..., new_assignee=..., reason=...)
-  2. email.assignee = new_assignee; email.save()
-  3. Return HTMX partial: updated email row with new assignee badge
-  4. NotificationHub.notify_assignment(new_assignee, email)
-```
-
-### Thread Monitoring Flow
-
-```
-APScheduler (every 5 min) --> ThreadMonitor.check()
-  1. Email.objects.filter(status="assigned", assignee__isnull=False)
-  2. For each: check Gmail thread for new messages from assignee
-  3. If response found: email.status = "responded"; email.save()
-  4. If SLA approaching: NotificationHub.escalate()
-```
-
-## Patterns to Follow
-
-### Pattern 1: Management Command for Scheduler
-
-APScheduler runs in a separate process via a Django management command, NOT inside Gunicorn workers. This avoids duplicate jobs when Gunicorn forks multiple workers.
-
-**What:** A management command that starts APScheduler and blocks forever.
-**When:** Always. Run alongside Gunicorn in the same Docker container via a process manager or Docker CMD.
-
-```python
-# inbox/management/commands/runscheduler.py
-from django.core.management.base import BaseCommand
-from apscheduler.schedulers.blocking import BlockingScheduler
-
-class Command(BaseCommand):
-    help = 'Runs the email processing scheduler'
-
-    def handle(self, *args, **options):
-        scheduler = BlockingScheduler(timezone="Asia/Kolkata")
-        scheduler.add_job(poll_emails, "interval", seconds=300, max_instances=1, coalesce=True)
-        scheduler.add_job(check_sla, "interval", seconds=900, max_instances=1, coalesce=True)
-        scheduler.add_job(send_eod, CronTrigger(hour=19, minute=0, timezone="Asia/Kolkata"))
-        scheduler.add_job(retry_dead_letters, "interval", seconds=1800, max_instances=1)
-        scheduler.add_job(monitor_threads, "interval", seconds=300, max_instances=1)
-        scheduler.start()  # Blocks forever
-```
-
-Docker CMD runs both processes:
-```dockerfile
-CMD ["sh", "-c", "python manage.py runscheduler & gunicorn vipl.wsgi:application --bind 0.0.0.0:8000 --workers 2"]
-```
-
-Or use `supervisord` for cleaner process management inside the container.
-
-### Pattern 2: HTMX Partial Templates
-
-**What:** Every interactive element has a full-page template AND a partial template. Django views check `request.htmx` to decide which to render.
-**When:** All dashboard interactions (filtering, assignment, status changes).
-
-```python
-# dashboard/views/emails.py
-from django_htmx.middleware import HtmxDetails
-
-def email_list(request):
-    qs = Email.objects.select_related('assignee').order_by('-received_at')
-    f = EmailFilter(request.GET, queryset=qs)
-
-    if request.htmx:
-        return render(request, "dashboard/partials/email_table.html", {"emails": f.qs})
-    return render(request, "dashboard/email_list.html", {"filter": f, "emails": f.qs})
-```
-
-```html
-<!-- email_list.html -->
-{% extends "dashboard/base.html" %}
-{% block content %}
-<form hx-get="{% url 'email-list' %}" hx-target="#email-table" hx-trigger="change">
-  {{ filter.form }}
-</form>
-<div id="email-table">
-  {% include "dashboard/partials/email_table.html" %}
-</div>
-{% endblock %}
-```
-
-### Pattern 3: Service Layer Separation
-
-**What:** Views are thin -- they call service functions. Services contain business logic. This keeps views testable and allows scheduler jobs to reuse the same logic.
-**When:** Always. Both dashboard views and scheduler jobs call the same service functions.
-
-```python
-# dashboard/views/assignments.py (thin view)
-@login_required
-def reassign_email(request, email_id):
-    email = get_object_or_404(Email, id=email_id)
-    form = ReassignForm(request.POST)
-    if form.is_valid():
-        assignment_engine.reassign(email, form.cleaned_data['assignee'], request.user)
-        return render(request, "dashboard/partials/email_row.html", {"email": email})
-
-# inbox/services/assignment_engine.py (business logic)
-def reassign(email, new_assignee, changed_by):
-    AssignmentHistory.objects.create(
-        email=email, old_assignee=email.assignee,
-        new_assignee=new_assignee, changed_by=changed_by
-    )
-    email.assignee = new_assignee
-    email.save()
-    notification_hub.notify_assignment(new_assignee, email)
-```
-
-### Pattern 4: Label-After-Persist Safety (Carried from v1)
-
-**What:** Gmail "Agent/Processed" label is applied ONLY after the database write succeeds. If DB write fails, the email stays unlabeled and gets retried on next poll.
-**When:** Every email processing cycle. This is the most important safety invariant in the system.
-
-### Pattern 5: Django Settings via django-environ
-
-**What:** Replace config.yaml + env vars + Sheet overrides with django-environ for static config, and a database RuntimeConfig model for mutable config.
-**When:** Application startup for static config; ORM queries for dynamic config.
-
-```python
-# vipl/settings.py
-import environ
-env = environ.Env()
-environ.Env.read_env('.env')
-
-DATABASES = {
-    'default': env.db('DATABASE_URL', default='postgres://vipl:pass@localhost:5432/vipl_email_agent')
-}
-ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY')
-GOOGLE_CHAT_WEBHOOK_URL = env('GOOGLE_CHAT_WEBHOOK_URL')
-```
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Celery / Redis for Background Jobs
-
-**What:** Adding Celery and Redis as a task queue for background processing.
-**Why bad:** Massive complexity increase (extra container, broker config, worker management) for a system that serves 4-5 users. APScheduler in-process handles everything this system needs.
-**Instead:** Use `BlockingScheduler` from APScheduler in a management command alongside Gunicorn.
-
-### Anti-Pattern 2: Separate Frontend Application
-
-**What:** Building a React/Vue/Svelte SPA that consumes a JSON API.
-**Why bad:** Doubles the codebase, requires a JS build toolchain, adds CORS, token auth, and a second container. For a table-view dashboard with 5 users, this is massive over-engineering.
-**Instead:** Django templates + HTMX. Zero JavaScript build step. Same-origin requests. Session cookies. One container.
-
-### Anti-Pattern 3: WebSocket / SSE for Dashboard Updates
-
-**What:** Real-time push for dashboard data updates.
-**Why bad:** For 4-5 users checking a dashboard a few times a day, WebSocket/SSE adds connection management complexity for zero benefit.
-**Instead:** HTMX polling: `hx-trigger="every 30s"` on the email table. Simple, reliable, zero infrastructure.
-
-### Anti-Pattern 4: GraphQL
-
-**What:** Using GraphQL instead of simple Django views.
-**Why bad:** The dashboard has a fixed set of views. No benefit from flexible querying. GraphQL adds schema complexity and tooling overhead.
-**Instead:** Django views shaped to each template. 5-8 views total.
-
-### Anti-Pattern 5: Running a Second PostgreSQL in Docker
-
-**What:** Adding a PostgreSQL container to Docker Compose.
-**Why bad:** The VM already runs PostgreSQL for Taiga. A second instance wastes RAM and creates backup/maintenance overhead.
-**Instead:** Create a new database (`vipl_email_agent`) on the existing PostgreSQL instance.
-
-### Anti-Pattern 6: Django REST Framework for API
-
-**What:** Adding DRF to serve JSON endpoints for a React frontend.
-**Why bad:** If there is no separate frontend, there is no need for a JSON API. Django views return HTML. HTMX consumes HTML. The entire serialization/deserialization layer is unnecessary.
-**Instead:** Django views + templates. If a JSON API is ever needed (e.g., for a mobile app -- currently out of scope), add DRF then.
-
-## Database Schema (Key Tables)
-
-```
-emails
-  id, thread_id, message_id, inbox, sender, sender_name, subject, body_preview,
-  category, priority, summary, draft_reply, reasoning, language, tags (JSONB),
-  ai_model_used, ai_cost_usd,
-  assignee (FK -> auth_user), assignment_reason,
-  sla_deadline_ack, sla_deadline_response, sla_status,
-  status (new/acknowledged/responded/closed),
-  gmail_link, received_at, created_at, updated_at
-
-assignment_history
-  id, email (FK), old_assignee (FK), new_assignee (FK), changed_by (FK),
-  correction_reason, changed_at
-  -- Used for AI feedback loop
-
-assignment_rules
-  id, category, priority, assignee (FK -> auth_user), active, order
-
-sla_config
-  id, category, ack_hours, response_hours
-
-runtime_config
-  key (unique), value, updated_by (FK), updated_at
-  -- Replaces Sheet-based Agent Config
-
-notification_log
-  id, email (FK), channel (chat/email/sms), sent_at, success
-
-daily_report
-  id, report_date (unique), stats (JSONB), ai_cost_usd, created_at
-
-failed_triage
-  id, thread_id, inbox, attempt_count, last_error, status, created_at, updated_at
-```
-
-Note: Users are Django's built-in `auth.User` model, auto-created on first Google OAuth login via django-allauth. No custom user model needed (use `is_staff` for manager role).
-
-## Docker Compose Layout
-
-```yaml
-# docker-compose.yml
-services:
-  web:
-    build: .
-    command: >
-      sh -c "python manage.py migrate --noop &&
-             python manage.py collectstatic --noinput &&
-             python manage.py runscheduler &
-             gunicorn vipl.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120"
-    volumes:
-      - static_files:/app/staticfiles
-      - ./secrets:/secrets:ro
-    environment:
-      - DATABASE_URL=postgres://vipl:password@host.docker.internal:5432/vipl_email_agent
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - GOOGLE_CHAT_WEBHOOK_URL=${GOOGLE_CHAT_WEBHOOK_URL}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-volumes:
-  static_files:
-```
-
-Nginx on the VM host (already running for Taiga) gets a new server block:
-```nginx
-server {
-    server_name triage.vidarbhainfotech.com;
-
-    location /static/ {
-        alias /path/to/shared/static_files/;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-## Key Architecture Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Django monolith, not FastAPI + React | Batteries included: ORM, migrations, auth, admin, templates. No need for a JSON API or separate frontend for 5 users. |
-| HTMX, not React/Vue | Zero JavaScript build step. Server-rendered HTML with dynamic updates. One container, not two. |
-| Gunicorn (WSGI), not Uvicorn (ASGI) | No async workload. 5 users. WSGI is simpler and more battle-tested. |
-| Host PostgreSQL, not containerized | Already running for Taiga. Zero incremental cost. |
-| APScheduler in management command, not Celery | No message broker needed. 4-5 scheduled tasks. Run alongside Gunicorn. |
-| Django sessions (cookies), not JWT | Same-origin app. No CORS. No token management. httpOnly session cookie is simpler and more secure. |
-| django-allauth, not custom OAuth | De facto standard for Django social auth. Google provider built in. |
-| Django admin for config, not custom UI | SLA rules, inbox config, and user management are admin tasks for 1 person (Shreyas). Django admin handles this for free. |
-| 1 container, not 2+ | Everything in one Docker image: Gunicorn + APScheduler + static files. Nginx is on the host. |
-
-## Scalability Considerations
-
-| Concern | At 5 users (current) | At 20 users | At 100 users |
-|---------|----------------------|-------------|--------------|
-| **Web traffic** | Negligible. 2 Gunicorn workers. | Still negligible. | Add workers, still fine. |
-| **Email volume** | ~50/day. Single poll cycle handles it. | ~200/day. Still fine. | Reduce poll interval. |
-| **Database** | Shared with Taiga. No issues. | Add connection pooling. | Dedicated instance. |
-| **Background jobs** | APScheduler in-process. | Still fine. | Consider separate worker. |
-| **Dashboard** | HTMX polling every 30s. | Still fine. | Consider SSE. |
-
-**Bottom line:** This system will never reach 100 users. It's a single-company internal tool. Design for 5, tolerate 20, don't think about 100.
-
-## Sources
-
-- [Django + HTMX + Tailwind tutorial (TestDriven.io)](https://testdriven.io/blog/django-htmx-tailwind/)
-- [Django Docker deployment guide (2026)](https://medium.com/@sizanmahmud08/production-ready-django-with-docker-in-2026-complete-guide-with-nginx-postgresql-and-best-1fb248e65983)
-- [HTMX vs React dashboard comparison (2026)](https://medium.com/@the_atomic_architect/react-vs-htmx-i-built-the-same-dashboard-with-both-one-of-them-is-a-maintenance-nightmare-9f2ef3e84728)
-- [django-apscheduler PyPI](https://pypi.org/project/django-apscheduler/)
-- [django-allauth Google provider docs](https://docs.allauth.org/en/dev/socialaccount/providers/google.html)
-- v1 codebase analysis (`.planning/codebase/ARCHITECTURE.md`) -- HIGH confidence (firsthand)
+# Architecture Research — v2.2 Integration Points
+
+**Domain:** Django 4.2 LTS app — adding SSO, settings UI, branding, spam learning, Chat UX
+**Researched:** 2026-03-14
+**Confidence:** HIGH (firsthand codebase analysis + verified library docs)
 
 ---
 
-*Architecture analysis: 2026-03-09 (revised for Django+HTMX stack)*
+## Context: What Already Exists
+
+This is a subsequent milestone. The system is live. Research here answers only: "how do the new
+features hook into what's already built?" Not what to build — where to attach it.
+
+Existing anchors that every new feature must integrate with:
+
+| Anchor | Location | Notes |
+|--------|----------|-------|
+| Custom User model | `apps/accounts/models.py:User` | `AbstractUser` + `role` + `can_see_all_emails` |
+| Auth URL config | `config/settings/base.py` | `LOGIN_URL`, `LOGIN_REDIRECT_URL`, `LOGOUT_REDIRECT_URL` |
+| Auth URL routing | `apps/accounts/urls.py` | Currently only `LoginView` + `LogoutView` |
+| SystemConfig KV store | `apps/core/models.py:SystemConfig` | typed get/set, seeded via migrations, category-grouped |
+| Settings view (multi-section) | `apps/emails/views.py:settings_view` + 6 save endpoints | Already exists — one page, multiple POST targets |
+| Spam filter | `apps/emails/services/spam_filter.py` | Module-level compiled regex, returns `TriageResult` or `None` |
+| ChatNotifier | `apps/emails/services/chat_notifier.py` | Cards v2 webhook, 4 notify methods, quiet hours via SystemConfig |
+| Base template | `templates/base.html` | Tailwind v4 CDN, HTMX 2.0 CDN, Plus Jakarta Sans, sidebar nav |
+| Pipeline entry | `apps/emails/services/pipeline.py` | Calls `spam_filter.is_spam()` before AI |
+
+---
+
+## Feature Integration Map
+
+### 1. Google OAuth SSO
+
+**What changes:** Authentication backend only. No model migrations required if using `social-auth-app-django`.
+
+**Architecture decision:** Use `social-auth-app-django` (not `django-allauth`). Rationale:
+- `social-auth-app-django` stores social tokens in its own tables — no migration to existing `User` model
+- Domain restriction via `SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS` is a single settings line
+- `django-allauth` v65+ requires `django.contrib.sites` and additional app installs; more surface area
+- `social-auth-app-django` has a documented custom pipeline pattern for `hd` claim enforcement as a second safety layer
+
+**Integration points:**
+
+```
+config/settings/base.py
+  → INSTALLED_APPS: add 'social_django'
+  → AUTHENTICATION_BACKENDS: add 'social_core.backends.google.GoogleOAuth2'
+  → MIDDLEWARE: add 'social_django.middleware.SocialAuthExceptionMiddleware'
+  → SOCIAL_AUTH_GOOGLE_OAUTH2_KEY / SECRET (from env)
+  → SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS = ['vidarbhainfotech.com']
+  → SOCIAL_AUTH_PIPELINE: add custom domain enforcer after auth_allowed
+  → SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {'hd': 'vidarbhainfotech.com'}
+
+config/urls.py
+  → path('social/', include('social_django.urls', namespace='social'))
+
+apps/accounts/urls.py
+  → No change (existing LoginView stays for fallback)
+  → Optional: redirect login page to show Google button
+
+apps/accounts/models.py
+  → No change to User model (social-auth creates UserSocialAuth linked to existing User)
+
+apps/accounts/
+  → New: pipeline.py — custom pipeline step that enforces @vidarbhainfotech.com
+  → New or modified: login template to show "Sign in with Google" button
+
+templates/registration/login.html
+  → Add Google SSO button linking to {% url 'social:begin' 'google-oauth2' %}
+  → Keep password form as fallback (Shreyas may need it for emergency access)
+```
+
+**Data flow:**
+
+```
+User clicks "Sign in with Google"
+  → /social/login/google-oauth2/   (social_django URL)
+  → Google OAuth consent screen
+  → Callback: /social/complete/google-oauth2/
+  → social-auth pipeline runs:
+      1. auth (fetch identity from Google)
+      2. social_uid (build UID)
+      3. auth_allowed (default check)
+      4. custom enforce_domain() — blocks non-@vidarbhainfotech.com accounts
+      5. social_user (find existing UserSocialAuth)
+      6. get_username (derive username from email)
+      7. create_user (create User if new) ← auto-creates member role
+      8. associate_user / associate_by_email
+      9. load_extra_data
+      10. user_details (copy name/email from Google profile)
+  → Django session created
+  → Redirect to LOGIN_REDIRECT_URL (/emails/)
+```
+
+**New files:**
+- `apps/accounts/pipeline.py` — `enforce_domain()` pipeline step
+- Modified: `templates/registration/login.html` — Google button
+
+**No new migrations required** (social_django creates its own tables via `python manage.py migrate`).
+
+---
+
+### 2. Settings Page Overhaul
+
+**What changes:** The settings page already exists (`apps/emails/views.py:settings_view` + 6 save endpoints). This is a UI overhaul, not a new page.
+
+**Current state:** Settings renders all SystemConfig entries. The overhaul groups them visually, adds type-aware inputs (toggle for bool, number for int, textarea for JSON), and pre-fills from DB.
+
+**Integration points:**
+
+```
+apps/emails/views.py
+  → settings_view(): already uses SystemConfig.get_all_by_category()
+  → No new view functions likely needed — modify existing save endpoints if input types change
+  → May add one new endpoint if a new category is added (e.g., for OAuth config display)
+
+templates/emails/settings.html (or equivalent)
+  → Full template rewrite — grouped sections per category
+  → Type-aware inputs: <input type="number"> for int, <input type="checkbox"> for bool
+  → Use HTMX for per-section saves (already the pattern from v2.1)
+
+apps/core/models.py:SystemConfig
+  → No model changes — category field already exists
+  → May add new SystemConfig rows via migration for any new v2.2 settings
+```
+
+**Key constraint:** The settings view is admin-only (guarded by `user.is_staff or user.is_admin_role`). This does not change.
+
+**New files:**
+- Template update only (no new Python files)
+- Possibly a new migration to seed additional SystemConfig rows (e.g., `branding_logo_url`)
+
+---
+
+### 3. VIPL Branding
+
+**What changes:** Visual only — logo, colors, name. No model changes, no new views.
+
+**Integration points:**
+
+```
+templates/base.html
+  → Sidebar logo block (lines 72-91): replace SVG icon + "VIPL Triage" text with actual logo
+  → Logo source: served from /static/ (download from Drive, commit to static/)
+    OR served from a URL stored in SystemConfig('branding_logo_url')
+  → Color theme: @theme block (lines 13-25) — change primary-* CSS custom properties
+    to match VIPL brand colors (currently indigo/violet)
+
+static/
+  → New: vipl-logo.svg or vipl-logo.png
+
+apps/core/models.py (optional)
+  → Add SystemConfig row: branding_logo_url (str) — allows logo change without redeploy
+```
+
+**Recommendation:** Store logo in `static/img/vipl-logo.svg` (committed). Use SystemConfig for
+the URL only if the logo needs to change without redeployment — for a 4-person internal tool,
+a static file is simpler and avoids the Drive API dependency at render time.
+
+**Build order note:** Branding depends on nothing — it can be done first or last. Defer until
+the other features are working to avoid merge conflicts on base.html.
+
+---
+
+### 4. Spam Whitelisting / Learning
+
+**What changes:** New model + modified spam filter + settings UI integration. Most substantial data model change in v2.2.
+
+**Current spam filter:** `apps/emails/services/spam_filter.py` — module-level compiled regex
+`_SPAM_RE`. Stateless. No DB interaction. Called from `pipeline.py`.
+
+**New architecture:**
+
+```
+apps/emails/models.py
+  → New: SpamWhitelist model
+      sender_email (EmailField, unique, db_index)
+      sender_domain (CharField, blank — derived from email on save)
+      added_by (FK -> User, null=True)
+      reason (CharField — 'user_action' | 'manual')
+      created_at (auto)
+
+apps/emails/services/spam_filter.py
+  → Modify is_spam():
+      1. Check SpamWhitelist FIRST (DB query): if sender in whitelist, return None (not spam)
+      2. Then run regex patterns as before
+  → New function: add_to_whitelist(email_address, added_by, reason)
+
+apps/emails/views.py
+  → Email detail panel POST handler (assign/status): when user marks "not spam" (new action),
+    call add_to_whitelist(email.from_address, request.user, 'user_action')
+  → Settings page: show whitelist table, allow manual add/remove
+
+apps/emails/models.py:ActivityLog.Action
+  → New choice: WHITELIST_ADDED = 'whitelist_added', 'Whitelisted'
+
+templates/emails/_email_card.html or detail panel
+  → "Not Spam / Whitelist Sender" button (only shown if email.is_spam=True)
+  → HTMX POST to new endpoint: /emails/<pk>/whitelist/
+
+apps/emails/urls.py
+  → New: path('<int:pk>/whitelist/', views.whitelist_sender, name='whitelist_sender')
+```
+
+**Data flow:**
+
+```
+Pipeline poll cycle
+  → spam_filter.is_spam(email_msg) called
+  → [NEW] check SpamWhitelist.objects.filter(sender_email=from_address).exists()
+      → if True: return None (skip spam filter entirely, go to AI)
+  → [EXISTING] run _SPAM_RE regex
+      → if match: return TriageResult(is_spam=True)
+  → return None (clean email)
+
+User marks email "not spam" in dashboard
+  → POST /emails/<pk>/whitelist/
+  → whitelist_sender view:
+      1. SpamWhitelist.objects.get_or_create(sender_email=email.from_address, ...)
+      2. ActivityLog.objects.create(action='whitelist_added', ...)
+      3. HTMX partial response: remove "not spam" button, show "Whitelisted" badge
+```
+
+**Performance note:** The whitelist DB query on every email is safe at this scale (~50 emails/day,
+whitelist likely <100 entries). Use `db_index=True` on `sender_email`. No caching needed.
+
+**New migrations:** 1 (SpamWhitelist model)
+
+---
+
+### 5. Chat Notification UX Improvements
+
+**What changes:** `apps/emails/services/chat_notifier.py` internals only. No model changes, no URL changes, no template changes. Purely service-layer work.
+
+**Current state:** 4 notify methods, all building Cards v2 dicts manually inline. Cards are functional but sparse.
+
+**Integration points:**
+
+```
+apps/emails/services/chat_notifier.py
+  → Modify notify_new_emails(): richer card — add category breakdown widget, SLA urgency indicator
+  → Modify notify_assignment(): add SLA deadline widget to card
+  → Modify notify_personal_breach(): improve urgency formatting — hours/minutes, color coding via emoji
+  → Modify notify_breach_summary(): add per-category breakdown section
+  → Optional refactor: extract _build_email_widget() helper to DRY up repeated widget patterns
+  → Optional: move card-building into separate builder functions for testability
+
+SystemConfig (read path only — no new keys unless adding new notification triggers)
+  → Existing: quiet_hours_start, quiet_hours_end, tracker_url — no change
+  → New if needed: sla_alert_threshold_minutes (when to post SLA warnings)
+```
+
+**SLA alert notification (new trigger, if in scope):**
+
+```
+apps/emails/management/commands/run_scheduler.py
+  → Existing SLA check job may call ChatNotifier.notify_breach_summary()
+  → New: per-assignee breach alerts (notify_personal_breach) if not already wired up
+  → No new scheduler jobs needed — attach to existing SLA check interval
+```
+
+**No new models, no new URLs, no migrations.**
+
+---
+
+## System Overview — v2.2 Component Map
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                         Browser (4-5 users)                          │
+├──────────────────────────────────────────────────────────────────────┤
+│  Login (password + Google SSO)   Dashboard   Settings   Email Detail │
+└──────────────┬───────────────────────┬────────────┬──────────────────┘
+               │ HTTPS                 │ HTMX       │ HTMX
+┌──────────────▼───────────────────────▼────────────▼──────────────────┐
+│                    Django 4.2 (Gunicorn, web container)               │
+│                                                                       │
+│  apps/accounts/         apps/emails/              apps/core/          │
+│  ┌──────────────┐       ┌────────────────────┐    ┌───────────────┐  │
+│  │ User model   │       │ Email, ActivityLog │    │ SystemConfig  │  │
+│  │ pipeline.py  │       │ AssignmentRule     │    │ SoftDelete    │  │
+│  │  (NEW: SSO   │       │ SpamWhitelist(NEW) │    │ TimestampedM  │  │
+│  │  enforcer)   │       │ SLAConfig          │    └───────────────┘  │
+│  └──────────────┘       └────────────────────┘                       │
+│                                                                       │
+│  social_django (NEW)    services/                                     │
+│  ┌──────────────┐       ┌─────────────────────────────────────────┐  │
+│  │ UserSocial   │       │ spam_filter.py  (+ whitelist check)     │  │
+│  │ Auth tables  │       │ chat_notifier.py (richer cards)         │  │
+│  └──────────────┘       │ pipeline.py     (unchanged)             │  │
+│                          │ ai_processor.py (unchanged)             │  │
+│                          │ gmail_poller.py (unchanged)             │  │
+│                          └─────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
+               │
+┌──────────────▼──────────────────────────────────────────────────────┐
+│           PostgreSQL 12.3 (taiga-docker-taiga-db-1)                 │
+│  + social_django tables (new)                                        │
+│  + emails_spamwhitelist (new)                                        │
+│  + existing: emails_email, core_systemconfig, accounts_user, etc.   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Component Responsibilities — New vs Modified
+
+| Component | Status | Responsibility |
+|-----------|--------|----------------|
+| `apps/accounts/pipeline.py` | NEW | Social-auth pipeline step — enforce @vidarbhainfotech.com |
+| `apps/emails/models.py:SpamWhitelist` | NEW | Per-sender whitelist, FK to User |
+| `apps/emails/views.py:whitelist_sender` | NEW | POST endpoint for "not spam" action |
+| `social_django` tables | NEW (via migrate) | Store Google OAuth tokens, link to User |
+| `templates/registration/login.html` | MODIFIED | Add Google SSO button |
+| `templates/base.html` | MODIFIED | Logo + brand colors |
+| `templates/emails/settings.html` | MODIFIED | Grouped sections, type-aware inputs |
+| `apps/emails/services/spam_filter.py:is_spam()` | MODIFIED | Check whitelist before regex |
+| `apps/emails/services/chat_notifier.py` | MODIFIED | Richer card widgets, better SLA display |
+| `config/settings/base.py` | MODIFIED | social_django apps + OAuth settings |
+| `config/urls.py` | MODIFIED | Add social_django URL include |
+| `apps/emails/views.py:settings_view` | MODIFIED | New settings sections / inputs |
+| All other files | UNCHANGED | Pipeline, gmail_poller, ai_processor, etc. |
+
+---
+
+## Build Order and Dependencies
+
+Dependencies drive order. Features that require no other v2.2 feature can go first.
+
+```
+Phase 1 — Foundation (no inter-feature dependencies)
+  ├── Google OAuth SSO
+  │     → Blocks nothing, but other features depend on having real users to test
+  │     → Must be first: team will use SSO from day 1 of v2.2
+  └── VIPL Branding
+        → Zero dependencies, purely visual
+        → Can overlap with Phase 1 (different files)
+
+Phase 2 — Data + UX
+  ├── Spam Whitelisting
+  │     → Depends on: User model (for added_by FK) — already exists
+  │     → New model + migration + view + template change
+  │     → Can be built independently of SSO (doesn't need OAuth users)
+  └── Settings Page Overhaul
+        → Depends on: knowing what new SystemConfig keys v2.2 adds (whitelist settings?)
+        → Build after spam whitelist model is defined (if whitelist settings surface here)
+
+Phase 3 — Polish
+  └── Chat Notification UX
+        → Zero dependencies on other v2.2 features
+        → Pure internal service refactor
+        → Best done last: least risk, can ship incrementally
+```
+
+**Recommended build order:**
+
+1. SSO (OAuth plumbing + domain enforcement + login template)
+2. Branding (logo + color swap in base.html — parallel with SSO if different developer)
+3. Spam Whitelist model + migration + spam_filter.py integration
+4. Whitelist "not spam" action in dashboard detail panel
+5. Settings page overhaul (now knows all new config keys from steps 1-4)
+6. Chat notification card improvements
+
+---
+
+## Integration Risks
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| social-auth pipeline order misconfiguration allows non-VIPL Google accounts | MEDIUM | HIGH | Add `enforce_domain` pipeline step AND `WHITELISTED_DOMAINS` setting — belt + suspenders |
+| SpamWhitelist DB query adds latency to poll cycle | LOW | LOW | Indexed query, <100 rows, negligible |
+| settings_view template rewrite breaks existing save endpoints | MEDIUM | MEDIUM | Each save endpoint is an independent POST — rewrite template section by section, test each |
+| base.html brand color change breaks existing component styles | LOW | LOW | Colors defined as CSS custom properties in @theme block — change once, propagates everywhere |
+| Google OAuth redirect_uri mismatch in production | MEDIUM | HIGH | Set `SOCIAL_AUTH_GOOGLE_OAUTH2_REDIRECT_URI` explicitly; add to GCP OAuth consent screen authorized URIs |
+
+---
+
+## External Service Integration
+
+| Service | Integration Pattern | Files Touched | Notes |
+|---------|---------------------|---------------|-------|
+| Google OAuth 2.0 | social-auth pipeline via `social_django` | settings, urls, accounts/pipeline.py | `hd` param hints domain; whitelist enforces it |
+| Google Chat | Existing webhook, card dict modification | chat_notifier.py | No new webhook URLs; modify card structure only |
+| Gmail API | Unchanged | gmail_poller.py | Domain-wide delegation not affected by SSO |
+| Claude AI | Unchanged | ai_processor.py | Not affected by any v2.2 feature |
+
+---
+
+## Internal Boundaries
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `spam_filter.is_spam()` ↔ `SpamWhitelist` | Django ORM (DB read) | New dependency: spam_filter.py gains a Django import for the first time |
+| `social_django` ↔ `accounts.User` | social-auth pipeline creates User via `get_or_create` | New users get `role=MEMBER` by default — admin must manually set role=ADMIN post-login |
+| `whitelist_sender` view ↔ `spam_filter.py` | Function call: `add_to_whitelist()` | Keep whitelist mutation logic in spam_filter.py, not in the view |
+| Settings view ↔ `SystemConfig` | ORM read/write (existing pattern) | No change to boundary — only template changes |
+
+**Critical note on spam_filter.py:** This module currently has no Django imports (`# No Django imports` per CLAUDE.md service table). Adding a `SpamWhitelist` ORM query will change that. This is acceptable — the module is called only from `pipeline.py` which already runs inside Django — but the module-level comment and service table in CLAUDE.md should be updated.
+
+---
+
+## Anti-Patterns to Avoid
+
+### Storing OAuth credentials in SystemConfig
+
+**What:** Putting GOOGLE_OAUTH_CLIENT_ID or CLIENT_SECRET in the SystemConfig DB table.
+**Why bad:** Secrets in the database are hard to rotate, visible to Django admin users, and not encrypted at rest.
+**Instead:** Environment variables in `.env` (prod) or Docker Compose env section. Same pattern as ANTHROPIC_API_KEY.
+
+### Blocking the pipeline on whitelist DB queries
+
+**What:** Making `is_spam()` raise or return errors when the DB is unavailable.
+**Why bad:** The pipeline already handles failures gracefully. A whitelist lookup failure should be non-fatal.
+**Instead:** Wrap the whitelist query in try/except, log the error, and fall through to regex check.
+
+### Rebuilding the settings page as a new URL
+
+**What:** Creating `/settings/` as a new app or view instead of modifying `emails:settings`.
+**Why bad:** Breaks existing sidebar nav link, existing URL references, and the existing save endpoint pattern.
+**Instead:** Modify the template and view in place. The existing URL `/emails/settings/` stays.
+
+### Requiring SSO exclusively (removing password login)
+
+**What:** Removing `LoginView` from `accounts/urls.py` after SSO is deployed.
+**Why bad:** If Google OAuth is misconfigured or Google has an outage, there is no recovery path. Shreyas cannot log in to fix it.
+**Instead:** Keep password login on the existing form. SSO button is additive.
+
+---
+
+## Sources
+
+- Firsthand codebase analysis: `apps/accounts/`, `apps/emails/services/`, `apps/core/models.py`, `templates/base.html`, `config/settings/base.py` — HIGH confidence
+- [social-auth-app-django: SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS](https://python-social-auth.readthedocs.io/en/latest/configuration/django.html) — MEDIUM confidence (docs verified via search)
+- [django-allauth Google provider docs](https://docs.allauth.org/en/latest/socialaccount/providers/google.html) — reviewed and rejected in favor of social-auth
+- Google Chat Cards v2 widget structure: verified from existing `chat_notifier.py` implementation — HIGH confidence
+
+---
+
+*Architecture research for: VIPL Email Agent v2.2 Polish & Hardening*
+*Researched: 2026-03-14*
