@@ -23,7 +23,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.accounts.models import User
 from apps.core.models import SystemConfig
 from apps.emails.models import (
-    ActivityLog, AssignmentRule, CategoryVisibility, Email, SLAConfig,
+    ActivityLog, AssignmentRule, CategoryVisibility, Email, SLAConfig, SpamWhitelist,
 )
 from apps.emails.services.assignment import assign_email as _assign_email
 from apps.emails.services.assignment import change_status as _change_status
@@ -546,6 +546,9 @@ def settings_view(request):
         url = SystemConfig.get(f"chat_webhook_{cat.lower()}", "") or ""
         category_webhooks.append({"category": cat, "webhook_url": url})
 
+    # Whitelist entries for Whitelist tab
+    whitelist_entries = SpamWhitelist.objects.select_related("added_by").all()
+
     context = {
         "active_tab": active_tab,
         "team_members": team_members,
@@ -557,6 +560,7 @@ def settings_view(request):
         "monitored_inboxes": monitored_inboxes,
         "config_groups": config_groups,
         "category_webhooks": category_webhooks,
+        "whitelist_entries": whitelist_entries,
     }
     return render(request, "emails/settings.html", context)
 
@@ -612,6 +616,7 @@ def settings_rules_save(request):
         "category": category,
         "rules": rules,
         "team_members": team_members,
+        "save_success": True,
     })
 
 
@@ -646,6 +651,7 @@ def settings_visibility_save(request):
         "team_members": team_members,
         "visibility_by_user": visibility_by_user,
         "valid_categories": VALID_CATEGORIES,
+        "save_success": True,
     })
 
 
@@ -695,6 +701,7 @@ def settings_sla_save(request):
         "sla_matrix": sla_matrix,
         "valid_priorities": VALID_PRIORITIES,
         "valid_categories": VALID_CATEGORIES,
+        "save_success": True,
     })
 
 
@@ -724,6 +731,7 @@ def settings_inboxes_save(request):
 
     return render(request, "emails/_inboxes_tab.html", {
         "monitored_inboxes": current,
+        "save_success": True,
     })
 
 
@@ -792,6 +800,74 @@ def settings_webhooks_save(request):
         "category_webhooks": category_webhooks,
         "save_success": True,
     })
+
+
+# ---------------------------------------------------------------------------
+# Whitelist management
+# ---------------------------------------------------------------------------
+
+
+def _render_whitelist_tab(request, save_success=False, save_message="", save_error=""):
+    """Render the whitelist tab partial with current entries."""
+    entries = SpamWhitelist.objects.select_related("added_by").all()
+    return render(request, "emails/_whitelist_tab.html", {
+        "whitelist_entries": entries,
+        "save_success": save_success,
+        "save_message": save_message,
+        "save_error": save_error,
+    })
+
+
+@login_required
+@require_POST
+def whitelist_add(request):
+    """Add a new whitelist entry. Admin only."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    entry = request.POST.get("entry", "").strip().lower()
+    entry_type = request.POST.get("entry_type", "email")
+
+    if not entry:
+        return _render_whitelist_tab(
+            request, save_error="Entry cannot be empty.",
+        )
+
+    if entry_type not in ("email", "domain"):
+        entry_type = "email"
+
+    from django.db import IntegrityError, transaction
+
+    try:
+        with transaction.atomic():
+            SpamWhitelist.objects.create(
+                entry=entry,
+                entry_type=entry_type,
+                added_by=request.user,
+            )
+        return _render_whitelist_tab(
+            request, save_success=True,
+            save_message=f"{entry} added to whitelist.",
+        )
+    except IntegrityError:
+        return _render_whitelist_tab(
+            request, save_error=f"{entry} is already whitelisted.",
+        )
+
+
+@login_required
+@require_POST
+def whitelist_delete(request, pk):
+    """Soft-delete a whitelist entry. Admin only."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    wl = get_object_or_404(SpamWhitelist, pk=pk)
+    wl.delete()  # soft delete via SoftDeleteModel
+    return _render_whitelist_tab(
+        request, save_success=True,
+        save_message="Entry removed from whitelist.",
+    )
 
 
 # ---------------------------------------------------------------------------
