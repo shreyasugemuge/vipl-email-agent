@@ -10,7 +10,7 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.0.0-rc1
+**GitHub Release**: v2.3.2
 
 ## Stack
 - **Backend**: Django 4.2 LTS + PostgreSQL 12.3 (Taiga's existing DB container)
@@ -20,7 +20,7 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 - **Notifications**: Google Chat Cards v2 webhook with quiet hours
 - **Deployment**: Docker Compose (web + scheduler containers), Nginx on host
 - **Local Dev**: `runserver` + native Caddy (`triage.local` → `localhost:8000`)
-- **Auth**: Simple password auth (Django built-in)
+- **Auth**: Google OAuth SSO (django-allauth) — @vidarbhainfotech.com only
 - **CI/CD**: Release-triggered → test → SSH deploy to VM
 
 ## Architecture
@@ -270,7 +270,7 @@ Pull requests and direct pushes to `main` run tests only — no deploy.
 
 ### GCP Projects
 - **cm-sec-455407** (cm-sec): VMs — taiga, cm-sec-app-server, cm-sec-db-server
-- **utilities-vipl**: Secrets (Secret Manager: anthropic-api-key, chat-webhook-url, sa-key)
+- **utilities-vipl**: Secrets (Secret Manager: anthropic-api-key, chat-webhook-url, sa-key, google-oauth-client-id, google-oauth-client-secret)
 - Service account: `vipl-email-agent@utilities-vipl.iam.gserviceaccount.com`
 
 ### GitHub Secrets (10)
@@ -279,19 +279,42 @@ GOOGLE_SHEET_ID, GOOGLE_CHAT_WEBHOOK_URL, MONITORED_INBOXES, ADMIN_EMAIL, EOD_RE
 
 ### VM Production Environment
 ```
+# Django
 DJANGO_SETTINGS_MODULE=config.settings.prod
 SECRET_KEY=<generated>
-DATABASE_URL=postgres://vipl_agent:vipl_agent_2026@taiga-docker-taiga-db-1:5432/vipl_email_agent
 ALLOWED_HOSTS=triage.vidarbhainfotech.com,localhost
-ANTHROPIC_API_KEY=<from Secret Manager>
+DATABASE_URL=postgres://vipl_agent:vipl_agent_2026@taiga-docker-taiga-db-1:5432/vipl_email_agent
+
+# Google OAuth SSO
+GOOGLE_OAUTH_CLIENT_ID=<from GCP Console>
+GOOGLE_OAUTH_CLIENT_SECRET=<from GCP Console>
+SUPERADMIN_EMAILS=shreyas@vidarbhainfotech.com
+
+# Google Workspace
 GOOGLE_SERVICE_ACCOUNT_KEY_PATH=/app/secrets/service-account.json
-GOOGLE_CHAT_WEBHOOK_URL=<from Secret Manager>
 MONITORED_INBOXES=info@vidarbhainfotech.com,sales@vidarbhainfotech.com
+
+# AI + Notifications
+ANTHROPIC_API_KEY=<from Secret Manager>
+GOOGLE_CHAT_WEBHOOK_URL=<from Secret Manager>
 ADMIN_EMAIL=shreyas@vidarbhainfotech.com
 EOD_RECIPIENTS=shreyas@vidarbhainfotech.com
+GOOGLE_SHEET_ID=<from Google Sheets>
 ```
 
 ## Security
+
+### Google OAuth SSO
+- **Provider**: Google OAuth 2.0 via django-allauth
+- **Domain lock**: Only `@vidarbhainfotech.com` emails (enforced server-side via `hd` claim in adapter)
+- **Superadmin**: `SUPERADMIN_EMAILS` env var (comma-separated) — auto-approved as admin on first login
+- **New users**: Created as inactive `member`, pending admin approval at `/accounts/team/`
+- **Auto-link**: Existing users auto-linked to Google account on first SSO login (safe — domain verified)
+- **Manual signup**: Disabled (`ACCOUNT_SIGNUP_ENABLED = False`)
+- **OAuth credentials**: Stored in GCP Secret Manager (`google-oauth-client-id`, `google-oauth-client-secret` in `utilities-vipl`)
+- **Adapter**: `apps/accounts/adapters.py` — `VIPLSocialAccountAdapter`
+- **Callback URL**: `https://triage.vidarbhainfotech.com/accounts/google/login/callback/`
+- **Template overrides**: `templates/account/` and `templates/socialaccount/` (styled, no ugly defaults)
 
 ### Domain-Wide Delegation
 Scopes: `gmail.readonly`, `gmail.labels`, `gmail.modify`, `gmail.send`, `spreadsheets`, `drive`
@@ -299,10 +322,13 @@ Scopes: `gmail.readonly`, `gmail.labels`, `gmail.modify`, `gmail.send`, `spreads
 ### Protections
 - Non-root Docker user
 - SA key in Secret Manager only (gitignored)
+- OAuth credentials in env vars (never in code)
+- Superadmin emails in env vars (never hardcoded)
 - Prompt injection defense in system prompt (10 rules)
 - Input sanitization before AI processing (control chars, null bytes)
 - HTML sanitization via `nh3` (XSS protection in email body display)
 - Workload Identity Federation for CI/CD (no SA key in GitHub)
+- Cloudflare handles HTTP→HTTPS redirect; Nginx hardcodes `X-Forwarded-Proto: https`
 
 ## Two-Tier AI (Cost Optimization)
 - **Default**: Claude Haiku (`claude-haiku-4-5-20251001`) — ~$0.25/MTok
