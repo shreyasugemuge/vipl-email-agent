@@ -48,8 +48,8 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             cd /opt/vipl-email-agent
-            git fetch --tags
-            git checkout ${{ github.event.release.tag_name }}
+            sudo git fetch --all --tags --force
+            sudo git checkout ${{ github.event.release.tag_name }}
             sudo docker compose build --no-cache
             sudo docker compose up -d
             sleep 5
