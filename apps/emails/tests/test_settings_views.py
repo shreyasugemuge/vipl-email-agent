@@ -600,6 +600,37 @@ class TestWhitelistViews:
         assert "test@example.com" in content
 
 
+class TestWhitelistSender:
+    def test_whitelist_sender_creates_entry(self, admin_client, admin_user, db):
+        email = _create_email(db, from_address="spammer@example.com")
+        response = admin_client.post(
+            reverse("emails:whitelist_sender", args=[email.pk]),
+        )
+        assert response.status_code == 200
+        assert SpamWhitelist.objects.filter(entry="spammer@example.com", entry_type="email").exists()
+        content = response.content.decode()
+        assert "added to whitelist" in content
+
+    def test_whitelist_sender_rejects_non_admin(self, member_client, member_user, db):
+        email = _create_email(db)
+        response = member_client.post(
+            reverse("emails:whitelist_sender", args=[email.pk]),
+        )
+        assert response.status_code == 403
+
+    def test_whitelist_sender_handles_already_whitelisted(self, admin_client, admin_user, db):
+        email = _create_email(db, from_address="known@example.com")
+        SpamWhitelist.objects.create(
+            entry="known@example.com", entry_type="email", added_by=admin_user,
+        )
+        response = admin_client.post(
+            reverse("emails:whitelist_sender", args=[email.pk]),
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "already whitelisted" in content
+
+
 class TestSaveFeedbackBanners:
     def test_sla_save_returns_save_success(self, admin_client, db):
         response = admin_client.post(

@@ -871,6 +871,44 @@ def whitelist_delete(request, pk):
 
 
 # ---------------------------------------------------------------------------
+# Whitelist sender from email detail
+# ---------------------------------------------------------------------------
+
+
+@login_required
+@require_POST
+def whitelist_sender(request, pk):
+    """Whitelist the sender of an email. Admin only. Returns feedback HTML fragment."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    email = get_object_or_404(Email, pk=pk)
+    sender = email.from_address.strip().lower()
+
+    from django.db import IntegrityError, transaction
+
+    try:
+        with transaction.atomic():
+            SpamWhitelist.objects.create(
+                entry=sender,
+                entry_type="email",
+                added_by=request.user,
+                reason=f"Whitelisted from email #{pk}",
+            )
+        msg = f"{sender} added to whitelist"
+    except IntegrityError:
+        msg = f"{sender} is already whitelisted"
+
+    html = (
+        f'<div class="px-3 py-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 '
+        f'border border-emerald-200/60 rounded-md inline-block'
+        f'" style="animation: fadeOut 1s ease-out 2s forwards;">{msg}</div>'
+        f'<style>@keyframes fadeOut {{ from {{ opacity: 1; }} to {{ opacity: 0; }} }}</style>'
+    )
+    return _HttpResponse(html)
+
+
+# ---------------------------------------------------------------------------
 # Activity log
 # ---------------------------------------------------------------------------
 
