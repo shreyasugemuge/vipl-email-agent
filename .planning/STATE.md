@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: — Polish & Hardening
-status: executing
-stopped_at: Phase 1 Plan 01 checkpoint - awaiting human verification
-last_updated: "2026-03-14T11:33:18Z"
-last_activity: 2026-03-14 — Phase 1 Plan 01 auto tasks complete, checkpoint pending
+status: completed
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-03-14T14:07:04.221Z"
+last_activity: 2026-03-14 — Phase 1 complete
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 1
-  completed_plans: 0
-  percent: 10
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-14)
 
 ## Current Position
 
-Phase: 1 of 4 — Google OAuth SSO
-Plan: 1 of 1
-Status: Checkpoint - awaiting human verification
-Last activity: 2026-03-14 — Phase 1 Plan 01 auto tasks complete
+Phase: 2 of 4 — Settings & Spam Whitelist
+Plan: 0 of ? (planning needed)
+Status: Phase 1 complete, Phase 2 not yet planned
+Last activity: 2026-03-14 — Phase 1 complete
 
-Progress: [#░░░░░░░░░] 10%
+Progress: [###░░░░░░░] 25%
 
 ## Accumulated Context
 
@@ -44,6 +44,7 @@ Progress: [#░░░░░░░░░] 10%
 - Settings-based allauth APP config instead of DB SocialApp records
 - Migration helper module outside migrations/ to avoid Django loader conflict
 - Signal-based welcome toast with try/except for test resilience
+- [Phase 01]: Dev-login role picker bypass for local development without OAuth
 
 ### Pending Todos
 
@@ -51,17 +52,16 @@ None.
 
 ### Blockers/Concerns
 
-- GCP OAuth credentials must be created manually before Phase 1 can be tested end-to-end
 - VIPL logo asset needed from Google Drive before Phase 3
 
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
-| 01 | 01 | 7min | 2 | 14 |
+| 01 | 01 | 7min | 3 | 21 |
 
 ## Session Continuity
 
-Last session: 2026-03-14T11:33:18Z
-Stopped at: Phase 1 Plan 01 checkpoint - awaiting human verification
-Next: Approve checkpoint, then Phase 1 Plan 01 is complete
+Last session: 2026-03-14T14:07:04.220Z
+Stopped at: Completed 01-01-PLAN.md
+Next: Plan and execute Phase 2 (Settings & Spam Whitelist)

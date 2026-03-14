@@ -50,7 +50,7 @@ patterns-established:
   - "Avatar-aware sidebar: img tag for OAuth users, initials for password users"
   - "Toast animation: CSS keyframe in/out with JS auto-remove after 4s"
 
-requirements-completed: [R1.1, R1.2, R1.3, R1.4, R1.5]
+requirements-completed: [R1.1, R1.2, R1.3, R1.4, R1.5, R1.6]
 
 # Metrics
 duration: 7min
@@ -66,8 +66,8 @@ completed: 2026-03-14
 - **Duration:** 7 min
 - **Started:** 2026-03-14T11:26:14Z
 - **Completed:** 2026-03-14T11:33:18Z
-- **Tasks:** 2 of 2 auto tasks (+ 1 checkpoint pending)
-- **Files modified:** 14
+- **Tasks:** 3 of 3 (2 auto + 1 checkpoint approved)
+- **Files modified:** 21
 
 ## Accomplishments
 - Google OAuth SSO via django-allauth with server-side domain enforcement (email + hd claim)
@@ -84,6 +84,8 @@ Each task was committed atomically:
 1. **Task 1 RED: OAuth test scaffolding** - `766c871` (test)
 2. **Task 1 GREEN: allauth, adapter, avatar_url, data migration** - `234bd8e` (feat)
 3. **Task 2: Login page, sidebar avatar, welcome toast** - `0cd2497` (feat)
+4. **Task 3: Checkpoint human-verify** - approved (GCP OAuth credentials configured)
+5. **Post-checkpoint: Dev-login role picker** - `56359f1` (feat)
 
 ## Files Created/Modified
 - `apps/accounts/adapters.py` - VIPLSocialAccountAdapter: domain enforcement, inactive new users, avatar update
@@ -100,6 +102,8 @@ Each task was committed atomically:
 - `apps/accounts/apps.py` - ready() imports signals module
 - `templates/registration/login.html` - Dual-mode: Google button or password form
 - `templates/base.html` - Avatar-aware sidebar, welcome toast with CSS animations
+- `templates/registration/dev_login.html` - Dev-only role picker login (DEBUG mode bypass)
+- `apps/accounts/views.py` - DevLoginView for local development without OAuth
 
 ## Decisions Made
 - Used settings-based allauth APP config (not DB SocialApp) to avoid needing DB setup for tests and simpler deployment
@@ -149,9 +153,13 @@ None beyond the auto-fixed deviations above.
 - Set `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` in `.env`
 
 ## Next Phase Readiness
-- OAuth infrastructure complete, awaiting GCP credentials for end-to-end verification (checkpoint)
-- R1.6 (GCP OAuth credentials) requires manual setup before checkpoint can be approved
+- OAuth infrastructure complete, GCP credentials configured, checkpoint approved
+- Dev-login bypass available for local development without OAuth
 - Phase 2 (Settings + Spam Whitelist) has no dependency on OAuth and can proceed independently
+
+## Self-Check: PASSED
+
+All key files verified present (7/7). All commits verified (4/4).
 
 ---
 *Phase: 01-google-oauth-sso*
