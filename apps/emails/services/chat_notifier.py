@@ -25,6 +25,25 @@ PRIORITY_EMOJI = {
 
 PRIORITY_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
 
+
+def _sla_urgency_label(priority: str, overdue_minutes: float = None) -> str:
+    """Format a consistent urgency label: emoji + PRIORITY [| duration overdue].
+
+    Used across all notify methods for uniform urgency display.
+    """
+    emoji = PRIORITY_EMOJI.get(priority, PRIORITY_EMOJI.get("MEDIUM", ""))
+    label = f"{emoji} {priority}"
+    if overdue_minutes:
+        if overdue_minutes < 60:
+            duration = f"{int(overdue_minutes)}m"
+        else:
+            hours = int(overdue_minutes // 60)
+            mins = int(overdue_minutes % 60)
+            duration = f"{hours}h {mins}m" if mins else f"{hours}h"
+        label += f" | {duration} overdue"
+    return label
+
+
 VIPL_FOOTER_SECTION = {
     "widgets": [
         {"textParagraph": {"text": "<i>Sent by VIPL Email Triage</i>"}}
@@ -148,7 +167,6 @@ class ChatNotifier:
             return False
 
         pri = getattr(email, "priority", "MEDIUM") or "MEDIUM"
-        emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
         subject = (getattr(email, "subject", "") or "")[:50]
         category = getattr(email, "category", "") or ""
         from_name = getattr(email, "from_name", "") or ""
@@ -162,7 +180,7 @@ class ChatNotifier:
         card = {
             "header": self._branded_header(
                 title=f"Assigned to {assignee_name}: {subject}",
-                subtitle=f"{emoji} {pri} | {category}",
+                subtitle=f"{_sla_urgency_label(pri)} | {category}",
             ),
             "sections": [
                 {
@@ -251,20 +269,26 @@ class ChatNotifier:
         email_widgets = []
         for email in sorted_emails[:3]:
             pri = getattr(email, "priority", "MEDIUM") or "MEDIUM"
-            emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
             subject = (getattr(email, "subject", "") or "")[:60]
             category = getattr(email, "category", "") or ""
             assignee = getattr(email, "ai_suggested_assignee", "") or "Unassigned"
 
-            line = f"{emoji} {subject}"
-            email_widgets.append(
-                {
-                    "decoratedText": {
-                        "topLabel": f"{category} -> {assignee}",
-                        "text": line,
-                    }
+            line = f"{_sla_urgency_label(pri)} {subject}"
+            widget = {
+                "decoratedText": {
+                    "topLabel": f"{category} -> {assignee}",
+                    "text": line,
                 }
-            )
+            }
+
+            pk = getattr(email, "pk", None)
+            if pk:
+                widget["decoratedText"]["button"] = {
+                    "text": "Open",
+                    "onClick": {"openLink": {"url": f"{self._tracker_url}/emails/?selected={pk}"}},
+                }
+
+            email_widgets.append(widget)
 
         if count > 3:
             email_widgets.append(
@@ -345,13 +369,26 @@ class ChatNotifier:
         # Top offenders widgets
         offender_widgets = []
         for offender in top_offenders:
-            emoji = PRIORITY_EMOJI.get(offender.get("priority", "MEDIUM"), PRIORITY_EMOJI["MEDIUM"])
-            offender_widgets.append({
+            pri = offender.get("priority", "MEDIUM")
+            overdue_min = offender.get("overdue_minutes")
+            urgency = _sla_urgency_label(pri, overdue_min)
+            emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
+
+            widget = {
                 "decoratedText": {
-                    "topLabel": f"{offender.get('assignee_name', 'Unknown')} | {offender.get('overdue_str', '?')} overdue",
+                    "topLabel": urgency,
                     "text": f"{emoji} {offender.get('subject', '')}",
                 }
-            })
+            }
+
+            pk = offender.get("pk")
+            if pk:
+                widget["decoratedText"]["button"] = {
+                    "text": "Open",
+                    "onClick": {"openLink": {"url": f"{self._tracker_url}/emails/?selected={pk}"}},
+                }
+
+            offender_widgets.append(widget)
 
         # Per-assignee breakdown widgets
         assignee_widgets = []
@@ -520,22 +557,23 @@ class ChatNotifier:
         email_widgets = []
         for item in breached_emails:
             pri = item.get("priority", "MEDIUM")
-            emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
             overdue_min = item.get("overdue_minutes", 0)
-            # Format overdue
-            if overdue_min < 60:
-                overdue_str = f"{int(overdue_min)}m"
-            else:
-                h = int(overdue_min // 60)
-                m = int(overdue_min % 60)
-                overdue_str = f"{h}h {m}m" if m else f"{h}h"
 
-            email_widgets.append({
+            widget = {
                 "decoratedText": {
-                    "topLabel": f"{emoji} {pri} | {overdue_str} overdue",
+                    "topLabel": _sla_urgency_label(pri, overdue_min),
                     "text": item.get("subject", "")[:50],
                 }
-            })
+            }
+
+            pk = item.get("pk")
+            if pk:
+                widget["decoratedText"]["button"] = {
+                    "text": "Open",
+                    "onClick": {"openLink": {"url": f"{self._tracker_url}/emails/?selected={pk}"}},
+                }
+
+            email_widgets.append(widget)
 
         card = {
             "header": self._branded_header(
