@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: — Polish & Hardening
-status: completed
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-14T14:58:18.729Z"
-last_activity: 2026-03-14 — Phase 1 complete
+status: in-progress
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-14T15:24:27Z"
+last_activity: 2026-03-14 — Phase 2 Plan 1 complete
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 25
+  total_plans: 4
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-14)
 ## Current Position
 
 Phase: 2 of 4 — Settings & Spam Whitelist
-Plan: 0 of ? (planning needed)
-Status: Phase 1 complete, Phase 2 not yet planned
-Last activity: 2026-03-14 — Phase 1 complete
+Plan: 1 of 2
+Status: Phase 2 Plan 1 complete, Plan 2 remaining
+Last activity: 2026-03-14 — Phase 2 Plan 1 complete
 
-Progress: [###░░░░░░░] 25%
+Progress: [#####░░░░░] 50%
 
 ## Accumulated Context
 
@@ -45,6 +45,9 @@ Progress: [###░░░░░░░] 25%
 - Migration helper module outside migrations/ to avoid Django loader conflict
 - Signal-based welcome toast with try/except for test resilience
 - [Phase 01]: Dev-login role picker bypass for local development without OAuth
+- [Phase 02-01]: Whitelist check in pipeline.py (not spam_filter.py) to keep spam_filter pure/Django-free
+- [Phase 02-01]: Case-insensitive matching via __iexact for email and domain whitelist entries
+- [Phase 02-01]: Hidden input fallback for checkbox (browser sends false when unchecked)
 
 ### Pending Todos
 
@@ -59,9 +62,10 @@ None.
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 01 | 01 | 7min | 3 | 21 |
+| 02 | 01 | 4min | 2 | 7 |
 
 ## Session Continuity
 
-Last session: 2026-03-14T14:58:18.727Z
-Stopped at: Phase 2 context gathered
-Next: Plan and execute Phase 2 (Settings & Spam Whitelist)
+Last session: 2026-03-14T15:24:27Z
+Stopped at: Completed 02-01-PLAN.md
+Next: Execute Phase 2 Plan 2 (Whitelist settings tab, whitelist sender button, SLA save feedback)

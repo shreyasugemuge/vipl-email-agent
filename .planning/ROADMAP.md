@@ -14,7 +14,7 @@
   - [ ] 01-PLAN.md — allauth setup, domain adapter, login redesign, avatar, welcome toast
 - [ ] Phase 2: Settings Page + Spam Whitelist (0/2 plans) — planned
   Plans:
-  - [ ] 02-01-PLAN.md — SpamWhitelist model, pipeline whitelist integration, bool normalization, config editor improvements
+  - [x] 02-01-PLAN.md — SpamWhitelist model, pipeline whitelist integration, bool normalization, config editor improvements
   - [ ] 02-02-PLAN.md — Whitelist settings tab, whitelist sender button, SLA save feedback
 - [ ] Phase 3: VIPL Branding (0/0 plans) — not started
 - [ ] Phase 4: Chat Notification Polish (0/0 plans) — not started
@@ -144,7 +144,7 @@
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. Google OAuth SSO | v2.2 | 0/1 | Checkpoint pending | — |
-| 2. Settings + Spam Whitelist | v2.2 | 0/2 | Planned | — |
+| 2. Settings + Spam Whitelist | v2.2 | 1/2 | In progress | — |
 | 3. VIPL Branding | v2.2 | 0/0 | Not started | — |
 | 4. Chat Notification Polish | v2.2 | 0/0 | Not started | — |
 | 1. Foundation | v2.1 | 2/2 | Complete | 2026-03-09 |
