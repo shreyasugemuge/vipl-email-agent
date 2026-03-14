@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block page_title %}Team Management{% endblock %}
+{% block nav_team_active %}nav-active{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+
+    <!-- Stats bar -->
+    <div class="bg-white border-b border-slate-200/60 px-4 md:px-5 py-2.5 shrink-0">
+        <div class="flex items-center gap-2.5 overflow-x-auto">
+            <div class="stat-card flex items-center gap-2.5 px-3.5 py-2 bg-slate-50 rounded-lg border border-slate-200/60 min-w-[120px]">
+                <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-slate-200/60">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-base font-extrabold text-slate-800 leading-none tabular-nums">{{ stats.total }}</div>
+                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Total</div>
+                </div>
+            </div>
+            <div class="stat-card flex items-center gap-2.5 px-3.5 py-2 bg-emerald-50/60 rounded-lg border border-emerald-200/50 min-w-[120px]">
+                <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-emerald-200/50">
+                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-base font-extrabold text-emerald-700 leading-none tabular-nums">{{ stats.active }}</div>
+                    <div class="text-[9px] font-bold text-emerald-500/70 uppercase tracking-wider mt-0.5">Active</div>
+                </div>
+            </div>
+            <div class="stat-card flex items-center gap-2.5 px-3.5 py-2 bg-amber-50/60 rounded-lg border border-amber-200/50 min-w-[120px]">
+                <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-amber-200/50">
+                    <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-base font-extrabold text-amber-700 leading-none tabular-nums">{{ stats.pending }}</div>
+                    <div class="text-[9px] font-bold text-amber-500/70 uppercase tracking-wider mt-0.5">Pending Approval</div>
+                </div>
+            </div>
+            <div class="stat-card flex items-center gap-2.5 px-3.5 py-2 bg-indigo-50/60 rounded-lg border border-indigo-200/50 min-w-[120px]">
+                <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-indigo-200/50">
+                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="text-base font-extrabold text-indigo-700 leading-none tabular-nums">{{ stats.admins }}</div>
+                    <div class="text-[9px] font-bold text-indigo-500/70 uppercase tracking-wider mt-0.5">Admins</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info banner -->
+    <div class="bg-blue-50/60 border-b border-blue-100 px-4 md:px-5 py-2 shrink-0">
+        <p class="text-[11px] text-blue-600 font-medium">
+            Users appear here after signing in with Google. Approve them to grant dashboard access, then assign their categories.
+        </p>
+    </div>
+
+    <!-- User list -->
+    <div class="flex-1 overflow-auto p-4 md:p-5">
+        <div class="bg-white rounded-xl border border-slate-200/60 overflow-hidden">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-slate-100">
+                        <th class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">User</th>
+                        <th class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</th>
+                        <th class="text-center px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Role</th>
+                        <th class="text-center px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                        <th class="text-center px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">See All</th>
+                        <th class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Categories</th>
+                        <th class="text-center px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="team-list">
+                    {% for u in team_users %}
+                    {% include "accounts/_user_row.html" with u=u request_user=request.user valid_categories=valid_categories %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

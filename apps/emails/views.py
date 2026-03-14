@@ -106,6 +106,18 @@ def email_list(request):
     if inbox:
         qs = qs.filter(to_inbox=inbox)
 
+    # --- Search ---
+    search_query = request.GET.get("q", "").strip()
+    if search_query:
+        from django.db.models import Q
+        qs = qs.filter(
+            Q(subject__icontains=search_query)
+            | Q(body__icontains=search_query)
+            | Q(from_name__icontains=search_query)
+            | Q(from_address__icontains=search_query)
+            | Q(ai_summary__icontains=search_query)
+        )
+
     # --- Sort ---
     sort = request.GET.get("sort", "-created_at")
     if sort not in ALLOWED_SORT_FIELDS:
@@ -179,6 +191,7 @@ def email_list(request):
         "query_params": query_params.urlencode(),
         "dash_stats": dash_stats,
         "user_visible_categories": user_visible_categories,
+        "current_search": search_query,
     }
 
     if getattr(request, "htmx", False):

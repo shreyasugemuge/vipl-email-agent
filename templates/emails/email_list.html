@@ -100,9 +100,15 @@
 
             <!-- Filters -->
             <div class="hidden md:flex items-center gap-1.5 flex-1">
+                <input type="search" name="q" value="{{ current_search }}"
+                       placeholder="Search emails..."
+                       hx-get="{% url 'emails:email_list' %}" hx-target="#email-list" hx-push-url="true"
+                       hx-trigger="keyup changed delay:300ms, search"
+                       hx-include="[name='status'],[name='priority'],[name='category'],[name='inbox'],[name='view'],[name='sort']"
+                       class="text-[11px] font-semibold border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-indigo-500/15 focus:border-indigo-300 transition-all w-44 placeholder:text-slate-300">
                 <select name="status"
                         hx-get="{% url 'emails:email_list' %}" hx-target="#email-list" hx-push-url="true"
-                        hx-include="[name='priority'],[name='category'],[name='inbox'],[name='view'],[name='sort']"
+                        hx-include="[name='q'],[name='priority'],[name='category'],[name='inbox'],[name='view'],[name='sort']"
                         class="text-[11px] font-semibold border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-indigo-500/15 focus:border-indigo-300 transition-all cursor-pointer">
                     <option value="">Status</option>
                     {% for value, label in statuses %}
@@ -111,7 +117,7 @@
                 </select>
                 <select name="priority"
                         hx-get="{% url 'emails:email_list' %}" hx-target="#email-list" hx-push-url="true"
-                        hx-include="[name='status'],[name='category'],[name='inbox'],[name='view'],[name='sort']"
+                        hx-include="[name='q'],[name='status'],[name='category'],[name='inbox'],[name='view'],[name='sort']"
                         class="text-[11px] font-semibold border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-indigo-500/15 focus:border-indigo-300 transition-all cursor-pointer">
                     <option value="">Priority</option>
                     {% for p in priorities %}
@@ -120,7 +126,7 @@
                 </select>
                 <select name="category"
                         hx-get="{% url 'emails:email_list' %}" hx-target="#email-list" hx-push-url="true"
-                        hx-include="[name='status'],[name='priority'],[name='inbox'],[name='view'],[name='sort']"
+                        hx-include="[name='q'],[name='status'],[name='priority'],[name='inbox'],[name='view'],[name='sort']"
                         class="text-[11px] font-semibold border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-indigo-500/15 focus:border-indigo-300 transition-all cursor-pointer">
                     <option value="">Category</option>
                     {% for cat in categories %}
@@ -129,7 +135,7 @@
                 </select>
                 <select name="inbox"
                         hx-get="{% url 'emails:email_list' %}" hx-target="#email-list" hx-push-url="true"
-                        hx-include="[name='status'],[name='priority'],[name='category'],[name='view'],[name='sort']"
+                        hx-include="[name='q'],[name='status'],[name='priority'],[name='category'],[name='view'],[name='sort']"
                         class="text-[11px] font-semibold border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-indigo-500/15 focus:border-indigo-300 transition-all cursor-pointer">
                     <option value="">Inbox</option>
                     {% for ib in inboxes %}
