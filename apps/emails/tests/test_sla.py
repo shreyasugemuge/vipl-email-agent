@@ -374,6 +374,51 @@ class TestBreachSummary:
         overdue_vals = [o["overdue_minutes"] for o in summary["top_offenders"]]
         assert overdue_vals == sorted(overdue_vals, reverse=True)
 
+    def test_entry_contains_pk(self):
+        """build_breach_summary per_assignee entries have 'pk' key matching email.pk."""
+        from apps.emails.services.sla import build_breach_summary
+        from django.utils import timezone as tz
+
+        user = User.objects.create_user(
+            username="member_pk1", password="pass", email="pk1@vidarbhainfotech.com",
+            first_name="Pk", last_name="One",
+        )
+        past = tz.now() - timedelta(hours=2)
+        e1 = _create_email(
+            None, message_id="msg_pk_entry_1",
+            sla_respond_deadline=past, assigned_to=user, priority="HIGH",
+        )
+
+        respond_qs = Email.objects.filter(pk=e1.pk)
+        summary = build_breach_summary(respond_qs, Email.objects.none())
+
+        entries = summary["per_assignee"]["Pk One"]
+        assert len(entries) == 1
+        assert "pk" in entries[0], "Entry should contain 'pk' key"
+        assert entries[0]["pk"] == e1.pk
+
+    def test_top_offenders_contain_pk(self):
+        """build_breach_summary top_offenders entries have 'pk' key."""
+        from apps.emails.services.sla import build_breach_summary
+        from django.utils import timezone as tz
+
+        user = User.objects.create_user(
+            username="member_pk2", password="pass", email="pk2@vidarbhainfotech.com",
+        )
+        past = tz.now() - timedelta(hours=3)
+        e1 = _create_email(
+            None, message_id="msg_pk_top_1",
+            sla_respond_deadline=past, assigned_to=user, priority="HIGH",
+        )
+
+        respond_qs = Email.objects.filter(pk=e1.pk)
+        summary = build_breach_summary(respond_qs, Email.objects.none())
+
+        assert len(summary["top_offenders"]) >= 1
+        for offender in summary["top_offenders"]:
+            assert "pk" in offender, "Top offender should contain 'pk' key"
+        assert summary["top_offenders"][0]["pk"] == e1.pk
+
     def test_per_assignee_grouping(self):
         """per_assignee groups breached emails by assignee name."""
         from apps.emails.services.sla import build_breach_summary

@@ -1,5 +1,6 @@
 """Tests for ChatNotifier -- Google Chat webhook notifications."""
 
+import json
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -441,3 +442,274 @@ class TestChatCardBranding:
         assert len(widgets) == 1
         assert "textParagraph" in widgets[0]
         assert "Sent by VIPL Email Triage" in widgets[0]["textParagraph"]["text"]
+
+
+# ===========================================================================
+# SLA Urgency Label Helper Tests (NEW -- Plan 04-01)
+# ===========================================================================
+
+
+class TestSlaUrgencyLabel:
+    """Test the _sla_urgency_label helper function."""
+
+    def test_with_overdue_hours_and_minutes(self):
+        """_sla_urgency_label('HIGH', 150) returns emoji + 'HIGH | 2h 30m overdue'."""
+        from apps.emails.services.chat_notifier import _sla_urgency_label, PRIORITY_EMOJI
+
+        result = _sla_urgency_label("HIGH", 150)
+        expected = f"{PRIORITY_EMOJI['HIGH']} HIGH | 2h 30m overdue"
+        assert result == expected
+
+    def test_without_overdue(self):
+        """_sla_urgency_label('MEDIUM') returns emoji + 'MEDIUM' (no overdue suffix)."""
+        from apps.emails.services.chat_notifier import _sla_urgency_label, PRIORITY_EMOJI
+
+        result = _sla_urgency_label("MEDIUM")
+        expected = f"{PRIORITY_EMOJI['MEDIUM']} MEDIUM"
+        assert result == expected
+
+    def test_minutes_only(self):
+        """_sla_urgency_label('LOW', 45) returns emoji + 'LOW | 45m overdue'."""
+        from apps.emails.services.chat_notifier import _sla_urgency_label, PRIORITY_EMOJI
+
+        result = _sla_urgency_label("LOW", 45)
+        expected = f"{PRIORITY_EMOJI['LOW']} LOW | 45m overdue"
+        assert result == expected
+
+    def test_exact_hours(self):
+        """_sla_urgency_label('CRITICAL', 120) returns emoji + 'CRITICAL | 2h overdue'."""
+        from apps.emails.services.chat_notifier import _sla_urgency_label, PRIORITY_EMOJI
+
+        result = _sla_urgency_label("CRITICAL", 120)
+        expected = f"{PRIORITY_EMOJI['CRITICAL']} CRITICAL | 2h overdue"
+        assert result == expected
+
+    def test_zero_overdue(self):
+        """_sla_urgency_label('HIGH', 0) returns emoji + 'HIGH' (zero treated as no overdue)."""
+        from apps.emails.services.chat_notifier import _sla_urgency_label, PRIORITY_EMOJI
+
+        result = _sla_urgency_label("HIGH", 0)
+        expected = f"{PRIORITY_EMOJI['HIGH']} HIGH"
+        assert result == expected
+
+    def test_none_overdue(self):
+        """_sla_urgency_label('HIGH', None) returns emoji + 'HIGH'."""
+        from apps.emails.services.chat_notifier import _sla_urgency_label, PRIORITY_EMOJI
+
+        result = _sla_urgency_label("HIGH", None)
+        expected = f"{PRIORITY_EMOJI['HIGH']} HIGH"
+        assert result == expected
+
+
+# ===========================================================================
+# Open Button Tests (NEW -- Plan 04-01)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestOpenButtonsAcrossCards:
+    """Test inline Open buttons on breach, summary, and new-email cards."""
+
+    TRACKER_URL = "https://triage.vidarbhainfotech.com"
+
+    def _config_side_effect(self, key, default=None):
+        mapping = {"tracker_url": self.TRACKER_URL}
+        return mapping.get(key, default)
+
+    def _make_email(self, **kwargs):
+        defaults = {
+            "pk": 42,
+            "subject": "Test Email Subject",
+            "from_address": "sender@example.com",
+            "from_name": "Test Sender",
+            "to_inbox": "info@vidarbhainfotech.com",
+            "priority": "HIGH",
+            "category": "Sales Lead",
+            "ai_suggested_assignee": "Shreyas",
+            "ai_summary": "A test summary",
+        }
+        defaults.update(kwargs)
+        mock_email = MagicMock()
+        for k, v in defaults.items():
+            setattr(mock_email, k, v)
+        return mock_email
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_personal_breach_has_open_button(self, mock_config_cls, mock_post):
+        """notify_personal_breach card widgets have decoratedText.button with openLink URL."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        breached = [
+            {"subject": "Overdue email", "priority": "HIGH", "overdue_minutes": 120, "pk": 42},
+        ]
+        notifier.notify_personal_breach("Alice", breached)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        # Find the decoratedText widget with a button
+        found_button = False
+        for section in card["sections"]:
+            for widget in section.get("widgets", []):
+                dt = widget.get("decoratedText", {})
+                btn = dt.get("button", {})
+                url = btn.get("onClick", {}).get("openLink", {}).get("url", "")
+                if "/emails/?selected=" in url:
+                    found_button = True
+        assert found_button, "Personal breach card should have inline Open button with /emails/?selected= URL"
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_personal_breach_open_button_uses_pk(self, mock_config_cls, mock_post):
+        """The Open button URL ends with the correct pk value."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        breached = [
+            {"subject": "Overdue email", "priority": "HIGH", "overdue_minutes": 120, "pk": 99},
+        ]
+        notifier.notify_personal_breach("Alice", breached)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        found_pk = False
+        for section in card["sections"]:
+            for widget in section.get("widgets", []):
+                dt = widget.get("decoratedText", {})
+                btn = dt.get("button", {})
+                url = btn.get("onClick", {}).get("openLink", {}).get("url", "")
+                if url.endswith("selected=99"):
+                    found_pk = True
+        assert found_pk, "Open button URL should end with correct pk (99)"
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_breach_summary_top_offenders_have_open_button(self, mock_config_cls, mock_post):
+        """notify_breach_summary top offender widgets have inline Open buttons."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        summary = {
+            "total_respond_breached": 2,
+            "total_ack_breached": 0,
+            "top_offenders": [
+                {"subject": "Urgent", "assignee_name": "Alice", "priority": "HIGH",
+                 "overdue_str": "2h", "overdue_minutes": 120, "pk": 77},
+            ],
+            "per_assignee": {"Alice": [{"subject": "Urgent", "priority": "HIGH", "overdue_minutes": 120}]},
+        }
+        notifier.notify_breach_summary(summary)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        found_button = False
+        for section in card["sections"]:
+            for widget in section.get("widgets", []):
+                dt = widget.get("decoratedText", {})
+                btn = dt.get("button", {})
+                url = btn.get("onClick", {}).get("openLink", {}).get("url", "")
+                if "/emails/?selected=77" in url:
+                    found_button = True
+        assert found_button, "Breach summary top offender should have inline Open button"
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_new_emails_have_open_button(self, mock_config_cls, mock_post):
+        """notify_new_emails per-email widgets have inline Open buttons using email.pk."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_new_emails([self._make_email(pk=55)])
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        found_button = False
+        for section in card["sections"]:
+            for widget in section.get("widgets", []):
+                dt = widget.get("decoratedText", {})
+                btn = dt.get("button", {})
+                url = btn.get("onClick", {}).get("openLink", {}).get("url", "")
+                if "/emails/?selected=55" in url:
+                    found_button = True
+        assert found_button, "New emails card should have inline Open button per email"
+
+
+# ===========================================================================
+# Urgency Label Consistency Tests (NEW -- Plan 04-01)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestUrgencyLabelConsistency:
+    """Test that urgency labels are consistent across card types."""
+
+    TRACKER_URL = "https://triage.vidarbhainfotech.com"
+
+    def _config_side_effect(self, key, default=None):
+        mapping = {"tracker_url": self.TRACKER_URL}
+        return mapping.get(key, default)
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_personal_breach_uses_urgency_label_format(self, mock_config_cls, mock_post):
+        """topLabel in personal breach card matches _sla_urgency_label format."""
+        from apps.emails.services.chat_notifier import _sla_urgency_label
+
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        breached = [
+            {"subject": "Overdue email", "priority": "HIGH", "overdue_minutes": 150, "pk": 42},
+        ]
+        notifier.notify_personal_breach("Alice", breached)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+
+        expected_label = _sla_urgency_label("HIGH", 150)
+        found = False
+        for section in card["sections"]:
+            for widget in section.get("widgets", []):
+                dt = widget.get("decoratedText", {})
+                if dt.get("topLabel") == expected_label:
+                    found = True
+        assert found, f"Personal breach topLabel should match _sla_urgency_label format: {expected_label}"
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_breach_summary_uses_urgency_label_format(self, mock_config_cls, mock_post):
+        """topLabel in breach summary offender widgets matches _sla_urgency_label format."""
+        from apps.emails.services.chat_notifier import _sla_urgency_label
+
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        summary = {
+            "total_respond_breached": 1,
+            "total_ack_breached": 0,
+            "top_offenders": [
+                {"subject": "Urgent", "assignee_name": "Alice", "priority": "CRITICAL",
+                 "overdue_str": "3h", "overdue_minutes": 180, "pk": 10},
+            ],
+            "per_assignee": {"Alice": [{"subject": "Urgent", "priority": "CRITICAL", "overdue_minutes": 180}]},
+        }
+        notifier.notify_breach_summary(summary)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+
+        expected_label = _sla_urgency_label("CRITICAL", 180)
+        found = False
+        for section in card["sections"]:
+            for widget in section.get("widgets", []):
+                dt = widget.get("decoratedText", {})
+                if dt.get("topLabel") == expected_label:
+                    found = True
+        assert found, f"Breach summary offender topLabel should match: {expected_label}"
