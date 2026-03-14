@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from apps.emails.services.chat_notifier import ChatNotifier
+from apps.emails.services.chat_notifier import ChatNotifier, VIPL_FOOTER_SECTION
 
 
 class TestChatNotifierInit:
@@ -133,3 +133,299 @@ class TestNotifyNewEmails:
         result = notifier.notify_new_emails([])
         assert result is True
         mock_post.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestChatCardBranding:
+    """Verify VIPL branding (header icon + footer) on all 5 card types."""
+
+    TRACKER_URL = "https://triage.vidarbhainfotech.com"
+
+    def _make_email(self, **kwargs):
+        """Create a mock Email model instance."""
+        defaults = {
+            "pk": 42,
+            "subject": "Test Email Subject",
+            "from_address": "sender@example.com",
+            "from_name": "Test Sender",
+            "to_inbox": "info@vidarbhainfotech.com",
+            "priority": "HIGH",
+            "category": "Sales Lead",
+            "ai_suggested_assignee": "Shreyas",
+            "ai_summary": "A test summary",
+        }
+        defaults.update(kwargs)
+        mock_email = MagicMock()
+        for k, v in defaults.items():
+            setattr(mock_email, k, v)
+        return mock_email
+
+    def _make_assignee(self, **kwargs):
+        """Create a mock User model instance."""
+        defaults = {"username": "shreyas", "get_full_name": lambda: "Shreyas Uge"}
+        defaults.update(kwargs)
+        mock_user = MagicMock()
+        for k, v in defaults.items():
+            if callable(v):
+                getattr(mock_user, k).return_value = v()
+            else:
+                setattr(mock_user, k, v)
+        return mock_user
+
+    def _config_side_effect(self, key, default=None):
+        """SystemConfig.get mock that returns tracker_url and no quiet hours."""
+        mapping = {
+            "tracker_url": self.TRACKER_URL,
+        }
+        return mapping.get(key, default)
+
+    def _extract_card(self, mock_post):
+        """Extract the card dict from the httpx.post mock call."""
+        payload = mock_post.call_args.kwargs["json"]
+        return payload["cardsV2"][0]["card"]
+
+    def _assert_branded_header(self, card):
+        """Assert card header has VIPL icon branding."""
+        header = card["header"]
+        assert "imageUrl" in header, "Card header missing imageUrl"
+        assert "vipl-icon.jpg" in header["imageUrl"], (
+            f"imageUrl should contain vipl-icon.jpg, got: {header['imageUrl']}"
+        )
+        assert header["imageType"] == "CIRCLE", (
+            f"imageType should be CIRCLE, got: {header.get('imageType')}"
+        )
+        assert header["imageAltText"] == "VIPL Logo", (
+            f"imageAltText should be 'VIPL Logo', got: {header.get('imageAltText')}"
+        )
+
+    def _assert_footer_section(self, card):
+        """Assert the last section contains the VIPL footer textParagraph."""
+        sections = card["sections"]
+        last_section = sections[-1]
+        widgets = last_section.get("widgets", [])
+        footer_found = False
+        for widget in widgets:
+            tp = widget.get("textParagraph", {})
+            if "Sent by VIPL Email Triage" in tp.get("text", ""):
+                footer_found = True
+                break
+        assert footer_found, (
+            f"Last section should contain 'Sent by VIPL Email Triage' footer. "
+            f"Last section widgets: {widgets}"
+        )
+
+    def _assert_imageurl_uses_tracker_url(self, card):
+        """Assert imageUrl is built from tracker_url, not hardcoded localhost."""
+        header = card["header"]
+        assert header["imageUrl"].startswith(self.TRACKER_URL), (
+            f"imageUrl should start with tracker_url ({self.TRACKER_URL}), "
+            f"got: {header['imageUrl']}"
+        )
+
+    # --- notify_assignment ---
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_notify_assignment_has_branded_header(self, mock_config_cls, mock_post):
+        """notify_assignment card header contains imageUrl with vipl-icon.jpg."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_assignment(self._make_email(), self._make_assignee())
+
+        card = self._extract_card(mock_post)
+        self._assert_branded_header(card)
+        self._assert_imageurl_uses_tracker_url(card)
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_notify_assignment_has_footer(self, mock_config_cls, mock_post):
+        """notify_assignment card has footer section with 'Sent by VIPL Email Triage'."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_assignment(self._make_email(), self._make_assignee())
+
+        card = self._extract_card(mock_post)
+        self._assert_footer_section(card)
+
+    # --- notify_new_emails ---
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_notify_new_emails_has_branded_header(self, mock_config_cls, mock_post):
+        """notify_new_emails card header contains imageUrl with vipl-icon.jpg."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_new_emails([self._make_email()])
+
+        card = self._extract_card(mock_post)
+        self._assert_branded_header(card)
+        self._assert_imageurl_uses_tracker_url(card)
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_notify_new_emails_has_footer(self, mock_config_cls, mock_post):
+        """notify_new_emails card has footer section with 'Sent by VIPL Email Triage'."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_new_emails([self._make_email()])
+
+        card = self._extract_card(mock_post)
+        self._assert_footer_section(card)
+
+    # --- notify_breach_summary ---
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_notify_breach_summary_has_branded_header(self, mock_config_cls, mock_post):
+        """notify_breach_summary card header contains imageUrl."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_breach_summary({
+            "total_respond_breached": 2,
+            "total_ack_breached": 1,
+            "top_offenders": [],
+            "per_assignee": {},
+        })
+
+        card = self._extract_card(mock_post)
+        self._assert_branded_header(card)
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_notify_breach_summary_has_footer(self, mock_config_cls, mock_post):
+        """notify_breach_summary card has footer section."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_breach_summary({
+            "total_respond_breached": 2,
+            "total_ack_breached": 1,
+            "top_offenders": [],
+            "per_assignee": {},
+        })
+
+        card = self._extract_card(mock_post)
+        self._assert_footer_section(card)
+
+    # --- notify_eod_summary ---
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_notify_eod_summary_has_branded_header(self, mock_config_cls, mock_post):
+        """notify_eod_summary card header contains imageUrl."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_eod_summary({
+            "date": "2026-03-14",
+            "received_today": 10,
+            "closed_today": 5,
+            "total_open": 15,
+            "unassigned": 3,
+            "sla_breaches": 1,
+            "avg_time_to_acknowledge": "12m",
+            "avg_time_to_respond": "45m",
+            "worst_overdue": [],
+        })
+
+        card = self._extract_card(mock_post)
+        self._assert_branded_header(card)
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_notify_eod_summary_has_footer(self, mock_config_cls, mock_post):
+        """notify_eod_summary card has footer section."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_eod_summary({
+            "date": "2026-03-14",
+            "received_today": 10,
+            "closed_today": 5,
+            "total_open": 15,
+            "unassigned": 3,
+            "sla_breaches": 1,
+            "avg_time_to_acknowledge": "12m",
+            "avg_time_to_respond": "45m",
+            "worst_overdue": [],
+        })
+
+        card = self._extract_card(mock_post)
+        self._assert_footer_section(card)
+
+    # --- notify_personal_breach ---
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_notify_personal_breach_has_branded_header(self, mock_config_cls, mock_post):
+        """notify_personal_breach card header contains imageUrl."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_personal_breach("Shreyas", [
+            {"subject": "Overdue email", "priority": "HIGH", "overdue_minutes": 120},
+        ])
+
+        card = self._extract_card(mock_post)
+        self._assert_branded_header(card)
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_notify_personal_breach_has_footer(self, mock_config_cls, mock_post):
+        """notify_personal_breach card has footer section."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_personal_breach("Shreyas", [
+            {"subject": "Overdue email", "priority": "HIGH", "overdue_minutes": 120},
+        ])
+
+        card = self._extract_card(mock_post)
+        self._assert_footer_section(card)
+
+    # --- Cross-cutting: imageUrl uses tracker_url ---
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_imageurl_uses_tracker_url_not_hardcoded(self, mock_config_cls, mock_post):
+        """imageUrl uses tracker_url from SystemConfig (not hardcoded localhost)."""
+        custom_url = "https://custom.example.com"
+
+        def config_side_effect(key, default=None):
+            if key == "tracker_url":
+                return custom_url
+            return default
+
+        mock_config_cls.get.side_effect = config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        notifier.notify_new_emails([self._make_email()])
+
+        card = self._extract_card(mock_post)
+        assert card["header"]["imageUrl"] == f"{custom_url}/static/img/vipl-icon.jpg"
+
+    # --- VIPL_FOOTER_SECTION constant ---
+
+    def test_vipl_footer_section_constant_exists(self):
+        """VIPL_FOOTER_SECTION constant is importable and has correct structure."""
+        assert "widgets" in VIPL_FOOTER_SECTION
+        widgets = VIPL_FOOTER_SECTION["widgets"]
+        assert len(widgets) == 1
+        assert "textParagraph" in widgets[0]
+        assert "Sent by VIPL Email Triage" in widgets[0]["textParagraph"]["text"]
