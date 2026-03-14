@@ -19,7 +19,16 @@ from .models import User
 
 logger = logging.getLogger(__name__)
 ALLOWED_DOMAIN = "vidarbhainfotech.com"
-SUPERADMIN_EMAIL = "shreyas@vidarbhainfotech.com"
+
+
+def _get_superadmin_emails():
+    """Return set of superadmin emails from SUPERADMIN_EMAILS env var.
+
+    Comma-separated list. These users are auto-approved as admin on first
+    Google SSO login. Defined in env, never hardcoded.
+    """
+    raw = os.environ.get("SUPERADMIN_EMAILS", "")
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
 
 
 class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
@@ -66,7 +75,7 @@ class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
         email = user.email or extra_data.get("email", "")
 
         # Superadmin: auto-approve with full access
-        if email == SUPERADMIN_EMAIL:
+        if email.lower() in _get_superadmin_emails():
             user.is_active = True
             user.role = User.Role.ADMIN
             user.is_staff = True
