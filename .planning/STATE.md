@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: — Polish & Hardening
-status: in-progress
-stopped_at: Completed 04-01-PLAN.md (checkpoint:human-verify pending)
-last_updated: "2026-03-14T17:32:57Z"
+status: verifying
+stopped_at: "Completed 04-01-PLAN.md (checkpoint:human-verify pending)"
+last_updated: "2026-03-14T17:58:40.917Z"
 last_activity: 2026-03-14 — Phase 4 Plan 1 complete (urgency labels + Open buttons + pk in breach dicts)
 progress:
   total_phases: 4
