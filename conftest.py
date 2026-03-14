@@ -68,7 +68,6 @@ def make_triage_result(**overrides):
         "category": "General Inquiry",
         "priority": "MEDIUM",
         "summary": "Test email summary for unit testing.",
-        "draft_reply": "Thank you for your email. We will get back to you shortly.",
         "reasoning": "Standard test email.",
         "language": "English",
         "tags": ["test"],

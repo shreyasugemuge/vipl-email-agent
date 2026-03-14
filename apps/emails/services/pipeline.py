@@ -82,7 +82,6 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
             "category": triage.category,
             "priority": triage.priority,
             "ai_summary": triage.summary,
-            "ai_draft_reply": triage.draft_reply,
             "ai_reasoning": triage.reasoning,
             "ai_model_used": triage.model_used,
             "ai_tags": triage.tags,
@@ -306,7 +305,6 @@ def retry_failed_emails(ai_processor, gmail_poller):
             email_obj.category = triage.category
             email_obj.priority = triage.priority
             email_obj.ai_summary = triage.summary
-            email_obj.ai_draft_reply = triage.draft_reply
             email_obj.ai_reasoning = triage.reasoning
             email_obj.ai_model_used = triage.model_used
             email_obj.ai_tags = triage.tags

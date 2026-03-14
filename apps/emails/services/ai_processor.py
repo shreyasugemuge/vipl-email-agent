@@ -69,10 +69,6 @@ TRIAGE_TOOL = {
                 "type": "string",
                 "description": "A 2-3 sentence summary of the email content and intent.",
             },
-            "draft_reply": {
-                "type": "string",
-                "description": "A professional reply draft for the team to review and send.",
-            },
             "reasoning": {
                 "type": "string",
                 "description": "Brief explanation of why this category and priority were chosen.",
@@ -103,7 +99,7 @@ TRIAGE_TOOL = {
                 "description": "Primary language of the email.",
             },
         },
-        "required": ["category", "priority", "summary", "draft_reply", "reasoning", "tags", "language"],
+        "required": ["category", "priority", "summary", "reasoning", "tags", "language"],
     },
 }
 
@@ -334,7 +330,6 @@ class AIProcessor:
                     category=category,
                     priority=priority,
                     summary=data.get("summary", ""),
-                    draft_reply=data.get("draft_reply", ""),
                     reasoning=data.get("reasoning", ""),
                     suggested_assignee=assignee_name,
                     suggested_assignee_detail=assignee_detail,
@@ -414,7 +409,6 @@ class AIProcessor:
             category="General Inquiry",
             priority="MEDIUM",
             summary="[AI processing failed -- manual triage required]",
-            draft_reply="",
             reasoning=f"AI error: {error_msg}",
             suggested_assignee="",
             tags=["needs-manual-triage"],

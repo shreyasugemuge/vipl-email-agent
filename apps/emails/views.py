@@ -818,6 +818,15 @@ def _render_whitelist_tab(request, save_success=False, save_message="", save_err
     })
 
 
+def _unspam_matching_emails(entry: str, entry_type: str) -> int:
+    """Mark existing spam emails as not-spam when their sender matches a new whitelist entry."""
+    if entry_type == "email":
+        qs = Email.objects.filter(is_spam=True, from_address__iexact=entry)
+    else:  # domain
+        qs = Email.objects.filter(is_spam=True, from_address__iendswith=f"@{entry}")
+    return qs.update(is_spam=False)
+
+
 @login_required
 @require_POST
 def whitelist_add(request):
@@ -845,9 +854,12 @@ def whitelist_add(request):
                 entry_type=entry_type,
                 added_by=request.user,
             )
+        updated = _unspam_matching_emails(entry, entry_type)
+        msg = f"{entry} added to whitelist."
+        if updated:
+            msg += f" {updated} email(s) unmarked as spam."
         return _render_whitelist_tab(
-            request, save_success=True,
-            save_message=f"{entry} added to whitelist.",
+            request, save_success=True, save_message=msg,
         )
     except IntegrityError:
         return _render_whitelist_tab(
@@ -887,6 +899,7 @@ def whitelist_sender(request, pk):
 
     from django.db import IntegrityError, transaction
 
+    created = False
     try:
         with transaction.atomic():
             SpamWhitelist.objects.create(
@@ -895,17 +908,44 @@ def whitelist_sender(request, pk):
                 added_by=request.user,
                 reason=f"Whitelisted from email #{pk}",
             )
-        msg = f"{sender} added to whitelist"
+        created = True
+        updated = _unspam_matching_emails(sender, "email")
+        msg = f"{sender} whitelisted"
+        if updated:
+            msg += f" — {updated} email(s) unmarked as spam"
     except IntegrityError:
+        _unspam_matching_emails(sender, "email")
         msg = f"{sender} is already whitelisted"
 
-    html = (
-        f'<div class="px-3 py-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 '
-        f'border border-emerald-200/60 rounded-md inline-block'
-        f'" style="animation: fadeOut 1s ease-out 2s forwards;">{msg}</div>'
-        f'<style>@keyframes fadeOut {{ from {{ opacity: 1; }} to {{ opacity: 0; }} }}</style>'
+    # Reload email (is_spam may have changed)
+    email.refresh_from_db()
+
+    is_admin = request.user.is_staff or request.user.role == User.Role.ADMIN
+    team_members = []
+    if is_admin:
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # Re-render detail panel with feedback banner
+    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    detail_context["whitelist_msg"] = msg
+    detail_html = render_to_string(
+        "emails/_email_detail.html", detail_context, request=request,
     )
-    return _HttpResponse(html)
+
+    # OOB: update ALL cards from this sender (spam tags removed)
+    affected_emails = Email.objects.select_related("assigned_to").filter(
+        from_address__iexact=sender,
+        processing_status=Email.ProcessingStatus.COMPLETED,
+    )
+    oob_cards = ""
+    for affected in affected_emails:
+        oob_cards += render_to_string(
+            "emails/_email_card.html",
+            {"email": affected, "is_admin": is_admin, "team_members": team_members, "oob": True},
+            request=request,
+        )
+
+    return _HttpResponse(detail_html + oob_cards)
 
 
 # ---------------------------------------------------------------------------

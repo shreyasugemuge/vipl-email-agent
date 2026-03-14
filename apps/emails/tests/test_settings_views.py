@@ -608,8 +608,21 @@ class TestWhitelistSender:
         )
         assert response.status_code == 200
         assert SpamWhitelist.objects.filter(entry="spammer@example.com", entry_type="email").exists()
+
+    def test_whitelist_sender_unspams_existing_emails(self, admin_client, admin_user, db):
+        email = _create_email(db, from_address="spammer@example.com", is_spam=True)
+        admin_client.post(reverse("emails:whitelist_sender", args=[email.pk]))
+        email.refresh_from_db()
+        assert email.is_spam is False
+
+    def test_whitelist_sender_returns_detail_panel(self, admin_client, admin_user, db):
+        email = _create_email(db, from_address="spammer@example.com")
+        response = admin_client.post(
+            reverse("emails:whitelist_sender", args=[email.pk]),
+        )
         content = response.content.decode()
-        assert "added to whitelist" in content
+        # Returns refreshed detail panel with email subject
+        assert email.subject in content
 
     def test_whitelist_sender_rejects_non_admin(self, member_client, member_user, db):
         email = _create_email(db)
@@ -627,8 +640,6 @@ class TestWhitelistSender:
             reverse("emails:whitelist_sender", args=[email.pk]),
         )
         assert response.status_code == 200
-        content = response.content.decode()
-        assert "already whitelisted" in content
 
 
 class TestSaveFeedbackBanners:

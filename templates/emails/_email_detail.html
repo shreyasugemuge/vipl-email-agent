@@ -1,6 +1,13 @@
 {% load email_tags %}
 
 <div class="h-full flex flex-col overflow-hidden">
+    {% if whitelist_msg %}
+    <div class="px-5 py-2 bg-emerald-50 border-b border-emerald-200/60 text-xs font-medium text-emerald-700"
+         style="animation: fadeOut 1s ease-out 3s forwards;">
+        {{ whitelist_msg }}
+    </div>
+    <style>@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }</style>
+    {% endif %}
     <!-- Header -->
     <div class="px-5 py-3.5 bg-white border-b border-slate-200/60 shrink-0">
         <!-- Badges row -->
@@ -18,10 +25,20 @@
             {% if email.to_inbox %}
             <span class="px-2 py-0.5 rounded-md text-[9px] font-medium bg-slate-50 text-slate-400">{{ email.to_inbox }}</span>
             {% endif %}
+            {% if email.is_spam %}
+            <span class="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-red-100 text-red-700">Spam</span>
+            {% endif %}
         </div>
 
         <!-- Subject -->
-        <h2 class="text-[14px] font-bold text-slate-900 leading-snug mb-2.5">{{ email.subject }}</h2>
+        <h2 class="text-[14px] font-bold text-slate-900 leading-snug mb-1.5">{{ email.subject }}</h2>
+
+        <!-- AI Summary -->
+        {% if email.ai_summary %}
+        <p class="text-[12px] text-slate-500 leading-relaxed mb-2.5">{{ email.ai_summary }}</p>
+        {% else %}
+        <div class="mb-1"></div>
+        {% endif %}
 
         <!-- Sender row -->
         <div class="flex items-center justify-between gap-3">
@@ -192,7 +209,7 @@
                 {% endif %}
                 {% if is_admin %}
                 <form hx-post="{% url 'emails:whitelist_sender' email.pk %}"
-                      hx-target="#whitelist-feedback-{{ email.pk }}" hx-swap="innerHTML"
+                      hx-target="#detail-panel" hx-swap="innerHTML"
                       class="inline">
                     {% csrf_token %}
                     <button type="submit" class="inline-flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 transition-colors cursor-pointer border border-indigo-200/60">
@@ -206,7 +223,6 @@
             </div>
             {% endif %}
         </div>
-        <div id="whitelist-feedback-{{ email.pk }}" class="mt-1.5"></div>
     </div>
 
     <!-- Scrollable content -->
@@ -223,26 +239,6 @@
                 {% endif %}
             </div>
         </div>
-
-        <!-- AI Draft Reply -->
-        {% if email.ai_draft_reply %}
-        <details class="border-b border-slate-100 group">
-            <summary class="px-5 py-2.5 cursor-pointer hover:bg-slate-50/80 transition-colors flex items-center gap-2">
-                <svg class="w-3 h-3 text-slate-400 transition-transform duration-200 group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
-                </svg>
-                <div class="flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                    </svg>
-                    <span class="text-xs font-bold text-slate-600">AI Draft Reply</span>
-                </div>
-            </summary>
-            <div class="px-5 pb-3">
-                <div class="p-3 bg-indigo-50/50 rounded-lg text-[13px] text-slate-700 whitespace-pre-wrap leading-relaxed border border-indigo-100/60">{{ email.ai_draft_reply }}</div>
-            </div>
-        </details>
-        {% endif %}
 
         <!-- Attachments -->
         {% if attachments %}

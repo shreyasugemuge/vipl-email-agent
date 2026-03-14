@@ -55,22 +55,17 @@
                     <td class="px-3 py-2.5 text-slate-500">{{ wl.added_by.get_full_name|default:wl.added_by.username|default:"--" }}</td>
                     <td class="px-3 py-2.5 text-slate-400 tabular-nums">{{ wl.created_at|date:"M d, Y" }}</td>
                     <td class="px-3 py-2.5">
-                        <div x-data="{ confirm: false }">
-                            <button x-show="!confirm" @click="confirm = true"
+                        <form hx-post="{% url 'emails:whitelist_delete' wl.pk %}"
+                              hx-target="#whitelist-content" hx-swap="innerHTML"
+                              class="inline">
+                            {% csrf_token %}
+                            <button type="submit"
                                     class="text-slate-300 hover:text-red-500 transition-colors" title="Delete">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
                             </button>
-                            <form x-show="confirm" hx-post="{% url 'emails:whitelist_delete' wl.pk %}"
-                                  hx-target="#whitelist-content" hx-swap="innerHTML"
-                                  class="inline-flex items-center gap-1">
-                                {% csrf_token %}
-                                <span class="text-[10px] text-red-500 font-medium">Sure?</span>
-                                <button type="submit" class="text-[10px] font-bold text-red-600 hover:text-red-700">Yes</button>
-                                <button type="button" @click="confirm = false" class="text-[10px] font-bold text-slate-400 hover:text-slate-600">No</button>
-                            </form>
-                        </div>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}
