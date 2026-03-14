@@ -51,7 +51,9 @@ jobs:
             sudo git fetch --all --tags --force
             sudo git checkout ${{ github.event.release.tag_name }}
             sudo docker compose build --no-cache
-            sudo docker compose up -d
+            sudo docker compose down
+            sudo docker compose up -d --force-recreate
             sleep 5
             sudo docker compose exec -T web python manage.py migrate --noinput
+            sudo docker compose exec -T web python manage.py collectstatic --noinput
             echo "Deployed ${{ github.event.release.tag_name }}"

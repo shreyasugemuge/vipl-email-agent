@@ -117,8 +117,10 @@ AUTHENTICATION_BACKENDS = [
 ACCOUNT_EMAIL_VERIFICATION = "none"  # No email verification loop
 ACCOUNT_LOGIN_METHODS = {"username"}  # Keep username-based password login working
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+ACCOUNT_SIGNUP_ENABLED = False  # No manual signup — Google SSO only
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = False  # SECURITY: prevent email-matching auto-connect
 SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_LOGIN_ON_GET = True  # Skip "Continue" intermediate page, go straight to Google
 SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.VIPLSocialAccountAdapter"
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
@@ -135,7 +137,3 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 SOCIALACCOUNT_STORE_TOKENS = False  # We don't need access tokens after login
-
-# OAuth credentials (from environment)
-GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
-GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")

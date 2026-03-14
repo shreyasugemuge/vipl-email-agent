@@ -1,0 +1,78 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIPL Triage | Sign Up Not Available</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @theme {
+            --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+            --color-primary-50: #fdf2f8;
+            --color-primary-100: #fce7f1;
+            --color-primary-200: #f9c4db;
+            --color-primary-300: #f49bbe;
+            --color-primary-400: #e06a97;
+            --color-primary-500: #c94476;
+            --color-primary-600: #a83362;
+            --color-primary-700: #8b2852;
+            --color-primary-800: #742345;
+            --color-primary-900: #5f1d3a;
+        }
+    </style>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #0f1117 0%, #1a0f1a 35%, #2d1525 50%, #1a0f1a 65%, #0f1117 100%);
+            background-size: 300% 300%;
+            animation: gradient-shift 20s ease infinite;
+        }
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .glass-card {
+            background: rgba(255,255,255,0.97);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="gradient-bg font-sans min-h-screen flex items-center justify-center p-4">
+    <div class="fixed top-1/3 left-1/5 w-64 h-64 bg-primary-500/8 rounded-full blur-3xl"></div>
+    <div class="fixed bottom-1/4 right-1/4 w-80 h-80 bg-primary-500/8 rounded-full blur-3xl"></div>
+
+    <div class="w-full max-w-[380px] relative z-10">
+        <div class="glass-card rounded-2xl shadow-2xl shadow-black/20 border border-white/20 p-9">
+            <div class="text-center mb-8">
+                <img src="{% static 'img/vipl-logo-full.jpg' %}" alt="Vidarbha Infotech Pvt. Ltd." class="max-w-[220px] mx-auto mb-4">
+                <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Google Sign-In Only</h1>
+                <p class="text-[13px] text-slate-400 mt-1.5 font-medium">Manual registration is not available.</p>
+            </div>
+
+            <div class="mb-6 p-3 bg-blue-50 border border-blue-100 rounded-xl text-[13px] text-blue-600 font-medium flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                    <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                Use your @vidarbhainfotech.com Google account to sign in. An admin will approve your access.
+            </div>
+
+            <a href="/accounts/login/"
+               class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white text-sm font-bold rounded-xl hover:from-primary-700 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:ring-offset-2 transition-all shadow-lg shadow-primary-500/20 active:scale-[0.98]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Go to Sign In
+            </a>
+        </div>
+        <p class="text-center text-[11px] text-primary-200/30 mt-6 font-semibold tracking-wide">Vidarbha Infotech Private Limited</p>
+    </div>
+</body>
+</html>

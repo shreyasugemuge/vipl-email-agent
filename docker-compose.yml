@@ -23,7 +23,6 @@ services:
       - default
       - taiga
     volumes:
-      - static_files:/app/staticfiles
       - ./secrets:/app/secrets:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
@@ -48,9 +47,6 @@ services:
     depends_on:
       web:
         condition: service_healthy
-
-volumes:
-  static_files:
 
 networks:
   taiga:

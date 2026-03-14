@@ -30,9 +30,11 @@ CSRF_TRUSTED_ORIGINS = [
     if host.strip() and host.strip() != "localhost"
 ]
 
-# Whitenoise static file serving
+# Whitenoise static file serving (no manifest — prevents ValueError crashes
+# when referenced files are missing; cache busting is unnecessary since we
+# serve Tailwind/HTMX from CDN and only have a handful of static assets)
 STORAGES = {
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
