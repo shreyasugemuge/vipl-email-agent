@@ -48,17 +48,61 @@
 
 ---
 
-## Cross-Milestone Trends
+## Milestone: v2.2 — Polish & Hardening
 
-| Metric | v2.1 |
-|--------|------|
-| Phases | 7 |
-| Plans | 18 |
-| Days | 6 |
-| Tests | 257 |
-| LOC | 16,572 |
-| Commits | 140 |
-| Gaps found in audit | 11 (all closed) |
+**Shipped:** 2026-03-14
+**Phases:** 4 | **Plans:** 6
+
+### What Was Built
+- Google OAuth SSO with domain lock, admin approval flow, avatar display, welcome toast
+- Type-aware settings page with SpamWhitelist model and pipeline integration
+- Whitelist Sender button in email detail + management tab with HTMX add/delete
+- VIPL brand identity: logo assets, plum palette, favicon, page titles, copyright footer
+- Google Chat card branding: header icon + footer across all 5 card types
+- Inline Open buttons and consistent urgency labels in Chat notifications
+
+### What Worked
+- All 4 phases completed in a single day (research through verification)
+- TDD discipline: 92 new tests across 4 phases, zero regressions
+- Cross-phase integration was clean: phases touched separate domains (auth, settings, templates, services)
+- Human checkpoint for Chat card validation caught the real-world quiet hours issue
+- Audit found zero critical gaps (22/22 requirements, 6/6 E2E flows)
+
+### What Was Inefficient
+- ROADMAP.md phase checkboxes not auto-updated by execute-phase (some showed `[ ]` despite being complete)
+- Nyquist validation files created but left in draft — never filled in during execution
+- SUMMARY.md one_liner field was empty for all plans (summary-extract returned None)
+
+### Patterns Established
+- `_sla_urgency_label()` as module-level helper for cross-method formatting
+- `decoratedText.button` for inline action buttons in Cards v2 (not buttonList — union field)
+- pk passed through data dicts (not ORM import) to keep chat_notifier Django-free
+- Signal-based welcome toast with `_welcome_shown` session flag for deduplication
+- Settings-based allauth APP config (no SocialApp DB records)
+
+### Key Lessons
+- Always test Chat notifications with quiet hours disabled — or you won't see them
+- HTMX partials inherit `@theme` from parent page — no need for inline styles
+- Cards v2 `decoratedText` has a union field: `button` OR `endIcon`, never both
+
+### Cost Observations
+- Model mix: ~70% Sonnet, ~20% Opus, ~10% Haiku (executor agents on Sonnet, orchestrator on Opus)
+- Single-day milestone: 4 phases in ~7 hours wall clock
+- All 45 commits in one feature branch (no merge conflicts)
 
 ---
-*Updated: 2026-03-14 after v2.1 milestone*
+
+## Cross-Milestone Trends
+
+| Metric | v2.1 | v2.2 |
+|--------|------|------|
+| Phases | 7 | 4 |
+| Plans | 18 | 6 |
+| Days | 6 | 1 |
+| Tests | 257 | 349 |
+| LOC | 16,572 | 18,763 |
+| Commits | 140 | 45 |
+| Gaps found in audit | 11 (all closed) | 0 |
+
+---
+*Updated: 2026-03-14 after v2.2 milestone*
