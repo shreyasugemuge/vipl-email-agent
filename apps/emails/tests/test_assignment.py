@@ -92,18 +92,15 @@ class TestAssignEmail:
         assert log is not None
         assert "Please handle urgently" in log.detail
 
-    @patch("apps.emails.services.assignment.ChatNotifier")
-    def test_assign_calls_chat_notifier(self, mock_chat_cls, admin_user, member_user):
-        """Test 5: assign_email calls ChatNotifier.notify_assignment."""
+    @patch("apps.emails.services.assignment._send_assignment_chat")
+    def test_assign_calls_chat_notifier(self, mock_send_chat, admin_user, member_user):
+        """Test 5: assign_email calls _send_assignment_chat."""
         from apps.emails.services.assignment import assign_email
-
-        mock_notifier = MagicMock()
-        mock_chat_cls.return_value = mock_notifier
 
         email = _create_email(None, message_id="msg_assign_5")
         assign_email(email, member_user, admin_user)
 
-        mock_notifier.notify_assignment.assert_called_once()
+        mock_send_chat.assert_called_once_with(email, member_user)
 
     @patch("apps.emails.services.assignment.notify_assignment_email")
     def test_assign_calls_email_notification(self, mock_notify_email, admin_user, member_user):
