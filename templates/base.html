@@ -74,11 +74,17 @@
         /* Scrollbar hide utility */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Global focus-visible style */
+        *:focus-visible { outline: 2px solid var(--color-primary-500); outline-offset: 2px; border-radius: 4px; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="h-screen flex overflow-hidden bg-slate-50 font-sans text-slate-900 antialiased"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+    <!-- Skip to content (accessibility) -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:bg-white focus:text-primary-600 focus:rounded-lg focus:shadow-lg focus:text-sm focus:font-bold">Skip to content</a>
 
     <!-- HTMX global progress bar -->
     <div id="htmx-progress"></div>
@@ -102,7 +108,7 @@
                     <span class="block text-[9px] text-slate-500 font-semibold tracking-widest uppercase">Dashboard</span>
                 </div>
             </div>
-            <button onclick="toggleSidebar()"
+            <button onclick="toggleSidebar()" aria-label="Close sidebar"
                     class="ml-auto md:hidden text-slate-500 hover:text-white transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -183,7 +189,7 @@
                     <div class="text-[11px] font-semibold text-slate-200 truncate">{{ user.get_full_name|default:user.username }}</div>
                     <div class="text-[9px] text-slate-600 font-medium">{{ user.role|default:"Admin" }}</div>
                 </div>
-                <a href="{% url 'logout' %}" class="text-slate-600 hover:text-slate-400 transition-colors" title="Logout">
+                <a href="{% url 'logout' %}" class="text-slate-600 hover:text-slate-400 transition-colors" title="Logout" aria-label="Sign out">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                     </svg>
@@ -202,7 +208,7 @@
         <!-- Top bar -->
         <header class="h-12 bg-white border-b border-slate-200/80 flex items-center justify-between px-4 md:px-5 shrink-0 sticky top-0 z-30">
             <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()"
+                <button onclick="toggleSidebar()" aria-label="Open menu"
                         class="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -216,7 +222,7 @@
         </header>
 
         <!-- Content -->
-        <main class="flex-1 overflow-auto bg-mesh">
+        <main id="main-content" class="flex-1 overflow-auto bg-mesh">
             {% block content %}{% endblock %}
         </main>
 
