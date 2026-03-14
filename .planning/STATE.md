@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: — Polish & Hardening
-status: completed
-stopped_at: Completed 03-01-PLAN.md (Phase 3 fully complete)
-last_updated: "2026-03-14T17:09:30.506Z"
-last_activity: 2026-03-14 — Phase 3 Plan 1 complete (brand palette + logo assets + 17 templates)
+status: in-progress
+stopped_at: Completed 04-01-PLAN.md (checkpoint:human-verify pending)
+last_updated: "2026-03-14T17:32:57Z"
+last_activity: 2026-03-14 — Phase 4 Plan 1 complete (urgency labels + Open buttons + pk in breach dicts)
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 5
-  completed_plans: 5
+  completed_phases: 4
+  total_plans: 6
+  completed_plans: 6
   percent: 100
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-14)
 
 ## Current Position
 
-Phase: 3 of 4 — VIPL Branding (COMPLETE)
-Plan: 2 of 2 (done)
-Status: Phase 3 complete -- all branding applied
-Last activity: 2026-03-14 — Phase 3 Plan 1 complete (brand palette + logo assets + 17 templates)
+Phase: 4 of 4 — Chat Notification Polish
+Plan: 1 of 1 (done)
+Status: Phase 4 Plan 1 complete -- checkpoint:human-verify pending
+Last activity: 2026-03-14 — Phase 4 Plan 1 complete (urgency labels + Open buttons + pk in breach dicts)
 
 Progress: [##########] 100%
 
@@ -58,6 +58,9 @@ Progress: [##########] 100%
 - [Phase 03-01]: Brand palette: plum 600=#a83362 derived from logo, 50-900 scale
 - [Phase 03-01]: favicon.ico via macOS sips (zero-dependency, native ICO)
 - [Phase 03-01]: Dev inspector left as-is (separate dark theme, no indigo/violet)
+- [Phase 04-01]: decoratedText.button for inline Open buttons (Cards v2 union field constraint)
+- [Phase 04-01]: pk passed through data dicts, not ORM import in chat_notifier
+- [Phase 04-01]: _sla_urgency_label as module-level function for cross-method reuse
 
 ### Pending Todos
 
@@ -76,9 +79,10 @@ None.
 | 02 | 02 | multi-session | 3 | 17 |
 | 03 | 01 | 10min | 2 | 22 |
 | 03 | 02 | 4min | 1 | 2 |
+| 04 | 01 | 4min | 2 | 4 |
 
 ## Session Continuity
 
-Last session: 2026-03-14T17:03:36Z
-Stopped at: Completed 03-01-PLAN.md (Phase 3 fully complete)
-Next: Verify Phase 3 visually or proceed to Phase 4
+Last session: 2026-03-14T17:32:57Z
+Stopped at: Completed 04-01-PLAN.md (checkpoint:human-verify pending)
+Next: Validate card payloads in Google Chat Card Builder
