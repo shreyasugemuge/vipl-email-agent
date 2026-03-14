@@ -37,8 +37,6 @@
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
         }
-        @keyframes spin-slow { to { transform: rotate(360deg); } }
-        .spinner { animation: spin-slow 1.2s linear infinite; }
     </style>
 </head>
 <body class="gradient-bg font-sans min-h-screen flex items-center justify-center p-4">
@@ -49,26 +47,26 @@
         <div class="glass-card rounded-2xl shadow-2xl shadow-black/20 border border-white/20 p-9">
             <div class="text-center mb-6">
                 <img src="{% static 'img/vipl-logo-full.jpg' %}" alt="Vidarbha Infotech Pvt. Ltd." class="max-w-[220px] mx-auto mb-4">
-                <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Creating your account</h1>
-                <p class="text-[13px] text-slate-400 mt-1.5 font-medium">Setting up your VIPL Triage profile...</p>
+                <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Something went wrong</h1>
+                <p class="text-[13px] text-slate-400 mt-1.5 font-medium">We couldn't complete your sign-in automatically.</p>
             </div>
 
-            <div class="flex justify-center mb-6">
-                <svg class="w-8 h-8 text-primary-500 spinner" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <div class="mb-6 p-3 bg-amber-50 border border-amber-100 rounded-xl text-[13px] text-amber-700 font-medium flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                    <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                </div>
+                Please contact the administrator or try signing in again.
+            </div>
+
+            <a href="/accounts/login/"
+               class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white text-sm font-bold rounded-xl hover:from-primary-700 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:ring-offset-2 transition-all shadow-lg shadow-primary-500/20 active:scale-[0.98]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
-            </div>
-
-            {% if form %}
-            <form method="post" id="social-signup-form">
-                {% csrf_token %}
-                {% for field in form %}
-                <input type="hidden" name="{{ field.name }}" value="{{ field.value|default:'' }}">
-                {% endfor %}
-            </form>
-            <script>document.getElementById('social-signup-form').submit();</script>
-            {% endif %}
+                Back to Sign In
+            </a>
         </div>
         <p class="text-center text-[11px] text-primary-200/30 mt-6 font-semibold tracking-wide">Vidarbha Infotech Private Limited</p>
     </div>

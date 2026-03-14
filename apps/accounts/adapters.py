@@ -2,6 +2,7 @@
 
 Enforces @vidarbhainfotech.com domain server-side and auto-creates
 new Google users as inactive pending admin approval.
+shreyas@vidarbhainfotech.com is auto-approved as superadmin.
 """
 
 import logging
@@ -14,15 +15,18 @@ from django.contrib import messages
 from django.core.mail import send_mail
 from django.shortcuts import redirect
 
+from .models import User
+
 logger = logging.getLogger(__name__)
 ALLOWED_DOMAIN = "vidarbhainfotech.com"
+SUPERADMIN_EMAIL = "shreyas@vidarbhainfotech.com"
 
 
 class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
     """Domain-locked Google OAuth adapter for VIPL."""
 
     def pre_social_login(self, request, sociallogin):
-        """Enforce @vidarbhainfotech.com domain. Reject all others."""
+        """Enforce @vidarbhainfotech.com domain. Auto-link existing users."""
         extra_data = sociallogin.account.extra_data
         email = extra_data.get("email", "")
         hd = extra_data.get("hd", "")
@@ -35,25 +39,52 @@ class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
             )
             raise ImmediateHttpResponse(redirect("/accounts/login/?error=domain"))
 
-        # If user exists and is linked, update avatar and add welcome message
-        if sociallogin.is_existing:
-            user = sociallogin.user
-            picture = extra_data.get("picture", "")
-            if picture and user.avatar_url != picture:
-                user.avatar_url = picture
-                user.save(update_fields=["avatar_url"])
-            # Welcome message for returning users
-            first_name = user.first_name or user.username
-            messages.info(request, f"Welcome, {first_name}!")
+        # Auto-link: if a user with this email exists but isn't linked to a
+        # social account, connect them now. This is safe because we've already
+        # verified the domain via Google's hd claim (tamper-proof).
+        if not sociallogin.is_existing:
+            try:
+                existing_user = User.objects.get(email=email)
+                sociallogin.connect(request, existing_user)
+                logger.info("Auto-linked Google account to existing user %s", email)
+            except User.DoesNotExist:
+                return  # New user — will go through save_user()
+
+        # Update avatar for linked users
+        user = sociallogin.user
+        picture = extra_data.get("picture", "")
+        if picture and user.avatar_url != picture:
+            user.avatar_url = picture
+            user.save(update_fields=["avatar_url"])
+        first_name = user.first_name or user.username
+        messages.info(request, f"Welcome, {first_name}!")
 
     def save_user(self, request, sociallogin, form=None):
-        """Auto-create new Google users as inactive MEMBER."""
+        """Auto-create new Google users. Superadmin is auto-approved."""
         user = super().save_user(request, sociallogin, form)
         extra_data = sociallogin.account.extra_data
+        email = user.email or extra_data.get("email", "")
 
-        # Set VIPL defaults
-        user.is_active = False  # Requires admin approval
-        user.role = "member"
+        # Superadmin: auto-approve with full access
+        if email == SUPERADMIN_EMAIL:
+            user.is_active = True
+            user.role = User.Role.ADMIN
+            user.is_staff = True
+            user.is_superuser = True
+            user.can_see_all_emails = True
+            user.avatar_url = extra_data.get("picture", "")
+            user.save(
+                update_fields=[
+                    "is_active", "role", "is_staff", "is_superuser",
+                    "can_see_all_emails", "avatar_url",
+                ]
+            )
+            messages.success(request, f"Welcome, {user.first_name}!")
+            return user
+
+        # Everyone else: inactive, pending admin approval
+        user.is_active = False
+        user.role = User.Role.MEMBER
         user.can_see_all_emails = False
         user.avatar_url = extra_data.get("picture", "")
         user.save(
@@ -70,9 +101,10 @@ class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
                     subject=f"New user signup: {user.email}",
                     message=(
                         f"{user.get_full_name()} ({user.email}) signed up via "
-                        f"Google SSO.\n\nApprove in Django admin: set is_active=True."
+                        f"Google SSO.\n\nApprove at: "
+                        f"https://triage.vidarbhainfotech.com/accounts/team/"
                     ),
-                    from_email=None,  # Uses DEFAULT_FROM_EMAIL
+                    from_email=None,
                     recipient_list=[admin_email],
                     fail_silently=True,
                 )
@@ -81,7 +113,6 @@ class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
                     "Failed to send admin notification for new user %s", user.email
                 )
 
-        # Redirect inactive user to login with message
         messages.info(request, "Account created. Waiting for admin approval.")
         raise ImmediateHttpResponse(redirect("/accounts/login/?pending=1"))
 
