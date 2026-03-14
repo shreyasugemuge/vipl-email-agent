@@ -12,27 +12,27 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ### Validated
 
-- Gmail inbox polling with label-based processing — v1.0
-- Claude AI two-tier triage: Haiku default, Sonnet for CRITICAL — v1.0
-- Spam pre-filter via 13 regex patterns ($0 cost) — v1.0
-- PDF attachment text extraction for triage context — v1.0
-- Multi-language detection (Hindi, Marathi, English) — v1.0
-- Dead letter queue with 3x retry for failed triages — v1.0
-- Dashboard: card list with filters, sorting, pagination, HTMX — v1.0
-- Manual assignment + reassignment with notifications — v1.0
-- Auto-assignment engine: category rules + AI fallback — v1.0
-- SLA tracking with business hours, breach detection, escalation — v1.0
-- Per-category Google Chat webhook routing with quiet hours — v1.0
-- Activity log for all assignment and status changes — v1.0
-- EOD reports via email + Chat with database stats — v1.0
-- SystemConfig admin for runtime configuration — v1.0
-- Google Sheets read-only sync mirror — v1.0
-- PostgreSQL as source of truth — v1.0
-- Docker Compose deployment on VM — v1.0
-- Release-triggered CI/CD via GitHub Actions — v1.0
-- Simple password auth with admin/member roles — v1.0
-- Health endpoint with system status — v1.0
-- Configurable inbox management from Settings page — v1.0
+- Gmail inbox polling with label-based processing — v2.1
+- Claude AI two-tier triage: Haiku default, Sonnet for CRITICAL — v2.1
+- Spam pre-filter via 13 regex patterns ($0 cost) — v2.1
+- PDF attachment text extraction for triage context — v2.1
+- Multi-language detection (Hindi, Marathi, English) — v2.1
+- Dead letter queue with 3x retry for failed triages — v2.1
+- Dashboard: card list with filters, sorting, pagination, HTMX — v2.1
+- Manual assignment + reassignment with notifications — v2.1
+- Auto-assignment engine: category rules + AI fallback — v2.1
+- SLA tracking with business hours, breach detection, escalation — v2.1
+- Per-category Google Chat webhook routing with quiet hours — v2.1
+- Activity log for all assignment and status changes — v2.1
+- EOD reports via email + Chat with database stats — v2.1
+- SystemConfig admin for runtime configuration — v2.1
+- Google Sheets read-only sync mirror — v2.1
+- PostgreSQL as source of truth — v2.1
+- Docker Compose deployment on VM — v2.1
+- Release-triggered CI/CD via GitHub Actions — v2.1
+- Simple password auth with admin/member roles — v2.1
+- Health endpoint with system status — v2.1
+- Configurable inbox management from Settings page — v2.1
 
 ### Active
 
@@ -49,7 +49,7 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ## Context
 
-**Current state (v1.0 shipped):** Production at triage.vidarbhainfotech.com since 2026-03-14. Monitors info@ and sales@ inboxes, triages with Claude AI (Haiku/Sonnet), auto-assigns by category, tracks SLA deadlines, notifies via Google Chat per-category webhooks. 16,572 LOC Python, 257 tests passing, Django 4.2 LTS + PostgreSQL 12.3.
+**Current state (v2.1 shipped):** Production at triage.vidarbhainfotech.com since 2026-03-14. Monitors info@ and sales@ inboxes, triages with Claude AI (Haiku/Sonnet), auto-assigns by category, tracks SLA deadlines, notifies via Google Chat per-category webhooks. 16,572 LOC Python, 257 tests passing, Django 4.2 LTS + PostgreSQL 12.3.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
@@ -80,4 +80,4 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | SLA business hours 8AM-8PM IST Mon-Sat | Matches VIPL working hours | Good — accurate deadlines |
 
 ---
-*Last updated: 2026-03-14 after v1.0 milestone*
+*Last updated: 2026-03-14 after v2.1 milestone*

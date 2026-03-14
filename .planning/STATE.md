@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
+milestone: v2.1
 milestone_name: VIPL Email Agent v2
 status: completed
-stopped_at: Milestone v1.0 shipped
+stopped_at: Milestone v2.1 shipped
 last_updated: "2026-03-14T07:45:00Z"
-last_activity: 2026-03-14 -- Milestone v1.0 completed and archived
+last_activity: 2026-03-14 -- Milestone v2.1 completed and archived
 progress:
   total_phases: 7
   completed_phases: 7
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** v1.0 shipped. Next milestone TBD.
+**Current focus:** v2.1 shipped. Next milestone TBD.
 
 ## Current Position
 
-Milestone v1.0 complete. All 7 phases shipped, 40/40 requirements satisfied.
+Milestone v2.1 complete. All 7 phases shipped, 40/40 requirements satisfied.
 Live at: triage.vidarbhainfotech.com
 
 Progress: [##########] 100%
@@ -53,7 +53,7 @@ Progress: [##########] 100%
 
 ### Decisions
 
-Full decision log archived in milestones/v1.0-ROADMAP.md.
+Full decision log archived in milestones/v2.1-ROADMAP.md.
 
 ### Pending Todos
 
@@ -66,5 +66,5 @@ None — milestone shipped.
 ## Session Continuity
 
 Last session: 2026-03-14
-Stopped at: Milestone v1.0 shipped
+Stopped at: Milestone v2.1 shipped
 Next: `/gsd:new-milestone` when ready for v1.1

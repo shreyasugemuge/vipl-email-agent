@@ -1,6 +1,6 @@
 # Retrospective
 
-## Milestone: v1.0 — VIPL Email Agent v2
+## Milestone: v2.1 — VIPL Email Agent v2
 
 **Shipped:** 2026-03-14
 **Phases:** 7 | **Plans:** 18
@@ -22,7 +22,7 @@
 - Milestone audit before shipping caught 4 post-deploy issues
 
 ### What Was Inefficient
-- PROJECT.md not updated during development (still showed pre-build state at v1.0 completion)
+- PROJECT.md not updated during development (still showed pre-build state at v2.1 completion)
 - Django version mismatch discovered late: started with 5.2, had to downgrade to 4.2 for PG 12.3
 - Deploy script needed 5 unplanned fixes during first production deploy (ALLOWED_HOSTS, Nginx SSL, root URL, etc.)
 - Per-category webhooks designed 3 times: per-user → per-team-model → per-category (should have asked user's mental model first)
@@ -50,7 +50,7 @@
 
 ## Cross-Milestone Trends
 
-| Metric | v1.0 |
+| Metric | v2.1 |
 |--------|------|
 | Phases | 7 |
 | Plans | 18 |
@@ -61,4 +61,4 @@
 | Gaps found in audit | 11 (all closed) |
 
 ---
-*Updated: 2026-03-14 after v1.0 milestone*
+*Updated: 2026-03-14 after v2.1 milestone*

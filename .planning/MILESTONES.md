@@ -1,6 +1,6 @@
 # Milestones
 
-## v1.0 VIPL Email Agent v2 (Shipped: 2026-03-14)
+## v2.1 VIPL Email Agent (Shipped: 2026-03-14)
 
 **Phases completed:** 7 phases, 18 plans
 **Timeline:** 6 days (2026-03-09 → 2026-03-14)
@@ -20,9 +20,9 @@
 - Go-live Chat announcement
 
 **Archives:**
-- `milestones/v1.0-ROADMAP.md`
-- `milestones/v1.0-REQUIREMENTS.md`
-- `milestones/v1.0-MILESTONE-AUDIT.md`
+- `milestones/v2.1-ROADMAP.md`
+- `milestones/v2.1-REQUIREMENTS.md`
+- `milestones/v2.1-MILESTONE-AUDIT.md`
 
 ---
 
