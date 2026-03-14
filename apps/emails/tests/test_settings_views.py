@@ -477,3 +477,60 @@ class TestConfigEditor:
             {"category": "demo", "config_something": "val"},
         )
         assert response.status_code == 403
+
+    def test_config_string_prefilled(self, admin_client, db):
+        """R2.2: String input renders with value= matching DB value."""
+        SystemConfig.objects.create(
+            key="test_str_prefill", value="hello_world", value_type="str",
+            category="r22test",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        content = response.content.decode()
+        assert 'value="hello_world"' in content
+
+    def test_config_bool_checked_when_true(self, admin_client, db):
+        """R2.2: Bool checkbox renders as checked when value='true'."""
+        SystemConfig.objects.create(
+            key="test_bool_prefill", value="true", value_type="bool",
+            category="r22test",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        content = response.content.decode()
+        assert "test_bool_prefill" in content
+        # The checkbox should have 'checked' attribute
+        assert "checked" in content
+
+    def test_config_int_prefilled(self, admin_client, db):
+        """R2.2: Int input renders with value= matching DB value."""
+        SystemConfig.objects.create(
+            key="test_int_prefill", value="42", value_type="int",
+            category="r22test",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        content = response.content.decode()
+        assert 'value="42"' in content
+
+    def test_config_bool_has_hidden_fallback(self, admin_client, db):
+        """Config editor checkbox has hidden input fallback for unchecked state."""
+        SystemConfig.objects.create(
+            key="test_hidden", value="false", value_type="bool",
+            category="r22test",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        content = response.content.decode()
+        # Hidden input with value="false" should appear before checkbox
+        assert 'type="hidden"' in content
+        assert 'value="false"' in content
+
+    def test_config_json_renders_textarea(self, admin_client, db):
+        """Config editor JSON type renders as textarea."""
+        SystemConfig.objects.create(
+            key="test_json_ta", value='{"key": "val"}', value_type="json",
+            category="r22test",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        content = response.content.decode()
+        assert "<textarea" in content
+        # Template auto-escapes quotes in HTML
+        assert "test_json_ta" in content
+        assert "&quot;key&quot;" in content or '{"key"' in content

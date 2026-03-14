@@ -36,11 +36,15 @@
 
                     {% if cfg.value_type == "bool" %}
                     <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="hidden" name="config_{{ cfg.key }}" value="false">
                         <input type="checkbox" name="config_{{ cfg.key }}" value="true"
                                {% if cfg.typed_value %}checked{% endif %}
                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20">
                         <span class="text-xs text-slate-600">{% if cfg.typed_value %}Enabled{% else %}Disabled{% endif %}</span>
                     </label>
+                    {% elif cfg.value_type == "json" %}
+                    <textarea name="config_{{ cfg.key }}" id="config_{{ cfg.key }}" rows="3"
+                              class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none w-full font-mono">{{ cfg.value }}</textarea>
                     {% elif cfg.value_type == "int" %}
                     <input type="number" name="config_{{ cfg.key }}" value="{{ cfg.value }}" step="1"
                            id="config_{{ cfg.key }}"

@@ -13,6 +13,8 @@ from typing import Optional
 
 from django.db import close_old_connections
 
+from django.db import models as db_models
+
 from apps.core.models import SystemConfig
 from apps.emails.models import AttachmentMetadata, Email
 from apps.emails.services.ai_processor import AIProcessor
@@ -118,6 +120,20 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
     return email_obj
 
 
+def _is_whitelisted(sender_email: str) -> bool:
+    """Check if sender email or domain is in the spam whitelist.
+
+    Case-insensitive matching on both email and domain entries.
+    """
+    from apps.emails.models import SpamWhitelist
+
+    domain = sender_email.split("@")[-1] if "@" in sender_email else ""
+    return SpamWhitelist.objects.filter(
+        db_models.Q(entry_type="email", entry__iexact=sender_email)
+        | db_models.Q(entry_type="domain", entry__iexact=domain)
+    ).exists()
+
+
 def process_single_email(
     email_msg: EmailMessage,
     ai_processor,
@@ -128,11 +144,15 @@ def process_single_email(
 ) -> Optional[Email]:
     """Process a single email through the pipeline.
 
-    Order: spam filter -> AI triage -> save to DB -> label Gmail (label-after-persist)
+    Order: whitelist check -> spam filter -> AI triage -> save to DB -> label Gmail
     """
     try:
-        # Step 1: Spam filter
-        spam_result = spam_filter_fn(email_msg)
+        # Step 1: Spam filter (skip if sender is whitelisted)
+        if _is_whitelisted(email_msg.sender_email):
+            logger.info(f"Sender whitelisted, skipping spam filter: {email_msg.sender_email}")
+            spam_result = None
+        else:
+            spam_result = spam_filter_fn(email_msg)
         if spam_result:
             logger.info(f"Spam detected: {email_msg.subject[:50]}")
             email_obj = save_email_to_db(email_msg, spam_result)
