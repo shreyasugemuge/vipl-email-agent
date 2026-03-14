@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: VIPL Email Agent v2
-status: completed
-stopped_at: Milestone v2.1 shipped
-last_updated: "2026-03-14T07:45:00Z"
-last_activity: 2026-03-14 -- Milestone v2.1 completed and archived
+milestone: v2.2
+milestone_name: Polish & Hardening
+status: active
+stopped_at: null
+last_updated: "2026-03-14T08:00:00Z"
+last_activity: 2026-03-14 -- Milestone v2.2 started
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 18
-  completed_plans: 18
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,33 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** v2.1 shipped. Next milestone TBD.
+**Current focus:** v2.2 — Polish & Hardening
 
 ## Current Position
 
-Milestone v2.1 complete. All 7 phases shipped, 40/40 requirements satisfied.
-Live at: triage.vidarbhainfotech.com
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-14 — Milestone v2.2 started
 
-Progress: [##########] 100%
-
-## Performance Metrics
-
-**Velocity:**
-- Total plans completed: 18
-- Average duration: ~5.5 min
-- Total execution time: ~1h 40m
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 1. Foundation | 2 | 12 min | 6 min |
-| 2. Email Pipeline | 3 | 17 min | 5.7 min |
-| 3. Dashboard | 3 | 25 min | 8.3 min |
-| 4. Assignment+SLA | 3 | 19 min | 6.3 min |
-| 4.5. Integration Fixes | 2 | ~8 min | 4 min |
-| 5. Reporting+Admin | 3 | 13 min | 4.3 min |
-| 6. Migration+Cutover | 2 | ~90 min | 45 min |
+Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
@@ -61,10 +44,10 @@ None.
 
 ### Blockers/Concerns
 
-None — milestone shipped.
+None.
 
 ## Session Continuity
 
 Last session: 2026-03-14
-Stopped at: Milestone v2.1 shipped
-Next: `/gsd:new-milestone` when ready for v1.1
+Stopped at: Defining requirements for v2.2
+Next: Complete requirements → roadmap

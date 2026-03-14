@@ -34,9 +34,19 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - Health endpoint with system status — v2.1
 - Configurable inbox management from Settings page — v2.1
 
-### Active
+## Current Milestone: v2.2 Polish & Hardening
 
-(None — next milestone requirements TBD via `/gsd:new-milestone`)
+**Goal:** Improve UX, add SSO, upgrade settings page, brand with VIPL identity, smarter spam filtering, and better notifications.
+
+**Target features:**
+- Google OAuth SSO (domain-locked to @vidarbhainfotech.com)
+- Settings page overhaul (grouped form UI, pre-filled values, type-aware inputs)
+- VIPL branding (logo from Drive, theme colors throughout)
+- Spam learning (whitelist from "not spam" actions, adaptive filtering)
+- Chat notification UX improvements (better card design, SLA alerts)
+- General UX/UI polish across dashboard
+
+### Active
 
 ### Out of Scope
 
@@ -80,4 +90,4 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | SLA business hours 8AM-8PM IST Mon-Sat | Matches VIPL working hours | Good — accurate deadlines |
 
 ---
-*Last updated: 2026-03-14 after v2.1 milestone*
+*Last updated: 2026-03-14 after v2.2 milestone started*
