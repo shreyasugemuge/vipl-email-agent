@@ -67,7 +67,7 @@
                   hx-swap="outerHTML"
                   class="inline">
                 {% csrf_token %}
-                <button type="submit" class="px-2 py-0.5 text-[9px] font-bold text-emerald-700 bg-emerald-50 rounded border border-emerald-200/60 hover:bg-emerald-100 transition-colors cursor-pointer">
+                <button type="submit" hx-disabled-elt="this" class="px-2 py-0.5 text-[9px] font-bold text-emerald-700 bg-emerald-50 rounded border border-emerald-200/60 hover:bg-emerald-100 transition-colors cursor-pointer">
                     Claim
                 </button>
             </form>

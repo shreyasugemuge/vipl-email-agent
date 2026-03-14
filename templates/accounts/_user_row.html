@@ -47,6 +47,7 @@
     <td class="px-4 py-2.5 text-center">
         <button hx-post="/accounts/team/{{ u.pk }}/toggle-visibility/"
                 hx-target="#user-{{ u.pk }}" hx-swap="outerHTML"
+                hx-disabled-elt="this"
                 class="cursor-pointer">
             {% if u.can_see_all_emails %}
             <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-600">Yes</span>
@@ -78,6 +79,7 @@
         {% if u.pk != request_user.pk %}
         <button hx-post="/accounts/team/{{ u.pk }}/toggle-active/"
                 hx-target="#user-{{ u.pk }}" hx-swap="outerHTML"
+                hx-disabled-elt="this"
                 hx-confirm="{% if u.is_active %}Deactivate {{ u.get_full_name|default:u.username }}?{% else %}Approve {{ u.get_full_name|default:u.username }}?{% endif %}"
                 class="px-2.5 py-1 text-[10px] font-bold rounded-md border transition-colors cursor-pointer
                        {% if u.is_active %}text-red-600 border-red-200 bg-red-50 hover:bg-red-100{% else %}text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100{% endif %}">

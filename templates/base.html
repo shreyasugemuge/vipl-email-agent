@@ -28,8 +28,8 @@
     </style>
     <style>
         /* Premium transitions */
-        .card-hover { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        .card-hover:hover { transform: translateY(-1px); box-shadow: 0 4px 20px -4px rgba(0,0,0,0.08); }
+        .card-hover { transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card-hover:hover { box-shadow: 0 4px 20px -4px rgba(0,0,0,0.08); }
 
         /* Sleek scrollbar */
         ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -55,14 +55,33 @@
         .htmx-settling { transition: opacity 0.15s ease-in; }
         .htmx-swapping { opacity: 0.6; transition: opacity 0.15s ease-out; }
 
+        /* HTMX request states */
+        .htmx-request { opacity: 0.7; transition: opacity 0.2s; }
+        .htmx-request button[type="submit"] { pointer-events: none; }
+
+        /* Button disabled state */
+        button[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+        /* Global HTMX progress bar */
+        #htmx-progress { position: fixed; top: 0; left: 0; height: 2px; background: var(--color-primary-500); z-index: 9999; width: 0; transition: width 0.3s ease; pointer-events: none; }
+        #htmx-progress.active { width: 70%; transition: width 2s ease-out; }
+        #htmx-progress.done { width: 100%; transition: width 0.15s ease-in; opacity: 0; transition: width 0.15s ease-in, opacity 0.3s ease 0.15s; }
+
         /* Welcome toast animations */
         @keyframes toast-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes toast-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+
+        /* Scrollbar hide utility */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="h-screen flex overflow-hidden bg-slate-50 font-sans text-slate-900 antialiased"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+    <!-- HTMX global progress bar -->
+    <div id="htmx-progress"></div>
 
     <!-- Mobile sidebar overlay -->
     <div id="sidebar-overlay"
@@ -220,6 +239,20 @@
             overlay.classList.remove('hidden');
         }
     }
+
+    /* HTMX global progress bar */
+    (function() {
+        var bar = document.getElementById('htmx-progress');
+        document.addEventListener('htmx:beforeRequest', function() {
+            bar.className = '';
+            bar.offsetWidth; /* force reflow */
+            bar.className = 'active';
+        });
+        document.addEventListener('htmx:afterRequest', function() {
+            bar.className = 'done';
+            setTimeout(function() { bar.className = ''; }, 500);
+        });
+    })();
     </script>
     {% block extra_js %}{% endblock %}
 
