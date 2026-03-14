@@ -200,6 +200,39 @@ class SLAConfig(TimestampedModel):
         return f"SLA {self.priority}/{self.category}: ack={self.ack_hours}h, respond={self.respond_hours}h"
 
 
+class SpamWhitelist(SoftDeleteModel, TimestampedModel):
+    """Email/domain entries that should bypass spam regex filter.
+
+    Whitelisted senders skip the spam pre-filter but always go through
+    AI triage (they are trusted, not auto-approved).
+    """
+
+    class EntryType(models.TextChoices):
+        EMAIL = "email", "Email"
+        DOMAIN = "domain", "Domain"
+
+    entry = models.CharField(max_length=255, db_index=True)
+    entry_type = models.CharField(
+        max_length=10,
+        choices=EntryType.choices,
+    )
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="whitelist_entries",
+    )
+    reason = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = [("entry", "entry_type")]
+
+    def __str__(self):
+        return f"{self.entry} ({self.entry_type})"
+
+
 class CategoryVisibility(TimestampedModel):
     """Which categories a team member can see and claim emails from."""
 
