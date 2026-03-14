@@ -52,7 +52,7 @@
                         <span class="text-slate-500 font-medium">{{ log.get_action_display|lower }}</span>
                         {% if log.email %}
                         <a href="{% url 'emails:email_list' %}?selected={{ log.email.pk }}"
-                           class="font-semibold text-slate-700 hover:text-indigo-600 transition-colors">{{ log.email.subject|truncatechars:50 }}</a>
+                           class="font-semibold text-slate-700 hover:text-primary-600 transition-colors">{{ log.email.subject|truncatechars:50 }}</a>
                         {% endif %}
                     </div>
                     {% if log.old_value or log.new_value %}

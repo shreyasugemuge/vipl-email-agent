@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load email_tags %}
 
+{% block title %}VIPL Triage | Settings{% endblock %}
 {% block page_title %}Settings{% endblock %}
 
 {% block content %}
@@ -130,7 +131,7 @@ function initSortables() {
         if (el._sortable) return;
         el._sortable = new Sortable(el, {
             animation: 150,
-            ghostClass: 'bg-indigo-50',
+            ghostClass: 'bg-primary-50',
             onEnd: function(evt) {
                 var category = el.dataset.category;
                 var items = el.querySelectorAll('[data-assignee-id]');

@@ -32,18 +32,18 @@
                         <td class="px-4 py-2.5 font-semibold text-slate-700 sticky left-0 bg-white whitespace-nowrap z-10">
                             {{ member.get_full_name|default:member.username }}
                             {% if user_cats %}
-                            <span class="ml-1.5 text-[9px] font-medium text-indigo-400 tabular-nums">{{ user_cats|length }}</span>
+                            <span class="ml-1.5 text-[9px] font-medium text-primary-400 tabular-nums">{{ user_cats|length }}</span>
                             {% endif %}
                         </td>
                         {% for cat in valid_categories %}
                         <td class="px-2 py-2.5 text-center">
                             <input type="checkbox" name="categories[]" value="{{ cat }}"
                                    {% if cat|in_set:user_cats %}checked{% endif %}
-                                   class="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 cursor-pointer">
+                                   class="w-3.5 h-3.5 rounded border-slate-300 text-primary-600 focus:ring-primary-500/20 cursor-pointer">
                         </td>
                         {% endfor %}
                         <td class="px-3 py-2.5">
-                            <button type="submit" class="px-2.5 py-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 rounded-md border border-indigo-200/60 hover:bg-indigo-100 transition-colors">
+                            <button type="submit" class="px-2.5 py-1 text-[10px] font-bold text-primary-700 bg-primary-50 rounded-md border border-primary-200/60 hover:bg-primary-100 transition-colors">
                                 Save
                             </button>
                         </td>

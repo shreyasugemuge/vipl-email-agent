@@ -18,13 +18,13 @@
           class="flex items-center gap-2 mb-4">
         {% csrf_token %}
         <input type="text" name="entry" placeholder="email@example.com or example.com"
-               class="flex-1 text-sm border border-slate-200/80 rounded-lg px-3 py-2 bg-white text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none">
+               class="flex-1 text-sm border border-slate-200/80 rounded-lg px-3 py-2 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none">
         <select name="entry_type" class="text-xs border border-slate-200/80 rounded-lg px-2.5 py-2 bg-white text-slate-600">
             <option value="email">Email</option>
             <option value="domain">Domain</option>
         </select>
         <button type="submit"
-                class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
+                class="px-4 py-2 text-xs font-bold text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
             Add
         </button>
     </form>
@@ -48,7 +48,7 @@
                     <td class="px-4 py-2.5 font-semibold text-slate-700">{{ wl.entry }}</td>
                     <td class="px-3 py-2.5">
                         <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase
-                            {% if wl.entry_type == 'email' %}bg-indigo-50 text-indigo-600{% else %}bg-amber-50 text-amber-600{% endif %}">
+                            {% if wl.entry_type == 'email' %}bg-primary-50 text-primary-600{% else %}bg-amber-50 text-amber-600{% endif %}">
                             {{ wl.get_entry_type_display }}
                         </span>
                     </td>
