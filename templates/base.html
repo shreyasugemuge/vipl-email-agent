@@ -52,6 +52,10 @@
         /* Smooth content transitions */
         .htmx-settling { transition: opacity 0.15s ease-in; }
         .htmx-swapping { opacity: 0.6; transition: opacity 0.15s ease-out; }
+
+        /* Welcome toast animations */
+        @keyframes toast-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes toast-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
@@ -143,9 +147,13 @@
         <div class="px-2.5 py-2.5 border-t border-white/[0.06]">
             {% if user.is_authenticated %}
             <div class="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-white/[0.04] transition-colors">
+                {% if user.avatar_url %}
+                <img src="{{ user.avatar_url }}" alt="" class="w-7 h-7 rounded-full object-cover shadow-sm" referrerpolicy="no-referrer">
+                {% else %}
                 <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
                     {{ user.first_name.0|default:user.username.0|upper }}
                 </div>
+                {% endif %}
                 <div class="flex-1 min-w-0">
                     <div class="text-[11px] font-semibold text-slate-200 truncate">{{ user.get_full_name|default:user.username }}</div>
                     <div class="text-[9px] text-slate-600 font-medium">{{ user.role|default:"Admin" }}</div>
@@ -203,5 +211,26 @@
     }
     </script>
     {% block extra_js %}{% endblock %}
+
+    <!-- Welcome toast (shows Django messages) -->
+    {% if messages %}
+    {% for message in messages %}
+    <div id="welcome-toast" class="fixed top-4 right-4 z-[100] flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-lg shadow-black/10 border border-slate-200"
+         style="animation: toast-in 0.3s ease-out, toast-out 0.3s ease-in 3.5s forwards;">
+        {% if user.avatar_url %}
+        <img src="{{ user.avatar_url }}" alt="" class="w-8 h-8 rounded-full object-cover" referrerpolicy="no-referrer">
+        {% endif %}
+        <div>
+            <p class="text-sm font-semibold text-slate-800">{{ message }}</p>
+        </div>
+    </div>
+    {% endfor %}
+    <script>
+    setTimeout(function() {
+        var toast = document.getElementById('welcome-toast');
+        if (toast) toast.remove();
+    }, 4000);
+    </script>
+    {% endif %}
 </body>
 </html>

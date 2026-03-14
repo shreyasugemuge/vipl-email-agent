@@ -128,6 +128,10 @@ SOCIALACCOUNT_PROVIDERS = {
             "hd": "vidarbhainfotech.com",  # UI hint only -- enforced server-side in adapter
         },
         "OAUTH_PKCE_ENABLED": True,
+        "APP": {
+            "client_id": os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "placeholder"),
+            "secret": os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+        },
     }
 }
 SOCIALACCOUNT_STORE_TOKENS = False  # We don't need access tokens after login
