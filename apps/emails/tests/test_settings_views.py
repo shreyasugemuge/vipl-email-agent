@@ -1,4 +1,4 @@
-"""Tests for settings views, claim endpoint, and AI suggestion endpoints."""
+"""Tests for settings views, claim endpoint, AI suggestion endpoints, and whitelist."""
 
 import pytest
 from datetime import datetime, timezone, timedelta
@@ -9,7 +9,7 @@ from django.utils import timezone as dj_timezone
 from apps.accounts.models import User
 from apps.core.models import SystemConfig
 from apps.emails.models import (
-    AssignmentRule, CategoryVisibility, Email, SLAConfig,
+    AssignmentRule, CategoryVisibility, Email, SLAConfig, SpamWhitelist,
 )
 
 
@@ -534,3 +534,109 @@ class TestConfigEditor:
         # Template auto-escapes quotes in HTML
         assert "test_json_ta" in content
         assert "&quot;key&quot;" in content or '{"key"' in content
+
+
+# ---------------------------------------------------------------------------
+# Whitelist CRUD views
+# ---------------------------------------------------------------------------
+
+
+class TestWhitelistViews:
+    def test_whitelist_add_creates_entry(self, admin_client, admin_user, db):
+        response = admin_client.post(
+            reverse("emails:whitelist_add"),
+            {"entry": "john@acme.com", "entry_type": "email"},
+        )
+        assert response.status_code == 200
+        assert SpamWhitelist.objects.filter(entry="john@acme.com", entry_type="email").exists()
+
+    def test_whitelist_add_rejects_non_admin(self, member_client, db):
+        response = member_client.post(
+            reverse("emails:whitelist_add"),
+            {"entry": "john@acme.com", "entry_type": "email"},
+        )
+        assert response.status_code == 403
+
+    def test_whitelist_add_rejects_empty_entry(self, admin_client, admin_user, db):
+        response = admin_client.post(
+            reverse("emails:whitelist_add"),
+            {"entry": "", "entry_type": "email"},
+        )
+        assert response.status_code == 200
+        assert SpamWhitelist.objects.count() == 0
+        content = response.content.decode()
+        assert "cannot be empty" in content.lower() or "error" in content.lower()
+
+    def test_whitelist_add_handles_duplicate(self, admin_client, admin_user, db):
+        SpamWhitelist.objects.create(
+            entry="john@acme.com", entry_type="email", added_by=admin_user,
+        )
+        response = admin_client.post(
+            reverse("emails:whitelist_add"),
+            {"entry": "john@acme.com", "entry_type": "email"},
+        )
+        assert response.status_code == 200
+        # Should not crash, should show already-exists message
+        assert SpamWhitelist.objects.filter(entry="john@acme.com").count() == 1
+
+    def test_whitelist_delete_soft_deletes(self, admin_client, admin_user, db):
+        wl = SpamWhitelist.objects.create(
+            entry="john@acme.com", entry_type="email", added_by=admin_user,
+        )
+        response = admin_client.post(
+            reverse("emails:whitelist_delete", args=[wl.pk]),
+        )
+        assert response.status_code == 200
+        # Soft-deleted: still exists in DB but not in default queryset
+        assert not SpamWhitelist.objects.filter(pk=wl.pk).exists()
+
+    def test_settings_view_includes_whitelist_entries(self, admin_client, admin_user, db):
+        SpamWhitelist.objects.create(
+            entry="test@example.com", entry_type="email", added_by=admin_user,
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=whitelist")
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "test@example.com" in content
+
+
+class TestSaveFeedbackBanners:
+    def test_sla_save_returns_save_success(self, admin_client, db):
+        response = admin_client.post(
+            reverse("emails:settings_sla_save"),
+            {"priority": "HIGH", "category": "Sales Lead", "ack_hours": "2.0", "respond_hours": "8.0"},
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "saved" in content.lower()
+
+    def test_rules_save_returns_save_success(self, admin_client, admin_user, second_member, db):
+        response = admin_client.post(
+            reverse("emails:settings_rules_save"),
+            {"action": "add", "category": "Sales Lead", "assignee_id": second_member.pk},
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "saved" in content.lower()
+
+    def test_visibility_save_returns_save_success(self, admin_client, second_member, db):
+        response = admin_client.post(
+            reverse("emails:settings_visibility_save"),
+            {"user_id": second_member.pk, "categories[]": ["Sales Lead"]},
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "saved" in content.lower()
+
+    def test_inboxes_save_returns_save_success(self, admin_client, db):
+        SystemConfig.objects.update_or_create(
+            key="monitored_inboxes",
+            defaults={"value": "", "value_type": "str", "category": "email"},
+        )
+        response = admin_client.post(
+            reverse("emails:settings_inboxes_save"),
+            {"action": "add", "inbox_email": "new@example.com"},
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "saved" in content.lower()
