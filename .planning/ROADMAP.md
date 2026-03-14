@@ -138,7 +138,7 @@
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Google OAuth SSO | v2.2 | 0/1 | Planned | — |
+| 1. Google OAuth SSO | v2.2 | 0/1 | Checkpoint pending | — |
 | 2. Settings + Spam Whitelist | v2.2 | 0/0 | Not started | — |
 | 3. VIPL Branding | v2.2 | 0/0 | Not started | — |
 | 4. Chat Notification Polish | v2.2 | 0/0 | Not started | — |
