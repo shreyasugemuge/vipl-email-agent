@@ -48,6 +48,29 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ### Active
 
+- R1.1: django-allauth[socialaccount] integration — v2.2 Phase 1
+- R1.2: Server-side @vidarbhainfotech.com domain enforcement — v2.2 Phase 1
+- R1.3: Google Sign-In button on login page (password form preserved) — v2.2 Phase 1
+- R1.4: Auto-provision new Google users as MEMBER role — v2.2 Phase 1
+- R1.5: Data migration for existing superuser email fields — v2.2 Phase 1
+- R1.6: GCP OAuth consent screen + credentials — v2.2 Phase 1
+- R2.1: Type-aware settings input widgets (checkbox/number/text) — v2.2 Phase 2
+- R2.2: Pre-fill settings inputs with current DB values — v2.2 Phase 2
+- R2.3: SpamWhitelist model (email/domain entries) — v2.2 Phase 2
+- R2.4: Whitelist-aware spam filter (AI triage always runs) — v2.2 Phase 2
+- R2.5: "Whitelist Sender" button in email detail panel — v2.2 Phase 2
+- R2.6: Spam whitelist management tab in settings — v2.2 Phase 2
+- R2.7: Normalize existing SystemConfig bool values — v2.2 Phase 2
+- R2.8: Inline save feedback on SLA Config tab — v2.2 Phase 2
+- R3.1: VIPL logo asset in static/img/ — v2.2 Phase 3
+- R3.2: Logo in sidebar and login page — v2.2 Phase 3
+- R3.3: Brand color palette in @theme — v2.2 Phase 3
+- R3.4: HTMX partial audit for brand color consistency — v2.2 Phase 3
+- R4.1: Email pk in breach data structure — v2.2 Phase 4
+- R4.2: Per-email "Open" link in breach alerts — v2.2 Phase 4
+- R4.3: Consistent SLA urgency display across card types — v2.2 Phase 4
+- R4.4: Card payload validation in Card Builder — v2.2 Phase 4
+
 ### Out of Scope
 
 - Reply from dashboard — team replies from Gmail directly, building compose UI is high effort low value
