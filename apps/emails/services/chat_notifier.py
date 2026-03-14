@@ -25,6 +25,12 @@ PRIORITY_EMOJI = {
 
 PRIORITY_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
 
+VIPL_FOOTER_SECTION = {
+    "widgets": [
+        {"textParagraph": {"text": "<i>Sent by VIPL Email Triage</i>"}}
+    ]
+}
+
 
 class ChatNotifier:
     """Sends formatted notifications to Google Chat via incoming webhook.
@@ -37,6 +43,10 @@ class ChatNotifier:
 
     def __init__(self, webhook_url: str):
         self.webhook_url = webhook_url.strip() if webhook_url else ""
+        self._tracker_url = (
+            SystemConfig.get("tracker_url", "https://triage.vidarbhainfotech.com")
+            or "https://triage.vidarbhainfotech.com"
+        ).rstrip("/")
 
         if not self.webhook_url:
             logger.warning("Chat webhook URL is empty -- notifications will be skipped")
@@ -113,6 +123,16 @@ class ChatNotifier:
             logger.warning(f"Invalid quiet hours config: {e}")
             return False
 
+    def _branded_header(self, title: str, subtitle: str) -> dict:
+        """Build a card header with VIPL icon branding."""
+        return {
+            "title": title,
+            "subtitle": subtitle,
+            "imageUrl": f"{self._tracker_url}/static/img/vipl-icon.jpg",
+            "imageType": "CIRCLE",
+            "imageAltText": "VIPL Logo",
+        }
+
     def notify_assignment(self, email, assignee) -> bool:
         """Post a notification card when an email is assigned to a team member.
 
@@ -137,16 +157,13 @@ class ChatNotifier:
 
         assignee_name = assignee.get_full_name() or assignee.username
 
-        tracker_url = SystemConfig.get(
-            "tracker_url", "https://triage.vidarbhainfotech.com"
-        )
-        dashboard_link = f"{tracker_url}/emails/?selected={email.pk}"
+        dashboard_link = f"{self._tracker_url}/emails/?selected={email.pk}"
 
         card = {
-            "header": {
-                "title": f"Assigned to {assignee_name}: {subject}",
-                "subtitle": f"{emoji} {pri} | {category}",
-            },
+            "header": self._branded_header(
+                title=f"Assigned to {assignee_name}: {subject}",
+                subtitle=f"{emoji} {pri} | {category}",
+            ),
             "sections": [
                 {
                     "widgets": [
@@ -180,6 +197,7 @@ class ChatNotifier:
                         }
                     ]
                 },
+                VIPL_FOOTER_SECTION,
             ],
         }
 
@@ -272,16 +290,11 @@ class ChatNotifier:
                 }
             )
 
-        # Tracker URL
-        tracker_url = SystemConfig.get(
-            "tracker_url", "https://triage.vidarbhainfotech.com"
-        )
-
         card = {
-            "header": {
-                "title": f"\U0001f4e8 Poll Summary -- {count} new email(s)",
-                "subtitle": pri_summary,
-            },
+            "header": self._branded_header(
+                title=f"\U0001f4e8 Poll Summary -- {count} new email(s)",
+                subtitle=pri_summary,
+            ),
             "sections": [
                 {"widgets": email_widgets},
                 {
@@ -292,7 +305,7 @@ class ChatNotifier:
                                     {
                                         "text": "Open Tracker",
                                         "onClick": {
-                                            "openLink": {"url": tracker_url}
+                                            "openLink": {"url": self._tracker_url}
                                         },
                                     }
                                 ]
@@ -300,6 +313,7 @@ class ChatNotifier:
                         }
                     ]
                 },
+                VIPL_FOOTER_SECTION,
             ],
         }
 
@@ -361,26 +375,23 @@ class ChatNotifier:
                 "widgets": assignee_widgets,
             })
 
-        # Tracker URL
-        tracker_url = SystemConfig.get(
-            "tracker_url", "https://triage.vidarbhainfotech.com"
-        )
         sections.append({
             "widgets": [{
                 "buttonList": {
                     "buttons": [{
                         "text": "Open Dashboard",
-                        "onClick": {"openLink": {"url": tracker_url}},
+                        "onClick": {"openLink": {"url": self._tracker_url}},
                     }]
                 }
             }]
         })
+        sections.append(VIPL_FOOTER_SECTION)
 
         card = {
-            "header": {
-                "title": f"\u26a0\ufe0f SLA Breach Summary: {total} breach(es)",
-                "subtitle": f"Respond: {summary_data.get('total_respond_breached', 0)} | Ack: {summary_data.get('total_ack_breached', 0)}",
-            },
+            "header": self._branded_header(
+                title=f"\u26a0\ufe0f SLA Breach Summary: {total} breach(es)",
+                subtitle=f"Respond: {summary_data.get('total_respond_breached', 0)} | Ack: {summary_data.get('total_ack_breached', 0)}",
+            ),
             "sections": sections,
         }
 
@@ -460,9 +471,7 @@ class ChatNotifier:
             sections.append({"header": "Worst Overdue", "widgets": overdue_widgets})
 
         # Tracker button
-        tracker_url = stats.get("tracker_url", SystemConfig.get(
-            "tracker_url", "https://triage.vidarbhainfotech.com"
-        ))
+        tracker_url = stats.get("tracker_url", self._tracker_url)
         sections.append({
             "widgets": [{
                 "buttonList": {
@@ -473,12 +482,13 @@ class ChatNotifier:
                 }
             }]
         })
+        sections.append(VIPL_FOOTER_SECTION)
 
         card = {
-            "header": {
-                "title": f"\U0001f4ca Daily Summary -- {date_str}",
-                "subtitle": f"Received: {received} | Closed: {closed} | Open: {total_open}",
-            },
+            "header": self._branded_header(
+                title=f"\U0001f4ca Daily Summary -- {date_str}",
+                subtitle=f"Received: {received} | Closed: {closed} | Open: {total_open}",
+            ),
             "sections": sections,
         }
 
@@ -528,11 +538,14 @@ class ChatNotifier:
             })
 
         card = {
-            "header": {
-                "title": f"@{assignee_name}: {count} SLA breach(es) need attention",
-                "subtitle": "Please respond to these overdue emails",
-            },
-            "sections": [{"widgets": email_widgets}],
+            "header": self._branded_header(
+                title=f"@{assignee_name}: {count} SLA breach(es) need attention",
+                subtitle="Please respond to these overdue emails",
+            ),
+            "sections": [
+                {"widgets": email_widgets},
+                VIPL_FOOTER_SECTION,
+            ],
         }
 
         payload = {"cardsV2": [{"cardId": f"breach-personal-{assignee_name[:20]}", "card": card}]}

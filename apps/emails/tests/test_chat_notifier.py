@@ -9,17 +9,29 @@ from apps.emails.services.chat_notifier import ChatNotifier, VIPL_FOOTER_SECTION
 
 
 class TestChatNotifierInit:
-    def test_init_with_webhook_url(self):
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_init_with_webhook_url(self, mock_config_cls):
+        mock_config_cls.get.return_value = "https://triage.vidarbhainfotech.com"
         notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
         assert notifier.webhook_url == "https://chat.googleapis.com/test"
 
-    def test_init_strips_whitespace(self):
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_init_strips_whitespace(self, mock_config_cls):
+        mock_config_cls.get.return_value = "https://triage.vidarbhainfotech.com"
         notifier = ChatNotifier(webhook_url="  https://chat.googleapis.com/test  ")
         assert notifier.webhook_url == "https://chat.googleapis.com/test"
 
-    def test_init_empty_url(self):
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_init_empty_url(self, mock_config_cls):
+        mock_config_cls.get.return_value = "https://triage.vidarbhainfotech.com"
         notifier = ChatNotifier(webhook_url="")
         assert notifier.webhook_url == ""
+
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_init_sets_tracker_url(self, mock_config_cls):
+        mock_config_cls.get.return_value = "https://custom.example.com/"
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        assert notifier._tracker_url == "https://custom.example.com"  # trailing slash stripped
 
 
 @pytest.mark.django_db
