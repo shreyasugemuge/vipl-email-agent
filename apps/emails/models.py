@@ -30,7 +30,7 @@ class Email(SoftDeleteModel, TimestampedModel):
 
     # Email content
     from_address = models.EmailField()
-    from_name = models.CharField(max_length=255, blank=True, default="")
+    from_name = models.CharField(max_length=500, blank=True, default="")
     to_inbox = models.EmailField()
     subject = models.CharField(max_length=500, blank=True, default="")
     body = models.TextField(blank=True, default="")
@@ -149,10 +149,10 @@ class AttachmentMetadata(TimestampedModel):
         on_delete=models.CASCADE,
         related_name="attachments",
     )
-    filename = models.CharField(max_length=255)
+    filename = models.CharField(max_length=500)
     size_bytes = models.PositiveIntegerField()
     mime_type = models.CharField(max_length=100)
-    gmail_attachment_id = models.CharField(max_length=255, blank=True, default="")
+    gmail_attachment_id = models.CharField(max_length=512, blank=True, default="")
 
     def __str__(self):
         return f"{self.filename} ({self.mime_type})"
