@@ -9,7 +9,9 @@
 
 ### v2.2 — Polish & Hardening
 
-- [ ] Phase 1: Google OAuth SSO (0/0 plans) — not started
+- [ ] Phase 1: Google OAuth SSO (0/1 plans) — planned
+  Plans:
+  - [ ] 01-PLAN.md — allauth setup, domain adapter, login redesign, avatar, welcome toast
 - [ ] Phase 2: Settings Page + Spam Whitelist (0/0 plans) — not started
 - [ ] Phase 3: VIPL Branding (0/0 plans) — not started
 - [ ] Phase 4: Chat Notification Polish (0/0 plans) — not started
@@ -32,6 +34,8 @@
 ### Phase 1: Google OAuth SSO
 
 **Goal:** Replace password-only auth with Google Sign-In, domain-locked to @vidarbhainfotech.com, while keeping password login as superuser fallback.
+
+**Plans:** 1 plan
 
 **Delivers:**
 - `django-allauth[socialaccount]` integration with Google provider
@@ -134,7 +138,7 @@
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Google OAuth SSO | v2.2 | 0/0 | Not started | — |
+| 1. Google OAuth SSO | v2.2 | 0/1 | Planned | — |
 | 2. Settings + Spam Whitelist | v2.2 | 0/0 | Not started | — |
 | 3. VIPL Branding | v2.2 | 0/0 | Not started | — |
 | 4. Chat Notification Polish | v2.2 | 0/0 | Not started | — |
