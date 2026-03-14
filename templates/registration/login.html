@@ -132,6 +132,13 @@
             </a>
             {% endif %}
         </div>
+        {% if debug %}
+        <div class="text-center mt-4">
+            <a href="{% url 'dev_login' %}" class="text-[12px] text-amber-300/60 hover:text-amber-300 font-semibold transition-colors">
+                Dev Login (pick role)
+            </a>
+        </div>
+        {% endif %}
         <p class="text-center text-[11px] text-indigo-200/30 mt-6 font-semibold tracking-wide">Vidarbha Infotech Private Limited</p>
     </div>
 </body>

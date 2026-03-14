@@ -16,6 +16,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
+INTERNAL_IPS = ["127.0.0.1", "::1"]
+
 # Database: SQLite for local dev, or PostgreSQL via DATABASE_URL
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL:
