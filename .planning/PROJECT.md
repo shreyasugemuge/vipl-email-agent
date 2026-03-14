@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An AI-powered shared inbox management system for Vidarbha Infotech Private Limited. Monitors Gmail inboxes (info@ and sales@), triages incoming emails with Claude AI, auto-assigns them to team members based on category rules, tracks SLA compliance, and provides a dashboard for management oversight. Every email gets owned, acknowledged, and responded to.
+An AI-powered shared inbox management system for Vidarbha Infotech Private Limited. Monitors Gmail inboxes (info@ and sales@), triages incoming emails with Claude AI, auto-assigns them to team members based on category rules, tracks SLA compliance, and provides a branded dashboard with Google OAuth SSO for management oversight. Every email gets owned, acknowledged, and responded to.
 
 ## Core Value
 
@@ -33,43 +33,21 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - Simple password auth with admin/member roles — v2.1
 - Health endpoint with system status — v2.1
 - Configurable inbox management from Settings page — v2.1
-
-## Current Milestone: v2.2 Polish & Hardening
-
-**Goal:** Improve UX, add SSO, upgrade settings page, brand with VIPL identity, smarter spam filtering, and better notifications.
-
-**Target features:**
-- Google OAuth SSO (domain-locked to @vidarbhainfotech.com)
-- Settings page overhaul (grouped form UI, pre-filled values, type-aware inputs)
-- VIPL branding (logo from Drive, theme colors throughout)
-- Spam learning (whitelist from "not spam" actions, adaptive filtering)
-- Chat notification UX improvements (better card design, SLA alerts)
-- General UX/UI polish across dashboard
+- ✓ Google OAuth SSO with domain lock (@vidarbhainfotech.com) — v2.2
+- ✓ Auto-provision new Google users as inactive (admin approval) — v2.2
+- ✓ Type-aware settings inputs with pre-filled values — v2.2
+- ✓ SpamWhitelist model with pipeline integration — v2.2
+- ✓ Whitelist Sender button + management tab — v2.2
+- ✓ Bool normalization migration — v2.2
+- ✓ Inline save feedback on all settings tabs — v2.2
+- ✓ VIPL brand identity (logo, palette, favicon, page titles) — v2.2
+- ✓ Google Chat card branding (header icon + footer) — v2.2
+- ✓ Inline Open buttons in Chat notification cards — v2.2
+- ✓ Consistent SLA urgency labels across all card types — v2.2
 
 ### Active
 
-- R1.1: django-allauth[socialaccount] integration — v2.2 Phase 1
-- R1.2: Server-side @vidarbhainfotech.com domain enforcement — v2.2 Phase 1
-- R1.3: Google Sign-In button on login page (password form preserved) — v2.2 Phase 1
-- R1.4: Auto-provision new Google users as MEMBER role — v2.2 Phase 1
-- R1.5: Data migration for existing superuser email fields — v2.2 Phase 1
-- R1.6: GCP OAuth consent screen + credentials — v2.2 Phase 1
-- R2.1: Type-aware settings input widgets (checkbox/number/text) — v2.2 Phase 2
-- R2.2: Pre-fill settings inputs with current DB values — v2.2 Phase 2
-- R2.3: SpamWhitelist model (email/domain entries) — v2.2 Phase 2
-- R2.4: Whitelist-aware spam filter (AI triage always runs) — v2.2 Phase 2
-- R2.5: "Whitelist Sender" button in email detail panel — v2.2 Phase 2
-- R2.6: Spam whitelist management tab in settings — v2.2 Phase 2
-- R2.7: Normalize existing SystemConfig bool values — v2.2 Phase 2
-- R2.8: Inline save feedback on SLA Config tab — v2.2 Phase 2
-- R3.1: VIPL logo asset in static/img/ — v2.2 Phase 3
-- R3.2: Logo in sidebar and login page — v2.2 Phase 3
-- R3.3: Brand color palette in @theme — v2.2 Phase 3
-- R3.4: HTMX partial audit for brand color consistency — v2.2 Phase 3
-- R4.1: Email pk in breach data structure — v2.2 Phase 4
-- R4.2: Per-email "Open" link in breach alerts — v2.2 Phase 4
-- R4.3: Consistent SLA urgency display across card types — v2.2 Phase 4
-- R4.4: Card payload validation in Card Builder — v2.2 Phase 4
+(None — next milestone not yet planned)
 
 ### Out of Scope
 
@@ -82,11 +60,11 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ## Context
 
-**Current state (v2.1 shipped):** Production at triage.vidarbhainfotech.com since 2026-03-14. Monitors info@ and sales@ inboxes, triages with Claude AI (Haiku/Sonnet), auto-assigns by category, tracks SLA deadlines, notifies via Google Chat per-category webhooks. 16,572 LOC Python, 257 tests passing, Django 4.2 LTS + PostgreSQL 12.3.
+**Current state (v2.2 shipped):** Production at triage.vidarbhainfotech.com since 2026-03-14. Full pipeline: Gmail polling → spam filter (13 regex + whitelist) → Claude AI triage → auto-assign → SLA tracking → Google Chat notifications (branded cards with deep links). Google OAuth SSO with domain lock. VIPL brand identity across all pages and Chat cards. 18,763 LOC Python, 349 tests passing, Django 4.2 LTS + PostgreSQL 12.3.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
-**Infrastructure:** Self-hosted VM (`taiga` in GCP, asia-south1-b). Docker Compose with web + scheduler containers. Nginx reverse proxy with Cloudflare SSL. PostgreSQL shared with Taiga stack.
+**Infrastructure:** Self-hosted VM (`taiga` in GCP, asia-south1-b). Docker Compose with web + scheduler containers. Nginx reverse proxy with Let's Encrypt SSL. PostgreSQL shared with Taiga stack.
 
 ## Constraints
 
@@ -101,16 +79,20 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Django 4.2 LTS (not 5.2+) | PostgreSQL 12.3 on VM not supported by Django 5.2+ | Good — stable, LTS until 2026-04 |
-| Simple password auth (not Google OAuth) | Faster to ship, OAuth deferred to v2 requirements | Good — works for 4 users |
-| HTMX + Tailwind CDN (no React/Node) | Zero build step, server-rendered, simpler stack | Good — fast dev, no JS complexity |
-| APScheduler as separate management command | Keeps scheduler out of Gunicorn workers | Good — clean separation |
-| SystemConfig key-value store | Runtime config without redeploy, replaces Sheets config | Good — flexible, migration-seeded |
-| Per-category Chat webhooks via SystemConfig | Categories = teams, configurable from Settings | Good — no Team model needed |
-| Release-triggered deploy (not tag push) | Intentional deploys, documented via GitHub Releases | Good — prevents accidental deploys |
-| Fire-and-forget notifications | Chat/email never block assignment flow | Good — resilient UX |
-| nh3 for HTML sanitization | Rust-based, safe-by-default XSS protection | Good — zero vulnerabilities |
-| SLA business hours 8AM-8PM IST Mon-Sat | Matches VIPL working hours | Good — accurate deadlines |
+| Django 4.2 LTS (not 5.2+) | PostgreSQL 12.3 on VM not supported by Django 5.2+ | ✓ Good — stable, LTS until 2026-04 |
+| HTMX + Tailwind CDN (no React/Node) | Zero build step, server-rendered, simpler stack | ✓ Good — fast dev, no JS complexity |
+| APScheduler as separate management command | Keeps scheduler out of Gunicorn workers | ✓ Good — clean separation |
+| SystemConfig key-value store | Runtime config without redeploy, replaces Sheets config | ✓ Good — flexible, migration-seeded |
+| Per-category Chat webhooks via SystemConfig | Categories = teams, configurable from Settings | ✓ Good — no Team model needed |
+| Release-triggered deploy (not tag push) | Intentional deploys, documented via GitHub Releases | ✓ Good — prevents accidental deploys |
+| Fire-and-forget notifications | Chat/email never block assignment flow | ✓ Good — resilient UX |
+| nh3 for HTML sanitization | Rust-based, safe-by-default XSS protection | ✓ Good — zero vulnerabilities |
+| SLA business hours 8AM-8PM IST Mon-Sat | Matches VIPL working hours | ✓ Good — accurate deadlines |
+| Settings-based allauth APP config | Avoids DB SocialApp records, simpler deployment | ✓ Good — v2.2 |
+| Whitelist check in pipeline.py (not spam_filter.py) | Keeps spam_filter pure/Django-free | ✓ Good — v2.2 |
+| Plum brand palette (#a83362) | Derived from VIPL logo, consistent with corporate identity | ✓ Good — v2.2 |
+| decoratedText.button for inline links | Cards v2 union field constraint, no endIcon conflict | ✓ Good — v2.2 |
+| _sla_urgency_label module-level function | Cross-method reuse, consistent formatting | ✓ Good — v2.2 |
 
 ---
-*Last updated: 2026-03-14 after v2.2 milestone started*
+*Last updated: 2026-03-14 after v2.2 milestone complete*

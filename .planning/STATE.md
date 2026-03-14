@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.2
-milestone_name: — Polish & Hardening
-status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-03-14T11:08:28.797Z"
-last_activity: 2026-03-14 — Roadmap created
+milestone: null
+milestone_name: null
+status: idle
+stopped_at: "v2.2 milestone complete"
+last_updated: "2026-03-14T23:50:00Z"
+last_activity: 2026-03-14 — v2.2 milestone archived
 progress:
-  total_phases: 4
+  total_phases: 0
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,26 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-14)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** v2.2 — Polish & Hardening
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 1 of 4 — Google OAuth SSO
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-03-14 — Roadmap created
-
-Progress: [░░░░░░░░░░] 0%
+No active milestone. v2.2 shipped 2026-03-14.
 
 ## Accumulated Context
 
 ### Decisions
 
-- 4-phase structure: OAuth → Settings+Whitelist → Branding → Chat Polish
-- OAuth first: team should use SSO from start; introduces only hard dependency (allauth migrations)
-- Settings + Whitelist grouped: both touch settings template, avoids double-pass
-- Branding after OAuth: both touch login.html, sequential avoids conflicts
-- Chat last: pure service-layer, no dependencies
+(Archived in RETROSPECTIVE.md and milestones/v2.2-ROADMAP.md)
 
 ### Pending Todos
 
@@ -48,11 +39,10 @@ None.
 
 ### Blockers/Concerns
 
-- GCP OAuth credentials must be created manually before Phase 1 can be tested end-to-end
-- VIPL logo asset needed from Google Drive before Phase 3
+None.
 
 ## Session Continuity
 
-Last session: 2026-03-14T11:08:28.795Z
-Stopped at: Phase 1 context gathered
-Next: /gsd:plan-phase 1
+Last session: 2026-03-14
+Stopped at: v2.2 milestone complete
+Next: /gsd:new-milestone or deploy v2.2 to VM

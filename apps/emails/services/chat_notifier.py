@@ -26,6 +26,31 @@ PRIORITY_EMOJI = {
 PRIORITY_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
 
 
+def _sla_urgency_label(priority: str, overdue_minutes: float = None) -> str:
+    """Format a consistent urgency label: emoji + PRIORITY [| duration overdue].
+
+    Used across all notify methods for uniform urgency display.
+    """
+    emoji = PRIORITY_EMOJI.get(priority, PRIORITY_EMOJI.get("MEDIUM", ""))
+    label = f"{emoji} {priority}"
+    if overdue_minutes:
+        if overdue_minutes < 60:
+            duration = f"{int(overdue_minutes)}m"
+        else:
+            hours = int(overdue_minutes // 60)
+            mins = int(overdue_minutes % 60)
+            duration = f"{hours}h {mins}m" if mins else f"{hours}h"
+        label += f" | {duration} overdue"
+    return label
+
+
+VIPL_FOOTER_SECTION = {
+    "widgets": [
+        {"textParagraph": {"text": "<i>Sent by VIPL Email Triage</i>"}}
+    ]
+}
+
+
 class ChatNotifier:
     """Sends formatted notifications to Google Chat via incoming webhook.
 
@@ -37,6 +62,10 @@ class ChatNotifier:
 
     def __init__(self, webhook_url: str):
         self.webhook_url = webhook_url.strip() if webhook_url else ""
+        self._tracker_url = (
+            SystemConfig.get("tracker_url", "https://triage.vidarbhainfotech.com")
+            or "https://triage.vidarbhainfotech.com"
+        ).rstrip("/")
 
         if not self.webhook_url:
             logger.warning("Chat webhook URL is empty -- notifications will be skipped")
@@ -113,6 +142,16 @@ class ChatNotifier:
             logger.warning(f"Invalid quiet hours config: {e}")
             return False
 
+    def _branded_header(self, title: str, subtitle: str) -> dict:
+        """Build a card header with VIPL icon branding."""
+        return {
+            "title": title,
+            "subtitle": subtitle,
+            "imageUrl": f"{self._tracker_url}/static/img/vipl-icon.jpg",
+            "imageType": "CIRCLE",
+            "imageAltText": "VIPL Logo",
+        }
+
     def notify_assignment(self, email, assignee) -> bool:
         """Post a notification card when an email is assigned to a team member.
 
@@ -128,7 +167,6 @@ class ChatNotifier:
             return False
 
         pri = getattr(email, "priority", "MEDIUM") or "MEDIUM"
-        emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
         subject = (getattr(email, "subject", "") or "")[:50]
         category = getattr(email, "category", "") or ""
         from_name = getattr(email, "from_name", "") or ""
@@ -137,16 +175,13 @@ class ChatNotifier:
 
         assignee_name = assignee.get_full_name() or assignee.username
 
-        tracker_url = SystemConfig.get(
-            "tracker_url", "https://triage.vidarbhainfotech.com"
-        )
-        dashboard_link = f"{tracker_url}/emails/?selected={email.pk}"
+        dashboard_link = f"{self._tracker_url}/emails/?selected={email.pk}"
 
         card = {
-            "header": {
-                "title": f"Assigned to {assignee_name}: {subject}",
-                "subtitle": f"{emoji} {pri} | {category}",
-            },
+            "header": self._branded_header(
+                title=f"Assigned to {assignee_name}: {subject}",
+                subtitle=f"{_sla_urgency_label(pri)} | {category}",
+            ),
             "sections": [
                 {
                     "widgets": [
@@ -180,6 +215,7 @@ class ChatNotifier:
                         }
                     ]
                 },
+                VIPL_FOOTER_SECTION,
             ],
         }
 
@@ -233,20 +269,26 @@ class ChatNotifier:
         email_widgets = []
         for email in sorted_emails[:3]:
             pri = getattr(email, "priority", "MEDIUM") or "MEDIUM"
-            emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
             subject = (getattr(email, "subject", "") or "")[:60]
             category = getattr(email, "category", "") or ""
             assignee = getattr(email, "ai_suggested_assignee", "") or "Unassigned"
 
-            line = f"{emoji} {subject}"
-            email_widgets.append(
-                {
-                    "decoratedText": {
-                        "topLabel": f"{category} -> {assignee}",
-                        "text": line,
-                    }
+            line = f"{_sla_urgency_label(pri)} {subject}"
+            widget = {
+                "decoratedText": {
+                    "topLabel": f"{category} -> {assignee}",
+                    "text": line,
                 }
-            )
+            }
+
+            pk = getattr(email, "pk", None)
+            if pk:
+                widget["decoratedText"]["button"] = {
+                    "text": "Open",
+                    "onClick": {"openLink": {"url": f"{self._tracker_url}/emails/?selected={pk}"}},
+                }
+
+            email_widgets.append(widget)
 
         if count > 3:
             email_widgets.append(
@@ -272,16 +314,11 @@ class ChatNotifier:
                 }
             )
 
-        # Tracker URL
-        tracker_url = SystemConfig.get(
-            "tracker_url", "https://triage.vidarbhainfotech.com"
-        )
-
         card = {
-            "header": {
-                "title": f"\U0001f4e8 Poll Summary -- {count} new email(s)",
-                "subtitle": pri_summary,
-            },
+            "header": self._branded_header(
+                title=f"\U0001f4e8 Poll Summary -- {count} new email(s)",
+                subtitle=pri_summary,
+            ),
             "sections": [
                 {"widgets": email_widgets},
                 {
@@ -292,7 +329,7 @@ class ChatNotifier:
                                     {
                                         "text": "Open Tracker",
                                         "onClick": {
-                                            "openLink": {"url": tracker_url}
+                                            "openLink": {"url": self._tracker_url}
                                         },
                                     }
                                 ]
@@ -300,6 +337,7 @@ class ChatNotifier:
                         }
                     ]
                 },
+                VIPL_FOOTER_SECTION,
             ],
         }
 
@@ -331,13 +369,26 @@ class ChatNotifier:
         # Top offenders widgets
         offender_widgets = []
         for offender in top_offenders:
-            emoji = PRIORITY_EMOJI.get(offender.get("priority", "MEDIUM"), PRIORITY_EMOJI["MEDIUM"])
-            offender_widgets.append({
+            pri = offender.get("priority", "MEDIUM")
+            overdue_min = offender.get("overdue_minutes")
+            urgency = _sla_urgency_label(pri, overdue_min)
+            emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
+
+            widget = {
                 "decoratedText": {
-                    "topLabel": f"{offender.get('assignee_name', 'Unknown')} | {offender.get('overdue_str', '?')} overdue",
+                    "topLabel": urgency,
                     "text": f"{emoji} {offender.get('subject', '')}",
                 }
-            })
+            }
+
+            pk = offender.get("pk")
+            if pk:
+                widget["decoratedText"]["button"] = {
+                    "text": "Open",
+                    "onClick": {"openLink": {"url": f"{self._tracker_url}/emails/?selected={pk}"}},
+                }
+
+            offender_widgets.append(widget)
 
         # Per-assignee breakdown widgets
         assignee_widgets = []
@@ -361,26 +412,23 @@ class ChatNotifier:
                 "widgets": assignee_widgets,
             })
 
-        # Tracker URL
-        tracker_url = SystemConfig.get(
-            "tracker_url", "https://triage.vidarbhainfotech.com"
-        )
         sections.append({
             "widgets": [{
                 "buttonList": {
                     "buttons": [{
                         "text": "Open Dashboard",
-                        "onClick": {"openLink": {"url": tracker_url}},
+                        "onClick": {"openLink": {"url": self._tracker_url}},
                     }]
                 }
             }]
         })
+        sections.append(VIPL_FOOTER_SECTION)
 
         card = {
-            "header": {
-                "title": f"\u26a0\ufe0f SLA Breach Summary: {total} breach(es)",
-                "subtitle": f"Respond: {summary_data.get('total_respond_breached', 0)} | Ack: {summary_data.get('total_ack_breached', 0)}",
-            },
+            "header": self._branded_header(
+                title=f"\u26a0\ufe0f SLA Breach Summary: {total} breach(es)",
+                subtitle=f"Respond: {summary_data.get('total_respond_breached', 0)} | Ack: {summary_data.get('total_ack_breached', 0)}",
+            ),
             "sections": sections,
         }
 
@@ -460,9 +508,7 @@ class ChatNotifier:
             sections.append({"header": "Worst Overdue", "widgets": overdue_widgets})
 
         # Tracker button
-        tracker_url = stats.get("tracker_url", SystemConfig.get(
-            "tracker_url", "https://triage.vidarbhainfotech.com"
-        ))
+        tracker_url = stats.get("tracker_url", self._tracker_url)
         sections.append({
             "widgets": [{
                 "buttonList": {
@@ -473,12 +519,13 @@ class ChatNotifier:
                 }
             }]
         })
+        sections.append(VIPL_FOOTER_SECTION)
 
         card = {
-            "header": {
-                "title": f"\U0001f4ca Daily Summary -- {date_str}",
-                "subtitle": f"Received: {received} | Closed: {closed} | Open: {total_open}",
-            },
+            "header": self._branded_header(
+                title=f"\U0001f4ca Daily Summary -- {date_str}",
+                subtitle=f"Received: {received} | Closed: {closed} | Open: {total_open}",
+            ),
             "sections": sections,
         }
 
@@ -510,29 +557,33 @@ class ChatNotifier:
         email_widgets = []
         for item in breached_emails:
             pri = item.get("priority", "MEDIUM")
-            emoji = PRIORITY_EMOJI.get(pri, PRIORITY_EMOJI["MEDIUM"])
             overdue_min = item.get("overdue_minutes", 0)
-            # Format overdue
-            if overdue_min < 60:
-                overdue_str = f"{int(overdue_min)}m"
-            else:
-                h = int(overdue_min // 60)
-                m = int(overdue_min % 60)
-                overdue_str = f"{h}h {m}m" if m else f"{h}h"
 
-            email_widgets.append({
+            widget = {
                 "decoratedText": {
-                    "topLabel": f"{emoji} {pri} | {overdue_str} overdue",
+                    "topLabel": _sla_urgency_label(pri, overdue_min),
                     "text": item.get("subject", "")[:50],
                 }
-            })
+            }
+
+            pk = item.get("pk")
+            if pk:
+                widget["decoratedText"]["button"] = {
+                    "text": "Open",
+                    "onClick": {"openLink": {"url": f"{self._tracker_url}/emails/?selected={pk}"}},
+                }
+
+            email_widgets.append(widget)
 
         card = {
-            "header": {
-                "title": f"@{assignee_name}: {count} SLA breach(es) need attention",
-                "subtitle": "Please respond to these overdue emails",
-            },
-            "sections": [{"widgets": email_widgets}],
+            "header": self._branded_header(
+                title=f"@{assignee_name}: {count} SLA breach(es) need attention",
+                subtitle="Please respond to these overdue emails",
+            ),
+            "sections": [
+                {"widgets": email_widgets},
+                VIPL_FOOTER_SECTION,
+            ],
         }
 
         payload = {"cardsV2": [{"cardId": f"breach-personal-{assignee_name[:20]}", "card": card}]}

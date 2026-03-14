@@ -1,4 +1,4 @@
-"""Tests for settings views, claim endpoint, and AI suggestion endpoints."""
+"""Tests for settings views, claim endpoint, AI suggestion endpoints, and whitelist."""
 
 import pytest
 from datetime import datetime, timezone, timedelta
@@ -9,7 +9,7 @@ from django.utils import timezone as dj_timezone
 from apps.accounts.models import User
 from apps.core.models import SystemConfig
 from apps.emails.models import (
-    AssignmentRule, CategoryVisibility, Email, SLAConfig,
+    AssignmentRule, CategoryVisibility, Email, SLAConfig, SpamWhitelist,
 )
 
 
@@ -477,3 +477,208 @@ class TestConfigEditor:
             {"category": "demo", "config_something": "val"},
         )
         assert response.status_code == 403
+
+    def test_config_string_prefilled(self, admin_client, db):
+        """R2.2: String input renders with value= matching DB value."""
+        SystemConfig.objects.create(
+            key="test_str_prefill", value="hello_world", value_type="str",
+            category="r22test",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        content = response.content.decode()
+        assert 'value="hello_world"' in content
+
+    def test_config_bool_checked_when_true(self, admin_client, db):
+        """R2.2: Bool checkbox renders as checked when value='true'."""
+        SystemConfig.objects.create(
+            key="test_bool_prefill", value="true", value_type="bool",
+            category="r22test",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        content = response.content.decode()
+        assert "test_bool_prefill" in content
+        # The checkbox should have 'checked' attribute
+        assert "checked" in content
+
+    def test_config_int_prefilled(self, admin_client, db):
+        """R2.2: Int input renders with value= matching DB value."""
+        SystemConfig.objects.create(
+            key="test_int_prefill", value="42", value_type="int",
+            category="r22test",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        content = response.content.decode()
+        assert 'value="42"' in content
+
+    def test_config_bool_has_hidden_fallback(self, admin_client, db):
+        """Config editor checkbox has hidden input fallback for unchecked state."""
+        SystemConfig.objects.create(
+            key="test_hidden", value="false", value_type="bool",
+            category="r22test",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        content = response.content.decode()
+        # Hidden input with value="false" should appear before checkbox
+        assert 'type="hidden"' in content
+        assert 'value="false"' in content
+
+    def test_config_json_renders_textarea(self, admin_client, db):
+        """Config editor JSON type renders as textarea."""
+        SystemConfig.objects.create(
+            key="test_json_ta", value='{"key": "val"}', value_type="json",
+            category="r22test",
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=config")
+        content = response.content.decode()
+        assert "<textarea" in content
+        # Template auto-escapes quotes in HTML
+        assert "test_json_ta" in content
+        assert "&quot;key&quot;" in content or '{"key"' in content
+
+
+# ---------------------------------------------------------------------------
+# Whitelist CRUD views
+# ---------------------------------------------------------------------------
+
+
+class TestWhitelistViews:
+    def test_whitelist_add_creates_entry(self, admin_client, admin_user, db):
+        response = admin_client.post(
+            reverse("emails:whitelist_add"),
+            {"entry": "john@acme.com", "entry_type": "email"},
+        )
+        assert response.status_code == 200
+        assert SpamWhitelist.objects.filter(entry="john@acme.com", entry_type="email").exists()
+
+    def test_whitelist_add_rejects_non_admin(self, member_client, db):
+        response = member_client.post(
+            reverse("emails:whitelist_add"),
+            {"entry": "john@acme.com", "entry_type": "email"},
+        )
+        assert response.status_code == 403
+
+    def test_whitelist_add_rejects_empty_entry(self, admin_client, admin_user, db):
+        response = admin_client.post(
+            reverse("emails:whitelist_add"),
+            {"entry": "", "entry_type": "email"},
+        )
+        assert response.status_code == 200
+        assert SpamWhitelist.objects.count() == 0
+        content = response.content.decode()
+        assert "cannot be empty" in content.lower() or "error" in content.lower()
+
+    def test_whitelist_add_handles_duplicate(self, admin_client, admin_user, db):
+        SpamWhitelist.objects.create(
+            entry="john@acme.com", entry_type="email", added_by=admin_user,
+        )
+        response = admin_client.post(
+            reverse("emails:whitelist_add"),
+            {"entry": "john@acme.com", "entry_type": "email"},
+        )
+        assert response.status_code == 200
+        # Should not crash, should show already-exists message
+        assert SpamWhitelist.objects.filter(entry="john@acme.com").count() == 1
+
+    def test_whitelist_delete_soft_deletes(self, admin_client, admin_user, db):
+        wl = SpamWhitelist.objects.create(
+            entry="john@acme.com", entry_type="email", added_by=admin_user,
+        )
+        response = admin_client.post(
+            reverse("emails:whitelist_delete", args=[wl.pk]),
+        )
+        assert response.status_code == 200
+        # Soft-deleted: still exists in DB but not in default queryset
+        assert not SpamWhitelist.objects.filter(pk=wl.pk).exists()
+
+    def test_settings_view_includes_whitelist_entries(self, admin_client, admin_user, db):
+        SpamWhitelist.objects.create(
+            entry="test@example.com", entry_type="email", added_by=admin_user,
+        )
+        response = admin_client.get(reverse("emails:settings") + "?tab=whitelist")
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "test@example.com" in content
+
+
+class TestWhitelistSender:
+    def test_whitelist_sender_creates_entry(self, admin_client, admin_user, db):
+        email = _create_email(db, from_address="spammer@example.com")
+        response = admin_client.post(
+            reverse("emails:whitelist_sender", args=[email.pk]),
+        )
+        assert response.status_code == 200
+        assert SpamWhitelist.objects.filter(entry="spammer@example.com", entry_type="email").exists()
+
+    def test_whitelist_sender_unspams_existing_emails(self, admin_client, admin_user, db):
+        email = _create_email(db, from_address="spammer@example.com", is_spam=True)
+        admin_client.post(reverse("emails:whitelist_sender", args=[email.pk]))
+        email.refresh_from_db()
+        assert email.is_spam is False
+
+    def test_whitelist_sender_returns_detail_panel(self, admin_client, admin_user, db):
+        email = _create_email(db, from_address="spammer@example.com")
+        response = admin_client.post(
+            reverse("emails:whitelist_sender", args=[email.pk]),
+        )
+        content = response.content.decode()
+        # Returns refreshed detail panel with email subject
+        assert email.subject in content
+
+    def test_whitelist_sender_rejects_non_admin(self, member_client, member_user, db):
+        email = _create_email(db)
+        response = member_client.post(
+            reverse("emails:whitelist_sender", args=[email.pk]),
+        )
+        assert response.status_code == 403
+
+    def test_whitelist_sender_handles_already_whitelisted(self, admin_client, admin_user, db):
+        email = _create_email(db, from_address="known@example.com")
+        SpamWhitelist.objects.create(
+            entry="known@example.com", entry_type="email", added_by=admin_user,
+        )
+        response = admin_client.post(
+            reverse("emails:whitelist_sender", args=[email.pk]),
+        )
+        assert response.status_code == 200
+
+
+class TestSaveFeedbackBanners:
+    def test_sla_save_returns_save_success(self, admin_client, db):
+        response = admin_client.post(
+            reverse("emails:settings_sla_save"),
+            {"priority": "HIGH", "category": "Sales Lead", "ack_hours": "2.0", "respond_hours": "8.0"},
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "saved" in content.lower()
+
+    def test_rules_save_returns_save_success(self, admin_client, admin_user, second_member, db):
+        response = admin_client.post(
+            reverse("emails:settings_rules_save"),
+            {"action": "add", "category": "Sales Lead", "assignee_id": second_member.pk},
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "saved" in content.lower()
+
+    def test_visibility_save_returns_save_success(self, admin_client, second_member, db):
+        response = admin_client.post(
+            reverse("emails:settings_visibility_save"),
+            {"user_id": second_member.pk, "categories[]": ["Sales Lead"]},
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "saved" in content.lower()
+
+    def test_inboxes_save_returns_save_success(self, admin_client, db):
+        SystemConfig.objects.update_or_create(
+            key="monitored_inboxes",
+            defaults={"value": "", "value_type": "str", "category": "email"},
+        )
+        response = admin_client.post(
+            reverse("emails:settings_inboxes_save"),
+            {"action": "add", "inbox_email": "new@example.com"},
+        )
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "saved" in content.lower()

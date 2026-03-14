@@ -26,13 +26,20 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
     # Third-party
     "django_htmx",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     # Project apps
     "apps.core",
     "apps.accounts",
     "apps.emails",
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -44,6 +51,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -98,3 +106,36 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",  # Password auth (superuser fallback)
+    "allauth.account.auth_backends.AuthenticationBackend",  # allauth
+]
+
+# allauth settings
+ACCOUNT_EMAIL_VERIFICATION = "none"  # No email verification loop
+ACCOUNT_LOGIN_METHODS = {"username"}  # Keep username-based password login working
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = False  # SECURITY: prevent email-matching auto-connect
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.VIPLSocialAccountAdapter"
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email", "openid"],
+        "AUTH_PARAMS": {
+            "access_type": "online",
+            "hd": "vidarbhainfotech.com",  # UI hint only -- enforced server-side in adapter
+        },
+        "OAUTH_PKCE_ENABLED": True,
+        "APP": {
+            "client_id": os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "placeholder"),
+            "secret": os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+        },
+    }
+}
+SOCIALACCOUNT_STORE_TOKENS = False  # We don't need access tokens after login
+
+# OAuth credentials (from environment)
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")

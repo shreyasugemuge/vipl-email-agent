@@ -1,0 +1,80 @@
+{% load email_tags %}
+
+<div id="whitelist-tab-content">
+    {% if save_success %}
+    <div class="mb-4 px-4 py-2 bg-emerald-50 border border-emerald-200/60 rounded-lg text-xs font-medium text-emerald-700">
+        {{ save_message|default:"Whitelist saved successfully." }}
+    </div>
+    {% endif %}
+    {% if save_error %}
+    <div class="mb-4 px-4 py-2 bg-red-50 border border-red-200/60 rounded-lg text-xs font-medium text-red-700">
+        {{ save_error }}
+    </div>
+    {% endif %}
+
+    <!-- Add form -->
+    <form hx-post="{% url 'emails:whitelist_add' %}"
+          hx-target="#whitelist-content" hx-swap="innerHTML"
+          class="flex items-center gap-2 mb-4">
+        {% csrf_token %}
+        <input type="text" name="entry" placeholder="email@example.com or example.com"
+               class="flex-1 text-sm border border-slate-200/80 rounded-lg px-3 py-2 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none">
+        <select name="entry_type" class="text-xs border border-slate-200/80 rounded-lg px-2.5 py-2 bg-white text-slate-600">
+            <option value="email">Email</option>
+            <option value="domain">Domain</option>
+        </select>
+        <button type="submit"
+                class="px-4 py-2 text-xs font-bold text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+            Add
+        </button>
+    </form>
+
+    <!-- Entries table -->
+    {% if whitelist_entries %}
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
+        <table class="w-full text-xs">
+            <thead>
+                <tr class="border-b border-slate-200/40">
+                    <th class="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Entry</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Type</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Added By</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Date</th>
+                    <th class="px-3 py-2.5 text-[10px]"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for wl in whitelist_entries %}
+                <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors" id="wl-row-{{ wl.pk }}">
+                    <td class="px-4 py-2.5 font-semibold text-slate-700">{{ wl.entry }}</td>
+                    <td class="px-3 py-2.5">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase
+                            {% if wl.entry_type == 'email' %}bg-primary-50 text-primary-600{% else %}bg-amber-50 text-amber-600{% endif %}">
+                            {{ wl.get_entry_type_display }}
+                        </span>
+                    </td>
+                    <td class="px-3 py-2.5 text-slate-500">{{ wl.added_by.get_full_name|default:wl.added_by.username|default:"--" }}</td>
+                    <td class="px-3 py-2.5 text-slate-400 tabular-nums">{{ wl.created_at|date:"M d, Y" }}</td>
+                    <td class="px-3 py-2.5">
+                        <form hx-post="{% url 'emails:whitelist_delete' wl.pk %}"
+                              hx-target="#whitelist-content" hx-swap="innerHTML"
+                              class="inline">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="text-slate-300 hover:text-red-500 transition-colors" title="Delete">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-sm text-slate-400 italic py-4 text-center">
+        No whitelisted senders yet. Use "Whitelist Sender" on any email to add one here.
+    </div>
+    {% endif %}
+</div>

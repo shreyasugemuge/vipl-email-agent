@@ -20,6 +20,12 @@ class User(AbstractUser):
         default=False,
         help_text="If False, user only sees emails assigned to them",
     )
+    avatar_url = models.URLField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Google profile photo URL, updated on each login",
+    )
 
     @property
     def is_admin_role(self):

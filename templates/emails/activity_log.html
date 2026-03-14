@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load email_tags %}
 
+{% block title %}VIPL Triage | Activity{% endblock %}
 {% block page_title %}Activity{% endblock %}
 {% block nav_activity_active %}nav-active{% endblock %}
 
@@ -21,16 +22,16 @@
             <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Total Events</div>
         </div>
 
-        <div class="stat-card bg-white rounded-xl border border-indigo-200/50 p-3.5">
+        <div class="stat-card bg-white rounded-xl border border-primary-200/50 p-3.5">
             <div class="flex items-center justify-between mb-2">
-                <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center border border-indigo-200/50">
-                    <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center border border-primary-200/50">
+                    <svg class="w-3.5 h-3.5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
             </div>
-            <div class="text-xl font-extrabold text-indigo-700 tabular-nums">{{ mis_stats.today }}</div>
-            <div class="text-[9px] font-bold text-indigo-400/70 uppercase tracking-wider mt-0.5">Today</div>
+            <div class="text-xl font-extrabold text-primary-700 tabular-nums">{{ mis_stats.today }}</div>
+            <div class="text-[9px] font-bold text-primary-400/70 uppercase tracking-wider mt-0.5">Today</div>
         </div>
 
         <div class="stat-card bg-white rounded-xl border border-blue-200/50 p-3.5">

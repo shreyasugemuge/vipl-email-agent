@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load email_tags %}
 
+{% block title %}VIPL Triage | Settings{% endblock %}
 {% block page_title %}Settings{% endblock %}
 
 {% block content %}
@@ -32,6 +33,10 @@
             <button onclick="switchTab('config')" id="tab-config"
                     class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
                 System
+            </button>
+            <button onclick="switchTab('whitelist')" id="tab-whitelist"
+                    class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                Whitelist
             </button>
         </div>
     </div>
@@ -88,6 +93,17 @@
             {% include "emails/_config_editor.html" with config_groups=config_groups %}
         </div>
 
+        <!-- Whitelist tab -->
+        <div id="panel-whitelist" class="tab-panel hidden">
+            <div class="max-w-2xl">
+                <h3 class="text-sm font-bold text-slate-700 mb-1">Spam Whitelist</h3>
+                <p class="text-xs text-slate-400 mb-4">Whitelisted senders skip the spam pre-filter but still go through AI triage.</p>
+                <div id="whitelist-content">
+                    {% include "emails/_whitelist_tab.html" with whitelist_entries=whitelist_entries %}
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -115,7 +131,7 @@ function initSortables() {
         if (el._sortable) return;
         el._sortable = new Sortable(el, {
             animation: 150,
-            ghostClass: 'bg-indigo-50',
+            ghostClass: 'bg-primary-50',
             onEnd: function(evt) {
                 var category = el.dataset.category;
                 var items = el.querySelectorAll('[data-assignee-id]');

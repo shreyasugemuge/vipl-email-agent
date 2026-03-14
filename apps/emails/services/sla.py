@@ -231,6 +231,7 @@ def build_breach_summary(breached_respond, breached_ack) -> dict:
                 "subject": email.subject[:50],
                 "priority": email.priority,
                 "overdue_minutes": overdue_minutes,
+                "pk": email.pk,
             }
 
             per_assignee.setdefault(name, []).append(entry)
@@ -241,6 +242,7 @@ def build_breach_summary(breached_respond, breached_ack) -> dict:
                 "priority": email.priority,
                 "overdue_str": _format_overdue(overdue_minutes),
                 "overdue_minutes": overdue_minutes,
+                "pk": email.pk,
             })
 
     # Sort by most overdue first, take top 3

@@ -57,7 +57,6 @@ class TriageResult:
     category: str = "General Inquiry"
     priority: str = "MEDIUM"
     summary: str = ""
-    draft_reply: str = ""
     reasoning: str = ""
     language: str = "English"
     tags: list = field(default_factory=list)

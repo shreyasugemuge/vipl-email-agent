@@ -1,6 +1,11 @@
 {% load email_tags %}
 
 <div class="rules-container">
+    {% if save_success %}
+    <div class="mx-3 mt-3 px-4 py-2 bg-emerald-50 border border-emerald-200/60 rounded-lg text-xs font-medium text-emerald-700">
+        Assignment rules saved successfully.
+    </div>
+    {% endif %}
     <div class="px-4 py-3 bg-slate-50/60 border-b border-slate-200/40">
         <h3 class="text-xs font-bold text-slate-700">{{ category }}</h3>
     </div>
@@ -48,7 +53,7 @@
                 <option value="{{ member.pk }}">{{ member.get_full_name|default:member.username }}</option>
                 {% endfor %}
             </select>
-            <button type="submit" class="px-3 py-1.5 text-[10px] font-bold text-indigo-700 bg-indigo-50 rounded-lg border border-indigo-200/60 hover:bg-indigo-100 transition-colors">
+            <button type="submit" class="px-3 py-1.5 text-[10px] font-bold text-primary-700 bg-primary-50 rounded-lg border border-primary-200/60 hover:bg-primary-100 transition-colors">
                 Add
             </button>
         </form>

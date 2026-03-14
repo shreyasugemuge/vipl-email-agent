@@ -28,7 +28,7 @@ class TestAIProcessor:
             "category": "Sales Lead",
             "priority": "HIGH",
             "summary": "A potential sales inquiry from a new client.",
-            "draft_reply": "Thank you for your interest.",
+
             "reasoning": "Business inquiry with clear intent.",
             "suggested_assignee": "Sales Team",
             "tags": ["sales", "new-client"],
@@ -70,7 +70,7 @@ class TestAIProcessor:
             "category": "General Inquiry",
             "priority": "MEDIUM",
             "summary": "A general inquiry.",
-            "draft_reply": "Thank you.",
+
             "reasoning": "Routine email.",
             "suggested_assignee": "",
             "tags": ["general"],
@@ -118,7 +118,7 @@ class TestAIProcessor:
             "category": "General Inquiry",
             "priority": "LOW",
             "summary": "Long email.",
-            "draft_reply": "Thank you.",
+
             "reasoning": "Routine.",
             "suggested_assignee": "",
             "tags": [],
@@ -163,7 +163,7 @@ class TestAIProcessor:
             "category": "General Inquiry",
             "priority": "LOW",
             "summary": "Test.",
-            "draft_reply": "Thank you.",
+
             "reasoning": "Routine.",
             "suggested_assignee": "",
             "tags": [],

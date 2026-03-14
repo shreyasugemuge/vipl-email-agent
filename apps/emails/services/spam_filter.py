@@ -43,7 +43,6 @@ def is_spam(email_msg: EmailMessage) -> Optional[TriageResult]:
             category="Spam",
             priority="LOW",
             summary="[Auto-filtered as likely spam/phishing -- no AI processing required]",
-            draft_reply="",
             reasoning="Matched spam pre-filter pattern. Skipped AI to save cost.",
             suggested_assignee="",
             tags=["spam", "auto-filtered"],

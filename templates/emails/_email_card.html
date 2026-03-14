@@ -44,6 +44,9 @@
                 <span class="w-1 h-1 rounded-full bg-{{ email.status|status_base }}-500"></span>
                 {{ email.get_status_display }}
             </span>
+            {% if email.is_spam %}
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-red-100 text-red-700">Spam</span>
+            {% endif %}
             {% if email.sla_respond_deadline %}
             <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold text-{{ email.sla_respond_deadline|sla_color }}-700 bg-{{ email.sla_respond_deadline|sla_color }}-50">
                 <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -74,7 +77,7 @@
                 {% include "emails/_assign_dropdown.html" with email=email team_members=team_members %}
             {% elif email.assigned_to %}
             <div class="flex items-center gap-1">
-                <div class="w-4 h-4 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-[7px] font-bold" style="width:16px;height:16px;">
+                <div class="w-4 h-4 rounded-full bg-gradient-to-br from-primary-400 to-primary-500 flex items-center justify-center text-white text-[7px] font-bold" style="width:16px;height:16px;">
                     {{ email.assigned_to.first_name.0|default:email.assigned_to.username.0|upper }}
                 </div>
                 <span class="text-[10px] font-medium text-slate-500">{{ email.assigned_to.first_name|default:email.assigned_to.username }}</span>

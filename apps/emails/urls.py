@@ -19,6 +19,9 @@ urlpatterns = [
     path("settings/inboxes/", views.settings_inboxes_save, name="settings_inboxes_save"),
     path("settings/config/", views.settings_config_save, name="settings_config_save"),
     path("settings/webhooks/", views.settings_webhooks_save, name="settings_webhooks_save"),
+    path("settings/whitelist/add/", views.whitelist_add, name="whitelist_add"),
+    path("settings/whitelist/<int:pk>/delete/", views.whitelist_delete, name="whitelist_delete"),
+    path("<int:pk>/whitelist-sender/", views.whitelist_sender, name="whitelist_sender"),
     path("activity/", views.activity_log, name="activity_log"),
     path("inspect/", views.inspect, name="inspect"),
 ]
