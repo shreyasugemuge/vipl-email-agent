@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An AI-powered shared inbox management system for Vidarbha Infotech Private Limited. Monitors unmanned Gmail inboxes, triages incoming emails with Claude AI, auto-assigns them to team members, tracks SLA compliance, and gives management a dashboard for oversight. Replaces the v1 monitoring-only system with an active workflow that ensures every email gets owned, acknowledged, and responded to.
+An AI-powered shared inbox management system for Vidarbha Infotech Private Limited. Monitors Gmail inboxes (info@ and sales@), triages incoming emails with Claude AI, auto-assigns them to team members based on category rules, tracks SLA compliance, and provides a dashboard for management oversight. Every email gets owned, acknowledged, and responded to.
 
 ## Core Value
 
@@ -12,89 +12,72 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ### Validated
 
-<!-- Carried from v1 — these work and are proven in production -->
-
-- Gmail inbox polling with label-based processing (v1)
-- Claude AI two-tier triage: category, priority, summary, draft reply (v1)
-- Spam pre-filter via regex patterns (v1)
-- Google Chat webhook notifications (v1)
-- SLA deadline calculation per category (v1)
-- EOD summary report via email + Chat (v1)
-- Dead letter queue with retry for failed triages (v1)
-- Multi-language detection (Hindi, Marathi, English) (v1)
-- PDF attachment extraction for triage context (v1)
-- Dynamic config hot-reload from external source (v1)
+- Gmail inbox polling with label-based processing — v1.0
+- Claude AI two-tier triage: Haiku default, Sonnet for CRITICAL — v1.0
+- Spam pre-filter via 13 regex patterns ($0 cost) — v1.0
+- PDF attachment text extraction for triage context — v1.0
+- Multi-language detection (Hindi, Marathi, English) — v1.0
+- Dead letter queue with 3x retry for failed triages — v1.0
+- Dashboard: card list with filters, sorting, pagination, HTMX — v1.0
+- Manual assignment + reassignment with notifications — v1.0
+- Auto-assignment engine: category rules + AI fallback — v1.0
+- SLA tracking with business hours, breach detection, escalation — v1.0
+- Per-category Google Chat webhook routing with quiet hours — v1.0
+- Activity log for all assignment and status changes — v1.0
+- EOD reports via email + Chat with database stats — v1.0
+- SystemConfig admin for runtime configuration — v1.0
+- Google Sheets read-only sync mirror — v1.0
+- PostgreSQL as source of truth — v1.0
+- Docker Compose deployment on VM — v1.0
+- Release-triggered CI/CD via GitHub Actions — v1.0
+- Simple password auth with admin/member roles — v1.0
+- Health endpoint with system status — v1.0
+- Configurable inbox management from Settings page — v1.0
 
 ### Active
 
-<!-- v2 scope — building toward these -->
-
-- [ ] Email assignment engine: rules-based (category -> person) + AI fallback (content/workload analysis)
-- [ ] Manual reassignment with AI correction feedback loop (corrections improve future assignments)
-- [ ] SLA workflow: acknowledgement deadline + response deadline per priority
-- [ ] Gmail thread monitoring to auto-detect when assignee responds
-- [ ] Dashboard: table view with email details, filters, assignment controls, status tracking
-- [ ] Google OAuth SSO restricted to @vidarbhainfotech.com
-- [ ] Live dashboard analytics: response times, volume trends, assignee performance
-- [ ] Configurable inbox management: add/remove monitored inboxes without code changes
-- [ ] Notification multi-channel: Google Chat + Email + WhatsApp/SMS for urgent escalations
-- [ ] SLA escalation: alert manager when assignee misses deadline
-- [ ] Google Sheets read-only sync mirror (simplified: date, from, subject, assignee, status)
-- [ ] Daily EOD report (email + Chat) with enhanced stats from real database
-- [ ] PostgreSQL as source of truth (replaces Sheets-as-DB)
-- [ ] Docker Compose deployment on existing VM
-- [ ] Tag-based CI/CD via GitHub Actions targeting VM
+(None — next milestone requirements TBD via `/gsd:new-milestone`)
 
 ### Out of Scope
 
-- Reply from dashboard (team replies from Gmail directly) — complexity vs value
-- Tender intelligence / MahaTender parsing — future milestone, not v2 core
-- Web scraping for tender documents — future milestone
-- Mobile native app — responsive web is sufficient
-- Real-time chat/messaging — not needed for email workflow
+- Reply from dashboard — team replies from Gmail directly, building compose UI is high effort low value
+- Tender intelligence / MahaTender parsing — future milestone, research exists in `docs/mahatender/`
+- Mobile native app — responsive web + Chat notifications is sufficient
 - Multi-tenant / SaaS — single company tool
+- Round-robin assignment — category rules more accurate for 3-person team
+- Ticket numbering — nobody references ticket numbers, email subject is identifier
 
 ## Context
 
-**Current state (v1):** Production on Cloud Run since v1.0. Monitors info@ and sales@ inboxes, triages with Claude AI, logs to Google Sheets, posts to Google Chat. Works as an alerting/monitoring system but is purely passive — nobody is assigned to act on emails, so they still get missed. 112 unit tests, 8 integration tests.
+**Current state (v1.0 shipped):** Production at triage.vidarbhainfotech.com since 2026-03-14. Monitors info@ and sales@ inboxes, triages with Claude AI (Haiku/Sonnet), auto-assigns by category, tracks SLA deadlines, notifies via Google Chat per-category webhooks. 16,572 LOC Python, 257 tests passing, Django 4.2 LTS + PostgreSQL 12.3.
 
-**The business problem:** VIPL receives sales inquiries, tender notifications, and general correspondence across shared inboxes. With no ownership model, emails sit unread. By the time someone checks, the prospect has moved on. This directly costs revenue.
+**Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
-**Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees. Small team, needs simple workflow not enterprise complexity.
-
-**Infrastructure:** An existing VM hosts Taiga and other internal tools. PostgreSQL already runs there. The VM is paid for regardless, so deploying v2 there keeps costs zero.
-
-**Tender intelligence research:** Extensive research exists in `docs/mahatender/` covering MahaTender email parsing (8 notification types, regex patterns, field extraction) and portal scraping feasibility (Playwright-based, CAPTCHA handling). This is documented and ready for a future milestone but explicitly deferred from v2 core.
-
-**v1 codebase:** Python 3.11, pure-Python with no web framework (just stdlib HTTPServer for health checks). APScheduler for background jobs. Google APIs for Gmail + Sheets. Anthropic SDK for Claude. Well-tested with 131 tests. Key patterns to preserve: label-after-persist safety, circuit breaker, retry with backoff, spam pre-filter, two-tier AI model strategy.
+**Infrastructure:** Self-hosted VM (`taiga` in GCP, asia-south1-b). Docker Compose with web + scheduler containers. Nginx reverse proxy with Cloudflare SSL. PostgreSQL shared with Taiga stack.
 
 ## Constraints
 
-- **Auth**: Google OAuth only — restricted to @vidarbhainfotech.com domain. No separate user management.
-- **Hosting**: Self-hosted VM (Docker Compose). Must coexist with Taiga and other services on same machine.
-- **Database**: PostgreSQL (already running on VM for Taiga).
-- **Gmail access**: Domain-wide delegation via service account (existing pattern from v1).
+- **Hosting**: Self-hosted VM (Docker Compose). Must coexist with Taiga and other services.
+- **Database**: PostgreSQL 12.3 (Taiga's container). Django 4.2 LTS required (5.2+ needs PG 13+).
+- **Gmail access**: Domain-wide delegation via service account.
 - **Budget**: Near-zero infrastructure cost. Claude API is the only ongoing expense.
-- **Team size**: 4-5 users max. Don't over-engineer for scale.
-- **Deployment**: Tag-based CI/CD via GitHub Actions. No auto-deploy on push.
-- **Subdomain**: `triage.vidarbhainfotech.com` (or similar — to be configured).
-- **Browser support**: Desktop-first, mobile-usable. No IE/legacy requirements.
+- **Team size**: 4-5 users max.
+- **Deployment**: Release-triggered CI/CD via GitHub Actions.
 
 ## Key Decisions
 
-<!-- Decisions made during project initialization -->
-
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| PostgreSQL over Sheets as primary DB | Sheets hit API rate limits, can't do joins/queries, no referential integrity | -- Pending |
-| Keep Sheets as read-only mirror | Team is used to Sheets for quick lookups, low effort to sync | -- Pending |
-| Google OAuth (not password auth) | Everyone already has @vipl Google accounts, zero password management | -- Pending |
-| Self-host on existing VM | Already paying for the VM, PostgreSQL already there, zero incremental cost | -- Pending |
-| Triage + assign only (no reply from dashboard) | Team already knows Gmail, adding reply UX is high effort low value | -- Pending |
-| AI feedback loop from corrections | Corrections logged to improve assignment accuracy over time | -- Pending |
-| Tender intelligence deferred to future milestone | Get core inbox management right first, tender features are additive | -- Pending |
-| Taiga sync agent for development | Dedicated agent keeps Taiga stories/tasks updated as we build v2 (dev process, not product feature) | -- Pending |
-| Stack TBD — not married to FastAPI+React | Research phase should propose best-fit stack for this use case | -- Pending |
+| Django 4.2 LTS (not 5.2+) | PostgreSQL 12.3 on VM not supported by Django 5.2+ | Good — stable, LTS until 2026-04 |
+| Simple password auth (not Google OAuth) | Faster to ship, OAuth deferred to v2 requirements | Good — works for 4 users |
+| HTMX + Tailwind CDN (no React/Node) | Zero build step, server-rendered, simpler stack | Good — fast dev, no JS complexity |
+| APScheduler as separate management command | Keeps scheduler out of Gunicorn workers | Good — clean separation |
+| SystemConfig key-value store | Runtime config without redeploy, replaces Sheets config | Good — flexible, migration-seeded |
+| Per-category Chat webhooks via SystemConfig | Categories = teams, configurable from Settings | Good — no Team model needed |
+| Release-triggered deploy (not tag push) | Intentional deploys, documented via GitHub Releases | Good — prevents accidental deploys |
+| Fire-and-forget notifications | Chat/email never block assignment flow | Good — resilient UX |
+| nh3 for HTML sanitization | Rust-based, safe-by-default XSS protection | Good — zero vulnerabilities |
+| SLA business hours 8AM-8PM IST Mon-Sat | Matches VIPL working hours | Good — accurate deadlines |
 
 ---
-*Last updated: 2026-03-09 after initialization*
+*Last updated: 2026-03-14 after v1.0 milestone*
