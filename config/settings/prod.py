@@ -24,6 +24,11 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{host.strip()}"
+    for host in ALLOWED_HOSTS
+    if host.strip() and host.strip() != "localhost"
+]
 
 # Whitenoise static file serving
 STORAGES = {
