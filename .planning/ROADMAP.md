@@ -16,7 +16,10 @@
   Plans:
   - [x] 02-01-PLAN.md — SpamWhitelist model, pipeline whitelist integration, bool normalization, config editor improvements
   - [ ] 02-02-PLAN.md — Whitelist settings tab, whitelist sender button, SLA save feedback
-- [ ] Phase 3: VIPL Branding (0/0 plans) — not started
+- [ ] Phase 3: VIPL Branding (0/2 plans) — planned
+  Plans:
+  - [ ] 03-01-PLAN.md — Logo assets, favicon, brand palette, template color replacement
+  - [ ] 03-02-PLAN.md — Google Chat card branding (header icon + footer)
 - [ ] Phase 4: Chat Notification Polish (0/0 plans) — not started
 
 <details>
@@ -97,12 +100,15 @@
 
 ### Phase 3: VIPL Branding
 
-**Goal:** Replace placeholder icons with VIPL logo and apply brand identity across all pages.
+**Goal:** Replace placeholder icons with VIPL logo and apply brand identity across all pages and Google Chat notifications.
+
+**Plans:** 2 plans
 
 **Delivers:**
 - VIPL logo in sidebar and login page (from static/img/, not Drive link)
 - Brand color palette in @theme block
 - Consistent styling across all templates including HTMX partials
+- Google Chat card branding (header icon + footer)
 
 **Key risks:**
 - @theme tokens in base.html unavailable to HTMX-swapped fragments — must update inline classes in partials
@@ -145,7 +151,7 @@
 |-------|-----------|----------------|--------|-----------|
 | 1. Google OAuth SSO | v2.2 | 0/1 | Checkpoint pending | — |
 | 2. Settings + Spam Whitelist | 2/2 | Complete   | 2026-03-14 | — |
-| 3. VIPL Branding | v2.2 | 0/0 | Not started | — |
+| 3. VIPL Branding | v2.2 | 0/2 | Planned | — |
 | 4. Chat Notification Polish | v2.2 | 0/0 | Not started | — |
 | 1. Foundation | v2.1 | 2/2 | Complete | 2026-03-09 |
 | 2. Email Pipeline | v2.1 | 3/3 | Complete | 2026-03-11 |
