@@ -540,6 +540,12 @@ def settings_view(request):
         cat = cfg.category or "general"
         config_groups.setdefault(cat, []).append(cfg)
 
+    # Per-category webhook URLs
+    category_webhooks = []
+    for cat in VALID_CATEGORIES:
+        url = SystemConfig.get(f"chat_webhook_{cat.lower()}", "") or ""
+        category_webhooks.append({"category": cat, "webhook_url": url})
+
     context = {
         "active_tab": active_tab,
         "team_members": team_members,
@@ -550,6 +556,7 @@ def settings_view(request):
         "valid_priorities": VALID_PRIORITIES,
         "monitored_inboxes": monitored_inboxes,
         "config_groups": config_groups,
+        "category_webhooks": category_webhooks,
     }
     return render(request, "emails/settings.html", context)
 
@@ -750,6 +757,39 @@ def settings_config_save(request):
 
     return render(request, "emails/_config_editor.html", {
         "config_groups": config_groups,
+        "save_success": True,
+    })
+
+
+@login_required
+@require_POST
+def settings_webhooks_save(request):
+    """Save per-category Google Chat webhook URLs."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    for cat in VALID_CATEGORIES:
+        field_name = f"webhook_{cat.lower()}"
+        if field_name in request.POST:
+            new_url = request.POST.get(field_name, "").strip()
+            config_key = f"chat_webhook_{cat.lower()}"
+            SystemConfig.objects.update_or_create(
+                key=config_key,
+                defaults={
+                    "value": new_url,
+                    "value_type": "str",
+                    "category": "notifications",
+                    "description": f"Google Chat webhook for {cat} emails",
+                },
+            )
+
+    category_webhooks = []
+    for cat in VALID_CATEGORIES:
+        url = SystemConfig.get(f"chat_webhook_{cat.lower()}", "") or ""
+        category_webhooks.append({"category": cat, "webhook_url": url})
+
+    return render(request, "emails/_webhooks_tab.html", {
+        "category_webhooks": category_webhooks,
         "save_success": True,
     })
 

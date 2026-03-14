@@ -107,8 +107,15 @@ class TestAssignEmail:
 
     @patch("apps.emails.services.assignment.notify_assignment_email")
     def test_assign_calls_email_notification(self, mock_notify_email, admin_user, member_user):
-        """Test 6: assign_email calls notify_assignment_email."""
+        """Test 6: assign_email calls notify_assignment_email when enabled."""
         from apps.emails.services.assignment import assign_email
+        from apps.core.models import SystemConfig
+
+        # Enable email notifications for this test
+        SystemConfig.objects.update_or_create(
+            key="email_notifications_enabled",
+            defaults={"value": "true", "value_type": "bool"},
+        )
 
         email = _create_email(None, message_id="msg_assign_6")
         assign_email(email, member_user, admin_user)

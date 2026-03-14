@@ -7,12 +7,19 @@
     {% csrf_token %}
     <select name="assignee_id"
             onchange="this.form.requestSubmit();"
-            class="text-[10px] font-semibold border border-slate-200/60 rounded-lg px-2 py-1 bg-white/80 text-slate-500 cursor-pointer hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all">
-        <option value="">Unassigned</option>
+            class="text-[10px] font-semibold border border-slate-200/60 rounded-lg px-2 py-1 bg-white/80 text-slate-500 cursor-pointer hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 transition-all max-w-[140px]">
+        {% if email.assigned_to %}
+        <option value="{{ email.assigned_to.pk }}" selected>{{ email.assigned_to.get_full_name|default:email.assigned_to.username }}</option>
+        <option value="" class="text-slate-400">-- Unassign --</option>
+        {% else %}
+        <option value="">Assign to...</option>
+        {% endif %}
         {% for member in team_members %}
-        <option value="{{ member.pk }}" {% if email.assigned_to_id == member.pk %}selected{% endif %}>
-            {{ member.get_full_name|default:member.username }}
-        </option>
+            {% if member.pk != email.assigned_to_id %}
+            <option value="{{ member.pk }}">
+                {{ member.get_full_name|default:member.username }}{% if member.role == "admin" %} (Admin){% endif %}
+            </option>
+            {% endif %}
         {% endfor %}
     </select>
 </form>

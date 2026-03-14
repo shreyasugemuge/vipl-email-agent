@@ -20,6 +20,32 @@ from apps.emails.services.chat_notifier import ChatNotifier
 logger = logging.getLogger(__name__)
 
 
+def _send_assignment_chat(email, assignee):
+    """Send assignment Chat notification to the right webhook(s).
+
+    Routing: category webhook (if configured) → global webhook (fallback).
+    Both fire if both are set and different.
+    """
+    global_webhook = SystemConfig.get("chat_webhook_url", "") or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
+    category = getattr(email, "category", "") or ""
+    category_webhook = ""
+    if category:
+        category_webhook = SystemConfig.get(f"chat_webhook_{category.lower()}", "") or ""
+
+    sent_urls = set()
+
+    # Send to category-specific webhook first
+    if category_webhook:
+        notifier = ChatNotifier(webhook_url=category_webhook)
+        notifier.notify_assignment(email, assignee)
+        sent_urls.add(category_webhook)
+
+    # Also send to global webhook (for manager visibility) unless same URL
+    if global_webhook and global_webhook not in sent_urls:
+        notifier = ChatNotifier(webhook_url=global_webhook)
+        notifier.notify_assignment(email, assignee)
+
+
 def _user_display(user):
     """Return best display name for a user."""
     if user is None:
@@ -67,15 +93,14 @@ def assign_email(email, assignee, assigned_by, note=""):
 
     # Fire-and-forget: Chat notification
     try:
-        webhook_url = SystemConfig.get("chat_webhook_url", "") or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
-        notifier = ChatNotifier(webhook_url=webhook_url)
-        notifier.notify_assignment(email, assignee)
+        _send_assignment_chat(email, assignee)
     except Exception:
         logger.exception("Chat notification failed for assignment of email %s", email.pk)
 
-    # Fire-and-forget: Email notification
+    # Fire-and-forget: Email notification (only if enabled)
     try:
-        notify_assignment_email(email, assignee)
+        if SystemConfig.get("email_notifications_enabled", False):
+            notify_assignment_email(email, assignee)
     except Exception:
         logger.exception("Email notification failed for assignment of email %s", email.pk)
 
@@ -210,14 +235,13 @@ def auto_assign_batch():
 
             # Fire-and-forget notifications
             try:
-                webhook_url = SystemConfig.get("chat_webhook_url", "") or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
-                notifier = ChatNotifier(webhook_url=webhook_url)
-                notifier.notify_assignment(email, rule.assignee)
+                _send_assignment_chat(email, rule.assignee)
             except Exception:
                 logger.exception("Chat notification failed for auto-assign of email %s", email.pk)
 
             try:
-                notify_assignment_email(email, rule.assignee)
+                if SystemConfig.get("email_notifications_enabled", False):
+                    notify_assignment_email(email, rule.assignee)
             except Exception:
                 logger.exception("Email notification failed for auto-assign of email %s", email.pk)
 

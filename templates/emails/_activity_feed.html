@@ -48,7 +48,7 @@
                 <!-- Content -->
                 <div class="flex-1 min-w-0">
                     <div class="text-[13px] leading-relaxed">
-                        <span class="font-bold text-slate-800">{{ log.user.get_full_name|default:log.user.username|default:"System" }}</span>
+                        <span class="font-bold text-slate-800">{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}System{% endif %}</span>
                         <span class="text-slate-500 font-medium">{{ log.get_action_display|lower }}</span>
                         {% if log.email %}
                         <a href="{% url 'emails:email_list' %}?selected={{ log.email.pk }}"

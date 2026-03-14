@@ -1,13 +1,11 @@
-"""User model for VIPL Email Agent v2. Stub -- fully implemented in Task 2."""
+"""User model for VIPL Email Agent v2."""
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
 class User(AbstractUser):
-    """Custom user model with role and email visibility fields.
-    Full implementation in Task 2.
-    """
+    """Custom user model with role and email visibility fields."""
 
     class Role(models.TextChoices):
         ADMIN = "admin", "Admin"
