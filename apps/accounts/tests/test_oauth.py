@@ -50,7 +50,7 @@ class TestVIPLSocialAccountAdapterPreSocialLogin:
 
     def test_rejects_gmail_domain(self):
         from apps.accounts.adapters import VIPLSocialAccountAdapter
-        from allauth.exceptions import ImmediateHttpResponse
+        from allauth.core.exceptions import ImmediateHttpResponse
 
         adapter = VIPLSocialAccountAdapter()
         request = _make_request()
@@ -77,7 +77,7 @@ class TestVIPLSocialAccountAdapterPreSocialLogin:
     def test_rejects_spoofed_email_wrong_hd(self):
         """Even if email looks correct, reject if hd claim doesn't match."""
         from apps.accounts.adapters import VIPLSocialAccountAdapter
-        from allauth.exceptions import ImmediateHttpResponse
+        from allauth.core.exceptions import ImmediateHttpResponse
 
         adapter = VIPLSocialAccountAdapter()
         request = _make_request()
@@ -92,7 +92,7 @@ class TestVIPLSocialAccountAdapterPreSocialLogin:
     def test_rejects_missing_hd_claim(self):
         """Personal Google accounts have no hd claim - must reject."""
         from apps.accounts.adapters import VIPLSocialAccountAdapter
-        from allauth.exceptions import ImmediateHttpResponse
+        from allauth.core.exceptions import ImmediateHttpResponse
 
         adapter = VIPLSocialAccountAdapter()
         request = _make_request()
@@ -134,7 +134,7 @@ class TestVIPLSocialAccountAdapterSaveUser:
 
     def test_new_user_created_inactive(self):
         from apps.accounts.adapters import VIPLSocialAccountAdapter
-        from allauth.exceptions import ImmediateHttpResponse
+        from allauth.core.exceptions import ImmediateHttpResponse
 
         adapter = VIPLSocialAccountAdapter()
         request = _make_request()
@@ -166,7 +166,7 @@ class TestVIPLSocialAccountAdapterSaveUser:
 
     def test_stores_avatar_url_on_new_user(self):
         from apps.accounts.adapters import VIPLSocialAccountAdapter
-        from allauth.exceptions import ImmediateHttpResponse
+        from allauth.core.exceptions import ImmediateHttpResponse
 
         adapter = VIPLSocialAccountAdapter()
         request = _make_request()
@@ -191,7 +191,7 @@ class TestVIPLSocialAccountAdapterSaveUser:
     @patch("apps.accounts.adapters.send_mail")
     def test_admin_notified_on_new_user(self, mock_send_mail, settings):
         from apps.accounts.adapters import VIPLSocialAccountAdapter
-        from allauth.exceptions import ImmediateHttpResponse
+        from allauth.core.exceptions import ImmediateHttpResponse
 
         settings.ADMIN_EMAIL = "admin@vidarbhainfotech.com"
         adapter = VIPLSocialAccountAdapter()
@@ -249,7 +249,7 @@ class TestDataMigration:
         assert user.email == ""
 
         # Simulate migration logic
-        from apps.accounts.migrations.set_superuser_emails import set_superuser_emails
+        from apps.accounts.migration_helpers import set_superuser_emails
         set_superuser_emails(User)
 
         user.refresh_from_db()
@@ -261,7 +261,7 @@ class TestDataMigration:
             username="admin", password="pass123", email="custom@example.com"
         )
 
-        from apps.accounts.migrations.set_superuser_emails import set_superuser_emails
+        from apps.accounts.migration_helpers import set_superuser_emails
         set_superuser_emails(User)
 
         user.refresh_from_db()
@@ -273,7 +273,7 @@ class TestDataMigration:
             username="member", password="pass123", email=""
         )
 
-        from apps.accounts.migrations.set_superuser_emails import set_superuser_emails
+        from apps.accounts.migration_helpers import set_superuser_emails
         set_superuser_emails(User)
 
         user.refresh_from_db()

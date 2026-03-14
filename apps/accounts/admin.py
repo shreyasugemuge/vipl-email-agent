@@ -17,6 +17,7 @@ class UserAdmin(BaseUserAdmin):
         "last_name",
         "role",
         "can_see_all_emails",
+        "avatar_url",
         "is_staff",
         "is_active",
     )
@@ -27,7 +28,7 @@ class UserAdmin(BaseUserAdmin):
         (
             "VIPL Settings",
             {
-                "fields": ("role", "can_see_all_emails"),
+                "fields": ("role", "can_see_all_emails", "avatar_url"),
             },
         ),
     )

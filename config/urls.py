@@ -12,6 +12,7 @@ urlpatterns = [
         name="dashboard_redirect",
     ),
     path("accounts/", include("apps.accounts.urls")),
+    path("accounts/", include("allauth.urls")),
     path("emails/", include("apps.emails.urls")),
     path("", include("apps.core.urls")),
     path("", RedirectView.as_view(url="/emails/", permanent=False)),
