@@ -225,3 +225,53 @@ class RejectThreadSuggestionTest(ThreadSuggestionViewTestBase):
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, 403)
+
+
+class AcceptSuggestionOOBSwapTest(ThreadSuggestionViewTestBase):
+    """Tests that accept_thread_suggestion returns OOB card swap."""
+
+    def test_accept_response_contains_oob_swap(self):
+        """Accept returns HTML with hx-swap-oob for thread card update."""
+        self.client.login(username="admin", password="testpass123")
+        url = reverse("emails:accept_thread_suggestion", args=[self.thread.pk])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("hx-swap-oob", content)
+
+    def test_accept_response_contains_thread_card(self):
+        """Accept returns both detail panel and thread card HTML."""
+        self.client.login(username="admin", password="testpass123")
+        url = reverse("emails:accept_thread_suggestion", args=[self.thread.pk])
+        response = self.client.post(url)
+
+        content = response.content.decode()
+        # Detail panel content
+        self.assertIn("Test thread", content)
+        # OOB card should reference the thread id
+        self.assertIn(f"thread-{self.thread.pk}", content)
+
+
+class RejectSuggestionOOBSwapTest(ThreadSuggestionViewTestBase):
+    """Tests that reject_thread_suggestion returns OOB card swap."""
+
+    def test_reject_response_contains_oob_swap(self):
+        """Reject returns HTML with hx-swap-oob for thread card update."""
+        self.client.login(username="admin", password="testpass123")
+        url = reverse("emails:reject_thread_suggestion", args=[self.thread.pk])
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("hx-swap-oob", content)
+
+    def test_reject_response_contains_thread_card(self):
+        """Reject returns both detail panel and thread card HTML."""
+        self.client.login(username="admin", password="testpass123")
+        url = reverse("emails:reject_thread_suggestion", args=[self.thread.pk])
+        response = self.client.post(url)
+
+        content = response.content.decode()
+        self.assertIn("Test thread", content)
+        self.assertIn(f"thread-{self.thread.pk}", content)
