@@ -6,6 +6,69 @@ from django.db import models
 from apps.core.models import SoftDeleteModel, TimestampedModel
 
 
+class Thread(SoftDeleteModel, TimestampedModel):
+    """Groups related emails by gmail_thread_id with thread-level status, assignment, and triage."""
+
+    class Status(models.TextChoices):
+        NEW = "new", "New"
+        ACKNOWLEDGED = "acknowledged", "Acknowledged"
+        CLOSED = "closed", "Closed"
+
+    # Thread identity
+    gmail_thread_id = models.CharField(max_length=255, unique=True, db_index=True)
+    subject = models.CharField(max_length=500, blank=True, default="")
+
+    # Latest message preview (denormalized for list display)
+    last_message_at = models.DateTimeField(null=True, blank=True)
+    last_sender = models.CharField(max_length=500, blank=True, default="")
+    last_sender_address = models.EmailField(blank=True, default="")
+
+    # Thread-level status
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
+
+    # Thread-level assignment
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_threads",
+    )
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_by_threads",
+    )
+    assigned_at = models.DateTimeField(null=True, blank=True)
+
+    # SLA deadlines (thread-level)
+    sla_ack_deadline = models.DateTimeField(null=True, blank=True)
+    sla_respond_deadline = models.DateTimeField(null=True, blank=True)
+
+    # Latest triage fields (copied from most recent email's triage)
+    category = models.CharField(max_length=100, blank=True, default="")
+    priority = models.CharField(max_length=50, blank=True, default="")
+    ai_summary = models.TextField(blank=True, default="")
+    ai_draft_reply = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-last_message_at"]
+
+    def __str__(self):
+        return f"Thread {self.gmail_thread_id[:12]}: {self.subject[:50]}"
+
+    @property
+    def message_count(self):
+        return self.emails.count()
+
+    @property
+    def latest_message_at(self):
+        latest = self.emails.order_by("-received_at").values_list("received_at", flat=True).first()
+        return latest
+
+
 class Email(SoftDeleteModel, TimestampedModel):
     """Represents an email received in a monitored inbox."""
 
@@ -21,6 +84,15 @@ class Email(SoftDeleteModel, TimestampedModel):
         COMPLETED = "completed", "Completed"
         FAILED = "failed", "Failed"
         EXHAUSTED = "exhausted", "Exhausted"
+
+    # Thread reference
+    thread = models.ForeignKey(
+        "Thread",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="emails",
+    )
 
     # Gmail identifiers
     message_id = models.CharField(max_length=255, unique=True)
@@ -113,10 +185,22 @@ class ActivityLog(TimestampedModel):
         CLAIMED = "claimed", "Claimed"
         SLA_BREACHED = "sla_breached", "SLA Breached"
         PRIORITY_BUMPED = "priority_bumped", "Priority Bumped"
+        NEW_EMAIL_RECEIVED = "new_email_received", "New Email Received"
+        REOPENED = "reopened", "Reopened"
+        THREAD_CREATED = "thread_created", "Thread Created"
 
+    thread = models.ForeignKey(
+        Thread,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="activity_logs",
+    )
     email = models.ForeignKey(
         Email,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="activity_logs",
     )
     user = models.ForeignKey(
