@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-03-15T06:49:15Z"
-last_activity: 2026-03-15 — Plan 01-02 complete (mobile UX fixes)
+status: completed
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-03-15T06:51:14.597Z"
+last_activity: 2026-03-15 — Plan 01-01 complete (data bug fixes)
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 33
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 1 of 3 (Data & Bug Fixes) — first phase of v2.3.4
-Plan: 2 of 2 (complete)
-Status: Executing
-Last activity: 2026-03-15 — Plan 01-02 complete (mobile UX fixes)
+Plan: 2 of 2 (both complete)
+Status: Phase 1 complete
+Last activity: 2026-03-15 — Plan 01-01 complete (data bug fixes)
 
-Progress: [█████░░░░░] 50%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
@@ -45,6 +45,8 @@ Progress: [█████░░░░░] 50%
 
 (Archived in milestones/v2.2-ROADMAP.md)
 
+- [01-01] XML cleanup at ingest time in ai_processor.py, not display layer
+- [01-01] OOB swap pattern for count updates avoids full page reload
 - [01-02] Split closeDetail into closeDetail/closeDetailNoHistory to prevent infinite history.back loops
 - [01-02] Used flex-wrap instead of overflow-x-auto for activity chips
 - [01-02] Toast positioned top-16 on mobile using Tailwind mobile-first approach
@@ -69,6 +71,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T06:49:15Z
-Stopped at: Completed 01-02-PLAN.md
-Next: Continue phase 1 execution or start phase 2
+Last session: 2026-03-15T06:51:14.595Z
+Stopped at: Completed 01-01-PLAN.md
+Next: Phase 2 execution
