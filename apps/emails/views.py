@@ -2286,7 +2286,7 @@ def activity_log(request):
     user = request.user
     is_admin = user.is_staff or user.role == User.Role.ADMIN
 
-    qs = ActivityLog.objects.select_related("email", "user").order_by("-created_at")
+    qs = ActivityLog.objects.select_related("email", "user", "thread").order_by("-created_at")
 
     # Non-admin members without can_see_all_emails: own activity or activity on own emails
     if not is_admin and not getattr(user, "can_see_all_emails", False):
@@ -2308,13 +2308,22 @@ def activity_log(request):
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
-    # Group entries by date for display
-    from itertools import groupby
+    # Group entries by thread for display
+    from collections import OrderedDict
     from django.utils import timezone
 
-    grouped_entries = []
-    for date_key, entries in groupby(page_obj, key=lambda e: timezone.localdate(e.created_at)):
-        grouped_entries.append((date_key, list(entries)))
+    thread_buckets = OrderedDict()
+    for log in page_obj:
+        key = log.thread_id or 0  # 0 = no thread
+        if key not in thread_buckets:
+            thread_buckets[key] = {"thread": log.thread, "entries": []}
+        thread_buckets[key]["entries"].append(log)
+
+    # Build thread_groups: list of (thread_or_None, entries) sorted by most-recent first
+    thread_groups = [
+        (bucket["thread"], bucket["entries"])
+        for bucket in thread_buckets.values()
+    ]
 
     today = timezone.localdate()
     from datetime import timedelta
@@ -2335,7 +2344,7 @@ def activity_log(request):
 
     context = {
         "page_obj": page_obj,
-        "grouped_entries": grouped_entries,
+        "thread_groups": thread_groups,
         "total_count": paginator.count,
         "mis_stats": mis_stats,
         "action_filter": action_filter,
