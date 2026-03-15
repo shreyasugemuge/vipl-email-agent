@@ -270,6 +270,12 @@ def thread_list(request):
     query_params = request.GET.copy()
     query_params.pop("page", None)
 
+    # --- Corrections digest for gatekeeper/admin on triage queue ---
+    corrections_digest = None
+    if user.can_triage and view == "unassigned":
+        from apps.emails.services.reports import get_corrections_digest
+        corrections_digest = get_corrections_digest()
+
     context = {
         "threads": page_obj,
         "page_obj": page_obj,
@@ -290,6 +296,7 @@ def thread_list(request):
         "priorities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
         "unread_total": unread_total,
         "lead_categories": lead_categories,
+        "corrections_digest": corrections_digest,
     }
 
     if getattr(request, "htmx", False):
@@ -1861,6 +1868,159 @@ def unblock_sender(request, pk):
         request, save_success=True,
         save_message=f"{rep.sender_address} unblocked.",
     )
+
+
+# ---------------------------------------------------------------------------
+# Bulk actions
+# ---------------------------------------------------------------------------
+
+
+def _render_thread_list_response(request):
+    """Re-render the thread list body partial for HTMX bulk action responses.
+
+    Reuses the same filtering/pagination/sidebar logic from thread_list view
+    by delegating to it with an HTMX request marker.
+    """
+    # Build a minimal HTMX-like request so thread_list returns the partial
+    class _FakeHtmx:
+        def __bool__(self):
+            return True
+    original_htmx = getattr(request, "htmx", None)
+    request.htmx = _FakeHtmx()
+    try:
+        return thread_list(request)
+    finally:
+        request.htmx = original_htmx
+
+
+@login_required
+@require_POST
+def bulk_assign(request):
+    """Bulk assign multiple threads to a user. Requires can_assign permission."""
+    user = request.user
+    if not user.can_assign:
+        return HttpResponseForbidden("Permission denied.")
+
+    thread_ids = request.POST.getlist("thread_ids")
+    assignee_id = request.POST.get("assignee_id")
+    if not thread_ids:
+        return _HttpResponse("Missing thread_ids", status=400)
+    if not assignee_id:
+        return _HttpResponse("Missing assignee_id", status=400)
+
+    from django.urls import reverse
+
+    assignee = get_object_or_404(User, pk=assignee_id, is_active=True)
+    threads = Thread.objects.filter(pk__in=thread_ids, status__in=["new", "acknowledged"])
+
+    previous_states = []
+    assigned_pks = []
+    for thread in threads:
+        previous_states.append({
+            "thread_id": thread.pk,
+            "assigned_to_id": thread.assigned_to_id,
+            "status": thread.status,
+        })
+        thread.assigned_to = assignee
+        thread.assigned_by = user
+        if thread.status == "new":
+            thread.status = "acknowledged"
+        thread.save(update_fields=["assigned_to", "assigned_by", "status", "updated_at"])
+        ActivityLog.objects.create(
+            thread=thread,
+            email=thread.emails.order_by("-received_at").first(),
+            user=user,
+            action=ActivityLog.Action.ASSIGNED,
+            detail=f"Bulk assigned to {assignee.get_full_name() or assignee.username}",
+        )
+        assigned_pks.append(thread.pk)
+
+    response = _render_thread_list_response(request)
+    response["HX-Trigger"] = json.dumps({
+        "showUndoToast": {
+            "message": f"Assigned {len(assigned_pks)} threads to {assignee.get_full_name() or assignee.username}",
+            "undo_url": reverse("emails:bulk_undo"),
+            "previous_states": previous_states,
+            "action_type": "assign",
+        }
+    })
+    return response
+
+
+@login_required
+@require_POST
+def bulk_mark_irrelevant(request):
+    """Bulk mark multiple threads as irrelevant. Requires can_assign permission."""
+    user = request.user
+    if not user.can_assign:
+        return HttpResponseForbidden("Permission denied.")
+
+    thread_ids = request.POST.getlist("thread_ids")
+    reason = (request.POST.get("reason") or "").strip()
+    if not thread_ids:
+        return _HttpResponse("Missing thread_ids", status=400)
+    if not reason:
+        return _HttpResponse("Reason is required", status=400)
+
+    from django.urls import reverse
+
+    threads = Thread.objects.filter(pk__in=thread_ids).exclude(status="irrelevant")
+
+    previous_states = []
+    marked_pks = []
+    for thread in threads:
+        previous_states.append({
+            "thread_id": thread.pk,
+            "status": thread.status,
+            "assigned_to_id": thread.assigned_to_id,
+        })
+        thread.status = "irrelevant"
+        thread.save(update_fields=["status", "updated_at"])
+        ActivityLog.objects.create(
+            thread=thread,
+            email=thread.emails.order_by("-received_at").first(),
+            user=user,
+            action=ActivityLog.Action.CLOSED,
+            detail=f"Bulk marked irrelevant: {reason}",
+        )
+        marked_pks.append(thread.pk)
+
+    response = _render_thread_list_response(request)
+    response["HX-Trigger"] = json.dumps({
+        "showUndoToast": {
+            "message": f"Marked {len(marked_pks)} threads as irrelevant",
+            "undo_url": reverse("emails:bulk_undo"),
+            "previous_states": previous_states,
+            "action_type": "mark_irrelevant",
+        }
+    })
+    return response
+
+
+@login_required
+@require_POST
+def bulk_undo(request):
+    """Undo a bulk action by restoring previous thread states."""
+    user = request.user
+    if not user.can_assign:
+        return HttpResponseForbidden("Permission denied.")
+
+    try:
+        previous_states = json.loads(request.POST.get("previous_states", "[]"))
+    except (json.JSONDecodeError, TypeError):
+        return _HttpResponse("Invalid undo data", status=400)
+
+    for state in previous_states:
+        try:
+            thread = Thread.objects.get(pk=state["thread_id"])
+            thread.status = state.get("status", thread.status)
+            assigned_to_id = state.get("assigned_to_id")
+            thread.assigned_to_id = assigned_to_id
+            thread.save(update_fields=["status", "assigned_to", "updated_at"])
+        except Thread.DoesNotExist:
+            continue
+
+    return _render_thread_list_response(request)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,97 @@
+{# AI Corrections Digest -- collapsible card for gatekeeper/admin #}
+{% if corrections_digest and corrections_digest.total > 0 %}
+<div class="mx-3 mb-2 rounded-xl border border-blue-200 bg-blue-50 overflow-hidden" id="corrections-digest-card">
+    {# Header -- clickable to collapse #}
+    <div class="flex items-center justify-between px-4 py-2 cursor-pointer select-none"
+         onclick="toggleDigest()">
+        <div class="flex items-center gap-2">
+            {# Lightbulb icon #}
+            <svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+            </svg>
+            <span class="text-[11px] font-semibold text-blue-700">AI Corrections (7 days)</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-[11px] font-semibold text-blue-500">{{ corrections_digest.total }} corrections</span>
+            <svg id="digest-chevron" class="w-4 h-4 text-blue-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+        </div>
+    </div>
+
+    {# Body -- collapsible #}
+    <div id="digest-body" class="overflow-hidden transition-all duration-200"
+         aria-expanded="true"
+         style="max-height: 300px;">
+        <div class="px-4 pb-3">
+            {# Correction counts row #}
+            <div class="flex items-center gap-4 flex-wrap">
+                <div class="flex items-center gap-1">
+                    <span class="text-sm font-semibold text-amber-600">{{ corrections_digest.category_changes }}</span>
+                    <span class="text-[11px] font-semibold text-slate-600">category</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span class="text-sm font-semibold text-red-600">{{ corrections_digest.priority_overrides }}</span>
+                    <span class="text-[11px] font-semibold text-slate-600">priority</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span class="text-sm font-semibold text-orange-600">{{ corrections_digest.spam_corrections }}</span>
+                    <span class="text-[11px] font-semibold text-slate-600">spam</span>
+                </div>
+            </div>
+
+            {% if corrections_digest.top_patterns %}
+            <div class="border-t border-blue-100 my-2"></div>
+            <div class="text-[10px] font-semibold text-blue-600 uppercase tracking-wider mb-1">Top Patterns</div>
+            <div class="space-y-0.5">
+                {% for pattern_text, pattern_count in corrections_digest.top_patterns %}
+                <div class="text-[11px] text-slate-600">{{ pattern_text }} ({{ pattern_count }}x)</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% elif corrections_digest and corrections_digest.total == 0 %}
+<div class="mx-3 mb-2 rounded-xl border border-blue-200 bg-blue-50 overflow-hidden">
+    <div class="flex items-center gap-2 px-4 py-2">
+        <svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+        </svg>
+        <span class="text-[11px] text-blue-400 italic">No corrections in the last 7 days</span>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function toggleDigest() {
+    var body = document.getElementById('digest-body');
+    var chevron = document.getElementById('digest-chevron');
+    var isCollapsed = body.style.maxHeight === '0px';
+
+    if (isCollapsed) {
+        body.style.maxHeight = '300px';
+        body.setAttribute('aria-expanded', 'true');
+        chevron.style.transform = 'rotate(0deg)';
+        localStorage.removeItem('digest_collapsed');
+    } else {
+        body.style.maxHeight = '0px';
+        body.setAttribute('aria-expanded', 'false');
+        chevron.style.transform = 'rotate(180deg)';
+        localStorage.setItem('digest_collapsed', 'true');
+    }
+}
+
+// Restore collapsed state on load
+document.addEventListener('DOMContentLoaded', function() {
+    if (localStorage.getItem('digest_collapsed') === 'true') {
+        var body = document.getElementById('digest-body');
+        var chevron = document.getElementById('digest-chevron');
+        if (body) {
+            body.style.maxHeight = '0px';
+            body.setAttribute('aria-expanded', 'false');
+            if (chevron) chevron.style.transform = 'rotate(180deg)';
+        }
+    }
+});
+</script>
