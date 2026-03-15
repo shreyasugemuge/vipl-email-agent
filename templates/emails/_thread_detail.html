@@ -117,7 +117,7 @@
             <div class="flex items-center justify-between gap-3">
                 <!-- Assignment -->
                 <div class="flex items-center gap-2">
-                    {% if is_admin %}
+                    {% if user.can_assign %}
                     <form hx-post="{% url 'emails:assign_thread' thread.pk %}"
                           hx-target="#thread-detail-panel"
                           hx-swap="innerHTML"
@@ -172,7 +172,7 @@
                 </div>
 
                 <!-- Status actions -->
-                {% if thread.assigned_to == request.user or is_admin %}
+                {% if thread.assigned_to == request.user or user.can_assign %}
                 <div class="flex items-center gap-1.5">
                     {% if thread.status == "new" %}
                     <form hx-post="{% url 'emails:change_thread_status' thread.pk %}"
@@ -200,7 +200,7 @@
                         </button>
                     </form>
                     {% endif %}
-                    {% if is_admin %}
+                    {% if user.is_admin_only %}
                     <form hx-post="{% url 'emails:whitelist_thread_sender' thread.pk %}"
                           hx-target="#thread-detail-panel" hx-swap="innerHTML"
                           class="inline">

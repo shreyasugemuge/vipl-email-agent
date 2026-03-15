@@ -128,9 +128,11 @@
                 Activity
             </a>
 
-            {% if user.is_staff or user.is_admin_role %}
+            {% if user.can_triage %}
             <div class="mx-2 my-3 border-t border-white/[0.06]"></div>
             <p class="px-3 mb-2 text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em]">System</p>
+            {% endif %}
+            {% if user.can_triage %}
             <a href="{% url 'emails:settings' %}"
                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150
                       {% block nav_settings_active %}text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]{% endblock %}">
@@ -141,6 +143,8 @@
                 </svg>
                 Settings
             </a>
+            {% endif %}
+            {% if user.can_assign %}
             <a href="{% url 'emails:reports' %}"
                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150
                       {% block nav_reports_active %}text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]{% endblock %}">
@@ -150,6 +154,8 @@
                 </svg>
                 Reports
             </a>
+            {% endif %}
+            {% if user.can_approve_users %}
             <a href="/accounts/team/"
                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150
                       {% block nav_team_active %}text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]{% endblock %}">
@@ -159,6 +165,8 @@
                 </svg>
                 Team
             </a>
+            {% endif %}
+            {% if user.can_triage %}
             <a href="/emails/inspect/"
                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] transition-all duration-150">
                 <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,6 +175,22 @@
                 </svg>
                 Dev Inspector
             </a>
+            {% endif %}
+
+            {# Sidebar category pills for Triage Lead #}
+            {% if user.is_triage_lead %}
+            <div class="px-3 mt-4 mb-2">
+                <div class="text-[9px] font-bold uppercase tracking-wide text-slate-600 mb-2">Your Categories</div>
+                {% if lead_categories %}
+                <div class="flex flex-wrap gap-1" aria-label="Your assigned categories">
+                    {% for cat in lead_categories %}
+                    <span class="px-2 py-0.5 rounded text-[9px] font-semibold bg-white/[0.08] text-slate-400 border border-white/[0.1]">{{ cat }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <span class="text-[11px] text-slate-500 italic">No categories assigned</span>
+                {% endif %}
+            </div>
             {% endif %}
         </nav>
 
@@ -185,7 +209,7 @@
                 {% endif %}
                 <div class="flex-1 min-w-0">
                     <div class="text-[11px] font-semibold text-slate-200 truncate">{{ user.get_full_name|default:user.username }}</div>
-                    <div class="text-[9px] text-slate-600 font-medium">{{ user.role|default:"Admin" }}</div>
+                    <div class="text-[9px] text-slate-600 font-medium">{{ user.get_role_display }}</div>
                 </div>
                 <a href="{% url 'logout' %}" class="text-slate-600 hover:text-slate-400 transition-colors" title="Logout" aria-label="Sign out">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

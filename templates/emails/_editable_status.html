@@ -11,7 +11,7 @@ Context: thread, statuses (Thread.Status.choices).
         <span class="w-1 h-1 rounded-full bg-{{ thread.status|status_base }}-500"></span>
         {{ thread.get_status_display }}
     </span>
-    {% if thread.assigned_to == request.user or is_admin %}
+    {% if thread.assigned_to == request.user or user.can_assign %}
     <button type="button"
             class="ml-0.5 opacity-0 group-hover/sta:opacity-100 transition-opacity text-slate-400 hover:text-slate-600"
             onclick="this.closest('#editable-status').querySelector('.sta-edit').classList.remove('hidden'); this.closest('#editable-status').querySelector('.sta-display').classList.add('hidden');"

@@ -214,6 +214,20 @@
 
     <!-- Center panel: thread list -->
     <div class="flex-1 flex flex-col min-w-0 md:w-[35%] md:max-w-[35%] border-r border-slate-200/60 bg-slate-50/30">
+
+        {# Triage Lead empty state: no categories assigned #}
+        {% if user.is_triage_lead and not lead_categories %}
+        <div class="text-center py-12 px-4">
+            <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-bold text-slate-700">No categories assigned</h3>
+            <p class="text-[13px] text-slate-500 mt-2 max-w-xs mx-auto">An admin needs to set up your category assignments before you can see threads. Contact your administrator.</p>
+        </div>
+        {% endif %}
+
         <!-- Stat cards bar -->
         <div class="flex items-center gap-2 px-3 py-2 bg-white border-b border-slate-200/60 overflow-x-auto shrink-0">
             <a href="{% url 'emails:thread_list' %}?view=all_open"
@@ -285,7 +299,7 @@
             </div>
             <div class="flex items-center justify-between mt-1.5 px-0.5">
                 <span class="text-[10px] font-bold text-slate-400 tabular-nums">{{ total_count }} thread{{ total_count|pluralize }}</span>
-                {% if is_admin and team_members %}
+                {% if user.can_assign and team_members %}
                 <select onchange="if(this.value){htmx.ajax('GET', this.value, {target:'#thread-list-body', pushUrl:true});}"
                         class="text-[10px] font-medium border border-slate-200 rounded-md px-1.5 py-0.5 bg-white text-slate-500 cursor-pointer">
                     <option value="">Team member...</option>
