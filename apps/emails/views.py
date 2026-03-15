@@ -2109,6 +2109,10 @@ def settings_view(request):
         _Q2(spam_count__gt=0) | _Q2(is_blocked=True)
     ).order_by("-is_blocked", "-spam_count")
 
+    # Alert config for SLA tab
+    alert_threshold = SystemConfig.get("unassigned_alert_threshold", "5")
+    alert_cooldown = SystemConfig.get("unassigned_alert_cooldown_minutes", "30")
+
     context = {
         "active_tab": active_tab,
         "team_members": team_members,
@@ -2123,6 +2127,8 @@ def settings_view(request):
         "whitelist_entries": whitelist_entries,
         "blocked_senders": blocked_senders,
         "readonly": readonly,
+        "alert_threshold": alert_threshold,
+        "alert_cooldown": alert_cooldown,
     }
     return render(request, "emails/settings.html", context)
 
@@ -2329,6 +2335,33 @@ def settings_config_save(request):
         "config_groups": config_groups,
         "save_success": True,
     })
+
+
+@login_required
+@require_POST
+def settings_alert_save(request):
+    """Save unassigned alert threshold and cooldown settings."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    alert_threshold = request.POST.get("unassigned_alert_threshold", "").strip()
+    if alert_threshold:
+        SystemConfig.objects.update_or_create(
+            key="unassigned_alert_threshold",
+            defaults={"value": alert_threshold, "value_type": SystemConfig.ValueType.INT, "category": "alerts"},
+        )
+
+    alert_cooldown = request.POST.get("unassigned_alert_cooldown_minutes", "").strip()
+    if alert_cooldown:
+        SystemConfig.objects.update_or_create(
+            key="unassigned_alert_cooldown_minutes",
+            defaults={"value": alert_cooldown, "value_type": SystemConfig.ValueType.INT, "category": "alerts"},
+        )
+
+    return _HttpResponse(
+        '<div class="px-3 py-2 bg-emerald-50 border border-emerald-200/60 rounded-lg text-xs font-medium text-emerald-700">'
+        'Alert settings saved.</div>'
+    )
 
 
 @login_required
