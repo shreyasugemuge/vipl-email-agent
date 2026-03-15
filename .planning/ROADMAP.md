@@ -62,7 +62,7 @@ Plans:
 
 ### Phase 3: Mark Irrelevant
 **Goal**: Gatekeepers and admins can dismiss irrelevant threads from the queue with an auditable reason
-**Depends on**: Phase 2
+**Depends on**: Phase 1 (can run parallel with Phase 2)
 **Requirements**: TRIAGE-01, TRIAGE-02, TRIAGE-03, TRIAGE-06
 **Success Criteria** (what must be TRUE):
   1. Gatekeeper/admin can mark a thread as irrelevant with a mandatory free-text reason from the detail panel
@@ -78,7 +78,7 @@ Plans:
 
 ### Phase 4: Alerts + Bulk Actions
 **Goal**: Proactive unassigned count monitoring and batch operations for efficient queue management
-**Depends on**: Phase 3
+**Depends on**: Phase 2 + Phase 3 (both must complete)
 **Requirements**: ALERT-01, ALERT-02, ALERT-03, ALERT-04, TRIAGE-04, TRIAGE-05
 **Success Criteria** (what must be TRUE):
   1. Dashboard shows a visible unassigned count badge to gatekeepers and admins (excluding irrelevant threads)
@@ -95,7 +95,7 @@ Plans:
 
 ## Progress
 
-**Execution Order:** 1 -> 2 -> 3 -> 4
+**Execution Order:** 1 -> (2 ∥ 3) -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
