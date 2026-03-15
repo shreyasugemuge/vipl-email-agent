@@ -211,6 +211,7 @@ class ActivityLog(TimestampedModel):
         CATEGORY_CHANGED = "category_changed", "Category Changed"
         MARKED_IRRELEVANT = "marked_irrelevant", "Marked Irrelevant"
         REVERTED_IRRELEVANT = "reverted_irrelevant", "Reverted to New"
+        REASSIGNED_BY_MEMBER = "reassigned_by_member", "Reassigned by Member"
 
     thread = models.ForeignKey(
         Thread,
