@@ -39,24 +39,22 @@ Declared values (must be multiples of 4):
 | 2xl | 48px | Major section breaks |
 | 3xl | 64px | Page-level spacing |
 
-Exceptions: Established codebase uses `px-5` (20px), `py-1.5` (6px), `px-2.5` (10px), `px-3` (12px) extensively. Phase 2 MUST match these existing non-standard values rather than introducing pure 8-point multiples. Match surrounding element spacing exactly.
+Phase 2 introduces NO new spacing values. All new UI elements use the 8-point scale above. Existing codebase elements that use non-standard spacing (e.g. `px-5`, `px-3`) are inherited and not redeclared here.
 
 ---
 
 ## Typography
 
-Existing codebase typography (Phase 2 MUST match, not override):
+Phase 2 declares 4 sizes and 2 weights. All new UI elements use these values exclusively.
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
-| Body | 11px (`text-[11px]`) | 500 (medium) / 600 (semibold) | 1.5 (default) |
-| Label | 11px (`text-[11px]`) | 500 (medium) | 1.5 |
-| Button text | 10px (`text-[10px]`) | 700 (bold) | 1.5 |
+| Body / Label | 11px (`text-[11px]`) | 500 (medium) | 1.5 (default) |
+| Button text / Badge | 10px (`text-[10px]`) | 700 (bold) | 1.5 |
+| Context menu item | 12px (`text-[12px]`) | 500 (medium) | 1.5 |
 | Heading (detail panel) | 14px (`text-[14px]`) | 700 (bold) | snug (1.375) |
-| Context menu item | 12px (`text-[12px]`) | 400 (normal) | 1.5 |
-| Badge / micro | 9px (`text-[9px]`) | 700 (bold) | 1 |
 
-Phase 2 introduces NO new type sizes. All new UI elements use the sizes above.
+Phase 2 introduces NO new type sizes. Two weights only: 500 (medium) for body, labels, and context menu items; 700 (bold) for headings, buttons, and badges.
 
 ---
 
@@ -77,8 +75,8 @@ Existing palette (Phase 2 MUST match, not override):
 |---------|-------|----------------|
 | "Claim Thread" button | emerald-500 bg, white text | `bg-emerald-500 hover:bg-emerald-600 text-white` |
 | "Reassign" button (trigger) | amber-500 bg, white text | `bg-amber-500 hover:bg-amber-600 text-white` |
-| "Reassign" submit button | amber-500 bg, white text | `bg-amber-500 hover:bg-amber-600 text-white` |
-| "Cancel" button | white bg, slate-500 text, slate-200 border | `bg-white text-slate-500 border border-slate-200 hover:bg-slate-50` |
+| "Reassign Thread" submit button | amber-500 bg, white text | `bg-amber-500 hover:bg-amber-600 text-white` |
+| "Keep Thread" button | white bg, slate-500 text, slate-200 border | `bg-white text-slate-500 border border-slate-200 hover:bg-slate-50` |
 | Reassign form container | slate-50 bg, slate-200 border | `bg-slate-50 border border-slate-200 rounded-lg` |
 | Disabled claim button | Same as Claim but opacity-50, cursor-not-allowed | `opacity-50 cursor-not-allowed` |
 | Disabled claim tooltip text | slate-500 | Via `title` attribute (native browser tooltip) |
@@ -89,6 +87,12 @@ Accent reserved for: Primary "Assign" button (admin/gatekeeper), selected card b
 
 ---
 
+## Visual Focal Point
+
+Primary visual anchor: the role-conditional action button (Assign / Claim Thread / Reassign) is the focal point of the action bar. The read-only branch (member viewing another user's thread) intentionally removes this anchor, leaving the assignee display as a passive indicator with no interactive focal point.
+
+---
+
 ## Copywriting Contract
 
 | Element | Copy |
@@ -96,8 +100,8 @@ Accent reserved for: Primary "Assign" button (admin/gatekeeper), selected card b
 | Primary CTA (admin/gatekeeper) | "Assign" (existing, unchanged) |
 | Claim CTA (member, unassigned thread) | "Claim Thread" (existing, unchanged) |
 | Reassign trigger button (member, own thread) | "Reassign" |
-| Reassign submit button | "Reassign" |
-| Reassign cancel button | "Cancel" |
+| Reassign submit button | "Reassign Thread" |
+| Reassign cancel button | "Keep Thread" |
 | Reassign select placeholder | "Select team member..." |
 | Reassign reason label | "Reason (required)" |
 | Reassign reason placeholder | "Why are you reassigning this thread?" |
@@ -146,12 +150,12 @@ Revealed when member clicks "Reassign" button. Hidden by default (`style="displa
 | HTMX target | `hx-target="#thread-detail-panel"` `hx-swap="innerHTML"` |
 | Select element | `<select name="assignee_id" required>` -- category-filtered users only, excludes current user |
 | Textarea element | `<textarea name="reason" required rows="2">` -- no resize (`resize-none`) |
-| Submit button | "Reassign" -- amber-500 bg, `hx-disabled-elt="this"` for loading state |
-| Cancel button | "Cancel" -- white bg with border, `onclick` hides the form div |
-| Input styling | Matches existing: `text-[11px] border border-slate-200 rounded-md px-2 py-1.5` |
+| Submit button | "Reassign Thread" -- amber-500 bg, `hx-disabled-elt="this"` for loading state |
+| Cancel button | "Keep Thread" -- white bg with border, `onclick` hides the form div |
+| Input styling | Matches existing: `text-[11px] font-medium border border-slate-200 rounded-md px-2 py-2` |
 | Label styling | `text-[11px] font-medium text-slate-600 mb-1` |
-| Button sizing | `px-3 py-1.5 text-[10px] font-bold rounded-md` (matches existing buttons) |
-| Button gap | `flex gap-1.5` |
+| Button sizing | `px-3 py-2 text-[10px] font-bold rounded-md` (matches existing buttons) |
+| Button gap | `flex gap-2` |
 
 ### Modified: `_context_menu.html` Assignment Group
 
@@ -167,9 +171,9 @@ Revealed when member clicks "Reassign" button. Hidden by default (`style="displa
 | `not can_assign and thread.assigned_to != request.user` | No assignment items shown | -- |
 
 New "Reassign..." menu item styling matches existing context menu items exactly:
-- `class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-[12px] hover:bg-slate-700/60 transition-colors"`
+- `class="ctx-item flex items-center justify-between w-full px-3 py-2 text-[12px] font-medium hover:bg-slate-700/60 transition-colors"`
 - SVG icon: 14px (`w-3.5 h-3.5`), `opacity-60`, stroke-based
-- Keyboard hint: `text-slate-500 text-[10px] font-mono ml-4`
+- Keyboard hint: `text-slate-500 text-[10px] font-bold ml-4`
 
 ### Modified: Status Actions (Read-Only Enforcement)
 
@@ -189,13 +193,13 @@ New "Reassign..." menu item styling matches existing context menu items exactly:
 
 1. Member sees their assigned thread detail panel with assignee display + "Reassign" button
 2. Member clicks "Reassign" -- JavaScript toggles `display: none` to `display: block` on the reassign form div
-3. Form shows: select dropdown (category-filtered users) + reason textarea + Reassign/Cancel buttons
-4. Member selects assignee, types reason, clicks "Reassign"
+3. Form shows: select dropdown (category-filtered users) + reason textarea + "Reassign Thread" / "Keep Thread" buttons
+4. Member selects assignee, types reason, clicks "Reassign Thread"
 5. HTMX POSTs to `/emails/threads/<pk>/reassign/` with `assignee_id` + `reason`
 6. Server validates: ownership, non-empty reason, assignee has CategoryVisibility
 7. On success: returns updated detail panel HTML + OOB thread card HTML (standard pattern)
 8. On failure (403): HTMX swap shows error toast in detail panel header area (same pattern as existing `toast_msg`)
-9. "Cancel" button: JavaScript hides the form div, no server request
+9. "Keep Thread" button: JavaScript hides the form div, no server request
 
 ### Claim Flow (Unchanged)
 
