@@ -251,6 +251,20 @@ class InternalNote(SoftDeleteModel, TimestampedModel):
         return f"Note by {self.author} on {self.thread_id}"
 
 
+class ThreadViewer(models.Model):
+    """Tracks which users currently have a thread open (ephemeral presence, not soft-deleted)."""
+
+    thread = models.ForeignKey(Thread, on_delete=models.CASCADE, related_name="viewers")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="viewing_threads")
+    last_seen = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("thread", "user")]
+
+    def __str__(self):
+        return f"{self.user} viewing {self.thread_id}"
+
+
 class AttachmentMetadata(TimestampedModel):
     """Stores metadata about email attachments (actual files stay in Gmail)."""
 

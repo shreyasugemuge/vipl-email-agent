@@ -11,6 +11,7 @@
 
 import json
 import logging
+from datetime import timedelta
 
 import nh3
 from django.contrib.auth.decorators import login_required
@@ -19,13 +20,14 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.http import HttpResponse as _HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.accounts.models import User
 from apps.core.models import SystemConfig
 from apps.emails.models import (
     ActivityLog, AssignmentRule, CategoryVisibility, Email, InternalNote, SLAConfig,
-    SpamWhitelist, Thread,
+    SpamWhitelist, Thread, ThreadViewer,
 )
 from apps.emails.services.assignment import assign_email as _assign_email
 from apps.emails.services.assignment import assign_thread as _assign_thread
@@ -759,6 +761,39 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
     }
 
 
+def get_active_viewers(thread_pk, exclude_user_id=None):
+    """Return ThreadViewer queryset for viewers active within the last 30 seconds."""
+    cutoff = timezone.now() - timedelta(seconds=30)
+    qs = ThreadViewer.objects.filter(thread_id=thread_pk, last_seen__gte=cutoff).select_related("user")
+    if exclude_user_id is not None:
+        qs = qs.exclude(user_id=exclude_user_id)
+    return qs
+
+
+@login_required
+@require_POST
+def viewer_heartbeat(request, pk):
+    """Update viewer presence and return the viewer badge partial."""
+    ThreadViewer.objects.update_or_create(
+        thread_id=pk, user=request.user,
+        defaults={"last_seen": timezone.now()},
+    )
+    # Opportunistic cleanup of stale records
+    cutoff = timezone.now() - timedelta(seconds=30)
+    ThreadViewer.objects.filter(thread_id=pk, last_seen__lt=cutoff).delete()
+
+    active_viewers = get_active_viewers(pk, exclude_user_id=request.user.pk)
+    html = render_to_string("emails/_viewer_badge.html", {"active_viewers": active_viewers}, request=request)
+    return _HttpResponse(html)
+
+
+@login_required
+def clear_viewer(request, pk):
+    """Remove the current user's viewer record for a thread."""
+    ThreadViewer.objects.filter(thread_id=pk, user=request.user).delete()
+    return _HttpResponse(status=204)
+
+
 @login_required
 @require_GET
 def thread_detail(request, pk):
@@ -774,7 +809,15 @@ def thread_detail(request, pk):
     if is_admin:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
+    # Register this user as viewing the thread
+    ThreadViewer.objects.update_or_create(
+        thread_id=pk, user=user,
+        defaults={"last_seen": timezone.now()},
+    )
+    active_viewers = get_active_viewers(pk, exclude_user_id=user.pk)
+
     context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    context["active_viewers"] = active_viewers
     return render(request, "emails/_thread_detail.html", context)
 
 
