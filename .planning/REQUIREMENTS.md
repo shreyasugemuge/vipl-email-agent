@@ -22,8 +22,8 @@ Requirements for UI/UX polish & bug fixes. Each maps to roadmap phases.
 - [x] **UX-01**: First-login welcome banner shows role-specific guidance, dismissible, one-time per session
 - [x] **UX-02**: Active filter indicators show count badge and clear-all link when filters are applied
 - [x] **UX-03**: Mobile stat cards use scroll-snap for native swipe feel
-- [ ] **UX-04**: Arrow key navigation between email cards, Escape closes detail panel
-- [ ] **UX-05**: Loading skeleton shows in detail panel while HTMX fetches email content
+- [x] **UX-04**: Arrow key navigation between email cards, Escape closes detail panel
+- [x] **UX-05**: Loading skeleton shows in detail panel while HTMX fetches email content
 
 ### QA
 
@@ -60,8 +60,8 @@ None deferred — all scoped items included.
 | UX-01 | Phase 2 | Complete |
 | UX-02 | Phase 2 | Complete |
 | UX-03 | Phase 2 | Complete |
-| UX-04 | Phase 2 | Pending |
-| UX-05 | Phase 2 | Pending |
+| UX-04 | Phase 2 | Complete |
+| UX-05 | Phase 2 | Complete |
 | QA-01 | Phase 3 | Pending |
 
 **Coverage:**
