@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: completed
-stopped_at: Completed 01-01-PLAN.md (phase 1 complete)
-last_updated: "2026-03-15T17:20:07.069Z"
-last_activity: 2026-03-15 — Completed 01-01-PLAN (pipeline unread state + REOPENED status + avatar verify)
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-15T17:28:00Z"
+last_activity: 2026-03-15 — Completed 04-01 (version badge + login retheme)
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 2
-  percent: 10
+  total_plans: 6
+  completed_plans: 5
+  percent: 63
 ---
 
 # Project State
@@ -25,24 +25,26 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 
 ## Current Position
 
-Phase: 1 of 5 (Bug Fixes) — M6-P1 COMPLETE
-Plan: 2 of 2 completed
-Status: Phase 1 complete, ready for phase 2
-Last activity: 2026-03-15 — Completed 01-01-PLAN (pipeline unread state + REOPENED status + avatar verify)
+Phase: 4 of 5 (Page Polish) — M6-P4 in progress
+Plan: 1 of 2 completed
+Status: 04-01 complete, 04-02 remaining
+Last activity: 2026-03-15 — Completed 04-01 (version badge + login retheme)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██████░░░░] 63%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
+- Total plans completed: 5
 - Average duration: 5min
-- Total execution time: 10min
+- Total execution time: 19min
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 01 | 01 | 5min | 2 | 5 |
 | 01 | 02 | 5min | 2 | 3 |
+| 02 | 01 | 4min | 2 | 2 |
+| 04 | 01 | 5min | 2 | 6 |
 
 ## Accumulated Context
 
@@ -53,6 +55,12 @@ Progress: [█░░░░░░░░░] 10%
 - [P1-01] Avatar sync verified working -- no code changes needed (BUG-04)
 - [P1-02] Used existing `_render_thread_detail_with_oob_card` helper for accept/reject views (consistency over duplication)
 - [P1-02] sessionStorage `vipl_welcome_shown` flag set before display to prevent OAuth redirect race condition
+- [P2-01] Used CSS line-clamp-2 instead of truncatechars Django filter for AI summary
+- [P2-01] Moved all badges to row 3 for clean subject line
+- [P2-01] Unread dot sized to w-2.5 h-2.5 for visibility
+- [P4-01] mix-blend-mode: multiply on logo to hide background rectangle (CSS-only, no image editing)
+- [P4-01] APP_VERSION defaults to 'dev' locally, injected via Docker build arg in production
+- [P4-01] Context processor reads SystemConfig.operating_mode with graceful fallback to 'off'
 
 ### Blockers/Concerns
 
@@ -65,5 +73,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Completed 01-01-PLAN.md (phase 1 complete)
-Next: `/gsd:execute-phase 2` or `/gsd:plan-phase 2`
+Stopped at: Completed M6-P2-01-PLAN.md
+Next: Execute M6-P2-02 (thread detail panel UX)

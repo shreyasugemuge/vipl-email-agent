@@ -128,7 +128,7 @@ Plans:
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
 | 1 (M6-P1) | 2/2 | Complete   | 2026-03-15 | - |
-| 2 (M6-P2) | Thread Card & Detail UX | 0/2 | Planning complete | - |
+| 2 (M6-P2) | Thread Card & Detail UX | 1/2 | In progress | - |
 | 3 (M6-P3) | Workflow Actions | 0/1 | Planning complete | - |
 | 4 (M6-P4) | Page Polish | 0/2 | Planning complete | - |
 | 5 (M6-P5) | Dev Inspector | 0/1 | Planning complete | - |
