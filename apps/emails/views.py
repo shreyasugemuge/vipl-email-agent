@@ -24,8 +24,8 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.accounts.models import User
 from apps.core.models import SystemConfig
 from apps.emails.models import (
-    ActivityLog, AssignmentRule, CategoryVisibility, Email, SLAConfig, SpamWhitelist,
-    Thread,
+    ActivityLog, AssignmentRule, CategoryVisibility, Email, InternalNote, SLAConfig,
+    SpamWhitelist, Thread,
 )
 from apps.emails.services.assignment import assign_email as _assign_email
 from apps.emails.services.assignment import assign_thread as _assign_thread
@@ -33,6 +33,8 @@ from apps.emails.services.assignment import change_status as _change_status
 from apps.emails.services.assignment import change_thread_status as _change_thread_status
 from apps.emails.services.assignment import claim_email as _claim_email
 from apps.emails.services.assignment import claim_thread as _claim_thread
+from apps.emails.services.assignment import notify_mention as _notify_mention
+from apps.emails.services.assignment import parse_mentions
 from apps.emails.services.dtos import VALID_CATEGORIES, VALID_PRIORITIES
 
 logger = logging.getLogger(__name__)
@@ -675,7 +677,15 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
         .order_by("created_at")
     )
 
-    # Build merged timeline: messages + activity events interleaved by timestamp
+    # Load internal notes
+    notes = (
+        thread.notes
+        .select_related("author")
+        .prefetch_related("mentioned_users")
+        .order_by("created_at")
+    )
+
+    # Build merged timeline: messages + activity events + notes interleaved by timestamp
     timeline_items = []
     for email in emails:
         timeline_items.append({
@@ -688,6 +698,12 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
             "type": "activity",
             "timestamp": log.created_at,
             "obj": log,
+        })
+    for note in notes:
+        timeline_items.append({
+            "type": "note",
+            "timestamp": note.created_at,
+            "obj": note,
         })
     timeline_items.sort(key=lambda x: x["timestamp"])
 
@@ -720,10 +736,22 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
     if latest_completed and latest_completed.ai_reasoning:
         ai_reasoning = latest_completed.ai_reasoning
 
+    # Build team members JSON for @mention autocomplete
+    all_active_users = User.objects.filter(is_active=True).order_by("first_name", "username")
+    team_members_json = json.dumps([
+        {
+            "username": u.username,
+            "name": u.get_full_name() or u.username,
+            "initial": (u.first_name[:1] if u.first_name else u.username[:1]).upper(),
+        }
+        for u in all_active_users
+    ])
+
     return {
         "thread": thread,
         "timeline_items": timeline_items,
         "team_members": team_members,
+        "team_members_json": team_members_json,
         "is_admin": is_admin,
         "can_claim": can_claim,
         "ai_suggested_assignee": ai_suggested_assignee,
@@ -746,6 +774,65 @@ def thread_detail(request, pk):
     if is_admin:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
+    context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    return render(request, "emails/_thread_detail.html", context)
+
+
+@login_required
+@require_POST
+def add_note_view(request, pk):
+    """Add an internal note to a thread. Any authenticated user."""
+    thread = get_object_or_404(Thread, pk=pk)
+    body = (request.POST.get("body") or "").strip()
+
+    if not body:
+        # Re-render detail without creating a note
+        user = request.user
+        is_admin = user.is_staff or user.role == User.Role.ADMIN
+        team_members = []
+        if is_admin:
+            team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+        context = _build_thread_detail_context(thread, request, is_admin, team_members)
+        return render(request, "emails/_thread_detail.html", context)
+
+    user = request.user
+
+    # Create the note
+    note = InternalNote.objects.create(thread=thread, author=user, body=body)
+
+    # Activity log: NOTE_ADDED
+    ActivityLog.objects.create(
+        thread=thread,
+        user=user,
+        action=ActivityLog.Action.NOTE_ADDED,
+        detail=body[:200],
+    )
+
+    # Parse and process @mentions
+    usernames = parse_mentions(body)
+    for username in usernames:
+        mentioned_user = User.objects.filter(username=username, is_active=True).first()
+        if mentioned_user:
+            note.mentioned_users.add(mentioned_user)
+            ActivityLog.objects.create(
+                thread=thread,
+                user=user,
+                action=ActivityLog.Action.MENTIONED,
+                detail=f"Mentioned {mentioned_user.get_full_name() or mentioned_user.username}",
+                new_value=mentioned_user.username,
+            )
+            try:
+                _notify_mention(thread, user, mentioned_user)
+            except Exception:
+                logger.exception("Mention notification failed for %s", mentioned_user.username)
+
+    # Re-render the full detail panel
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    team_members = []
+    if is_admin:
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
     context = _build_thread_detail_context(thread, request, is_admin, team_members)
     return render(request, "emails/_thread_detail.html", context)
 

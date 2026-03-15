@@ -213,6 +213,8 @@
             {% for item in timeline_items %}
                 {% if item.type == "message" %}
                     {% include "emails/_thread_message.html" with message=item.obj %}
+                {% elif item.type == "note" %}
+                    {% include "emails/_thread_note.html" with note=item.obj %}
                 {% elif item.type == "activity" %}
                     <div class="flex items-center gap-2 px-5 py-1.5 text-[11px] text-slate-400">
                         <div class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></div>
@@ -227,14 +229,139 @@
             {% endfor %}
         </div>
     </div>
+
+    <!-- Note input form (sticky to bottom) -->
+    <div class="shrink-0 border-t border-slate-200/60 bg-white px-4 py-3">
+        <form hx-post="{% url 'emails:add_note' thread.pk %}"
+              hx-target="#thread-detail-panel"
+              hx-swap="innerHTML"
+              class="flex items-end gap-2"
+              id="note-form">
+            {% csrf_token %}
+            <div class="relative flex-1" id="mention-container">
+                <textarea name="body" rows="2"
+                          placeholder="Add an internal note... Use @username to mention"
+                          class="w-full text-[12px] border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 text-slate-700 placeholder-slate-400 resize-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-300 focus:bg-white transition-all"
+                          id="note-textarea"></textarea>
+                <!-- @mention autocomplete dropdown -->
+                <div id="mention-dropdown"
+                     class="hidden absolute bottom-full left-0 mb-1 w-64 max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                </div>
+            </div>
+            <button type="submit"
+                    hx-disabled-elt="this"
+                    class="px-4 py-2 text-[11px] font-bold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors cursor-pointer shrink-0">
+                Add Note
+            </button>
+        </form>
+    </div>
 </div>
 
-<!-- Auto-scroll to newest message -->
+<!-- @mention autocomplete + auto-scroll -->
 <script>
 (function() {
+    // Auto-scroll to newest
     var container = document.getElementById('thread-scroll-container');
     if (container) {
         setTimeout(function() { container.scrollTop = container.scrollHeight; }, 100);
     }
+
+    // @mention autocomplete
+    var teamMembers = {{ team_members_json|safe }};
+    var textarea = document.getElementById('note-textarea');
+    var dropdown = document.getElementById('mention-dropdown');
+    if (!textarea || !dropdown || !teamMembers.length) return;
+
+    var mentionStart = -1;
+    var selectedIdx = 0;
+
+    function getQuery() {
+        var val = textarea.value;
+        var cursor = textarea.selectionStart;
+        // Find the last @ before cursor
+        var sub = val.substring(0, cursor);
+        var atIdx = sub.lastIndexOf('@');
+        if (atIdx < 0) return null;
+        // Must be start of string or preceded by whitespace
+        if (atIdx > 0 && sub[atIdx - 1] !== ' ' && sub[atIdx - 1] !== '\n') return null;
+        var query = sub.substring(atIdx + 1);
+        // No spaces in query (means they moved on)
+        if (query.indexOf(' ') >= 0) return null;
+        mentionStart = atIdx;
+        return query.toLowerCase();
+    }
+
+    function renderDropdown(matches) {
+        if (!matches.length) { dropdown.classList.add('hidden'); return; }
+        selectedIdx = 0;
+        var html = '';
+        for (var i = 0; i < matches.length; i++) {
+            var m = matches[i];
+            html += '<button type="button" data-username="' + m.username + '" data-idx="' + i + '"'
+                  + ' class="w-full text-left px-3 py-1.5 text-[11px] hover:bg-amber-50 flex items-center gap-2'
+                  + (i === 0 ? ' bg-amber-50' : '') + '">'
+                  + '<span class="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center text-white text-[8px] font-bold shrink-0">'
+                  + m.initial + '</span>'
+                  + '<span class="font-medium text-slate-700">' + m.name + '</span>'
+                  + '<span class="text-slate-400">@' + m.username + '</span>'
+                  + '</button>';
+        }
+        dropdown.innerHTML = html;
+        dropdown.classList.remove('hidden');
+    }
+
+    function insertMention(username) {
+        var val = textarea.value;
+        var cursor = textarea.selectionStart;
+        var before = val.substring(0, mentionStart);
+        var after = val.substring(cursor);
+        textarea.value = before + '@' + username + ' ' + after;
+        var newCursor = mentionStart + username.length + 2;
+        textarea.setSelectionRange(newCursor, newCursor);
+        textarea.focus();
+        dropdown.classList.add('hidden');
+        mentionStart = -1;
+    }
+
+    textarea.addEventListener('input', function() {
+        var query = getQuery();
+        if (query === null) { dropdown.classList.add('hidden'); return; }
+        var matches = teamMembers.filter(function(m) {
+            return m.username.toLowerCase().indexOf(query) >= 0
+                || m.name.toLowerCase().indexOf(query) >= 0;
+        }).slice(0, 8);
+        renderDropdown(matches);
+    });
+
+    textarea.addEventListener('keydown', function(e) {
+        if (dropdown.classList.contains('hidden')) return;
+        var items = dropdown.querySelectorAll('button');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIdx = Math.min(selectedIdx + 1, items.length - 1);
+            items.forEach(function(el, i) { el.classList.toggle('bg-amber-50', i === selectedIdx); });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIdx = Math.max(selectedIdx - 1, 0);
+            items.forEach(function(el, i) { el.classList.toggle('bg-amber-50', i === selectedIdx); });
+        } else if (e.key === 'Enter' && items.length) {
+            e.preventDefault();
+            insertMention(items[selectedIdx].dataset.username);
+        } else if (e.key === 'Escape') {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    dropdown.addEventListener('click', function(e) {
+        var btn = e.target.closest('button');
+        if (btn && btn.dataset.username) {
+            insertMention(btn.dataset.username);
+        }
+    });
+
+    // Close dropdown on blur (with delay for click to register)
+    textarea.addEventListener('blur', function() {
+        setTimeout(function() { dropdown.classList.add('hidden'); }, 200);
+    });
 })();
 </script>

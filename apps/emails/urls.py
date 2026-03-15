@@ -9,6 +9,7 @@ urlpatterns = [
     path("legacy/", views.email_list, name="email_list"),
     # Thread-level endpoints
     path("threads/<int:pk>/detail/", views.thread_detail, name="thread_detail"),
+    path("threads/<int:pk>/note/", views.add_note_view, name="add_note"),
     path("threads/<int:pk>/assign/", views.assign_thread_view, name="assign_thread"),
     path("threads/<int:pk>/status/", views.change_thread_status_view, name="change_thread_status"),
     path("threads/<int:pk>/claim/", views.claim_thread_view, name="claim_thread"),
