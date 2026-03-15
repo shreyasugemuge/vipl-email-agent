@@ -4,12 +4,12 @@
 
 - ✅ **v2.1 VIPL Email Agent v2** — Phases 1-6 (shipped 2026-03-14) — [archive](milestones/v2.1-ROADMAP.md)
 - ✅ **v2.2 Polish & Hardening** — Phases 1-4 (shipped 2026-03-14) — [archive](milestones/v2.2-ROADMAP.md)
-- ✅ **v2.3.4 UI/UX Polish & Bug Fixes** — Phases 1-3 (shipped 2026-03-15) — [archive](milestones/v2.3.4-ROADMAP.md)
+- ✅ **v2.3.6 UI/UX Polish & Bug Fixes** — Phases 1-3 (shipped 2026-03-15) — [archive](milestones/v2.3.6-ROADMAP.md)
 
 ## Phases
 
 <details>
-<summary>v2.3.4 (Phases 1-3) — SHIPPED 2026-03-15</summary>
+<summary>v2.3.6 (Phases 1-3) — SHIPPED 2026-03-15</summary>
 
 - [x] Phase 1: Data & Bug Fixes (2/2 plans) — completed 2026-03-15
 - [x] Phase 2: Polish & UX (2/2 plans) — completed 2026-03-15

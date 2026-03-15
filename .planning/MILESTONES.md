@@ -1,6 +1,6 @@
 # Milestones
 
-## v2.3.4 UI/UX Polish & Bug Fixes (Shipped: 2026-03-15)
+## v2.3.6 UI/UX Polish & Bug Fixes (Shipped: 2026-03-15)
 
 **Phases completed:** 3 phases, 6 plans, 14 tasks
 **Timeline:** 1 day (2026-03-15)
@@ -15,8 +15,8 @@
 - Full QA verification: 13/13 requirements PASS, 3 inline bug fixes discovered and fixed
 
 **Archives:**
-- `milestones/v2.3.4-ROADMAP.md`
-- `milestones/v2.3.4-REQUIREMENTS.md`
+- `milestones/v2.3.6-ROADMAP.md`
+- `milestones/v2.3.6-REQUIREMENTS.md`
 
 ---
 
