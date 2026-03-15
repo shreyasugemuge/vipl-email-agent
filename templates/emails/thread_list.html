@@ -331,6 +331,9 @@
     </div>
 
 </div>
+
+<!-- Context menu container (positioned via JS) -->
+<div id="context-menu-container" class="hidden fixed z-50 transition-opacity duration-150" role="menu" aria-label="Thread actions"></div>
 {% endblock %}
 
 {% block extra_js %}
@@ -363,6 +366,74 @@ function closeThreadDetail() {
 /* Run active state manager on initial page load */
 if (typeof updateActiveStates === 'function') {
     updateActiveStates();
+}
+
+/* ---- Context Menu ---- */
+var activeMenuThreadId = null;
+
+function showContextMenu(event, threadPk) {
+    event.preventDefault();
+    event.stopPropagation();
+    activeMenuThreadId = threadPk;
+    var menu = document.getElementById('context-menu-container');
+    fetch('/emails/threads/' + threadPk + '/context-menu/', { headers: { 'HX-Request': 'true' } })
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+            menu.innerHTML = html;
+            var x = Math.min(event.clientX, window.innerWidth - 220);
+            var y = Math.min(event.clientY, window.innerHeight - 320);
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            menu.classList.remove('hidden');
+            menu.style.opacity = '0';
+            requestAnimationFrame(function() { menu.style.opacity = '1'; });
+            htmx.process(menu);
+            var first = menu.querySelector('[role="menuitem"]');
+            if (first) first.focus();
+        });
+}
+
+function closeContextMenu() {
+    var menu = document.getElementById('context-menu-container');
+    if (!menu) return;
+    menu.style.opacity = '0';
+    setTimeout(function() { menu.classList.add('hidden'); menu.innerHTML = ''; }, 150);
+    activeMenuThreadId = null;
+}
+
+/* Close on click outside */
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#context-menu-container')) closeContextMenu();
+});
+
+/* Close on Escape + arrow key navigation within menu */
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { closeContextMenu(); return; }
+    var menu = document.getElementById('context-menu-container');
+    if (!menu || menu.classList.contains('hidden')) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        var items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+        var idx = items.indexOf(document.activeElement);
+        var next = e.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+        if (items[next]) items[next].focus();
+    }
+});
+
+/* Close on scroll */
+document.addEventListener('scroll', closeContextMenu, true);
+
+/* Mobile long-press (500ms) */
+var longPressTimer = null;
+function startLongPress(event, threadPk) {
+    longPressTimer = setTimeout(function() {
+        var touch = event.touches[0];
+        showContextMenu({ preventDefault: function(){}, stopPropagation: function(){},
+            clientX: touch.clientX, clientY: touch.clientY }, threadPk);
+    }, 500);
+}
+function cancelLongPress() {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
 }
 </script>
 {% endblock %}

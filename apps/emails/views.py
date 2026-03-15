@@ -1209,6 +1209,35 @@ def edit_status(request, pk):
 
 
 @login_required
+@require_GET
+def thread_context_menu(request, pk):
+    """Return context menu HTML partial with role-aware grouped actions."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to"),
+        pk=pk,
+    )
+
+    can_claim = (
+        not is_admin
+        and thread.assigned_to != user
+        and thread.status != Thread.Status.CLOSED
+    )
+    can_acknowledge = thread.status not in (Thread.Status.ACKNOWLEDGED, Thread.Status.CLOSED)
+    can_close = thread.status != Thread.Status.CLOSED
+
+    context = {
+        "thread": thread,
+        "is_admin": is_admin,
+        "can_claim": can_claim,
+        "can_acknowledge": can_acknowledge,
+        "can_close": can_close,
+    }
+    return render(request, "emails/_context_menu.html", context)
+
+
+@login_required
 @require_POST
 def add_note_view(request, pk):
     """Add an internal note to a thread. Any authenticated user."""

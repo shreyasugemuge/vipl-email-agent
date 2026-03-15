@@ -9,7 +9,11 @@
      hx-swap="innerHTML"
      role="article" tabindex="0" aria-label="{{ thread.subject }}"
      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"
-     onclick="document.querySelectorAll('.card-selected').forEach(c=>c.classList.remove('card-selected'));this.classList.add('card-selected');">
+     onclick="document.querySelectorAll('.card-selected').forEach(c=>c.classList.remove('card-selected'));this.classList.add('card-selected');"
+     oncontextmenu="showContextMenu(event, {{ thread.pk }})"
+     ontouchstart="startLongPress(event, {{ thread.pk }})"
+     ontouchend="cancelLongPress()"
+     ontouchmove="cancelLongPress()">
 
     <!-- Line 1: Sender + time + message count + assignee avatar -->
     <div class="flex items-center justify-between gap-1.5 mb-0.5">

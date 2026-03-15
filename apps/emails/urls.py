@@ -23,6 +23,7 @@ urlpatterns = [
     path("threads/<int:pk>/edit-category/", views.edit_category, name="edit_category"),
     path("threads/<int:pk>/edit-priority/", views.edit_priority, name="edit_priority"),
     path("threads/<int:pk>/edit-status/", views.edit_status, name="edit_status"),
+    path("threads/<int:pk>/context-menu/", views.thread_context_menu, name="thread_context_menu"),
     path("threads/<int:pk>/mark-spam/", views.mark_spam, name="mark_spam"),
     path("threads/<int:pk>/mark-not-spam/", views.mark_not_spam, name="mark_not_spam"),
     path("spam-feedback/<int:pk>/undo/", views.undo_spam_feedback, name="undo_spam_feedback"),
