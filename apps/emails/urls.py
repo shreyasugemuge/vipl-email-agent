@@ -5,7 +5,10 @@ from . import views
 app_name = "emails"
 
 urlpatterns = [
-    path("", views.email_list, name="email_list"),
+    path("", views.thread_list, name="thread_list"),
+    path("legacy/", views.email_list, name="email_list"),
+    # Thread detail placeholder — view will be created in Plan 02
+    # path("threads/<int:pk>/detail/", views.thread_detail, name="thread_detail"),
     path("<int:pk>/detail/", views.email_detail, name="email_detail"),
     path("<int:pk>/assign/", views.assign_email_view, name="assign_email"),
     path("<int:pk>/status/", views.change_status_view, name="change_status"),

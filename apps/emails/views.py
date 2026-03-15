@@ -1,6 +1,7 @@
 """Email views: dashboard list, detail panel, assignment, status, activity log + dev inspector.
 
-/emails/              -- Main email list dashboard (login required)
+/emails/              -- Thread list dashboard (login required)
+/emails/legacy/       -- Legacy email list (kept for backward compatibility)
 /emails/<pk>/detail/  -- Email detail panel (HTMX partial)
 /emails/<pk>/assign/  -- Assign email (POST, admin only)
 /emails/<pk>/status/  -- Change email status (POST)
@@ -24,6 +25,7 @@ from apps.accounts.models import User
 from apps.core.models import SystemConfig
 from apps.emails.models import (
     ActivityLog, AssignmentRule, CategoryVisibility, Email, SLAConfig, SpamWhitelist,
+    Thread,
 )
 from apps.emails.services.assignment import assign_email as _assign_email
 from apps.emails.services.assignment import change_status as _change_status
@@ -46,7 +48,157 @@ SAFE_ATTRIBUTES = {
 
 
 # ---------------------------------------------------------------------------
-# Email list dashboard
+# Thread list dashboard (replaces email_list as default)
+# ---------------------------------------------------------------------------
+
+THREAD_SORT_FIELDS = {
+    "last_message_at", "-last_message_at",
+    "priority", "-priority",
+    "status", "-status",
+    "subject", "-subject",
+    "assigned_to__first_name", "-assigned_to__first_name",
+}
+
+
+@login_required
+def thread_list(request):
+    """Main thread-based dashboard -- three-panel conversation UI."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+
+    # Base queryset
+    qs = Thread.objects.select_related("assigned_to").order_by("-last_message_at")
+
+    # --- View filtering (sidebar views) ---
+    default_view = "all_open" if is_admin else "mine"
+    view = request.GET.get("view", default_view)
+
+    if view == "unassigned":
+        qs = qs.filter(assigned_to__isnull=True, status__in=["new", "acknowledged"])
+    elif view == "mine":
+        qs = qs.filter(assigned_to=user)
+    elif view == "all_open":
+        qs = qs.filter(status__in=["new", "acknowledged"])
+    elif view == "closed":
+        qs = qs.filter(status="closed")
+    elif view.isdigit():
+        # Admin-only: view specific team member's threads
+        if is_admin:
+            qs = qs.filter(assigned_to_id=int(view))
+        else:
+            qs = qs.filter(assigned_to=user)
+
+    # --- Inbox filter ---
+    inbox = request.GET.get("inbox", "")
+    if inbox:
+        qs = qs.filter(emails__to_inbox=inbox).distinct()
+
+    # --- Priority / category / status filters ---
+    priority = request.GET.get("priority", "")
+    category = request.GET.get("category", "")
+    status_filter = request.GET.get("status", "")
+
+    if priority:
+        qs = qs.filter(priority=priority)
+    if category:
+        qs = qs.filter(category=category)
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+
+    # --- Search ---
+    search_query = request.GET.get("q", "").strip()
+    if search_query:
+        from django.db.models import Q
+        qs = qs.filter(
+            Q(subject__icontains=search_query)
+            | Q(ai_summary__icontains=search_query)
+            | Q(last_sender__icontains=search_query)
+            | Q(last_sender_address__icontains=search_query)
+        )
+
+    # --- Sort ---
+    sort = request.GET.get("sort", "-last_message_at")
+    if sort not in THREAD_SORT_FIELDS:
+        sort = "-last_message_at"
+    qs = qs.order_by(sort)
+
+    # --- Sidebar counts ---
+    base_threads = Thread.objects.all()
+    if inbox:
+        base_threads = base_threads.filter(emails__to_inbox=inbox).distinct()
+
+    sidebar_counts = {
+        "unassigned": base_threads.filter(
+            assigned_to__isnull=True, status__in=["new", "acknowledged"]
+        ).count(),
+        "mine": base_threads.filter(
+            assigned_to=user, status__in=["new", "acknowledged"]
+        ).count(),
+        "all_open": base_threads.filter(
+            status__in=["new", "acknowledged"]
+        ).count(),
+        "closed": base_threads.filter(status="closed").count(),
+    }
+
+    # --- Inbox list for filter pills ---
+    inboxes = list(
+        Email.objects.values_list("to_inbox", flat=True)
+        .distinct()
+        .order_by("to_inbox")
+    )
+    # Remove empty strings
+    inboxes = [i for i in inboxes if i]
+
+    # --- Categories for filter dropdown ---
+    categories = list(
+        Thread.objects.values_list("category", flat=True)
+        .distinct()
+        .order_by("category")
+    )
+    categories = [c for c in categories if c]
+
+    # --- Pagination ---
+    paginator = Paginator(qs, PER_PAGE)
+    page_number = request.GET.get("page", 1)
+    page_obj = paginator.get_page(page_number)
+
+    # Team members for admin
+    team_members = []
+    if is_admin:
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # Build current query params (without page) for pagination links
+    query_params = request.GET.copy()
+    query_params.pop("page", None)
+
+    context = {
+        "threads": page_obj,
+        "page_obj": page_obj,
+        "total_count": paginator.count,
+        "sidebar_counts": sidebar_counts,
+        "current_view": view,
+        "current_inbox": inbox,
+        "current_priority": priority,
+        "current_category": category,
+        "current_status": status_filter,
+        "current_search": search_query,
+        "current_sort": sort,
+        "inboxes": inboxes,
+        "categories": categories,
+        "is_admin": is_admin,
+        "team_members": team_members,
+        "query_params": query_params.urlencode(),
+        "statuses": Thread.Status.choices,
+        "priorities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+    }
+
+    if getattr(request, "htmx", False):
+        return render(request, "emails/_thread_list_body.html", context)
+    return render(request, "emails/thread_list.html", context)
+
+
+# ---------------------------------------------------------------------------
+# Email list dashboard (legacy — kept for backward compatibility)
 # ---------------------------------------------------------------------------
 
 ALLOWED_SORT_FIELDS = {
