@@ -97,11 +97,11 @@ Plans:
   2. Notes support @mentions that trigger a notification to the mentioned team member
   3. Notes appear inline in the thread detail, visually distinct from email messages (different background, "Internal note" label)
   4. When another user has a thread open, a "X is viewing this" indicator appears in the detail panel
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Internal notes model and @mention notifications
-- [ ] 04-02: Collision detection (polling-based "viewing" indicator)
+- [ ] 04-01-PLAN.md — Internal notes model, @mention notifications, inline display
+- [ ] 04-02-PLAN.md — Collision detection (polling-based "viewing" indicator)
 
 ## Progress
 
