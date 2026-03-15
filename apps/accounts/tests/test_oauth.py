@@ -1,5 +1,7 @@
 """Tests for Google OAuth SSO via django-allauth."""
 
+import logging
+
 import pytest
 from unittest.mock import MagicMock, patch, PropertyMock
 from django.test import Client, RequestFactory
@@ -126,6 +128,227 @@ class TestVIPLSocialAccountAdapterPreSocialLogin:
 
         user.refresh_from_db()
         assert user.avatar_url == "https://new-avatar.example.com/photo.jpg"
+
+    def test_auto_link_saves_avatar_on_existing_user(self):
+        """When auto-linking an existing user (not yet linked), avatar should
+        be saved using existing_user directly, not sociallogin.user."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        user = User.objects.create_user(
+            username="unlinked",
+            email="unlinked@vidarbhainfotech.com",
+            avatar_url="",
+        )
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="unlinked@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            picture="https://google.com/avatar/new.jpg",
+            is_existing=False,
+        )
+        # Simulate connect() — sociallogin.user might NOT be set to existing_user
+        sociallogin.connect = MagicMock()
+
+        adapter.pre_social_login(request, sociallogin)
+
+        user.refresh_from_db()
+        assert user.avatar_url == "https://google.com/avatar/new.jpg"
+        sociallogin.connect.assert_called_once_with(request, user)
+
+    def test_auto_link_no_avatar_when_picture_empty(self):
+        """If Google returns no picture, avatar_url should stay empty."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        user = User.objects.create_user(
+            username="nopic",
+            email="nopic@vidarbhainfotech.com",
+            avatar_url="",
+        )
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="nopic@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            picture="",
+            is_existing=False,
+        )
+        sociallogin.connect = MagicMock()
+
+        adapter.pre_social_login(request, sociallogin)
+
+        user.refresh_from_db()
+        assert user.avatar_url == ""
+
+    def test_repeat_login_skips_save_when_avatar_unchanged(self):
+        """Repeat login with same avatar should not trigger a DB save."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        avatar = "https://google.com/avatar/same.jpg"
+        user = User.objects.create_user(
+            username="repeat",
+            email="repeat@vidarbhainfotech.com",
+            avatar_url=avatar,
+        )
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="repeat@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            picture=avatar,
+            is_existing=True,
+            user=user,
+        )
+
+        with patch.object(User, "save") as mock_save:
+            adapter.pre_social_login(request, sociallogin)
+            mock_save.assert_not_called()
+
+    def test_auto_link_welcome_message_uses_first_name(self):
+        """Welcome message should use first_name when available."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        user = User.objects.create_user(
+            username="shreyas",
+            email="shreyas@vidarbhainfotech.com",
+            first_name="Shreyas",
+        )
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="shreyas@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            is_existing=False,
+        )
+        sociallogin.connect = MagicMock()
+
+        adapter.pre_social_login(request, sociallogin)
+
+        msgs = [m.message for m in get_messages(request)]
+        assert any("Shreyas" in m for m in msgs)
+
+    def test_auto_link_welcome_message_falls_back_to_username(self):
+        """Welcome message should use username when first_name is empty."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        user = User.objects.create_user(
+            username="dev1",
+            email="dev1@vidarbhainfotech.com",
+            first_name="",
+        )
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="dev1@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            is_existing=False,
+        )
+        sociallogin.connect = MagicMock()
+
+        adapter.pre_social_login(request, sociallogin)
+
+        msgs = [m.message for m in get_messages(request)]
+        assert any("dev1" in m for m in msgs)
+
+    def test_new_user_not_in_db_returns_early(self):
+        """Brand new email (no User row) should return without error,
+        letting allauth proceed to save_user()."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="brandnew@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            is_existing=False,
+        )
+
+        # Should not raise
+        result = adapter.pre_social_login(request, sociallogin)
+        assert result is None
+
+    def test_connect_exception_propagates(self):
+        """If connect() raises an unexpected error, it should propagate."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        User.objects.create_user(
+            username="erroruser",
+            email="error@vidarbhainfotech.com",
+        )
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="error@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            is_existing=False,
+        )
+        sociallogin.connect = MagicMock(side_effect=RuntimeError("DB down"))
+
+        with pytest.raises(RuntimeError, match="DB down"):
+            adapter.pre_social_login(request, sociallogin)
+
+    def test_domain_rejection_logs_warning(self, caplog):
+        """Rejected logins should produce a warning log."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="hacker@evil.com", hd="evil.com"
+        )
+
+        with caplog.at_level(logging.WARNING, logger="apps.accounts.adapters"):
+            with pytest.raises(ImmediateHttpResponse):
+                adapter.pre_social_login(request, sociallogin)
+
+        assert "OAuth rejected" in caplog.text
+        assert "hacker@evil.com" in caplog.text
+
+    def test_domain_rejection_sets_error_message(self):
+        """Rejected login should set a user-visible error message."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="user@othercorp.com", hd="othercorp.com"
+        )
+
+        with pytest.raises(ImmediateHttpResponse):
+            adapter.pre_social_login(request, sociallogin)
+
+        msgs = [m.message for m in get_messages(request)]
+        assert any("vidarbhainfotech.com" in m for m in msgs)
+
+    def test_empty_email_rejected(self):
+        """Empty email in extra_data should be rejected."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(email="", hd="")
+
+        with pytest.raises(ImmediateHttpResponse):
+            adapter.pre_social_login(request, sociallogin)
+
+    def test_email_suffix_attack_rejected(self):
+        """Email like 'evil@attacker.com@vidarbhainfotech.com' with wrong hd
+        should be rejected."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="evil@attacker.com@vidarbhainfotech.com",
+            hd="attacker.com",
+        )
+
+        with pytest.raises(ImmediateHttpResponse):
+            adapter.pre_social_login(request, sociallogin)
 
 
 @pytest.mark.django_db
@@ -278,3 +501,228 @@ class TestDataMigration:
 
         user.refresh_from_db()
         assert user.email == ""
+
+
+@pytest.mark.django_db
+class TestSuperadminAutoApproval:
+    """Tests for superadmin auto-approval in save_user."""
+
+    @patch.dict("os.environ", {"SUPERADMIN_EMAILS": "boss@vidarbhainfotech.com"})
+    def test_superadmin_gets_full_access(self):
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+
+        user = User.objects.create_user(
+            username="boss",
+            email="boss@vidarbhainfotech.com",
+        )
+        sociallogin = _make_sociallogin(
+            email="boss@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            picture="https://avatar.example.com/boss.jpg",
+        )
+        sociallogin.user = user
+
+        result = adapter.save_user(request, sociallogin, form=None)
+
+        result.refresh_from_db()
+        assert result.is_active is True
+        assert result.role == "admin"
+        assert result.is_staff is True
+        assert result.is_superuser is True
+        assert result.can_see_all_emails is True
+        assert result.avatar_url == "https://avatar.example.com/boss.jpg"
+
+    @patch.dict("os.environ", {"SUPERADMIN_EMAILS": "Boss@Vidarbhainfotech.com"})
+    def test_superadmin_email_case_insensitive(self):
+        """SUPERADMIN_EMAILS comparison should be case-insensitive."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+
+        user = User.objects.create_user(
+            username="boss2",
+            email="boss@vidarbhainfotech.com",
+        )
+        sociallogin = _make_sociallogin(
+            email="boss@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+        )
+        sociallogin.user = user
+
+        result = adapter.save_user(request, sociallogin, form=None)
+
+        result.refresh_from_db()
+        assert result.is_active is True
+        assert result.role == "admin"
+
+    @patch.dict("os.environ", {"SUPERADMIN_EMAILS": ""})
+    def test_no_superadmin_env_makes_everyone_pending(self):
+        """With empty SUPERADMIN_EMAILS, all users are pending."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+
+        user = User.objects.create_user(
+            username="anyone",
+            email="anyone@vidarbhainfotech.com",
+        )
+        sociallogin = _make_sociallogin(
+            email="anyone@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+        )
+        sociallogin.user = user
+
+        with pytest.raises(ImmediateHttpResponse):
+            adapter.save_user(request, sociallogin, form=None)
+
+        user.refresh_from_db()
+        assert user.is_active is False
+
+    @patch("apps.accounts.adapters.send_mail", side_effect=Exception("SMTP down"))
+    def test_admin_notification_failure_does_not_block_signup(self, mock_send, settings):
+        """If admin email fails, signup should still proceed."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+
+        settings.ADMIN_EMAIL = "admin@vidarbhainfotech.com"
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+
+        user = User.objects.create_user(
+            username="newbie",
+            email="newbie@vidarbhainfotech.com",
+        )
+        sociallogin = _make_sociallogin(
+            email="newbie@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+        )
+        sociallogin.user = user
+
+        with pytest.raises(ImmediateHttpResponse):
+            adapter.save_user(request, sociallogin, form=None)
+
+        user.refresh_from_db()
+        assert user.is_active is False
+        assert user.role == "member"
+
+    def test_new_user_without_avatar_gets_empty_string(self):
+        """New user with no Google picture should have empty avatar_url."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+
+        user = User.objects.create_user(
+            username="noavatar",
+            email="noavatar@vidarbhainfotech.com",
+        )
+        sociallogin = _make_sociallogin(
+            email="noavatar@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            picture="",
+        )
+        sociallogin.user = user
+
+        with pytest.raises(ImmediateHttpResponse):
+            adapter.save_user(request, sociallogin, form=None)
+
+        user.refresh_from_db()
+        assert user.avatar_url == ""
+
+
+@pytest.mark.django_db
+class TestAuthenticationError:
+    """Tests for authentication_error handler."""
+
+    def test_logs_error_details(self, caplog):
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+
+        with caplog.at_level(logging.ERROR, logger="apps.accounts.adapters"):
+            result = adapter.authentication_error(
+                request,
+                provider_id="google",
+                error="access_denied",
+                exception=ValueError("token expired"),
+            )
+
+        assert "OAuth error" in caplog.text
+        assert "google" in caplog.text
+        assert "access_denied" in caplog.text
+        assert result.status_code == 302
+        assert "error=auth" in result.url
+
+    def test_sets_user_visible_error_message(self):
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+
+        adapter.authentication_error(
+            request,
+            provider_id="google",
+            error="server_error",
+        )
+
+        msgs = [m.message for m in get_messages(request)]
+        assert any("failed" in m.lower() for m in msgs)
+
+    def test_handles_none_error_gracefully(self):
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+
+        result = adapter.authentication_error(
+            request,
+            provider_id="google",
+            error=None,
+            exception=None,
+        )
+
+        assert result.status_code == 302
+
+
+@pytest.mark.django_db
+class TestGetSuperadminEmails:
+    """Tests for _get_superadmin_emails helper."""
+
+    @patch.dict("os.environ", {"SUPERADMIN_EMAILS": "a@b.com, C@D.COM ,  e@f.com  "})
+    def test_parses_comma_separated_and_lowercases(self):
+        from apps.accounts.adapters import _get_superadmin_emails
+
+        result = _get_superadmin_emails()
+        assert result == {"a@b.com", "c@d.com", "e@f.com"}
+
+    @patch.dict("os.environ", {"SUPERADMIN_EMAILS": ""})
+    def test_empty_string_returns_empty_set(self):
+        from apps.accounts.adapters import _get_superadmin_emails
+
+        assert _get_superadmin_emails() == set()
+
+    @patch.dict("os.environ", {}, clear=True)
+    def test_missing_env_var_returns_empty_set(self):
+        from apps.accounts.adapters import _get_superadmin_emails
+
+        assert _get_superadmin_emails() == set()
+
+    @patch.dict("os.environ", {"SUPERADMIN_EMAILS": "only@one.com"})
+    def test_single_email_works(self):
+        from apps.accounts.adapters import _get_superadmin_emails
+
+        assert _get_superadmin_emails() == {"only@one.com"}
+
+    @patch.dict("os.environ", {"SUPERADMIN_EMAILS": ",,, ,,"})
+    def test_only_commas_returns_empty_set(self):
+        from apps.accounts.adapters import _get_superadmin_emails
+
+        assert _get_superadmin_emails() == set()

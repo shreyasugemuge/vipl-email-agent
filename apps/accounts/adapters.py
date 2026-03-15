@@ -42,7 +42,10 @@ class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
 
         # SECURITY: Check both email suffix AND hd claim from Google ID token
         if not email.endswith(f"@{ALLOWED_DOMAIN}") or hd != ALLOWED_DOMAIN:
-            logger.warning("OAuth rejected: email=%s hd=%s", email, hd)
+            logger.warning(
+                "OAuth rejected: email=%s hd=%s (expected hd=%s)",
+                email, hd, ALLOWED_DOMAIN,
+            )
             messages.error(
                 request, "Only @vidarbhainfotech.com accounts can sign in."
             )
@@ -56,17 +59,36 @@ class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
                 existing_user = User.objects.get(email=email)
                 sociallogin.connect(request, existing_user)
                 logger.info("Auto-linked Google account to existing user %s", email)
+                # Save avatar using existing_user directly (sociallogin.user
+                # may not be updated after connect())
+                self._update_avatar(existing_user, extra_data)
+                first_name = existing_user.first_name or existing_user.username
+                messages.info(request, f"Welcome, {first_name}!")
+                return
             except User.DoesNotExist:
+                logger.info("New OAuth user will be created: %s", email)
                 return  # New user — will go through save_user()
+            except Exception:
+                logger.exception(
+                    "Failed to auto-link Google account for %s", email,
+                )
+                raise
 
-        # Update avatar for linked users
+        # Update avatar for existing social links (repeat logins)
         user = sociallogin.user
-        picture = extra_data.get("picture", "")
-        if picture and user.avatar_url != picture:
-            user.avatar_url = picture
-            user.save(update_fields=["avatar_url"])
+        self._update_avatar(user, extra_data)
+        logger.debug("Repeat OAuth login: %s", email)
         first_name = user.first_name or user.username
         messages.info(request, f"Welcome, {first_name}!")
+
+    @staticmethod
+    def _update_avatar(user, extra_data):
+        """Save Google profile picture URL if changed."""
+        picture = extra_data.get("picture", "")
+        if picture and getattr(user, "avatar_url", None) != picture:
+            user.avatar_url = picture
+            user.save(update_fields=["avatar_url"])
+            logger.info("Updated avatar for %s", user.email)
 
     def save_user(self, request, sociallogin, form=None):
         """Auto-create new Google users. Superadmin is auto-approved."""
@@ -75,7 +97,8 @@ class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
         email = user.email or extra_data.get("email", "")
 
         # Superadmin: auto-approve with full access
-        if email.lower() in _get_superadmin_emails():
+        superadmin_emails = _get_superadmin_emails()
+        if email.lower() in superadmin_emails:
             user.is_active = True
             user.role = User.Role.ADMIN
             user.is_staff = True
@@ -88,6 +111,7 @@ class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
                     "can_see_all_emails", "avatar_url",
                 ]
             )
+            logger.info("Superadmin auto-approved: %s", email)
             messages.success(request, f"Welcome, {user.first_name}!")
             return user
 
@@ -99,6 +123,7 @@ class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
         user.save(
             update_fields=["is_active", "role", "can_see_all_emails", "avatar_url"]
         )
+        logger.info("New user created (pending approval): %s", email)
 
         # Notify admin
         admin_email = getattr(

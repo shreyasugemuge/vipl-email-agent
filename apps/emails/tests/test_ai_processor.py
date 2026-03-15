@@ -9,6 +9,52 @@ import pytest
 from conftest import make_email_message
 
 
+class TestCleanXmlTags:
+    """Test _clean_xml_tags utility function."""
+
+    def test_empty_string_returns_empty(self):
+        from apps.emails.services.ai_processor import _clean_xml_tags
+        assert _clean_xml_tags("") == ""
+
+    def test_none_returns_none(self):
+        from apps.emails.services.ai_processor import _clean_xml_tags
+        assert _clean_xml_tags(None) is None
+
+    def test_plain_name_unchanged(self):
+        from apps.emails.services.ai_processor import _clean_xml_tags
+        assert _clean_xml_tags("Shreyas") == "Shreyas"
+
+    def test_strips_parameter_xml_tag(self):
+        from apps.emails.services.ai_processor import _clean_xml_tags
+        assert _clean_xml_tags('<parameter name="name">Shreyas</parameter>') == "Shreyas"
+
+    def test_strips_parameter_xml_tag_with_unicode(self):
+        from apps.emails.services.ai_processor import _clean_xml_tags
+        result = _clean_xml_tags('<parameter name="name">Shreyas Uge</parameter>')
+        assert result == "Shreyas Uge"
+
+    def test_strips_generic_xml_tags(self):
+        from apps.emails.services.ai_processor import _clean_xml_tags
+        assert _clean_xml_tags("<foo>bar</foo>") == "bar"
+
+
+class TestParseAssigneeXmlCleanup:
+    """Test that _parse_suggested_assignee cleans XML from name values."""
+
+    def test_dict_with_xml_name_cleaned(self):
+        from apps.emails.services.ai_processor import _parse_suggested_assignee
+        result = _parse_suggested_assignee({
+            "name": '<parameter name="name">Shreyas</parameter>',
+            "reason": "Good fit",
+        })
+        assert result == {"name": "Shreyas", "reason": "Good fit"}
+
+    def test_string_with_xml_cleaned(self):
+        from apps.emails.services.ai_processor import _parse_suggested_assignee
+        result = _parse_suggested_assignee('<parameter name="name">Shreyas</parameter>')
+        assert result == {"name": "Shreyas", "reason": ""}
+
+
 class TestAIProcessor:
     """Test AIProcessor triage with mocked Claude API."""
 

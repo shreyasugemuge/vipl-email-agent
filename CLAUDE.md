@@ -10,7 +10,16 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.3.2
+**GitHub Release**: v2.3.3.1
+
+## Active Branches
+
+| Branch | Owner | Purpose | Status |
+|--------|-------|---------|--------|
+| `main` | — | Production branch, deployed to VM | Stable, v2.3.3.1 |
+| `feature/email-threads-inbox` | Dev 1 | Email threading & conversation grouping (milestone v2.3.5) | In progress — roadmap + requirements defined |
+| `fix/ui-ux` | Dev 2 | UI/UX polish & bug fixes (milestone v2.2.1) | In progress — research complete |
+| `feature/analytics-dashboard` | Dev 3 | Analytics & reporting dashboard | Not started — worktree at `../vipl-email-agent-analytics` |
 
 ## Stack
 - **Backend**: Django 4.2 LTS + PostgreSQL 12.3 (Taiga's existing DB container)
@@ -107,6 +116,7 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **Phase 4.5** (Polish): Quiet hours fix, settings cleanup
 - **Phase 5** (Reporting + Admin): EOD reporter, SystemConfig admin, Sheets sync mirror
 - **Phase 6** (Migration + Cutover): Deploy to VM, merge v2→main, go live
+- **Phase 7** (UI/UX Polish): HTMX loading indicator, button loading states, accessibility (skip-to-content, aria-labels, keyboard nav, focus-visible), mobile responsive (detail drawer, filter toggle, settings tab scroll, team table), toast improvements, visual polish
 
 ### Email Pipeline Architecture
 ```
@@ -174,7 +184,7 @@ Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled` (false), `eod
 source .venv/bin/activate
 
 # --- Unit Tests (no API keys needed) ---
-pytest -v                           # All 257 tests
+pytest -v                           # All 381 tests
 pytest apps/accounts -v             # Account/auth tests
 pytest apps/emails -v               # Email + dashboard + assignment + EOD tests
 pytest apps/core -v                 # Core model + health + config tests
@@ -230,6 +240,11 @@ gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl >
 - URL-based filter state (bookmarkable: `/emails/?status=new&priority=HIGH`)
 - ActivityLog model tracks all assignment and status change events
 - Assignment notifications via Google Chat + Django email
+- Global HTMX progress bar (top-of-page, auto show/hide on requests)
+- Button loading states (`hx-disabled-elt`) prevent double-submission
+- Accessibility: skip-to-content, aria-labels, keyboard nav on cards, focus-visible rings, aria-current
+- Mobile responsive: detail panel as slide-over drawer, filter toggle, scrollable settings tabs, responsive team table
+- Toast notifications: stacked, auto-dismiss with stagger, close buttons
 
 ### Common Tasks
 

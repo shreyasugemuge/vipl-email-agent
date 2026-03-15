@@ -255,3 +255,215 @@ class TestEmailListHTMX:
         )
         content = response.content.decode()
         assert "VIPL Triage" not in content  # No sidebar in partial
+
+
+class TestEmailCountOOBUpdate:
+    """Test that HTMX responses include OOB email count update."""
+
+    def test_htmx_unassigned_view_has_oob_count(self, admin_client, db):
+        """HTMX request to unassigned view includes OOB count span."""
+        _create_email(db, message_id="msg_oob_1")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "unassigned"},
+            HTTP_HX_REQUEST="true",
+        )
+        content = response.content.decode()
+        assert 'id="email-count"' in content
+        assert 'hx-swap-oob' in content
+
+    def test_htmx_mine_view_has_oob_count(self, admin_client, admin_user, db):
+        """HTMX request to mine view includes OOB count span."""
+        _create_email(db, message_id="msg_oob_2", assigned_to=admin_user)
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "mine"},
+            HTTP_HX_REQUEST="true",
+        )
+        content = response.content.decode()
+        assert 'id="email-count"' in content
+        assert 'hx-swap-oob' in content
+
+    def test_non_htmx_has_no_oob(self, admin_client, db):
+        """Non-HTMX full page render does NOT have hx-swap-oob on count."""
+        _create_email(db, message_id="msg_oob_3")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all"},
+        )
+        content = response.content.decode()
+        assert 'hx-swap-oob' not in content
+
+    def test_oob_count_has_correct_pluralization(self, admin_client, db):
+        """OOB count shows correct plural form."""
+        _create_email(db, message_id="msg_oob_single")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all"},
+            HTTP_HX_REQUEST="true",
+        )
+        content = response.content.decode()
+        assert "1 email" in content
+
+
+class TestWelcomeBanner:
+    """UX-01: Welcome banner with role-specific guidance."""
+
+    def test_banner_present_for_admin(self, admin_client, db):
+        """Welcome banner div is present in admin dashboard response."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert 'id="welcome-banner"' in content
+
+    def test_banner_present_for_member(self, member_client, db):
+        """Welcome banner div is present in member dashboard response."""
+        response = member_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert 'id="welcome-banner"' in content
+
+    def test_admin_sees_assign_guidance(self, admin_client, db):
+        """Admin banner contains guidance about assigning emails."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "assign" in content.lower() or "Assign" in content
+
+    def test_member_sees_my_emails_guidance(self, member_client, db):
+        """Member banner contains guidance about My Emails."""
+        response = member_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "My Emails" in content
+
+    def test_banner_has_session_storage_dismiss(self, admin_client, db):
+        """Banner has sessionStorage JS for dismiss logic."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "sessionStorage" in content
+        assert "vipl_welcome_dismissed" in content
+
+
+class TestFilterIndicators:
+    """UX-02: Active filter count and clear-all link."""
+
+    def test_one_filter_shows_indicator(self, admin_client, db):
+        """With one filter active, filter panel is open with Clear all link."""
+        _create_email(db, message_id="msg_fi_1")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all", "status": "new"},
+        )
+        content = response.content.decode()
+        assert "Clear all" in content
+        assert 'id="filter-panel"' in content
+
+    def test_two_filters_show_indicator(self, admin_client, db):
+        """With two filters active, filter panel is open with Clear all link."""
+        _create_email(db, message_id="msg_fi_2")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all", "status": "new", "priority": "HIGH"},
+        )
+        content = response.content.decode()
+        assert "Clear all" in content
+
+    def test_no_filters_no_indicator(self, admin_client, db):
+        """With no filters active, 'filter active' text is absent."""
+        _create_email(db, message_id="msg_fi_3")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all"},
+        )
+        content = response.content.decode()
+        assert "filter active" not in content
+        assert "filters active" not in content
+
+    def test_clear_all_preserves_view(self, admin_client, db):
+        """Clear all link includes current view param."""
+        _create_email(db, message_id="msg_fi_4")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all", "status": "new"},
+        )
+        content = response.content.decode()
+        assert "Clear all" in content
+        assert "?view=all" in content
+
+
+class TestKeyboardNav:
+    """UX-04: Keyboard navigation between email cards."""
+
+    def test_response_contains_arrow_down_handler(self, admin_client, db):
+        """Response JS contains ArrowDown key handling."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "ArrowDown" in content
+
+    def test_response_contains_arrow_up_handler(self, admin_client, db):
+        """Response JS contains ArrowUp key handling."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "ArrowUp" in content
+
+    def test_response_contains_escape_close_detail(self, admin_client, db):
+        """Response JS contains Escape key handler referencing closeDetail."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "Escape" in content
+        assert "closeDetail" in content
+
+    def test_response_contains_form_field_guard(self, admin_client, db):
+        """Response JS guards against keyboard nav when in form fields."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "INPUT" in content
+        assert "activeElement" in content
+
+    def test_response_contains_role_article_selector(self, admin_client, db):
+        """Response JS uses role=article selector for email cards."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert 'role="article"' in content or "role=\\\"article\\\"" in content
+
+
+class TestLoadingSkeleton:
+    """UX-05: Loading skeleton for detail panel."""
+
+    def test_response_contains_before_request_listener(self, admin_client, db):
+        """Response JS has htmx:beforeRequest event listener."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "htmx:beforeRequest" in content
+
+    def test_skeleton_targets_detail_panel(self, admin_client, db):
+        """Skeleton injection logic targets detail-panel specifically."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "detail-panel" in content
+
+    def test_skeleton_has_animate_pulse(self, admin_client, db):
+        """Skeleton HTML contains animate-pulse class."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "animate-pulse" in content
+
+    def test_skeleton_has_slate_placeholder_blocks(self, admin_client, db):
+        """Skeleton HTML uses bg-slate-200 placeholder blocks."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "bg-slate-200" in content
+
+
+class TestScrollSnap:
+    """UX-03: Scroll-snap on stat cards for mobile."""
+
+    def test_stat_container_has_snap_classes(self, admin_client, db):
+        """Stat cards container has snap-x and snap-mandatory classes."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "snap-x" in content
+        assert "snap-mandatory" in content
+
+    def test_stat_cards_have_snap_start(self, admin_client, db):
+        """Each stat card has snap-start class."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "snap-start" in content

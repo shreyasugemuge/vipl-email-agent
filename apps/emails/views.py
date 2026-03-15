@@ -277,6 +277,9 @@ def email_list(request):
             | Q(ai_summary__icontains=search_query)
         )
 
+    # --- Active filter count (for UX-02 filter indicator) ---
+    active_filter_count = sum(1 for f in [status, priority, category, inbox, search_query] if f)
+
     # --- Sort ---
     sort = request.GET.get("sort", "-created_at")
     if sort not in ALLOWED_SORT_FIELDS:
@@ -351,10 +354,20 @@ def email_list(request):
         "dash_stats": dash_stats,
         "user_visible_categories": user_visible_categories,
         "current_search": search_query,
+        "active_filter_count": active_filter_count,
     }
 
     if getattr(request, "htmx", False):
-        return render(request, "emails/_email_list_body.html", context)
+        list_html = render_to_string("emails/_email_list_body.html", context, request=request)
+        # OOB swap to update the email count in the tab bar
+        count = paginator.count
+        plural = "s" if count != 1 else ""
+        count_html = (
+            f'<span id="email-count" hx-swap-oob="true" '
+            f'class="ml-auto text-[11px] font-bold text-slate-400 whitespace-nowrap tabular-nums">'
+            f'{count} email{plural}</span>'
+        )
+        return _HttpResponse(list_html + count_html)
     return render(request, "emails/email_list.html", context)
 
 

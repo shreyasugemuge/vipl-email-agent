@@ -269,7 +269,7 @@
 
     <!-- Toast notifications (Django messages) -->
     {% if messages %}
-    <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-3" role="status" aria-live="polite">
+    <div id="toast-container" class="fixed top-16 right-2 md:top-4 md:right-4 z-[100] flex flex-col gap-3" role="status" aria-live="polite">
         {% for message in messages %}
         <div class="toast-item flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-lg shadow-black/10 border border-slate-200 max-w-sm"
              style="animation: toast-in 0.3s ease-out;"
@@ -282,7 +282,7 @@
             </div>
             {% endif %}
             <p class="text-sm font-semibold text-slate-800 flex-1">{{ message }}</p>
-            <button onclick="this.closest('.toast-item').remove()" class="text-slate-300 hover:text-slate-500 transition-colors shrink-0" aria-label="Dismiss notification">
+            <button onclick="this.closest('.toast-item').remove()" class="text-slate-300 hover:text-slate-500 transition-colors shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Dismiss notification">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
@@ -294,6 +294,35 @@
             toast.style.animation = 'toast-out 0.3s ease-in forwards';
             setTimeout(function() { toast.remove(); }, 300);
         }, 4000 + (i * 500));
+    });
+    /* Swipe-right-to-dismiss on mobile */
+    document.querySelectorAll('.toast-item').forEach(function(toast) {
+        var startX = 0, currentX = 0, swiping = false;
+        toast.addEventListener('touchstart', function(e) {
+            startX = e.touches[0].clientX;
+            currentX = startX;
+            swiping = true;
+        }, { passive: true });
+        toast.addEventListener('touchmove', function(e) {
+            if (!swiping) return;
+            currentX = e.touches[0].clientX;
+            var deltaX = currentX - startX;
+            if (deltaX > 0) {
+                toast.style.transform = 'translateX(' + deltaX + 'px)';
+                toast.style.opacity = Math.max(0, 1 - deltaX / 200);
+            }
+        }, { passive: true });
+        toast.addEventListener('touchend', function() {
+            if (!swiping) return;
+            swiping = false;
+            if (currentX - startX > 50) {
+                toast.style.animation = 'toast-out 0.2s ease-in forwards';
+                setTimeout(function() { toast.remove(); }, 200);
+            } else {
+                toast.style.transform = '';
+                toast.style.opacity = '';
+            }
+        });
     });
     </script>
     {% endif %}

@@ -89,6 +89,37 @@ def test_page_titles_contain_vipl(auth_client):
 
 
 @pytest.mark.django_db
+class TestPageTitleConsistency:
+    """Every page must follow 'VIPL Triage | {Page Name}' title pattern."""
+
+    def test_inbox_title(self, auth_client):
+        resp = auth_client.get("/emails/")
+        assert "VIPL Triage | Inbox" in resp.content.decode()
+
+    def test_activity_title(self, auth_client):
+        resp = auth_client.get("/emails/activity/")
+        assert "VIPL Triage | Activity" in resp.content.decode()
+
+    def test_settings_title(self, auth_client):
+        resp = auth_client.get("/emails/settings/")
+        assert "VIPL Triage | Settings" in resp.content.decode()
+
+    def test_team_title(self, auth_client):
+        resp = auth_client.get("/accounts/team/")
+        assert "VIPL Triage | Team" in resp.content.decode()
+
+    def test_inspect_title(self):
+        client = Client()
+        resp = client.get("/emails/inspect/")
+        assert "VIPL Triage | Dev Inspector" in resp.content.decode()
+
+    def test_login_title(self):
+        client = Client()
+        resp = client.get("/accounts/login/")
+        assert "VIPL Triage" in resp.content.decode()
+
+
+@pytest.mark.django_db
 def test_favicon_link_in_base(auth_client):
     """Base template must include a favicon link."""
     resp = auth_client.get("/emails/")
