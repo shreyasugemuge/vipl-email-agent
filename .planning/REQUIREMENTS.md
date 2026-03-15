@@ -22,8 +22,8 @@
 
 ### Workflow
 
-- [ ] **FLOW-01**: Claim button available for unassigned threads (#22)
-- [ ] **FLOW-02**: Undo spam feedback button in UI (#29)
+- [x] **FLOW-01**: Claim button available for unassigned threads (#22)
+- [x] **FLOW-02**: Undo spam feedback button in UI (#29)
 
 ### Pages
 
@@ -62,8 +62,8 @@ None — this is a polish milestone.
 | CARD-02 | Phase 2 | Complete |
 | CARD-03 | Phase 2 | Complete |
 | CARD-04 | Phase 2 | Complete |
-| FLOW-01 | Phase 3 | Pending |
-| FLOW-02 | Phase 3 | Pending |
+| FLOW-01 | Phase 3 | Complete |
+| FLOW-02 | Phase 3 | Complete |
 | PAGE-01 | Phase 4 | Complete |
 | PAGE-02 | Phase 4 | Pending |
 | PAGE-03 | Phase 4 | Pending |
