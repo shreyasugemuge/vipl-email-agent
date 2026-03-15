@@ -13,6 +13,7 @@ class Thread(SoftDeleteModel, TimestampedModel):
         NEW = "new", "New"
         ACKNOWLEDGED = "acknowledged", "Acknowledged"
         CLOSED = "closed", "Closed"
+        REOPENED = "reopened", "Reopened"
 
     # Thread identity
     gmail_thread_id = models.CharField(max_length=255, unique=True, db_index=True)

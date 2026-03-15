@@ -127,11 +127,11 @@ def thread_list(request):
     view = request.GET.get("view", default_view)
 
     if view == "unassigned":
-        qs = qs.filter(assigned_to__isnull=True, status__in=["new", "acknowledged"])
+        qs = qs.filter(assigned_to__isnull=True, status__in=["new", "acknowledged", "reopened"])
     elif view == "mine":
         qs = qs.filter(assigned_to=user)
     elif view == "all_open":
-        qs = qs.filter(status__in=["new", "acknowledged"])
+        qs = qs.filter(status__in=["new", "acknowledged", "reopened"])
     elif view == "closed":
         qs = qs.filter(status="closed")
     elif view.isdigit():
@@ -181,7 +181,7 @@ def thread_list(request):
     if inbox:
         base_threads = base_threads.filter(emails__to_inbox=inbox).distinct()
 
-    open_q = Q(status__in=["new", "acknowledged"])
+    open_q = Q(status__in=["new", "acknowledged", "reopened"])
     sidebar_counts = base_threads.aggregate(
         unassigned=Count("pk", filter=open_q & Q(assigned_to__isnull=True)),
         mine=Count("pk", filter=open_q & Q(assigned_to=user)),
@@ -200,10 +200,10 @@ def thread_list(request):
         unread_base = unread_base.filter(emails__to_inbox=inbox).distinct()
     sidebar_counts["unread_mine"] = unread_base.filter(assigned_to=user).count()
     sidebar_counts["unread_unassigned"] = unread_base.filter(
-        assigned_to__isnull=True, status__in=["new", "acknowledged"]
+        assigned_to__isnull=True, status__in=["new", "acknowledged", "reopened"]
     ).count()
     sidebar_counts["unread_open"] = unread_base.filter(
-        status__in=["new", "acknowledged"]
+        status__in=["new", "acknowledged", "reopened"]
     ).count()
     sidebar_counts["unread_closed"] = unread_base.filter(status="closed").count()
 

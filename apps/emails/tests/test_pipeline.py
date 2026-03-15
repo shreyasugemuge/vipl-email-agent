@@ -378,7 +378,7 @@ class TestPipelineThreading:
             assert call_arg.gmail_thread_id == "thread_preview_001"
 
     def test_save_reopens_closed_thread(self):
-        """save_email_to_db reopens thread (status -> NEW) when thread was CLOSED."""
+        """save_email_to_db reopens thread (status -> REOPENED) when thread was CLOSED."""
         from apps.emails.services.pipeline import save_email_to_db
         from apps.emails.models import Thread
 
@@ -397,7 +397,7 @@ class TestPipelineThreading:
         save_email_to_db(email_msg2, triage)
 
         thread.refresh_from_db()
-        assert thread.status == Thread.Status.NEW
+        assert thread.status == Thread.Status.REOPENED
 
     def test_save_reopens_acknowledged_thread(self):
         """save_email_to_db reopens thread when thread was ACKNOWLEDGED."""
@@ -416,7 +416,7 @@ class TestPipelineThreading:
         save_email_to_db(email_msg2, triage)
 
         thread.refresh_from_db()
-        assert thread.status == Thread.Status.NEW
+        assert thread.status == Thread.Status.REOPENED
 
     def test_save_does_not_change_new_status(self):
         """save_email_to_db does NOT change status when thread is already NEW."""
@@ -458,7 +458,7 @@ class TestPipelineThreading:
         assert reopen_log.exists()
         log_entry = reopen_log.first()
         assert log_entry.old_value == "closed"
-        assert log_entry.new_value == "new"
+        assert log_entry.new_value == "reopened"
 
     def test_new_thread_creates_thread_created_activity(self):
         """New thread creates ActivityLog with THREAD_CREATED action."""
