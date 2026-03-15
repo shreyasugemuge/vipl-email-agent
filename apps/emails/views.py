@@ -30,6 +30,7 @@ from apps.emails.models import (
     InternalNote, PollLog, SenderReputation, SLAConfig, SpamFeedback, SpamWhitelist,
     Thread, ThreadReadState, ThreadViewer,
 )
+from apps.emails.services.dtos import VALID_CATEGORIES, VALID_PRIORITIES
 from apps.emails.services.assignment import assign_email as _assign_email
 from apps.emails.services.assignment import assign_thread as _assign_thread
 from apps.emails.services.assignment import change_status as _change_status
@@ -39,6 +40,12 @@ from apps.emails.services.assignment import claim_thread as _claim_thread
 from apps.emails.services.assignment import notify_mention as _notify_mention
 from apps.emails.services.assignment import parse_mentions
 from apps.emails.services.dtos import VALID_CATEGORIES, VALID_PRIORITIES
+from apps.emails.services.reports import (
+    get_overview_kpis,
+    get_volume_data,
+    get_team_data,
+    get_sla_data,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1099,6 +1106,103 @@ def edit_ai_summary(request, pk):
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
     context = _build_thread_detail_context(thread, request, is_admin, team_members)
     return render(request, "emails/_thread_detail.html", context)
+
+
+def _render_thread_detail_with_oob_card(thread, request, user):
+    """Re-render the detail panel + OOB thread card after an inline edit."""
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=thread.pk)
+    team_members = []
+    if is_admin:
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_html = render_to_string("emails/_thread_detail.html", detail_context, request=request)
+    card_html = render_to_string("emails/_thread_card.html", {"thread": thread, "oob": True}, request=request)
+    return _HttpResponse(detail_html + card_html)
+
+
+@login_required
+@require_POST
+def edit_category(request, pk):
+    """Inline edit: change thread category. Any logged-in user."""
+    user = request.user
+    thread = get_object_or_404(Thread, pk=pk)
+
+    category = (request.POST.get("category") or "").strip()
+    if category == "__custom__":
+        category = (request.POST.get("custom_category") or "").strip()
+        if not category:
+            return _HttpResponse("Custom category cannot be empty.", status=400)
+        if len(category) > 100:
+            return _HttpResponse("Custom category too long (max 100 chars).", status=400)
+
+    old_category = thread.category
+    thread.category = category
+    thread.category_overridden = True
+    thread.save(update_fields=["category", "category_overridden"])
+
+    ActivityLog.objects.create(
+        thread=thread,
+        user=user,
+        action=ActivityLog.Action.CATEGORY_CHANGED,
+        old_value=old_category[:200],
+        new_value=category[:200],
+        detail=f"Category changed by {user.get_full_name() or user.username}",
+    )
+
+    return _render_thread_detail_with_oob_card(thread, request, user)
+
+
+@login_required
+@require_POST
+def edit_priority(request, pk):
+    """Inline edit: change thread priority. Any logged-in user."""
+    user = request.user
+    thread = get_object_or_404(Thread, pk=pk)
+
+    new_priority = (request.POST.get("priority") or "").strip()
+    if new_priority not in VALID_PRIORITIES:
+        return _HttpResponse(f"Invalid priority: {new_priority}", status=400)
+
+    old_priority = thread.priority
+    thread.priority = new_priority
+    thread.priority_overridden = True
+    thread.save(update_fields=["priority", "priority_overridden"])
+
+    ActivityLog.objects.create(
+        thread=thread,
+        user=user,
+        action=ActivityLog.Action.PRIORITY_CHANGED,
+        old_value=old_priority,
+        new_value=new_priority,
+        detail=f"Priority changed by {user.get_full_name() or user.username}",
+    )
+
+    return _render_thread_detail_with_oob_card(thread, request, user)
+
+
+@login_required
+@require_POST
+def edit_status(request, pk):
+    """Inline edit: change thread status. Admin or assigned user."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to", "assigned_by"),
+        pk=pk,
+    )
+
+    if not is_admin and thread.assigned_to != user:
+        return HttpResponseForbidden("You can only change status on threads assigned to you.")
+
+    new_status = request.POST.get("new_status", "")
+    if not new_status:
+        return _HttpResponse("Missing new_status.", status=400)
+
+    _change_thread_status(thread, new_status, user)
+
+    return _render_thread_detail_with_oob_card(thread, request, user)
 
 
 @login_required
