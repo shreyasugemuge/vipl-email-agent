@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('emails', '0009_wipe_existing_data'),
+        ('emails', '0010_wipe_existing_data'),
     ]
 
     operations = [

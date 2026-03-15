@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('emails', '0007_spamwhitelist'),
+        ('emails', '0008_clean_xml_assignee'),
     ]
 
     operations = [

@@ -22,7 +22,7 @@ def wipe_existing_data(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('emails', '0008_thread_model'),
+        ('emails', '0009_thread_model'),
     ]
 
     operations = [

@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('emails', '0010_alter_activitylog_action_internalnote'),
+        ('emails', '0011_alter_activitylog_action_internalnote'),
     ]
 
     operations = [
