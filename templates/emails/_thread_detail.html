@@ -30,19 +30,20 @@
                 <div id="viewer-badge" class="shrink-0">{% include "emails/_viewer_badge.html" %}</div>
             </div>
 
-            <!-- Badges row -->
+            <!-- Badges row (inline-editable) -->
             <div class="flex items-center flex-wrap gap-1.5 mb-2.5">
                 {% if thread.priority %}
-                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-{{ thread.priority|priority_base }}-50 text-{{ thread.priority|priority_base }}-700 border border-{{ thread.priority|priority_base }}-200/50" title="{{ thread.priority|priority_tooltip }}">
-                    {{ thread.priority }}
-                </span>
+                <div class="pri-display inline-flex">
+                    {% include "emails/_editable_priority.html" %}
+                </div>
                 {% endif %}
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-semibold bg-{{ thread.status|status_base }}-50 text-{{ thread.status|status_base }}-600 border border-{{ thread.status|status_base }}-200/50" title="{{ thread.status|status_tooltip }}">
-                    <span class="w-1 h-1 rounded-full bg-{{ thread.status|status_base }}-500"></span>
-                    {{ thread.get_status_display }}
-                </span>
+                <div class="sta-display inline-flex">
+                    {% include "emails/_editable_status.html" %}
+                </div>
                 {% if thread.category %}
-                <span class="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-slate-100 text-slate-500">{{ thread.category }}</span>
+                <div class="cat-display inline-flex">
+                    {% include "emails/_editable_category.html" %}
+                </div>
                 {% endif %}
                 {% if has_spam %}
                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-red-100 text-red-700 border border-red-200/50" title="Flagged by spam filter — review and whitelist if legitimate">Spam</span>
