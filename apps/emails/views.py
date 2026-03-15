@@ -2416,8 +2416,29 @@ def inspect(request):
     last_poll_epoch = SystemConfig.get("last_poll_epoch", "")
     poll_interval = SystemConfig.get("poll_interval_minutes", "5")
 
-    # Poll history
-    poll_logs = PollLog.objects.all()[:50]
+    # Poll history (last 25, with interval annotations)
+    poll_logs = list(PollLog.objects.all()[:25])
+    poll_interval_seconds = int(poll_interval) * 60
+    for i, log in enumerate(poll_logs):
+        if i < len(poll_logs) - 1:
+            delta = log.started_at - poll_logs[i + 1].started_at
+            secs = int(delta.total_seconds())
+            log.interval_seconds = secs
+            log.interval_gap = secs > (poll_interval_seconds * 2)
+            # Pre-format interval for template
+            if secs < 60:
+                log.interval_display = f"{secs}s"
+            elif secs < 3600:
+                m, s = divmod(secs, 60)
+                log.interval_display = f"{m}m {s}s" if s else f"{m}m"
+            else:
+                h, rem = divmod(secs, 3600)
+                m = rem // 60
+                log.interval_display = f"{h}h {m}m"
+        else:
+            log.interval_seconds = None
+            log.interval_gap = False
+            log.interval_display = "--"
 
     # Pipeline MIS stats (last 7 days)
     from django.db.models import Sum, Avg, Count
@@ -2445,23 +2466,45 @@ def inspect(request):
 @login_required
 @require_POST
 def force_poll(request):
-    """Trigger a single poll cycle. Admin only."""
+    """Trigger a single poll cycle. Admin only. Works in all operating modes."""
     if not (request.user.is_staff or request.user.role == User.Role.ADMIN):
         return HttpResponseForbidden("Admin access required.")
 
     import subprocess
     from django.conf import settings
+
+    # Record the latest PollLog ID before running, so we can find the new one
+    latest_before = PollLog.objects.order_by('-started_at').values_list('pk', flat=True).first()
+
     try:
         result = subprocess.run(
             ["python", "manage.py", "run_scheduler", "--once"],
             capture_output=True, text=True, timeout=120,
             cwd=str(settings.BASE_DIR),
         )
-        return JsonResponse({
-            "status": "ok",
-            "output": result.stdout[-500:],
-            "errors": result.stderr[-500:],
-        })
+        # Try to get the PollLog created during this poll
+        poll_log_qs = PollLog.objects.order_by('-started_at')
+        if latest_before:
+            poll_log_qs = poll_log_qs.exclude(pk=latest_before)
+        poll_log = poll_log_qs.first()
+
+        if poll_log:
+            return JsonResponse({
+                "status": poll_log.status,
+                "emails_found": poll_log.emails_found,
+                "emails_processed": poll_log.emails_processed,
+                "spam_filtered": poll_log.spam_filtered,
+                "duration_ms": poll_log.duration_ms,
+            })
+        else:
+            return JsonResponse({
+                "status": "ok",
+                "emails_found": 0,
+                "emails_processed": 0,
+                "spam_filtered": 0,
+                "duration_ms": 0,
+                "output": result.stdout[-500:],
+            })
     except subprocess.TimeoutExpired:
         return JsonResponse({"error": "Poll timed out after 120s"}, status=504)
 
