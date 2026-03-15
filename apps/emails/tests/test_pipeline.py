@@ -378,7 +378,7 @@ class TestPipelineThreading:
             assert call_arg.gmail_thread_id == "thread_preview_001"
 
     def test_save_reopens_closed_thread(self):
-        """save_email_to_db reopens thread (status -> NEW) when thread was CLOSED."""
+        """save_email_to_db reopens thread (status -> REOPENED) when thread was CLOSED."""
         from apps.emails.services.pipeline import save_email_to_db
         from apps.emails.models import Thread
 
@@ -397,7 +397,7 @@ class TestPipelineThreading:
         save_email_to_db(email_msg2, triage)
 
         thread.refresh_from_db()
-        assert thread.status == Thread.Status.NEW
+        assert thread.status == Thread.Status.REOPENED
 
     def test_save_reopens_acknowledged_thread(self):
         """save_email_to_db reopens thread when thread was ACKNOWLEDGED."""
@@ -416,7 +416,7 @@ class TestPipelineThreading:
         save_email_to_db(email_msg2, triage)
 
         thread.refresh_from_db()
-        assert thread.status == Thread.Status.NEW
+        assert thread.status == Thread.Status.REOPENED
 
     def test_save_does_not_change_new_status(self):
         """save_email_to_db does NOT change status when thread is already NEW."""
@@ -458,7 +458,7 @@ class TestPipelineThreading:
         assert reopen_log.exists()
         log_entry = reopen_log.first()
         assert log_entry.old_value == "closed"
-        assert log_entry.new_value == "new"
+        assert log_entry.new_value == "reopened"
 
     def test_new_thread_creates_thread_created_activity(self):
         """New thread creates ActivityLog with THREAD_CREATED action."""
@@ -613,3 +613,181 @@ class TestPipelineThreading:
 
         thread = Thread.objects.get(gmail_thread_id="msg_no_thread_001")
         assert email_obj.thread == thread
+
+
+@pytest.mark.django_db
+class TestPipelineReadState:
+    """Test ThreadReadState creation on new threads and reopened threads (BUG-02)."""
+
+    def _create_active_users(self, count=3):
+        """Create N active users for read state tests."""
+        from apps.accounts.models import User
+
+        users = []
+        for i in range(count):
+            u = User.objects.create_user(
+                username=f"readstate_user_{i}",
+                email=f"readstate{i}@vidarbhainfotech.com",
+                password="testpass123",
+                is_active=True,
+            )
+            users.append(u)
+        return users
+
+    def test_new_thread_creates_unread_state_for_all_active_users(self):
+        """New thread via pipeline creates ThreadReadState(is_read=False) for all active users."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread, ThreadReadState
+
+        users = self._create_active_users(3)
+
+        email_msg = make_email_message(thread_id="thread_rs_001", message_id="msg_rs_001")
+        triage = make_triage_result()
+        save_email_to_db(email_msg, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_rs_001")
+        for u in users:
+            rs = ThreadReadState.objects.get(thread=thread, user=u)
+            assert rs.is_read is False
+
+    def test_existing_thread_new_email_does_not_create_read_states(self):
+        """New email on existing (non-reopened) thread does NOT create new ThreadReadState rows."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread, ThreadReadState
+
+        users = self._create_active_users(2)
+
+        # Create initial thread
+        email_msg1 = make_email_message(thread_id="thread_rs_002", message_id="msg_rs_002a")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_rs_002")
+        initial_count = ThreadReadState.objects.filter(thread=thread).count()
+
+        # Mark one user as read
+        rs = ThreadReadState.objects.get(thread=thread, user=users[0])
+        rs.is_read = True
+        rs.save()
+
+        # New email on same thread (thread still NEW, not a reopen)
+        email_msg2 = make_email_message(thread_id="thread_rs_002", message_id="msg_rs_002b")
+        save_email_to_db(email_msg2, triage)
+
+        # Read state count should not change, and user[0] should still be read
+        assert ThreadReadState.objects.filter(thread=thread).count() == initial_count
+        rs.refresh_from_db()
+        assert rs.is_read is True
+
+    def test_reopened_thread_creates_unread_state_for_all_users(self):
+        """Reopened thread (closed + new email) creates ThreadReadState(is_read=False) for all active users."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread, ThreadReadState
+
+        users = self._create_active_users(2)
+
+        # Create thread and close it
+        email_msg1 = make_email_message(thread_id="thread_rs_003", message_id="msg_rs_003a")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_rs_003")
+        thread.status = Thread.Status.CLOSED
+        thread.save(update_fields=["status"])
+
+        # Mark user[0] as read
+        rs = ThreadReadState.objects.get(thread=thread, user=users[0])
+        rs.is_read = True
+        rs.save()
+
+        # New email reopens thread
+        email_msg2 = make_email_message(thread_id="thread_rs_003", message_id="msg_rs_003b")
+        save_email_to_db(email_msg2, triage)
+
+        # All users should now be unread
+        for u in users:
+            rs = ThreadReadState.objects.get(thread=thread, user=u)
+            assert rs.is_read is False
+
+
+@pytest.mark.django_db
+class TestPipelineReopenedStatus:
+    """Test REOPENED status on thread reopen (BUG-03)."""
+
+    def test_reopened_thread_gets_reopened_status(self):
+        """Closed thread + new email sets status to 'reopened' not 'new'."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread
+
+        email_msg1 = make_email_message(thread_id="thread_reopen_status_001", message_id="msg_rs_s001a")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_reopen_status_001")
+        thread.status = Thread.Status.CLOSED
+        thread.save(update_fields=["status"])
+
+        email_msg2 = make_email_message(thread_id="thread_reopen_status_001", message_id="msg_rs_s001b")
+        save_email_to_db(email_msg2, triage)
+
+        thread.refresh_from_db()
+        assert thread.status == "reopened"
+
+    def test_acknowledged_thread_reopened_gets_reopened_status(self):
+        """Acknowledged thread + new email sets status to 'reopened'."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread
+
+        email_msg1 = make_email_message(thread_id="thread_reopen_status_002", message_id="msg_rs_s002a")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_reopen_status_002")
+        thread.status = Thread.Status.ACKNOWLEDGED
+        thread.save(update_fields=["status"])
+
+        email_msg2 = make_email_message(thread_id="thread_reopen_status_002", message_id="msg_rs_s002b")
+        save_email_to_db(email_msg2, triage)
+
+        thread.refresh_from_db()
+        assert thread.status == "reopened"
+
+    def test_reopened_activity_log_records_reopened_status(self):
+        """ActivityLog for reopen stores 'reopened' as new_value."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread, ActivityLog
+
+        email_msg1 = make_email_message(thread_id="thread_reopen_log_001", message_id="msg_rl_001a")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_reopen_log_001")
+        thread.status = Thread.Status.CLOSED
+        thread.save(update_fields=["status"])
+
+        email_msg2 = make_email_message(thread_id="thread_reopen_log_001", message_id="msg_rl_001b")
+        save_email_to_db(email_msg2, triage)
+
+        reopen_log = ActivityLog.objects.filter(
+            thread=thread, action=ActivityLog.Action.REOPENED
+        ).first()
+        assert reopen_log is not None
+        assert reopen_log.new_value == "reopened"
+
+
+@pytest.mark.django_db
+class TestTemplateTagsReopened:
+    """Test email_tags filters for 'reopened' status."""
+
+    def test_status_base_returns_amber_for_reopened(self):
+        from apps.emails.templatetags.email_tags import STATUS_BASE
+        assert STATUS_BASE.get("reopened") == "amber"
+
+    def test_status_tooltip_returns_text_for_reopened(self):
+        from apps.emails.templatetags.email_tags import STATUS_TOOLTIPS
+        assert "reopened" in STATUS_TOOLTIPS
+
+    def test_status_color_returns_color_for_reopened(self):
+        from apps.emails.templatetags.email_tags import status_color
+        result = status_color("reopened")
+        assert result != "slate-400"  # Should not fall back to default

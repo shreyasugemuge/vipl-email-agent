@@ -2,39 +2,23 @@
 
 AI-powered shared inbox monitoring, triage, and response system for Vidarbha Infotech Private Limited.
 
-## QA Branch Context
-
-This branch (`qa`) is dedicated to comprehensive visual, functional, and UX testing of the v2.5.0 application. The QA process is conducted from the perspective of a Head Designer + CTO + Engineering Expert, covering:
-- Every UI flow and click path
-- Visual/aesthetic quality (spacing, alignment, colors, typography, responsiveness)
-- Functional correctness (HTMX interactions, filters, assignments, settings, reports)
-- Accessibility (keyboard nav, screen reader, focus states)
-- Mobile responsiveness
-- Edge cases and error states
-
-**Artifacts produced:**
-- `qa_report.md` — comprehensive QA findings
-- GitHub issues for each bug/improvement found
-- Todo items for tracking
-
-**Testing URL:** https://triage.vidarbhainfotech.com (production) or http://triage.local (local dev)
-
 ## Status
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v2.5.0** (main branch) | **Complete** — intelligence + UX milestone, not yet deployed | Self-hosted VM (Docker Compose) |
+| **v2.5.4** (fixes branch) | **Complete** — 24 UI/UX fixes, pending merge + deploy | Self-hosted VM (Docker Compose) |
+| **v2.5.0** (main branch) | **Deployed** — intelligence + UX milestone | Self-hosted VM (Docker Compose) |
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.4.0 (latest deployed)
-**Ready to deploy**: v2.5.0 (90 commits ahead of origin, not yet released)
+**GitHub Release**: v2.5.0 (latest deployed, 2026-03-15)
 
 ## Active Branches
 
 | Branch | Worktree | Purpose | Status |
 |--------|----------|---------|--------|
-| `main` | `.` | Production branch, deployed to VM | v2.5.0 in progress (v2.4.0 deployed) |
+| `main` | `.` | Production branch, deployed to VM | v2.5.0 deployed |
+| `fixes` | `../vipl-email-agent-fixes` | UI/UX polish & bug fixes (v2.5.4) | Complete, pending merge |
 | `feature/analytics-dashboard` | `../vipl-email-agent-analytics` | Analytics & reporting dashboard | Not started |
 
 ## Stack
@@ -147,6 +131,13 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **v2.5.0 Phase 5** (Editable Attrs + Context Menu): Inline dropdown editing for category/priority/status on thread detail, right-click context menu on thread cards with quick actions
 - **v2.5.0 Phase 6** (Reports Module): Reports page with 4 tabs (Overview, Volume, Team, SLA), Chart.js charts, date range picker, aggregation service
 - **v2.5.0 Phase 7** (Pipeline Override Guards): Override flag enforcement in update_thread_preview, auto_assign_confidence_tier config rename with data migration
+- **v2.5.4 Phase 1** (Bug Fixes): Welcome banner dedup, pipeline unread state, REOPENED status, avatar sync, AI assign OOB swap
+- **v2.5.4 Phase 2** (Thread Card & Detail UX): Expanded card spacing, pill-style dropdowns, context menu readability, AI draft copy button
+- **v2.5.4 Phase 3** (Workflow Actions): Claim button with toast, spam toggle undo
+- **v2.5.4 Phase 4** (Page Polish): Retro-modern login, grouped settings tabs, thread-grouped activity, sidebar version badge
+- **v2.5.4 Phase 5** (Dev Inspector): Force poll inline results, poll history with intervals/dimming/timestamps
+- **v2.5.4 Phase 6** (QA Bug Fixes): Thread count OOB filter sync, search view preservation, mobile drawer close, Escape key detail close
+- **v2.5.4 Phase 7** (QA Cosmetic): Action button flex-wrap, reports title format, SLA chart zero-value handling
 
 ### Email Pipeline Architecture
 ```
@@ -219,7 +210,7 @@ Runtime keys: `last_poll_epoch` (INT, persisted after each poll cycle for deploy
 source .venv/bin/activate
 
 # --- Unit Tests (no API keys needed) ---
-pytest -v                           # All tests (~729)
+pytest -v                           # All tests (~734)
 pytest apps/accounts -v             # Account/auth tests
 pytest apps/emails -v               # Email + dashboard + assignment + EOD tests
 pytest apps/core -v                 # Core model + health + config tests

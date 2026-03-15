@@ -196,7 +196,14 @@
             {% endif %}
             <div class="flex items-center gap-1.5 px-2 mt-1 text-[9px] text-slate-600 font-medium">
                 <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 animate-pulse"></div>
-                Online
+                {% if app_version and app_version != 'dev' %}v{{ app_version }}{% else %}dev{% endif %}
+                {% if operating_mode == 'production' %}
+                <span class="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">PROD</span>
+                {% elif operating_mode == 'dev' %}
+                <span class="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">DEV</span>
+                {% else %}
+                <span class="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">OFF</span>
+                {% endif %}
             </div>
         </div>
     </aside>

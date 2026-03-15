@@ -65,6 +65,14 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - ✓ Reports module: 4-tab analytics (Overview, Volume, Team, SLA) with Chart.js — v2.5.0
 - ✓ Bug fixes: spam badge annotation, Gmail avatar edge cases, cross-inbox dedup — v2.5.0
 
+- ✓ Bug fixes: welcome banner dedup, pipeline unread state, REOPENED status, AI assign OOB — v2.5.4
+- ✓ Thread cards: expanded spacing, pill dropdowns, context menu readability, AI draft copy — v2.5.4
+- ✓ Workflow: claim button with toast, spam toggle undo — v2.5.4
+- ✓ Pages: retro-modern login, grouped settings tabs, thread-grouped activity, sidebar version badge — v2.5.4
+- ✓ Dev inspector: force poll inline results, poll history with intervals/dimming/timestamps — v2.5.4
+- ✓ QA fixes: thread count OOB, search view sync, mobile drawer, Escape close detail — v2.5.4
+- ✓ Cosmetic: action button wrap, reports title format, SLA chart zero-value handling — v2.5.4
+
 ### Active
 
 (No active milestone — run `/gsd:new-milestone` to start next)
@@ -80,7 +88,7 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ## Context
 
-**Current state (v2.5.0 complete, v2.4.0 deployed):** Production at triage.vidarbhainfotech.com since 2026-03-14 (v2.4.0). v2.5.0 complete but not yet deployed — adds AI confidence scoring, auto-assign, spam learning, read/unread tracking, context menus, inline editing, reports module. 626 tests passing, Django 4.2 LTS + PostgreSQL 12.3. 90 commits ahead of origin.
+**Current state (v2.5.4 complete):** Production at triage.vidarbhainfotech.com. v2.5.0 deployed, v2.5.4 complete on `fixes` branch (24 UI/UX fixes, 734 tests). Django 4.2 LTS + PostgreSQL 12.3. 0 open GitHub issues.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
@@ -125,4 +133,4 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | Context menu fetched server-side (GET) | Role-aware rendering without duplicating permission logic in JS | ✓ Good — v2.5.0 |
 
 ---
-*Last updated: 2026-03-15 after v2.5.0 milestone completed*
+*Last updated: 2026-03-15 after v2.5.4 milestone completed*

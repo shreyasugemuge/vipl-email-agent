@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Reports - VIPL Triage{% endblock %}
+{% block title %}VIPL Triage | Reports{% endblock %}
 {% block page_title %}Reports{% endblock %}
 {% block nav_reports_active %}nav-active{% endblock %}
 
@@ -494,27 +494,80 @@
     // ---- SLA tab -- donut + trend + breaches table ----
     function initSLA() {
         // Donut chart with center text
-        var donutConfig = {
-            type: 'doughnut',
-            data: {
-                labels: ['Met', 'Breached'],
-                datasets: [{
-                    data: [slaData.donut_data.met, slaData.donut_data.breached],
-                    backgroundColor: ['#10b981', '#ef4444'],
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '70%',
-                plugins: {
-                    legend: { position: 'bottom', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 20 } }
+        var met = slaData.donut_data.met;
+        var breached = slaData.donut_data.breached;
+        var donutConfig;
+
+        if (met === 0 && breached === 0) {
+            // No SLA data — show placeholder grey ring with "N/A" center
+            donutConfig = {
+                type: 'doughnut',
+                data: {
+                    labels: ['No Data'],
+                    datasets: [{
+                        data: [1],
+                        backgroundColor: ['#e2e8f0'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
                 }
-            }
-        };
-        donutConfig._pct = slaData.compliance_pct;
+            };
+            donutConfig._pct = 'N/A';
+        } else if (breached === 0) {
+            // 100% compliance — full green ring
+            donutConfig = {
+                type: 'doughnut',
+                data: {
+                    labels: ['Met'],
+                    datasets: [{
+                        data: [met],
+                        backgroundColor: ['#10b981'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 20 } }
+                    }
+                }
+            };
+            donutConfig._pct = slaData.compliance_pct;
+        } else {
+            // Normal case — both met and breached have values
+            donutConfig = {
+                type: 'doughnut',
+                data: {
+                    labels: ['Met', 'Breached'],
+                    datasets: [{
+                        data: [met, breached],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 20 } }
+                    }
+                }
+            };
+            donutConfig._pct = slaData.compliance_pct;
+        }
         createChart('slaDonutChart', donutConfig);
 
         // Trend line chart

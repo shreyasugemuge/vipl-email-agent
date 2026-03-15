@@ -10,7 +10,10 @@
 
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     container_name: vipl-email-agent
     restart: unless-stopped
     env_file:
@@ -38,7 +41,10 @@ services:
       retries: 3
 
   scheduler:
-    build: .
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     container_name: vipl-email-scheduler
     restart: unless-stopped
     env_file:

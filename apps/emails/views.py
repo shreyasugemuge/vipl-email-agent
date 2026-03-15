@@ -127,11 +127,11 @@ def thread_list(request):
     view = request.GET.get("view", default_view)
 
     if view == "unassigned":
-        qs = qs.filter(assigned_to__isnull=True, status__in=["new", "acknowledged"])
+        qs = qs.filter(assigned_to__isnull=True, status__in=["new", "acknowledged", "reopened"])
     elif view == "mine":
         qs = qs.filter(assigned_to=user)
     elif view == "all_open":
-        qs = qs.filter(status__in=["new", "acknowledged"])
+        qs = qs.filter(status__in=["new", "acknowledged", "reopened"])
     elif view == "closed":
         qs = qs.filter(status="closed")
     elif view.isdigit():
@@ -181,7 +181,7 @@ def thread_list(request):
     if inbox:
         base_threads = base_threads.filter(emails__to_inbox=inbox).distinct()
 
-    open_q = Q(status__in=["new", "acknowledged"])
+    open_q = Q(status__in=["new", "acknowledged", "reopened"])
     sidebar_counts = base_threads.aggregate(
         unassigned=Count("pk", filter=open_q & Q(assigned_to__isnull=True)),
         mine=Count("pk", filter=open_q & Q(assigned_to=user)),
@@ -200,10 +200,10 @@ def thread_list(request):
         unread_base = unread_base.filter(emails__to_inbox=inbox).distinct()
     sidebar_counts["unread_mine"] = unread_base.filter(assigned_to=user).count()
     sidebar_counts["unread_unassigned"] = unread_base.filter(
-        assigned_to__isnull=True, status__in=["new", "acknowledged"]
+        assigned_to__isnull=True, status__in=["new", "acknowledged", "reopened"]
     ).count()
     sidebar_counts["unread_open"] = unread_base.filter(
-        status__in=["new", "acknowledged"]
+        status__in=["new", "acknowledged", "reopened"]
     ).count()
     sidebar_counts["unread_closed"] = unread_base.filter(status="closed").count()
 
@@ -733,11 +733,8 @@ def accept_thread_suggestion(request, pk):
         detail=f"Accepted AI suggestion — assigned to {assignee.get_full_name() or assignee.username}",
     )
 
-    # Re-render detail panel
-    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
-    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-    context = _build_thread_detail_context(thread, request, is_admin, team_members)
-    return render(request, "emails/_thread_detail.html", context)
+    # Re-render detail panel + OOB card swap
+    return _render_thread_detail_with_oob_card(thread, request, user)
 
 
 @login_required
@@ -788,11 +785,8 @@ def reject_thread_suggestion(request, pk):
         latest_email.ai_suggested_assignee = {}
         latest_email.save(update_fields=["ai_suggested_assignee", "updated_at"])
 
-    # Re-render detail panel
-    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
-    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-    context = _build_thread_detail_context(thread, request, is_admin, team_members)
-    return render(request, "emails/_thread_detail.html", context)
+    # Re-render detail panel + OOB card swap
+    return _render_thread_detail_with_oob_card(thread, request, user)
 
 
 # ---------------------------------------------------------------------------
@@ -1219,11 +1213,15 @@ def thread_context_menu(request, pk):
         pk=pk,
     )
 
-    can_claim = (
-        not is_admin
-        and thread.assigned_to != user
-        and thread.status != Thread.Status.CLOSED
-    )
+    can_claim = False
+    if thread.assigned_to is None and thread.status != Thread.Status.CLOSED:
+        if is_admin:
+            can_claim = True
+        else:
+            can_claim = CategoryVisibility.objects.filter(
+                user=request.user,
+                category=thread.category,
+            ).exists()
     can_acknowledge = thread.status not in (Thread.Status.ACKNOWLEDGED, Thread.Status.CLOSED)
     can_close = thread.status != Thread.Status.CLOSED
 
@@ -1410,6 +1408,7 @@ def claim_thread_view(request, pk):
 
     # Primary: updated detail panel
     detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_context["toast_msg"] = "Thread claimed"
     detail_html = render_to_string(
         "emails/_thread_detail.html", detail_context, request=request,
     )
@@ -2287,7 +2286,7 @@ def activity_log(request):
     user = request.user
     is_admin = user.is_staff or user.role == User.Role.ADMIN
 
-    qs = ActivityLog.objects.select_related("email", "user").order_by("-created_at")
+    qs = ActivityLog.objects.select_related("email", "user", "thread").order_by("-created_at")
 
     # Non-admin members without can_see_all_emails: own activity or activity on own emails
     if not is_admin and not getattr(user, "can_see_all_emails", False):
@@ -2309,13 +2308,22 @@ def activity_log(request):
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
-    # Group entries by date for display
-    from itertools import groupby
+    # Group entries by thread for display
+    from collections import OrderedDict
     from django.utils import timezone
 
-    grouped_entries = []
-    for date_key, entries in groupby(page_obj, key=lambda e: timezone.localdate(e.created_at)):
-        grouped_entries.append((date_key, list(entries)))
+    thread_buckets = OrderedDict()
+    for log in page_obj:
+        key = log.thread_id or 0  # 0 = no thread
+        if key not in thread_buckets:
+            thread_buckets[key] = {"thread": log.thread, "entries": []}
+        thread_buckets[key]["entries"].append(log)
+
+    # Build thread_groups: list of (thread_or_None, entries) sorted by most-recent first
+    thread_groups = [
+        (bucket["thread"], bucket["entries"])
+        for bucket in thread_buckets.values()
+    ]
 
     today = timezone.localdate()
     from datetime import timedelta
@@ -2336,7 +2344,7 @@ def activity_log(request):
 
     context = {
         "page_obj": page_obj,
-        "grouped_entries": grouped_entries,
+        "thread_groups": thread_groups,
         "total_count": paginator.count,
         "mis_stats": mis_stats,
         "action_filter": action_filter,
@@ -2408,8 +2416,29 @@ def inspect(request):
     last_poll_epoch = SystemConfig.get("last_poll_epoch", "")
     poll_interval = SystemConfig.get("poll_interval_minutes", "5")
 
-    # Poll history
-    poll_logs = PollLog.objects.all()[:50]
+    # Poll history (last 25, with interval annotations)
+    poll_logs = list(PollLog.objects.all()[:25])
+    poll_interval_seconds = int(poll_interval) * 60
+    for i, log in enumerate(poll_logs):
+        if i < len(poll_logs) - 1:
+            delta = log.started_at - poll_logs[i + 1].started_at
+            secs = int(delta.total_seconds())
+            log.interval_seconds = secs
+            log.interval_gap = secs > (poll_interval_seconds * 2)
+            # Pre-format interval for template
+            if secs < 60:
+                log.interval_display = f"{secs}s"
+            elif secs < 3600:
+                m, s = divmod(secs, 60)
+                log.interval_display = f"{m}m {s}s" if s else f"{m}m"
+            else:
+                h, rem = divmod(secs, 3600)
+                m = rem // 60
+                log.interval_display = f"{h}h {m}m"
+        else:
+            log.interval_seconds = None
+            log.interval_gap = False
+            log.interval_display = "--"
 
     # Pipeline MIS stats (last 7 days)
     from django.db.models import Sum, Avg, Count
@@ -2437,23 +2466,45 @@ def inspect(request):
 @login_required
 @require_POST
 def force_poll(request):
-    """Trigger a single poll cycle. Admin only."""
+    """Trigger a single poll cycle. Admin only. Works in all operating modes."""
     if not (request.user.is_staff or request.user.role == User.Role.ADMIN):
         return HttpResponseForbidden("Admin access required.")
 
     import subprocess
     from django.conf import settings
+
+    # Record the latest PollLog ID before running, so we can find the new one
+    latest_before = PollLog.objects.order_by('-started_at').values_list('pk', flat=True).first()
+
     try:
         result = subprocess.run(
             ["python", "manage.py", "run_scheduler", "--once"],
             capture_output=True, text=True, timeout=120,
             cwd=str(settings.BASE_DIR),
         )
-        return JsonResponse({
-            "status": "ok",
-            "output": result.stdout[-500:],
-            "errors": result.stderr[-500:],
-        })
+        # Try to get the PollLog created during this poll
+        poll_log_qs = PollLog.objects.order_by('-started_at')
+        if latest_before:
+            poll_log_qs = poll_log_qs.exclude(pk=latest_before)
+        poll_log = poll_log_qs.first()
+
+        if poll_log:
+            return JsonResponse({
+                "status": poll_log.status,
+                "emails_found": poll_log.emails_found,
+                "emails_processed": poll_log.emails_processed,
+                "spam_filtered": poll_log.spam_filtered,
+                "duration_ms": poll_log.duration_ms,
+            })
+        else:
+            return JsonResponse({
+                "status": "ok",
+                "emails_found": 0,
+                "emails_processed": 0,
+                "spam_filtered": 0,
+                "duration_ms": 0,
+                "output": result.stdout[-500:],
+            })
     except subprocess.TimeoutExpired:
         return JsonResponse({"error": "Poll timed out after 120s"}, status=504)
 

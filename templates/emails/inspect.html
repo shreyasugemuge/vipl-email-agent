@@ -98,19 +98,87 @@
         <div class="value" style="font-size:1rem;">{{ poll_interval_minutes }}m</div>
       </div>
     </div>
-    <form method="POST" action="{% url 'emails:force_poll' %}" style="display:inline;" id="force-poll-form">
-      {% csrf_token %}
-      <button type="submit" id="force-poll-btn"
+    <div style="display:inline-flex; align-items:center; gap:12px;">
+      <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
+      <button type="button" id="force-poll-btn"
               style="background:#334155; color:#e2e8f0; border:1px solid #475569; border-radius:8px; padding:10px 20px; font-size:0.85rem; font-weight:600; cursor:pointer; transition:background 0.15s;"
-              onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'"
-              onclick="this.textContent='Polling...';this.disabled=true;this.form.submit();">
+              onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'">
         Force Poll Now
       </button>
-    </form>
+    </div>
+    <div id="force-poll-result" style="display:none; margin-top:8px; padding:8px 16px; border-radius:8px; font-size:0.8rem; transition:opacity 0.3s;"></div>
   </div>
   <script>
   (function() {
-    var lastEpoch = {{ last_poll_epoch }};
+    var btn = document.getElementById('force-poll-btn');
+    var resultEl = document.getElementById('force-poll-result');
+    btn.addEventListener('click', function() {
+      btn.textContent = 'Polling...';
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      resultEl.style.display = 'none';
+      var csrf = document.getElementById('csrf-token').value;
+      fetch('{% url "emails:force_poll" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' }
+      })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(res) {
+        btn.textContent = 'Force Poll Now';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        if (res.ok && !res.data.error) {
+          var d = res.data;
+          resultEl.style.background = '#166534';
+          resultEl.style.color = '#bbf7d0';
+          resultEl.textContent = 'Poll complete: ' + (d.emails_found || 0) + ' found, ' + (d.spam_filtered || 0) + ' spam, ' + (d.duration_ms || 0) + 'ms';
+        } else {
+          resultEl.style.background = '#991b1b';
+          resultEl.style.color = '#fca5a5';
+          resultEl.textContent = 'Error: ' + (res.data.error || 'Unknown error');
+        }
+        resultEl.style.display = 'block';
+        resultEl.style.opacity = '1';
+        setTimeout(function() {
+          resultEl.style.opacity = '0';
+          setTimeout(function() { resultEl.style.display = 'none'; }, 300);
+        }, 5000);
+        // Refresh poll history table
+        fetch(window.location.pathname)
+          .then(function(r) { return r.text(); })
+          .then(function(html) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, 'text/html');
+            var newTbody = doc.getElementById('poll-history-tbody');
+            if (newTbody) {
+              document.getElementById('poll-history-tbody').innerHTML = newTbody.innerHTML;
+              updateRelativeTimes();
+              // Update countdown timer epoch from refreshed page
+              var epochMatch = html.match(/var lastEpoch = (\d+)/);
+              if (epochMatch) { window.__pollLastEpoch = parseInt(epochMatch[1]); }
+            }
+          });
+      })
+      .catch(function(err) {
+        btn.textContent = 'Force Poll Now';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        resultEl.style.background = '#991b1b';
+        resultEl.style.color = '#fca5a5';
+        resultEl.textContent = 'Error: ' + err.message;
+        resultEl.style.display = 'block';
+        resultEl.style.opacity = '1';
+        setTimeout(function() {
+          resultEl.style.opacity = '0';
+          setTimeout(function() { resultEl.style.display = 'none'; }, 300);
+        }, 5000);
+      });
+    });
+  })();
+  </script>
+  <script>
+  (function() {
+    window.__pollLastEpoch = {{ last_poll_epoch }};
     var intervalMin = {{ poll_interval_minutes }};
     var intervalSec = intervalMin * 60;
     var countdownEl = document.getElementById('poll-countdown');
@@ -118,7 +186,7 @@
 
     function update() {
       var now = Math.floor(Date.now() / 1000);
-      var elapsed = now - lastEpoch;
+      var elapsed = now - window.__pollLastEpoch;
       var remaining = intervalSec - elapsed;
 
       if (remaining <= 0) {
@@ -132,7 +200,7 @@
       }
 
       // Format last poll time
-      var lastDate = new Date(lastEpoch * 1000);
+      var lastDate = new Date(window.__pollLastEpoch * 1000);
       var agoMin = Math.floor(elapsed / 60);
       if (agoMin < 1) lastEl.textContent = 'Last poll: just now';
       else if (agoMin < 60) lastEl.textContent = 'Last poll: ' + agoMin + 'm ago';
@@ -182,6 +250,7 @@
       <thead>
         <tr style="border-bottom:2px solid #334155;">
           <th style="text-align:left; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Time</th>
+          <th style="text-align:left; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Interval</th>
           <th style="text-align:left; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Status</th>
           <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Found</th>
           <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Processed</th>
@@ -190,26 +259,53 @@
           <th style="text-align:left; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Error</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="poll-history-tbody">
         {% for log in poll_logs %}
-        <tr style="border-bottom:1px solid #334155;">
-          <td style="padding:6px 12px; color:#cbd5e1; white-space:nowrap;">{{ log.started_at|date:"d M H:i:s" }}</td>
+        <tr style="border-bottom:1px solid #334155;{% if log.emails_found == 0 and log.status == 'success' %} color:#475569;{% endif %}">
+          <td style="padding:6px 12px; {% if log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#cbd5e1;{% endif %} white-space:nowrap;" data-ts="{{ log.started_at|date:'U' }}">{{ log.started_at|date:"g:i:s A" }}</td>
+          <td style="padding:6px 12px; white-space:nowrap; {% if log.interval_gap %}color:#f59e0b; font-weight:600;{% elif log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#94a3b8;{% endif %}">{{ log.interval_display }}{% if log.interval_gap %} &#9888;{% endif %}</td>
           <td style="padding:6px 12px;">
             <span style="padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:600;
               {% if log.status == 'success' %}background:#166534; color:#bbf7d0;
               {% elif log.status == 'error' %}background:#991b1b; color:#fca5a5;
               {% else %}background:#854d0e; color:#fef08a;{% endif %}">{{ log.status }}</span>
           </td>
-          <td style="padding:6px 12px; text-align:right; color:#cbd5e1;">{{ log.emails_found }}</td>
-          <td style="padding:6px 12px; text-align:right; color:#cbd5e1;">{{ log.emails_processed }}</td>
-          <td style="padding:6px 12px; text-align:right; color:#cbd5e1;">{{ log.spam_filtered }}</td>
-          <td style="padding:6px 12px; text-align:right; color:#cbd5e1;">{{ log.duration_ms }}ms</td>
+          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#cbd5e1;{% endif %}">{{ log.emails_found }}</td>
+          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#cbd5e1;{% endif %}">{{ log.emails_processed }}</td>
+          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#cbd5e1;{% endif %}">{{ log.spam_filtered }}</td>
+          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#cbd5e1;{% endif %}">{{ log.duration_ms }}ms</td>
           <td style="padding:6px 12px; color:#f87171; font-size:0.75rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ log.error_message|truncatechars:50 }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+  <script>
+  function updateRelativeTimes() {
+    var cells = document.querySelectorAll('[data-ts]');
+    var now = Math.floor(Date.now() / 1000);
+    cells.forEach(function(cell) {
+      var ts = parseInt(cell.getAttribute('data-ts'), 10);
+      if (!ts) return;
+      var ago = now - ts;
+      var rel;
+      if (ago < 60) rel = 'just now';
+      else if (ago < 3600) rel = Math.floor(ago / 60) + 'm ago';
+      else if (ago < 86400) rel = Math.floor(ago / 3600) + 'h ago';
+      else rel = Math.floor(ago / 86400) + 'd ago';
+      // Remove old relative span if exists
+      var existing = cell.querySelector('.rel-time');
+      if (existing) existing.remove();
+      var span = document.createElement('span');
+      span.className = 'rel-time';
+      span.style.cssText = 'color:#64748b; font-size:0.7rem; margin-left:6px;';
+      span.textContent = '(' + rel + ')';
+      cell.appendChild(span);
+    });
+  }
+  updateRelativeTimes();
+  setInterval(updateRelativeTimes, 60000);
+  </script>
   {% else %}
   <div style="padding:24px; text-align:center; color:#475569; margin-bottom:32px;">No poll logs yet.</div>
   {% endif %}
