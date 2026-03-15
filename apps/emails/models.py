@@ -14,6 +14,7 @@ class Thread(SoftDeleteModel, TimestampedModel):
         ACKNOWLEDGED = "acknowledged", "Acknowledged"
         CLOSED = "closed", "Closed"
         REOPENED = "reopened", "Reopened"
+        IRRELEVANT = "irrelevant", "Irrelevant"
 
     # Thread identity
     gmail_thread_id = models.CharField(max_length=255, unique=True, db_index=True)
@@ -209,6 +210,9 @@ class ActivityLog(TimestampedModel):
         SPAM_UNMARKED = "spam_unmarked", "Spam Unmarked"
         PRIORITY_CHANGED = "priority_changed", "Priority Changed"
         CATEGORY_CHANGED = "category_changed", "Category Changed"
+        MARKED_IRRELEVANT = "marked_irrelevant", "Marked Irrelevant"
+        REVERTED_IRRELEVANT = "reverted_irrelevant", "Reverted to New"
+        REASSIGNED_BY_MEMBER = "reassigned_by_member", "Reassigned by Member"
 
     thread = models.ForeignKey(
         Thread,

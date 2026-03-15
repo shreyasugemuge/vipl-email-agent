@@ -1,7 +1,9 @@
 {% comment %}
 Pill-styled category badge with click-to-edit dropdown.
 Context: thread, categories (list of valid categories).
+Editable only for owner or can_assign users; read-only for members on others' threads.
 {% endcomment %}
+{% if thread.assigned_to == request.user or user.can_assign %}
 <div class="group/cat relative inline-flex items-center" id="editable-category">
     <!-- Display mode: slate pill -->
     <span class="cat-pill inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer bg-[var(--vipl-card)] text-[var(--vipl-text-muted)] border border-[var(--vipl-border)] hover:ring-2 hover:ring-[var(--vipl-border)] transition-all"
@@ -69,3 +71,9 @@ Context: thread, categories (list of valid categories).
     </div>
     {% endif %}
 </div>
+{% else %}
+{# Read-only display for members on others' threads #}
+<span class="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-slate-100 text-slate-500">
+    {{ thread.category|default:"Uncategorized" }}
+</span>
+{% endif %}

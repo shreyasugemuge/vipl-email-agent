@@ -42,6 +42,23 @@ def member_user(db):
 
 
 @pytest.fixture
+def triage_lead_user(db):
+    """Create a triage lead user (role=triage_lead, is_staff=False)."""
+    from apps.accounts.models import User
+
+    return User.objects.create_user(
+        username="triage_lead",
+        password="testpass123",
+        email="triage_lead@vidarbhainfotech.com",
+        first_name="Triage",
+        last_name="Lead",
+        role=User.Role.TRIAGE_LEAD,
+        is_staff=False,
+        can_see_all_emails=False,
+    )
+
+
+@pytest.fixture
 def client():
     """Django test client."""
     return Client()

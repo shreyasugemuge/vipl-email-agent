@@ -118,8 +118,10 @@
         <div class="px-5 py-2 border-t border-[var(--vipl-border)]">
             <div class="flex items-center gap-3 flex-wrap">
                 <!-- Assignment -->
-                <div class="flex items-center gap-2">
-                    {% if is_admin %}
+                <div class="flex flex-col gap-2">
+                    {# Branch 1: Admin/Gatekeeper -- full assign dropdown #}
+                    {% if user.can_assign %}
+                    <div class="flex items-center gap-2">
                     <form hx-post="{% url 'emails:assign_thread' thread.pk %}"
                           hx-target="#thread-detail-panel" hx-swap="innerHTML"
                           class="flex items-center gap-1.5">
@@ -145,8 +147,11 @@
                             ASSIGN
                         </button>
                     </form>
-                    {% else %}
-                        {% if thread.assigned_to %}
+                    </div>
+
+                    {# Branch 2: Member on their own assigned thread -- Reassign button + inline form #}
+                    {% elif thread.assigned_to == request.user %}
+                    <div class="flex items-center gap-2">
                         <div class="flex items-center gap-2.5 px-3 py-1.5 bg-[var(--vipl-primary)]/8 rounded border border-[var(--vipl-primary)]/20">
                             {% if thread.assigned_to.avatar_url %}
                             <img src="{{ thread.assigned_to.avatar_url }}" alt="" class="w-6 h-6 rounded-full object-cover shrink-0 border border-[var(--vipl-primary)]/30" referrerpolicy="no-referrer">
@@ -160,7 +165,50 @@
                             <span class="font-pixel text-[6px] text-[var(--vipl-text-muted)] bg-white/[0.06] px-1.5 py-0.5 rounded">AUTO</span>
                             {% endif %}
                         </div>
-                        {% elif can_claim %}
+                        <button type="button"
+                                onclick="document.getElementById('reassign-form-{{ thread.pk }}').style.display = document.getElementById('reassign-form-{{ thread.pk }}').style.display === 'none' ? 'block' : 'none'"
+                                class="px-3 py-1.5 text-[9px] font-bold font-mono text-[var(--vipl-bg)] bg-[var(--vipl-gold)] rounded hover:brightness-110 transition-colors cursor-pointer">
+                            REASSIGN
+                        </button>
+                    </div>
+
+                    {# Inline reassign form -- hidden by default #}
+                    <div id="reassign-form-{{ thread.pk }}" style="display: none" class="mt-2 p-3 bg-[var(--vipl-card)] rounded border border-[var(--vipl-border)]">
+                        <form hx-post="{% url 'emails:reassign_thread' thread.pk %}"
+                              hx-target="#thread-detail-panel" hx-swap="innerHTML">
+                            {% csrf_token %}
+                            <label class="block text-[11px] font-medium text-[var(--vipl-text-dim)] mb-1">Reassign to</label>
+                            <select name="assignee_id" required
+                                    class="vipl-select w-full text-[11px] font-medium rounded-md px-2 py-2 mb-2">
+                                <option value="">Select team member...</option>
+                                {% for candidate in reassign_candidates %}
+                                <option value="{{ candidate.pk }}">{{ candidate.get_full_name|default:candidate.username }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if not reassign_candidates %}
+                            <p class="text-[11px] font-medium text-[var(--vipl-text-muted)] mb-2">No eligible team members for this category</p>
+                            {% endif %}
+                            <label class="block text-[11px] font-medium text-[var(--vipl-text-dim)] mb-1">Reason (required)</label>
+                            <textarea name="reason" required rows="2"
+                                      placeholder="Why are you reassigning this thread?"
+                                      class="vipl-select w-full text-[11px] font-medium rounded-md px-2 py-2 mb-2 resize-none"></textarea>
+                            <div class="flex gap-2">
+                                <button type="submit" hx-disabled-elt="this"
+                                        class="px-3 py-2 text-[10px] font-bold font-mono text-[var(--vipl-bg)] bg-[var(--vipl-gold)] rounded hover:brightness-110 transition-colors cursor-pointer">
+                                    Reassign Thread
+                                </button>
+                                <button type="button"
+                                        onclick="this.closest('[id^=reassign-form]').style.display='none'"
+                                        class="px-3 py-2 text-[10px] font-bold text-[var(--vipl-text-dim)] bg-[var(--vipl-card)] border border-[var(--vipl-border)] rounded hover:bg-[var(--vipl-card-hover)] transition-colors cursor-pointer">
+                                    Keep Thread
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {# Branch 3: Member on unassigned thread in their category -- Claim button #}
+                    {% elif can_claim %}
+                    <div class="flex items-center gap-2">
                         <form hx-post="{% url 'emails:claim_thread' thread.pk %}"
                               hx-target="#thread-detail-panel" hx-swap="innerHTML" class="inline">
                             {% csrf_token %}
@@ -168,14 +216,39 @@
                                 CLAIM
                             </button>
                         </form>
+                    </div>
+
+                    {# Branch 3b: Member on unassigned thread outside their category -- disabled Claim #}
+                    {% elif claim_disabled %}
+                    <div class="flex items-center gap-2">
+                        <button disabled
+                                title="This thread is outside your assigned categories"
+                                class="px-3 py-2 text-[10px] font-bold text-white bg-emerald-500 rounded-md opacity-50 cursor-not-allowed">
+                            Claim Thread
+                        </button>
+                    </div>
+
+                    {# Branch 4: Member on someone else's thread -- read-only #}
+                    {% elif thread.assigned_to %}
+                    <div class="flex items-center gap-2.5 px-3 py-1.5 bg-[var(--vipl-primary)]/8 rounded border border-[var(--vipl-primary)]/20">
+                        {% if thread.assigned_to.avatar_url %}
+                        <img src="{{ thread.assigned_to.avatar_url }}" alt="" class="w-6 h-6 rounded-full object-cover shrink-0 border border-[var(--vipl-primary)]/30" referrerpolicy="no-referrer">
                         {% else %}
-                        <span class="text-[11px] font-bold font-mono text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/15 px-3 py-1.5 rounded border border-[var(--vipl-gold)]/25">UNASSIGNED</span>
+                        <div class="w-6 h-6 rounded-full bg-[var(--vipl-primary)] flex items-center justify-center text-white text-[9px] font-bold shrink-0">
+                            {{ thread.assigned_to.first_name.0|default:thread.assigned_to.username.0|upper }}
+                        </div>
                         {% endif %}
+                        <span class="text-[11px] font-semibold font-mono text-[var(--vipl-text)]">Assigned to {{ thread.assigned_to.get_full_name|default:thread.assigned_to.username }}</span>
+                    </div>
+
+                    {# Branch 5: Unassigned, no claim available -- show unassigned badge #}
+                    {% else %}
+                    <span class="text-[11px] font-bold font-mono text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/15 px-3 py-1.5 rounded border border-[var(--vipl-gold)]/25">UNASSIGNED</span>
                     {% endif %}
                 </div>
 
                 <!-- Status actions -->
-                {% if thread.assigned_to == request.user or is_admin %}
+                {% if thread.assigned_to == request.user or user.can_assign %}
                 <div class="flex items-center gap-1.5">
                     {% if thread.status == "new" %}
                     <form hx-post="{% url 'emails:change_thread_status' thread.pk %}"
@@ -199,7 +272,7 @@
                         </button>
                     </form>
                     {% endif %}
-                    {% if is_admin %}
+                    {% if user.is_admin_only %}
                     <form hx-post="{% url 'emails:whitelist_thread_sender' thread.pk %}"
                           hx-target="#thread-detail-panel" hx-swap="innerHTML" class="inline">
                         {% csrf_token %}
@@ -338,6 +411,70 @@
     </div>
     {% endif %}
 
+    <!-- Mark Irrelevant section (gatekeeper/admin only) -->
+    {% if request.user.can_triage and thread.status != "irrelevant" %}
+    <div class="shrink-0 border-b border-[var(--vipl-border)] px-5 py-2.5">
+        <button type="button" onclick="openIrrelevantModal()"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-[9px] font-bold font-mono text-[var(--vipl-bg)] bg-[var(--vipl-gold)] rounded hover:brightness-110 transition-colors cursor-pointer"
+                hx-disabled-elt="this">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+            </svg>
+            MARK IRRELEVANT
+        </button>
+    </div>
+    <!-- Irrelevant reason modal -->
+    <div id="irrelevant-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center" onclick="if(event.target===this)closeIrrelevantModal()">
+        <div class="bg-[var(--vipl-surface)] rounded border border-[var(--vipl-border)] w-full max-w-md mx-4 p-6"
+             style="animation: fadeInModal 150ms ease-out;">
+            <h3 class="text-[12px] font-bold font-mono text-[var(--vipl-text)]">Mark as Irrelevant</h3>
+            <p class="text-[12px] text-[var(--vipl-text-dim)] mt-1">Provide a reason for dismissing this thread. This will be visible in the activity timeline.</p>
+            <form hx-post="{% url 'emails:mark_irrelevant' thread.pk %}"
+                  hx-target="#thread-detail-panel" hx-swap="innerHTML">
+                {% csrf_token %}
+                <textarea name="reason" required rows="3"
+                          placeholder="e.g. Automated notification, not a real inquiry..."
+                          class="vipl-select w-full text-[12px] rounded-md px-3 py-2 resize-none mt-4"
+                          id="irrelevant-reason-input"
+                          oninput="document.getElementById('irrelevant-confirm-btn').disabled = !this.value.trim()"></textarea>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" onclick="closeIrrelevantModal()"
+                            class="px-3 py-1.5 text-[10px] font-bold text-[var(--vipl-text-dim)] bg-[var(--vipl-card)] border border-[var(--vipl-border)] rounded hover:bg-[var(--vipl-card-hover)] transition-colors cursor-pointer">Cancel</button>
+                    <button type="submit" id="irrelevant-confirm-btn" disabled
+                            hx-disabled-elt="this"
+                            class="px-3 py-1.5 text-[10px] font-bold font-mono text-[var(--vipl-bg)] bg-[var(--vipl-gold)] rounded hover:brightness-110 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        Mark Irrelevant
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <style>
+    @keyframes fadeInModal {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    </style>
+    {% endif %}
+
+    <!-- Revert to New (shown when thread is irrelevant, gatekeeper/admin only) -->
+    {% if request.user.can_triage and thread.status == "irrelevant" %}
+    <div class="shrink-0 border-b border-[var(--vipl-border)] px-5 py-2.5">
+        <button class="inline-flex items-center gap-1 px-3 py-1.5 text-[9px] font-bold font-mono text-[var(--vipl-text-dim)] bg-[var(--vipl-card)] border border-[var(--vipl-border)] rounded hover:bg-[var(--vipl-card-hover)] transition-colors cursor-pointer"
+                hx-post="{% url 'emails:revert_irrelevant' thread.pk %}"
+                hx-target="#thread-detail-panel" hx-swap="innerHTML"
+                hx-confirm="Revert this thread to New? It will return to the triage queue."
+                hx-disabled-elt="this">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/>
+            </svg>
+            REVERT TO NEW
+        </button>
+    </div>
+    {% endif %}
+
     <!-- Timeline -->
     <div id="thread-scroll-container" class="flex-1 overflow-y-auto">
         <div class="py-3 space-y-0">
@@ -347,11 +484,45 @@
                 {% elif item.type == "note" %}
                     {% include "emails/_thread_note.html" with note=item.obj %}
                 {% elif item.type == "activity" %}
+                    {% if item.obj.action == "marked_irrelevant" %}
+                    <div class="flex items-start gap-2 px-5 py-2.5 bg-[var(--vipl-gold)]/8 border-l-2 border-[var(--vipl-gold)] mx-2 my-1 rounded-r-md">
+                        <div class="w-1.5 h-1.5 rounded-full bg-[var(--vipl-gold)] shrink-0 mt-1.5"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[11px] font-bold font-mono text-[var(--vipl-gold)]">
+                                Marked as irrelevant by {{ item.obj.user.get_full_name|default:item.obj.user.username }}
+                            </div>
+                            {% if item.obj.detail %}<p class="text-[11px] text-[var(--vipl-text-dim)] mt-0.5 leading-relaxed">{{ item.obj.detail }}</p>{% endif %}
+                            <span class="text-[10px] text-[var(--vipl-text-muted)] tabular-nums mt-0.5">{{ item.obj.created_at|time_ago }}</span>
+                        </div>
+                    </div>
+                    {% elif item.obj.action == "reverted_irrelevant" %}
+                    <div class="flex items-start gap-2 px-5 py-2.5 bg-[var(--vipl-cyan)]/8 border-l-2 border-[var(--vipl-cyan)] mx-2 my-1 rounded-r-md">
+                        <div class="w-1.5 h-1.5 rounded-full bg-[var(--vipl-cyan)] shrink-0 mt-1.5"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[11px] font-bold font-mono text-[var(--vipl-cyan)]">
+                                Reverted to New by {{ item.obj.user.get_full_name|default:item.obj.user.username }}
+                            </div>
+                            <span class="text-[10px] text-[var(--vipl-text-muted)] tabular-nums mt-0.5">{{ item.obj.created_at|time_ago }}</span>
+                        </div>
+                    </div>
+                    {% elif item.obj.action == "reassigned_by_member" %}
+                    <div class="flex items-start gap-2 px-5 py-2.5 bg-[var(--vipl-gold)]/8 border-l-2 border-[var(--vipl-gold)]/60 mx-2 my-1 rounded-r-md">
+                        <div class="w-1.5 h-1.5 rounded-full bg-[var(--vipl-gold)] shrink-0 mt-1.5"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[11px] font-bold font-mono text-[var(--vipl-gold)]">
+                                Reassigned by {{ item.obj.user.get_full_name|default:item.obj.user.username }} to {{ item.obj.new_value }}
+                            </div>
+                            {% if item.obj.detail %}<p class="text-[11px] text-[var(--vipl-text-dim)] mt-0.5 leading-relaxed">{{ item.obj.detail }}</p>{% endif %}
+                            <span class="text-[10px] text-[var(--vipl-text-muted)] tabular-nums mt-0.5">{{ item.obj.created_at|time_ago }}</span>
+                        </div>
+                    </div>
+                    {% else %}
                     <div class="flex items-center gap-2 px-5 py-1.5 text-[10px] font-mono text-[var(--vipl-text-muted)]">
                         <div class="w-1.5 h-1.5 rounded-full bg-[var(--vipl-border)] shrink-0"></div>
                         <span>{{ item.obj.get_action_display }}{% if item.obj.user %} by {{ item.obj.user.get_full_name|default:item.obj.user.username }}{% endif %}{% if item.obj.new_value %} &mdash; {{ item.obj.new_value }}{% endif %}</span>
                         <span class="text-[var(--vipl-text-muted)]/50 tabular-nums shrink-0">{{ item.obj.created_at|time_ago }}</span>
                     </div>
+                    {% endif %}
                 {% endif %}
             {% empty %}
                 <div class="px-5 py-8 text-center">
@@ -542,6 +713,46 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// --- Mark Irrelevant modal ---
+function openIrrelevantModal() {
+    var modal = document.getElementById('irrelevant-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        var textarea = document.getElementById('irrelevant-reason-input');
+        if (textarea) { textarea.value = ''; textarea.focus(); }
+        var btn = document.getElementById('irrelevant-confirm-btn');
+        if (btn) btn.disabled = true;
+    }
+}
+function closeIrrelevantModal() {
+    var modal = document.getElementById('irrelevant-modal');
+    if (modal) modal.classList.add('hidden');
+}
+// Close modal on Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeIrrelevantModal();
+});
+// Keyboard shortcut: I key opens modal (not in text inputs)
+document.addEventListener('keydown', function(e) {
+    if ((e.key === 'I' || e.key === 'i') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+        if (document.getElementById('irrelevant-modal')) openIrrelevantModal();
+    }
+});
+// Auto-open modal from context menu (check URL param)
+if (new URLSearchParams(window.location.search).get('open_modal') === 'irrelevant') {
+    setTimeout(function() { openIrrelevantModal(); }, 100);
+}
+// Handle HTMX swap (for context menu -> detail panel load)
+document.addEventListener('htmx:afterSettle', function(e) {
+    if (e.detail.target && e.detail.target.id === 'thread-detail-panel') {
+        if (new URLSearchParams(window.location.search).get('open_modal') === 'irrelevant') {
+            setTimeout(function() { openIrrelevantModal(); }, 100);
+        }
+    }
+});
+
+// AI Summary inline edit toggle
 (function() {
     var editBtn = document.getElementById('ai-summary-edit-btn');
     var editForm = document.getElementById('ai-summary-edit-form');

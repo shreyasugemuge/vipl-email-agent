@@ -105,7 +105,7 @@
                     {% endif %}
                 </span>
             </div>
-            {% if is_admin %}
+            {% if user.can_assign %}
             <div class="flex items-center gap-1 shrink-0">
                 <form hx-post="{% url 'emails:accept_ai_suggestion' email.pk %}"
                       hx-target="#detail-panel" hx-swap="innerHTML" class="inline">
@@ -132,7 +132,7 @@
         <div class="flex items-center justify-between gap-3">
             <!-- Assignment -->
             <div class="flex items-center gap-2">
-                {% if is_admin %}
+                {% if user.can_assign %}
                 <form hx-post="{% url 'emails:assign_email' email.pk %}"
                       hx-target="#card-{{ email.pk }}"
                       hx-swap="outerHTML"
@@ -184,7 +184,7 @@
             </div>
 
             <!-- Status actions -->
-            {% if email.assigned_to == request.user or is_admin %}
+            {% if email.assigned_to == request.user or user.can_assign %}
             <div class="flex items-center gap-1.5">
                 {% if email.status == "new" %}
                 <form hx-post="{% url 'emails:change_status' email.pk %}"
@@ -212,7 +212,7 @@
                     </button>
                 </form>
                 {% endif %}
-                {% if is_admin %}
+                {% if user.is_admin_only %}
                 <form hx-post="{% url 'emails:whitelist_sender' email.pk %}"
                       hx-target="#detail-panel" hx-swap="innerHTML"
                       class="inline">

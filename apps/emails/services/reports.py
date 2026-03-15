@@ -273,6 +273,63 @@ def get_team_data(start, end, **filters):
     }
 
 
+def get_corrections_digest():
+    """Build corrections digest for last 7 days from ActivityLog.
+
+    Returns dict with correction counts by type, total, and top repeating patterns.
+    Used by the triage queue page for gatekeeper/admin awareness.
+    """
+    from collections import Counter
+
+    cutoff = timezone.now() - timedelta(days=7)
+
+    correction_actions = [
+        ActivityLog.Action.CATEGORY_CHANGED,
+        ActivityLog.Action.PRIORITY_CHANGED,
+        ActivityLog.Action.SPAM_MARKED,
+    ]
+
+    # Counts by action type
+    counts_qs = (
+        ActivityLog.objects.filter(
+            action__in=correction_actions,
+            created_at__gte=cutoff,
+        )
+        .values("action")
+        .annotate(c=Count("pk"))
+    )
+    counts = {row["action"]: row["c"] for row in counts_qs}
+
+    category_changes = counts.get(ActivityLog.Action.CATEGORY_CHANGED, 0)
+    priority_overrides = counts.get(ActivityLog.Action.PRIORITY_CHANGED, 0)
+    spam_corrections = counts.get(ActivityLog.Action.SPAM_MARKED, 0)
+
+    # Top patterns from detail text
+    recent_details = list(
+        ActivityLog.objects.filter(
+            action__in=[
+                ActivityLog.Action.CATEGORY_CHANGED,
+                ActivityLog.Action.PRIORITY_CHANGED,
+            ],
+            created_at__gte=cutoff,
+        )
+        .exclude(detail="")
+        .exclude(detail__isnull=True)
+        .values_list("detail", flat=True)[:100]
+    )
+
+    pattern_counts = Counter(recent_details)
+    top_patterns = pattern_counts.most_common(5)
+
+    return {
+        "category_changes": category_changes,
+        "priority_overrides": priority_overrides,
+        "spam_corrections": spam_corrections,
+        "total": category_changes + priority_overrides + spam_corrections,
+        "top_patterns": top_patterns,  # list of (detail_text, count)
+    }
+
+
 def get_sla_data(start, end, **filters):
     """SLA compliance data: donut chart, trend, and breach list.
 

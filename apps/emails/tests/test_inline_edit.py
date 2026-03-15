@@ -86,8 +86,8 @@ class TestEditCategory:
         assert resp.status_code == 302
         assert "/accounts/login/" in resp.url
 
-    def test_member_can_edit_category(self, member_client, member_user, db):
-        thread = create_thread(category="General Inquiry")
+    def test_member_can_edit_category_on_own_thread(self, member_client, member_user, db):
+        thread = create_thread(category="General Inquiry", assigned_to=member_user)
         url = reverse("emails:edit_category", args=[thread.pk])
         resp = member_client.post(url, {"category": "Complaint"})
         assert resp.status_code == 200
@@ -134,8 +134,8 @@ class TestEditPriority:
         resp = client.post(url, {"priority": "HIGH"})
         assert resp.status_code == 302
 
-    def test_member_can_edit_priority(self, member_client, member_user, db):
-        thread = create_thread(priority="LOW")
+    def test_member_can_edit_priority_on_own_thread(self, member_client, member_user, db):
+        thread = create_thread(priority="LOW", assigned_to=member_user)
         url = reverse("emails:edit_priority", args=[thread.pk])
         resp = member_client.post(url, {"priority": "HIGH"})
         assert resp.status_code == 200

@@ -32,11 +32,23 @@
                 </svg>
                 {% if is_admin %}Unassigned{% else %}Unclaimed{% endif %}
             </span>
+            {% with ucount=sidebar_counts.unassigned %}
             {% if sidebar_counts.unread_unassigned > 0 %}
-            <span class="vipl-count font-pixel text-[7px] text-[var(--vipl-cyan)] bg-[var(--vipl-cyan)]/10 px-1.5 py-0.5 rounded min-w-[20px] text-center">{{ sidebar_counts.unread_unassigned }}</span>
+            <span class="vipl-count font-pixel text-[7px] px-1.5 py-0.5 rounded min-w-[20px] text-center
+                {% if ucount >= 5 %}text-[var(--vipl-red)] bg-[var(--vipl-red)]/10
+                {% elif ucount >= 3 %}text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/10
+                {% elif ucount > 0 %}text-[var(--vipl-cyan)] bg-[var(--vipl-cyan)]/10
+                {% else %}text-[var(--vipl-text-muted)] bg-white/[0.04]
+                {% endif %}">{{ sidebar_counts.unread_unassigned }}</span>
             {% else %}
-            <span class="vipl-count text-[10px] font-bold text-[var(--vipl-text-muted)] bg-white/[0.04] px-1.5 py-0.5 rounded min-w-[20px] text-center">{{ sidebar_counts.unassigned }}</span>
+            <span class="vipl-count font-pixel text-[7px] px-1.5 py-0.5 rounded min-w-[20px] text-center
+                {% if ucount >= 5 %}text-[var(--vipl-red)] bg-[var(--vipl-red)]/10
+                {% elif ucount >= 3 %}text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/10
+                {% elif ucount > 0 %}text-[var(--vipl-cyan)] bg-[var(--vipl-cyan)]/10
+                {% else %}text-[var(--vipl-text-muted)] bg-white/[0.04]
+                {% endif %}">{{ ucount }}</span>
             {% endif %}
+            {% endwith %}
         </a>
     </nav>
 </div>
@@ -183,10 +195,46 @@
 {% endblock %}
 
 {% block content %}
+<!-- Welcome banner -->
+<div id="welcome-banner" class="hidden bg-[var(--vipl-primary)]/8 border-b border-[var(--vipl-primary)]/20 px-4 md:px-5 py-3 shrink-0">
+    <div class="flex items-center justify-between gap-3">
+        <div class="flex-1 min-w-0">
+            <p class="text-[13px] font-bold font-mono text-[var(--vipl-primary)] mb-0.5">Welcome, {{ user.first_name|default:user.username }}!</p>
+            {% if user.is_admin_only %}
+            <p class="text-[11px] text-[var(--vipl-text-dim)] leading-snug">You can assign emails to team members, manage the queue, and track response times from here.</p>
+            {% elif user.is_triage_lead %}
+            <p class="text-[11px] text-[var(--vipl-text-dim)] leading-snug">Your job: keep the queue empty. Assign threads to the right people, dismiss irrelevant ones, and help the AI learn from corrections.</p>
+            {% else %}
+            <p class="text-[11px] text-[var(--vipl-text-dim)] leading-snug">Check <strong>My Emails</strong> for your assigned items, or browse unassigned emails to claim.</p>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+            <button onclick="dismissWelcome(false)" class="text-[var(--vipl-text-muted)] hover:text-[var(--vipl-primary)] transition-colors" aria-label="Dismiss banner" title="Dismiss for this session">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    </div>
+    <button onclick="dismissWelcome(true)" class="text-[10px] text-[var(--vipl-text-muted)] hover:text-[var(--vipl-primary)] underline mt-1">Don't show again</button>
+</div>
+
 <div class="flex h-full overflow-hidden">
 
     <!-- Center panel: thread list -->
     <div class="flex flex-col min-w-0 w-full lg:w-[35%] lg:min-w-[35%] lg:max-w-[35%] border-r border-[var(--vipl-border)] bg-[var(--vipl-bg)]">
+
+        {# Triage Lead empty state: no categories assigned #}
+        {% if user.is_triage_lead and not lead_categories %}
+        <div class="text-center py-12 px-4">
+            <div class="w-14 h-14 rounded border border-[var(--vipl-border)] bg-[var(--vipl-card)] flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7 text-[var(--vipl-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-bold font-mono text-[var(--vipl-text)]">No categories assigned</h3>
+            <p class="text-[13px] text-[var(--vipl-text-dim)] mt-2 max-w-xs mx-auto">An admin needs to set up your category assignments before you can see threads. Contact your administrator.</p>
+        </div>
+        {% endif %}
+
         <!-- Stat cards -->
         <div class="flex items-center gap-2 px-3 py-2 bg-[var(--vipl-surface)] border-b border-[var(--vipl-border)] overflow-x-auto shrink-0">
             <a href="{% url 'emails:thread_list' %}?view={{ current_view }}"
@@ -225,7 +273,26 @@
                 <span class="font-pixel text-[8px] text-[var(--vipl-cyan)] tabular-nums">{{ view_stats.new_count }}</span>
                 <span class="text-[8px] font-bold text-[var(--vipl-cyan)]/60 uppercase">New</span>
             </a>
+            {% if request.user.can_triage and sidebar_counts.irrelevant > 0 %}
+            <a href="{% url 'emails:thread_list' %}?status=irrelevant"
+               hx-get="{% url 'emails:thread_list' %}?status=irrelevant"
+               hx-target="#thread-list-body" hx-push-url="true"
+               data-stat="irrelevant"
+               class="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-[var(--vipl-gold)]/20 bg-[var(--vipl-gold)]/5 hover:border-[var(--vipl-gold)]/40 transition-all cursor-pointer shrink-0
+                      {% if current_status == 'irrelevant' %}vipl-stat-active{% endif %}">
+                <svg class="w-3 h-3 text-[var(--vipl-gold)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                </svg>
+                <span class="font-pixel text-[8px] text-[var(--vipl-gold)] tabular-nums">{{ sidebar_counts.irrelevant }}</span>
+                <span class="text-[8px] font-bold text-[var(--vipl-gold)]/60 uppercase">Irrelevant</span>
+            </a>
+            {% endif %}
         </div>
+
+        {% if request.user.can_triage and current_view == "unassigned" %}
+            {% include "emails/_corrections_digest.html" %}
+        {% endif %}
 
         <!-- Search -->
         <div class="px-3 py-2.5 bg-[var(--vipl-surface)] border-b border-[var(--vipl-border)] shrink-0">
@@ -244,7 +311,7 @@
             </div>
             <div class="flex items-center justify-between mt-1.5 px-0.5">
                 <span id="thread-count-label" class="text-[10px] font-bold text-[var(--vipl-text-muted)] tabular-nums font-mono">{{ total_count }} thread{{ total_count|pluralize }}</span>
-                {% if is_admin and team_members %}
+                {% if user.can_assign and team_members %}
                 <select onchange="if(this.value){htmx.ajax('GET', this.value, {target:'#thread-list-body', pushUrl:true});}"
                         class="vipl-select text-[10px] font-medium rounded px-1.5 py-0.5 cursor-pointer">
                     <option value="">Team member...</option>
@@ -290,10 +357,44 @@
 
 <!-- Context menu container -->
 <div id="context-menu-container" class="hidden fixed z-50 transition-opacity duration-150" role="menu" aria-label="Thread actions"></div>
+
+{% if request.user.can_assign %}
+{% include "emails/_bulk_action_bar.html" %}
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
+/* Welcome banner */
+(function() {
+    var banner = document.getElementById('welcome-banner');
+    if (!banner) return;
+    var dismissed = sessionStorage.getItem('vipl_welcome_dismissed');
+    var permanent = localStorage.getItem('vipl_welcome_permanent');
+    if (!dismissed && !permanent) {
+        banner.classList.remove('hidden');
+        var autoTimer = setTimeout(function() {
+            banner.style.animation = 'vipl-toast-out 0.3s ease forwards';
+            setTimeout(function() { banner.classList.add('hidden'); }, 300);
+        }, 8000);
+        banner._autoTimer = autoTimer;
+    }
+})();
+
+function dismissWelcome(permanent) {
+    var banner = document.getElementById('welcome-banner');
+    if (!banner) return;
+    clearTimeout(banner._autoTimer);
+    if (permanent) {
+        localStorage.setItem('vipl_welcome_permanent', '1');
+    } else {
+        sessionStorage.setItem('vipl_welcome_dismissed', '1');
+    }
+    banner.style.animation = 'vipl-toast-out 0.3s ease forwards';
+    setTimeout(function() { banner.classList.add('hidden'); }, 300);
+}
+
+/* Collapsible filter section */
 function toggleFilterSection() {
     var section = document.getElementById('filter-section');
     var toggle = document.getElementById('filter-toggle');
@@ -395,6 +496,14 @@ document.addEventListener('keydown', function(e) {
         var next = e.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
         if (items[next]) items[next].focus();
     }
+    // Keyboard shortcuts for context menu actions
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    var key = e.key.toLowerCase();
+    var shortcutMap = {'r': '[data-action="reassign"]'};
+    if (shortcutMap[key]) {
+        var btn = menu.querySelector(shortcutMap[key]);
+        if (btn) { e.preventDefault(); btn.click(); }
+    }
 });
 
 document.addEventListener('scroll', closeContextMenu, true);
@@ -410,5 +519,137 @@ function startLongPress(event, threadPk) {
 function cancelLongPress() {
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
 }
+
+/* ---- Bulk Selection State Management ---- */
+var bulkBar = document.getElementById('bulk-action-bar');
+var bulkCountEl = document.getElementById('bulk-count');
+
+function updateBulkState() {
+    if (!bulkBar) return;
+    var checked = document.querySelectorAll('.thread-checkbox:checked');
+    var count = checked.length;
+
+    if (count > 0) {
+        bulkBar.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+        bulkBar.classList.add('translate-y-0', 'opacity-100');
+        bulkBar.setAttribute('aria-label', 'Bulk actions for ' + count + ' selected threads');
+    } else {
+        bulkBar.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+        bulkBar.classList.remove('translate-y-0', 'opacity-100');
+    }
+
+    if (bulkCountEl) bulkCountEl.textContent = count + ' selected';
+
+    ['bulk-assign-thread-ids', 'bulk-irrelevant-thread-ids'].forEach(function(containerId) {
+        var container = document.getElementById(containerId);
+        if (container) {
+            container.innerHTML = '';
+            checked.forEach(function(cb) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'thread_ids';
+                input.value = cb.value;
+                container.appendChild(input);
+            });
+        }
+    });
+}
+
+function toggleSelectAll(masterCb) {
+    document.querySelectorAll('.thread-checkbox').forEach(function(cb) {
+        cb.checked = masterCb.checked;
+    });
+    updateBulkState();
+}
+
+function clearBulkSelection() {
+    document.querySelectorAll('.thread-checkbox').forEach(function(cb) { cb.checked = false; });
+    var selectAll = document.getElementById('select-all-checkbox');
+    if (selectAll) selectAll.checked = false;
+    updateBulkState();
+    hideIrrelevantMode();
+}
+
+function showIrrelevantMode() {
+    document.getElementById('bulk-normal-mode').classList.add('hidden');
+    document.getElementById('bulk-irrelevant-mode').classList.remove('hidden');
+    document.getElementById('bulk-irrelevant-reason').focus();
+}
+
+function hideIrrelevantMode() {
+    var normalMode = document.getElementById('bulk-normal-mode');
+    var irrelevantMode = document.getElementById('bulk-irrelevant-mode');
+    var reasonInput = document.getElementById('bulk-irrelevant-reason');
+    if (normalMode) normalMode.classList.remove('hidden');
+    if (irrelevantMode) irrelevantMode.classList.add('hidden');
+    if (reasonInput) reasonInput.value = '';
+    toggleIrrelevantConfirm();
+}
+
+function toggleIrrelevantConfirm() {
+    var reason = document.getElementById('bulk-irrelevant-reason');
+    var btn = document.getElementById('bulk-irrelevant-confirm');
+    if (reason && btn) btn.disabled = !reason.value.trim();
+}
+
+/* Escape key clears bulk selection */
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && bulkBar && !bulkBar.classList.contains('pointer-events-none')) {
+        clearBulkSelection();
+    }
+});
+
+/* After HTMX swap on thread list, clear selection state */
+document.body.addEventListener('htmx:afterSwap', function(e) {
+    if (e.detail.target && e.detail.target.id === 'thread-list-body') {
+        clearBulkSelection();
+    }
+});
+
+/* ---- Undo Toast for Bulk Actions ---- */
+document.body.addEventListener('showUndoToast', function(e) {
+    var data = e.detail;
+    var payload = data.showUndoToast || data;
+
+    var toast = document.createElement('div');
+    toast.className = 'toast-item flex items-center gap-3 px-4 py-3 bg-[var(--vipl-card)] rounded border border-[var(--vipl-border)] max-w-sm box-glow-primary';
+    toast.style.animation = 'vipl-toast-in 0.3s ease-out';
+
+    var undoData = JSON.stringify(payload.previous_states || []);
+    toast.innerHTML =
+        '<span class="text-sm text-[var(--vipl-text)]">' + (payload.message || '') + '</span>' +
+        '<button class="undo-btn text-sm font-semibold text-[var(--vipl-cyan)] hover:text-[var(--vipl-primary)] cursor-pointer"' +
+        ' data-undo-url="' + (payload.undo_url || '') + '"' +
+        " data-previous-states='" + undoData + "'>Undo</button>" +
+        '<button onclick="this.closest(\'.toast-item\').remove()"' +
+        ' class="text-[var(--vipl-text-muted)] hover:text-[var(--vipl-red)] text-lg leading-none">&times;</button>';
+
+    /* Wire undo button */
+    toast.querySelector('.undo-btn').addEventListener('click', function() {
+        var formData = new FormData();
+        formData.append('previous_states', this.dataset.previousStates);
+        var csrfToken = document.querySelector('body').getAttribute('hx-headers');
+        var headers = {};
+        if (csrfToken) {
+            try { headers = JSON.parse(csrfToken); } catch(e) {}
+        }
+        fetch(this.dataset.undoUrl, { method: 'POST', body: formData, headers: headers })
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+                var target = document.getElementById('thread-list-body');
+                if (target) target.innerHTML = html;
+                toast.remove();
+            });
+    });
+
+    var container = document.getElementById('toast-container');
+    if (container) container.appendChild(toast);
+
+    /* Auto-dismiss after 10 seconds */
+    setTimeout(function() {
+        toast.style.animation = 'vipl-toast-out 0.3s ease-in forwards';
+        setTimeout(function() { toast.remove(); }, 300);
+    }, 10000);
+});
 </script>
 {% endblock %}

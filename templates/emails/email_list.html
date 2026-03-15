@@ -13,8 +13,10 @@
         <div class="flex items-center justify-between gap-3">
             <div class="flex-1 min-w-0">
                 <p class="text-[13px] font-bold text-primary-800 mb-0.5">Welcome, {{ user.first_name|default:user.username }}!</p>
-                {% if is_admin %}
+                {% if user.is_admin_only %}
                 <p class="text-[11px] text-primary-600 leading-snug">You can assign emails to team members, manage the queue, and track response times from here.</p>
+                {% elif user.is_triage_lead %}
+                <p class="text-[11px] text-primary-600 leading-snug">Your job: keep the queue empty. Assign threads to the right people, dismiss irrelevant ones, and help the AI learn from corrections.</p>
                 {% else %}
                 <p class="text-[11px] text-primary-600 leading-snug">Check <strong>My Emails</strong> for your assigned items, or browse unassigned emails to claim.</p>
                 {% endif %}
@@ -119,7 +121,7 @@
                    class="email-view-tab px-3 py-2.5 text-xs font-semibold whitespace-nowrap transition-all duration-150 border-b-2 no-underline {% if current_view == 'mine' %}text-slate-800 border-primary-500{% else %}text-slate-400 border-transparent hover:text-slate-700{% endif %}">
                     My Emails
                 </a>
-                {% if is_admin and team_members %}
+                {% if user.can_assign and team_members %}
                 <div class="w-px h-4 bg-slate-200 mx-1.5 shrink-0"></div>
                 <select onchange="if(this.value){window.location.href=this.value;}"
                         class="text-[11px] font-semibold border border-slate-200 rounded-md px-2 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-primary-500/15 focus:border-primary-300 transition-all cursor-pointer">

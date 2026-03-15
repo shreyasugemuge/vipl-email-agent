@@ -1,23 +1,24 @@
 # Milestones
 
-## v2.5.4 UI/UX Polish & Bug Fixes (Shipped: 2026-03-15)
+## v2.7.0 Gatekeeper Role + Irrelevant Emails (Shipped: 2026-03-16)
 
-**Phases completed:** 7 phases, 10 plans
-**Stats:** 24 requirements resolved, 734 tests
+**Phases completed:** 4 phases, 9 plans
+**Stats:** 78 commits, 91 files changed, +13,815 lines, 824 tests
+**Timeline:** ~3 hours (2026-03-16)
 
 **Key accomplishments:**
-- Bug fixes: welcome banner dedup, pipeline unread state, REOPENED status, AI assign OOB swap
-- Thread card & detail UX: expanded spacing, pill-style dropdowns, context menu readability, AI draft copy button
-- Workflow actions: claim button with toast confirmation, spam toggle undo
-- Page polish: retro-modern login page, grouped settings tabs with descriptions, thread-grouped activity feed, sidebar version badge
-- Dev inspector: force poll inline results, poll history with intervals/dimming/timestamps
-- QA fixes: thread count OOB filter sync, search view preservation, mobile drawer close, Escape key detail close
-- Cosmetic: action button flex-wrap, reports title format, SLA chart zero-value handling
+- Triage Lead (gatekeeper) role with 5 permission properties, team page promote/demote, category-scoped visibility
+- Centralized permission refactor: replaced 28+ scattered is_admin checks with User model properties
+- Assignment enforcement: gatekeepers/admins control routing, members self-claim or reassign with mandatory reason
+- Mark irrelevant: close-with-reason for queue hygiene, amber UI (button + modal + context menu + badge), activity audit trail
+- Rising-edge unassigned alert system: Chat notification on threshold crossing with cooldown, sidebar badge coloring
+- Bulk actions: checkbox selection → floating action bar → bulk assign + bulk mark-irrelevant with 10s undo toast
+- AI corrections digest: collapsible card on triage queue showing 7-day correction patterns
 
 **Archives:**
-- `milestones/v2.5.4-ROADMAP.md`
-- `milestones/v2.5.4-REQUIREMENTS.md`
-- `milestones/v2.5.4-MILESTONE-AUDIT.md`
+- `milestones/v2.7.0-ROADMAP.md`
+- `milestones/v2.7.0-REQUIREMENTS.md`
+- `milestones/v2.7.0-MILESTONE-AUDIT.md`
 
 ---
 

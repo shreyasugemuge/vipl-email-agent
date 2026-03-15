@@ -140,16 +140,63 @@
 
 ---
 
-## Cross-Milestone Trends
+## Milestone: v2.7.0 — Gatekeeper Role + Irrelevant Emails
 
-| Metric | v2.1 | v2.2 | v2.3.6 |
-|--------|------|------|--------|
-| Phases | 7 | 4 | 3 |
-| Plans | 18 | 6 | 6 |
-| Days | 6 | 1 | 1 |
-| Tests | 257 | 349 | 443 |
-| Commits | 140 | 45 | 8 |
-| Gaps found in audit | 11 (all closed) | 0 | 2 (accepted) |
+**Shipped:** 2026-03-16
+**Phases:** 4 | **Plans:** 9
+
+### What Was Built
+- Triage Lead (gatekeeper) role with 5 permission properties and team page promote/demote
+- Centralized permission refactor: replaced 28+ scattered is_admin checks with User model @property helpers
+- Assignment enforcement: gatekeepers/admins control routing, members self-claim or reassign with mandatory reason
+- Mark irrelevant: close-with-reason action with amber UI (button + modal + context menu + badge + activity timeline)
+- Rising-edge unassigned alert system: Chat notification on threshold crossing with cooldown, sidebar badge coloring
+- Bulk actions: checkbox selection → floating action bar → bulk assign + bulk mark-irrelevant with 10s undo toast
+- AI corrections digest: collapsible card showing 7-day correction patterns for gatekeeper awareness
+
+### What Worked
+- All 4 phases completed in ~3 hours (phases 3+4 executed in this conversation)
+- TDD discipline: 29 new tests across 4 phases (795 → 824 total), zero regressions
+- Parallel execution: Phase 4's 3 plans ran concurrently (all wave 1, no dependencies)
+- Integration audit caught a real bug: bulk_mark_irrelevant writing wrong ActivityLog action type — fixed before shipping
+- Phase 1 permission refactor as foundation made all subsequent phases clean (can_triage, can_assign everywhere)
+
+### What Was Inefficient
+- Phase 4 planned in `.planning/milestones/v2.7.0-phases/` instead of `.planning/phases/` — confused gsd-tools CLI (phase-plan-index returned "Phase not found")
+- ROADMAP.md checkboxes for phases 3+4 not auto-updated by execute-phase (showed `[ ]` despite completion)
+- SUMMARY.md one_liner field empty for all plans (summary-extract returned None) — same issue as v2.2
+- `milestone complete` CLI only counted 3 phases (didn't see phase 4 in milestones dir)
+
+### Patterns Established
+- Permission @property on User model: `can_assign`, `can_triage`, `is_admin_only`, `can_approve_users` — simple, template-accessible
+- Rising-edge alert pattern: fires once on threshold crossing, resets when count drops, cooldown prevents storms
+- Stateless undo via HX-Trigger: serialized previous_states in JSON, no server-side undo stack
+- Mandatory reason pattern: required text field that gates the confirm button (disabled-until-input)
+- Modal auto-open via query param: `?open_modal=irrelevant` bridges context menu → detail panel → modal
+
+### Key Lessons
+- Always plan phases in `.planning/phases/` (not milestones subdir) — CLI tools expect this location
+- Permission refactor as Phase 1 is worth it — every subsequent phase benefits from centralized helpers
+- Integration audit is essential for multi-phase milestones — caught the CLOSED vs MARKED_IRRELEVANT bug
+- Parallel plan execution saves significant time when plans touch different files
+
+### Cost Observations
+- Model mix: ~60% Opus (orchestrator), ~40% Sonnet (executors + verifiers)
+- ~3 hours wall clock for 4 phases, 9 plans
+- All work on feature/gatekeeper-role worktree branch
 
 ---
-*Updated: 2026-03-15 after v2.3.6 milestone*
+
+## Cross-Milestone Trends
+
+| Metric | v2.1 | v2.2 | v2.3.6 | v2.5.0 | v2.7.0 |
+|--------|------|------|--------|--------|--------|
+| Phases | 7 | 4 | 3 | 7 | 4 |
+| Plans | 18 | 6 | 6 | 14 | 9 |
+| Days | 6 | 1 | 1 | 1 | 1 |
+| Tests | 257 | 349 | 443 | 626 | 824 |
+| Commits | 140 | 45 | 8 | 90 | 78 |
+| Gaps found in audit | 11 (all closed) | 0 | 2 (accepted) | 0 | 1 (fixed) |
+
+---
+*Updated: 2026-03-16 after v2.7.0 milestone*

@@ -68,7 +68,7 @@
         </div>
 
         <div class="shrink-0 flex items-center gap-1" onclick="event.stopPropagation();">
-            {% if not email.assigned_to and is_admin or not email.assigned_to and email.category in user_visible_categories %}
+            {% if not email.assigned_to and user.can_assign or not email.assigned_to and email.category in user_visible_categories %}
             <form hx-post="{% url 'emails:claim_email' email.pk %}"
                   hx-target="#card-{{ email.pk }}"
                   hx-swap="outerHTML"
@@ -80,7 +80,7 @@
             </form>
             {% endif %}
 
-            {% if is_admin %}
+            {% if user.can_assign %}
                 {% include "emails/_assign_dropdown.html" with email=email team_members=team_members %}
             {% elif email.assigned_to %}
             <div class="flex items-center gap-1">

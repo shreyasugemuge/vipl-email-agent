@@ -1,195 +1,233 @@
-# Technology Stack: v2.5.0 Intelligence + UX
+# Technology Stack: v2.7.0 Gatekeeper Role + Irrelevant Emails
 
 **Project:** VIPL Email Agent
 **Researched:** 2026-03-15
-**Scope:** Additions only -- existing stack (Django 4.2, HTMX 2.0, Tailwind v4, Anthropic SDK, etc.) is validated and unchanged.
+**Scope:** Additions only -- existing stack (Django 4.2, HTMX 2.0, Tailwind v4, etc.) is validated and unchanged.
 
-## Recommended Additions
+## Key Finding: Zero New Dependencies
 
-### Zero New Dependencies
+Every v2.7.0 feature is implementable with the existing stack. The codebase already has all the primitives: `User.Role` TextChoices for roles, `ActivityLog` for audit, `ChatNotifier` for alerts, `SystemConfig` for thresholds, APScheduler for periodic checks. Adding libraries would be over-engineering for a 4-5 user app.
 
-The headline finding: **v2.5.0 needs zero new Python packages and zero new JS libraries**. Every feature can be built with what is already in the stack plus vanilla JS and Django ORM patterns. This is intentional -- the existing stack was chosen for its simplicity and adding dependencies for 4-5 users would be over-engineering.
+**requirements.txt: NO CHANGES.**
 
 ---
 
 ## Feature-by-Feature Stack Analysis
 
-### 1. AI Confidence Scoring + Auto-Assignment Feedback
+### 1. Gatekeeper Role (RBAC Addition)
 
-**What's needed:** Claude returns a confidence score with each triage, auto-assign triggers above threshold, user corrections feed back into prompt context.
-
-**Stack addition: NONE.**
-
-| Concern | Solution | Why |
-|---------|----------|-----|
-| Confidence score | Add `confidence` field to `TriageResult` DTO + prompt instruction | Claude already returns structured JSON; add a `confidence: 0-100` field to the prompt schema |
-| Storage | `FloatField` on `Email` and `Thread` models | Standard Django field, no library needed |
-| Auto-assign threshold | `SystemConfig` key `auto_assign_confidence_threshold` (default: 80) | Already have runtime config store |
-| Feedback loop | Store corrections in `ActivityLog` (action=`CATEGORY_CORRECTED`, `PRIORITY_CORRECTED`) | Already have append-only activity log model |
-| Prompt context injection | Query recent corrections, inject as few-shot examples in system prompt | `ai_processor.py` already does team workload injection; same pattern |
-
-**How the feedback loop works without ML:**
-1. Claude returns `confidence: 85, category: "Sales Lead"` in structured output
-2. If confidence >= threshold AND assignment rule exists -> auto-assign
-3. If user corrects category/priority -> `ActivityLog` records old/new values
-4. On next triage, query last N corrections for that sender/domain -> inject as context: "Note: emails from acme.com were previously recategorized from X to Y"
-5. This is prompt engineering, not ML. Claude adapts from context window, not model weights.
-
-**Confidence:** HIGH -- prompt-based confidence scoring is a well-established pattern with LLMs. The Anthropic SDK already parses structured JSON responses in this codebase.
-
-### 2. Spam Feedback Learning
-
-**What's needed:** Users mark emails as spam/not-spam, system learns sender and pattern reputation over time.
+**What's needed:** A third role alongside admin/member. Gatekeepers can assign threads, mark irrelevant, see all emails -- but cannot manage users or system config.
 
 **Stack addition: NONE.**
 
 | Concern | Solution | Why |
 |---------|----------|-----|
-| User corrections | New model `SpamFeedback(email, user, action, created_at)` where action is `mark_spam` or `mark_not_spam` | Simple Django model, 4 fields |
-| Sender reputation | New model `SenderReputation(address, domain, spam_count, ham_count, last_updated)` | Aggregated stats from feedback, no ML |
-| Pattern learning | When user marks spam: extract sender domain, increment `spam_count`. If `spam_count / total > 0.8` and total >= 3 -> add to spam patterns | Rule-based threshold, stored in DB |
-| Whitelist integration | `mark_not_spam` on whitelisted sender -> already handled by existing `SpamWhitelist` model | v2.2 already built this |
-| Spam filter enhancement | `spam_filter.py` checks `SenderReputation` before regex patterns | Pure Python, no Django imports needed if reputation is passed as param |
+| Role definition | Add `GATEKEEPER = "gatekeeper"` to `User.Role` TextChoices | Extends existing pattern, one-line change + migration |
+| Permission helpers | Add properties on User: `can_assign`, `can_mark_irrelevant`, `can_manage_users` | Centralizes logic currently scattered as `is_admin` in 25+ view locations |
+| Data migration | Seed script to optionally promote existing users | Django RunPython in migration, same pattern as SystemConfig seeds |
 
-**Why NOT use scikit-learn or similar:**
-- 4-5 users, ~50-100 emails/day. Statistical ML needs thousands of labeled examples.
-- Rule-based reputation (sender domain spam ratio) is more transparent and debuggable.
-- Claude AI already handles nuanced spam detection -- this is just learning from corrections to the regex pre-filter.
+**Why NOT Django's built-in permissions framework (groups/permissions)?**
+- 4-5 total users. Three roles with simple, well-defined boundaries.
+- `User.Role` TextChoices is already used in 25+ permission checks across views.py.
+- Django permissions adds 4 join tables (`auth_permission`, `auth_group`, `auth_group_permissions`, `auth_user_user_permissions`), admin UI configuration, and permission caching -- all unnecessary overhead.
+- The existing pattern (`is_admin = user.is_staff or user.role == User.Role.ADMIN`) is readable, testable, and grep-able. Extending it to include gatekeeper is trivial.
 
-**Confidence:** HIGH -- sender reputation scoring is a well-understood pattern (SpamAssassin uses similar approach). No external dependencies needed.
+**Why NOT django-guardian (object-level permissions)?**
+- No object-level permission needs. A gatekeeper can assign ANY thread, not specific ones.
+- Object-level perms add per-object permission rows -- massive overhead for zero benefit here.
 
-### 3. Per-User Read/Unread Tracking
+**Why NOT django-rules (predicate-based permissions)?**
+- Nice library, but it adds a dependency for logic that's 5 lines of Python.
+- The predicate approach (`@rules.predicate def can_assign(user): ...`) is elegant but the codebase already has a simpler pattern that works.
 
-**What's needed:** Each user sees which threads they have/haven't read. Mark as unread support.
+**What changes in code:**
 
-**Stack addition: NONE.**
+```python
+# apps/accounts/models.py -- Role addition
+class Role(models.TextChoices):
+    ADMIN = "admin", "Admin"
+    GATEKEEPER = "gatekeeper", "Gatekeeper"  # NEW
+    MEMBER = "member", "Team Member"
 
-| Concern | Solution | Why |
-|---------|----------|-----|
-| Read state storage | New model `ThreadReadState(thread, user, read_at, is_read)` with `unique_together` | Standard through-table pattern for per-user state |
-| Mark as read | On detail panel open (already tracked via `ThreadViewer`), upsert `ThreadReadState` | Piggyback on existing viewer tracking |
-| Mark as unread | POST endpoint, sets `is_read=False` on `ThreadReadState` | Simple HTMX button |
-| Unread count | `Thread.objects.exclude(read_states__user=user, read_states__is_read=True).count()` | Django ORM query, no special library |
-| Visual indicator | Bold text + dot indicator on unread cards (CSS only) | Tailwind classes, conditional in template |
-| Bulk mark read | Select multiple + POST, standard HTMX multi-select pattern | Already have card selection CSS |
+# Permission helpers (replace scattered is_admin checks)
+@property
+def can_assign(self):
+    """Admin and gatekeeper can assign threads."""
+    return self.is_staff or self.role in (self.Role.ADMIN, self.Role.GATEKEEPER)
 
-**Design choice: `ThreadReadState` model vs. JSONField on User:**
-- Model is correct. JSONField would grow unbounded and can't be queried efficiently.
-- `ThreadReadState` can be indexed, queried with joins, and cleaned up (delete old read states for soft-deleted threads).
-- PostgreSQL handles this fine at scale -- even 1M read-state rows is trivial.
+@property
+def can_mark_irrelevant(self):
+    """Admin and gatekeeper can mark threads irrelevant."""
+    return self.can_assign  # Same permission boundary
 
-**Confidence:** HIGH -- this is a textbook Django M2M-through pattern. No novel design needed.
-
-### 4. Right-Click Context Menu
-
-**What's needed:** Right-click on email/thread card shows actions (assign, change status, mark spam, mark read/unread).
-
-**Stack addition: NONE.** Vanilla JS + HTMX.
-
-| Concern | Solution | Why |
-|---------|----------|-----|
-| Trigger | `hx-trigger="contextmenu"` is supported natively by HTMX (standard DOM event) | Confirmed via HTMX GitHub issue #1941 -- works out of the box |
-| Menu rendering | Server-rendered partial template `_context_menu.html` loaded via HTMX | Consistent with existing partial pattern (`_assign_dropdown.html`, etc.) |
-| Positioning | ~15 lines of vanilla JS to position at cursor coordinates | `event.clientX/Y` + boundary detection |
-| Dismiss | Click-outside listener (vanilla JS, `document.addEventListener`) | Standard pattern, no library |
-| Actions | Each menu item is an HTMX-powered button/link (POST with `hx-target`) | Same pattern as existing assign/status buttons |
-
-**Implementation pattern:**
-```html
-<!-- On the card -->
-<div hx-trigger="contextmenu"
-     hx-get="/emails/{{ thread.pk }}/context-menu/"
-     hx-target="#context-menu"
-     hx-swap="innerHTML"
-     oncontextmenu="positionMenu(event); return false;">
+@property
+def can_manage_users(self):
+    """Only admin can manage team members."""
+    return self.is_staff or self.role == self.Role.ADMIN
 ```
 
-```html
-<!-- _context_menu.html partial -->
-<div id="context-menu" class="absolute z-50 bg-white shadow-lg rounded-lg border py-1 w-48">
-  <button hx-post="/emails/{{ thread.pk }}/assign/" ...>Assign to...</button>
-  <button hx-post="/emails/{{ thread.pk }}/status/" ...>Change Status</button>
-  <hr>
-  <button hx-post="/emails/{{ thread.pk }}/mark-spam/">Mark as Spam</button>
-  <button hx-post="/emails/{{ thread.pk }}/toggle-read/">Mark as Unread</button>
-</div>
-```
-
-**Why NOT use a JS context menu library (e.g., vanilla-context-menu, @radix-ui):**
-- Server-rendered menus are more secure (actions validated server-side).
-- Consistent with the HTMX-first architecture -- menu content comes from server.
-- No build step, no npm, no bundle.
-- ~30 lines of vanilla JS total (positioning + dismiss).
-
-**Confidence:** HIGH -- HTMX contextmenu trigger is confirmed working. The partial template pattern is already used extensively in this codebase.
-
-### 5. Inline-Editable Form Fields
-
-**What's needed:** Click on category/priority on thread detail to edit inline without page navigation.
-
-**Stack addition: NONE.** HTMX click-to-edit is a documented pattern.
-
-| Concern | Solution | Why |
-|---------|----------|-----|
-| Pattern | HTMX "Click to Edit" (official example at htmx.org/examples/click-to-edit/) | Well-documented, battle-tested |
-| Display mode | Static text with pencil icon, `hx-get` to fetch edit form partial | Same as existing HTMX partials |
-| Edit mode | Server-rendered `<select>` or `<input>` with `hx-put`/`hx-post` | Django form or manual HTML |
-| Save | POST to endpoint, returns updated display partial via HTMX swap | Standard HTMX response pattern |
-| Cancel | Escape key or click-outside, re-fetches display partial | `hx-trigger="keyup[key=='Escape']"` or vanilla JS |
-| Validation | Server-side via Django (return form with errors if invalid) | Already have inline save feedback pattern from settings |
-| Activity log | Record change in `ActivityLog` (action=`CATEGORY_CORRECTED` etc.) | Feeds into confidence feedback loop (feature #1) |
-
-**Fields to make editable:**
-- Category (dropdown from `VALID_CATEGORIES`)
-- Priority (dropdown from `VALID_PRIORITIES`)
-- Assigned to (dropdown from active users -- already exists as `_assign_dropdown.html`)
-
-**Confidence:** HIGH -- HTMX click-to-edit is an official documented pattern. Django-htmx-patterns repo has complete Django examples.
-
-### 6. Analytics/Reporting Dashboard with Charts
-
-**What's needed:** MIS reports page with volume trends, category breakdown, response times, team performance.
-
-**Stack addition: Chart.js 4.5.x via CDN only.**
-
-| Concern | Solution | Why |
-|---------|----------|-----|
-| Chart library | Chart.js 4.5.1 via jsDelivr CDN | Already planned per PROJECT.md. No build step. Most popular charting library. |
-| CDN tag | `<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>` | Pin version for reproducibility (not `@latest`) |
-| Data source | Django views return JSON via `JsonResponse` or inline `<script>` with template data | No REST API framework needed for 4-5 users |
-| Chart types | Line (volume over time), Doughnut (category split), Bar (team workload), Horizontal bar (response times) | All native Chart.js types, no plugins needed |
-| Date filtering | URL params (`?period=7d&from=2026-03-01`), parsed in Django view | Same URL-based filtering pattern as email list |
-| Aggregation | Django ORM aggregation (`annotate`, `Count`, `Avg`, `TruncDate`) | PostgreSQL handles this natively, no need for a reporting library |
-| Export | CSV download endpoint (Django `StreamingHttpResponse` with `csv` module) | Python stdlib, no library needed |
-| Date picker | HTML5 `<input type="date">` with HTMX `hx-get` on change | No JS date picker library needed |
-
-**Why NOT use a heavier solution (Metabase, Apache Superset, django-report-builder):**
-- 4-5 users. A full BI tool is absurd.
-- Chart.js CDN + Django ORM aggregation covers every chart type needed.
-- Reports are internal MIS, not customer-facing analytics.
-- Zero infrastructure (no Redis, no Celery, no separate service).
-
-**Key Chart.js notes for this project:**
-- Chart.js 4.x uses tree-shakeable ESM, but the UMD build (`chart.umd.min.js`) works with `<script>` tags and is ~70KB gzipped.
-- No date adapter needed unless using time-series x-axis with Date objects. For this project, format dates server-side as strings.
-- Chart.js 4.x dropped IE support (irrelevant for this project).
-
-**Confidence:** HIGH -- Chart.js 4.5.1 is stable, CDN delivery is straightforward, and Django ORM aggregation is well-documented.
+**Confidence:** HIGH -- direct codebase analysis confirms TextChoices pattern is the right extension point.
 
 ---
 
-## Alternatives Considered
+### 2. Assignment Permission Enforcement
 
-| Feature | Recommended | Alternative Considered | Why Not |
-|---------|-------------|----------------------|---------|
-| Confidence scoring | Prompt engineering (Claude JSON output) | scikit-learn classifier | 50 emails/day is not enough training data; Claude already understands context |
-| Spam learning | Sender reputation model (DB counters) | Bayesian classifier (nltk/sklearn) | Over-engineering for 4-5 users; rule-based is transparent and debuggable |
-| Read/unread | `ThreadReadState` Django model | Redis sorted sets | Adding Redis for 4-5 users is unjustified infrastructure |
-| Context menu | Vanilla JS + HTMX partial | vanilla-context-menu npm package | Adds npm/build step; server-rendered menus are more secure |
-| Inline edit | HTMX click-to-edit pattern | Alpine.js or React component | Already committed to HTMX-only; Alpine adds a second reactive framework |
-| Charts | Chart.js 4.5.1 CDN | D3.js, ApexCharts, Recharts | D3 is too low-level; ApexCharts is heavier; Recharts needs React |
-| CSV export | Python `csv` stdlib | django-import-export | Adding a dependency for one CSV download endpoint is wasteful |
-| Date picker | HTML5 `<input type="date">` | flatpickr, Pikaday | Native HTML5 is sufficient; all modern browsers support it |
+**What's needed:** Only gatekeeper/admin can assign. Members can reassign threads assigned to them, but must provide a mandatory reason.
+
+**Stack addition: NONE.**
+
+| Concern | Solution | Why |
+|---------|----------|-----|
+| Assign permission | Check `user.can_assign` in views before calling `assign_thread()` | Replaces scattered `is_admin` checks with single property |
+| Reassign with reason | Add `reason` parameter to `assign_thread()`, validate non-empty for members | `ActivityLog.detail` field already stores notes -- reason goes there |
+| View enforcement | Replace 25+ `is_admin` checks with `user.can_assign` or `user.can_manage_users` | Mechanical find-and-replace, no architectural change |
+| Template enforcement | Pass `can_assign` to template context, hide/show assign buttons | Already passing `is_admin` to templates; rename/extend |
+| Context menu | Server-rendered partial already checks permissions (`is_admin` guard) | Change guard to `can_assign`, menu items adapt per role |
+
+**Current permission check pattern (25+ locations in views.py):**
+```python
+# CURRENT: scattered, admin-only
+is_admin = user.is_staff or user.role == User.Role.ADMIN
+if not is_admin:
+    return HttpResponseForbidden("Admin only")
+```
+
+**New pattern:**
+```python
+# NEW: centralized, role-aware
+if not user.can_assign:
+    return HttpResponseForbidden("Gatekeeper or admin required")
+```
+
+**Reassign reason enforcement:**
+```python
+# In assign_thread view
+if user.role == User.Role.MEMBER and thread.assigned_to == user:
+    # Member reassigning their own thread -- reason required
+    reason = request.POST.get("reason", "").strip()
+    if not reason:
+        return HttpResponse("Reason required for reassignment", status=400)
+```
+
+**Confidence:** HIGH -- pure Python logic change, no library involvement.
+
+---
+
+### 3. Count-Based Threshold Alerts (Unassigned Count)
+
+**What's needed:** When unassigned thread count exceeds a configurable threshold, alert via dashboard badge + Google Chat notification.
+
+**Stack addition: NONE.**
+
+| Concern | Solution | Why |
+|---------|----------|-----|
+| Threshold config | `SystemConfig` keys: `unassigned_alert_threshold` (INT), `unassigned_alert_enabled` (BOOL) | Already have typed key-value config store |
+| Periodic check | New APScheduler job (interval trigger, e.g. every 15min) | Already running 3 jobs (poll, retry, heartbeat); adding a 4th is trivial |
+| Alert dedup | `SystemConfig` key `last_unassigned_alert_at` (timestamp) + minimum interval | Prevents alert spam; same pattern as `last_poll_epoch` persistence |
+| Chat notification | `ChatNotifier` text message or Cards v2 card | Already have Google Chat integration; new card template or simple text |
+| Dashboard badge | OOB swap of unassigned count badge on sidebar | Already using HTMX OOB swaps for unread count badge |
+
+**New SystemConfig keys:**
+| Key | Type | Default | Purpose |
+|-----|------|---------|---------|
+| `unassigned_alert_enabled` | BOOL | `false` | Feature toggle |
+| `unassigned_alert_threshold` | INT | `10` | Alert when unassigned count >= this |
+| `unassigned_alert_interval_minutes` | INT | `30` | Minimum minutes between alerts |
+| `last_unassigned_alert_at` | INT | `0` | Epoch timestamp of last alert (dedup) |
+
+**Scheduler integration (in `run_scheduler` management command):**
+```python
+# Add alongside existing jobs
+scheduler.add_job(
+    check_unassigned_alert,
+    trigger="interval",
+    minutes=15,
+    id="unassigned_alert",
+    name="Unassigned count alert check",
+)
+```
+
+**Alert check function (in new or existing service):**
+```python
+def check_unassigned_alert():
+    if not SystemConfig.get("unassigned_alert_enabled", False):
+        return
+    threshold = SystemConfig.get("unassigned_alert_threshold", 10)
+    count = Thread.objects.filter(
+        assigned_to__isnull=True, status=Thread.Status.NEW, is_deleted=False
+    ).count()
+    if count >= threshold:
+        # Check dedup interval
+        # Send Chat notification
+        # Update last_unassigned_alert_at
+```
+
+**Confidence:** HIGH -- all components exist, just wiring them together.
+
+---
+
+### 4. Close-With-Reason (Mark Irrelevant)
+
+**What's needed:** Gatekeeper/admin can mark a thread as irrelevant (a type of close). Requires a reason. Removes thread from unassigned count. Feeds AI learning.
+
+**Stack addition: NONE.**
+
+| Concern | Solution | Why |
+|---------|----------|-----|
+| Close reason storage | `close_reason` CharField on Thread model | Simple field, avoids over-normalization |
+| Who closed | `closed_by` ForeignKey on Thread model | Audit trail for gatekeeper actions |
+| Irrelevant vs normal close | `close_reason` being non-empty distinguishes irrelevant from normal close | No new status needed; `CLOSED` status + reason is sufficient |
+| Activity log | New `MARKED_IRRELEVANT` action in `ActivityLog.Action` choices | Extends existing TextChoices, one line |
+| AI learning | Gatekeeper corrections feed existing distillation pipeline | `distillation.py` already processes `ActivityLog` entries |
+| UI | Close-with-reason modal (HTMX partial form) | Same pattern as assign dropdown |
+| Unassigned count | `Thread.objects.filter(assigned_to__isnull=True, status=NEW)` naturally excludes CLOSED | No special handling needed |
+
+**New Thread model fields:**
+```python
+# On Thread model
+close_reason = models.TextField(blank=True, default="",
+    help_text="Reason for closing, required when marking irrelevant")
+closed_by = models.ForeignKey(
+    settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+    null=True, blank=True, related_name="closed_threads")
+```
+
+**New service function:**
+```python
+def mark_irrelevant(thread, reason, closed_by):
+    """Mark thread as irrelevant (close with reason). Gatekeeper/admin only."""
+    thread.status = Thread.Status.CLOSED
+    thread.close_reason = reason
+    thread.closed_by = closed_by
+    thread.save(update_fields=["status", "close_reason", "closed_by", "updated_at"])
+    ActivityLog.objects.create(
+        thread=thread, user=closed_by,
+        action=ActivityLog.Action.MARKED_IRRELEVANT,
+        detail=reason, old_value="new", new_value="closed",
+    )
+```
+
+**Why NOT a separate IrrelevantThread model or new Status choice?**
+- A closed thread is a closed thread. The reason distinguishes WHY it was closed.
+- Adding `IRRELEVANT` as a Status would require updating every status filter, every queryset, every template conditional. The `close_reason` field is simpler.
+- Activity log with `MARKED_IRRELEVANT` action provides the audit trail without polluting Status choices.
+
+**Confidence:** HIGH -- standard Django model field addition + service function.
+
+---
+
+## Alternatives Considered and Rejected
+
+| Need | Rejected Option | Why Not |
+|------|----------------|---------|
+| RBAC | Django groups + permissions | 4 join tables, admin UI config, permission caching -- overkill for 3 roles, 5 users |
+| RBAC | django-guardian | Object-level perms not needed; gatekeepers operate on ALL threads |
+| RBAC | django-rules | Nice predicate API, but adds a dependency for 5 lines of property logic |
+| Alerting | Celery + Redis | Massive infra addition; APScheduler already runs 3 jobs fine |
+| Alerting | django-notifications | Full notification inbox system; we just need a Chat webhook POST |
+| Close reason | Separate ClosureRecord model | Over-normalized; TextField on Thread + ActivityLog is sufficient |
+| Close reason | New `IRRELEVANT` Status choice | Would require updating every status filter/queryset/template across the app |
+| Bulk assign | django-bulk-update | Django's `queryset.update()` handles bulk natively |
 
 ---
 
@@ -197,67 +235,43 @@ The headline finding: **v2.5.0 needs zero new Python packages and zero new JS li
 
 ### requirements.txt: NO CHANGES
 
-The existing `requirements.txt` remains exactly as-is. No new Python packages.
-
-### Frontend: ONE addition
-
-```html
-<!-- Add to base.html or reports page only -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
-        integrity="sha384-[integrity-hash]"
-        crossorigin="anonymous"></script>
+```bash
+# Nothing to install. Existing dependencies cover all v2.7.0 features.
+# Only Django migrations needed:
+python manage.py makemigrations accounts emails
+python manage.py migrate
 ```
 
-Load Chart.js only on the reports page (not globally) to avoid unnecessary payload on the main dashboard.
+### Frontend: NO CHANGES
 
-### Vanilla JS additions (~100 lines total across all features)
+No new CDN scripts. HTMX + Tailwind + existing vanilla JS patterns handle everything.
+
+### New Vanilla JS: ~20 lines
 
 | Feature | JS Needed | Lines (est.) |
 |---------|-----------|-------------|
-| Context menu positioning + dismiss | `positionMenu()`, click-outside listener | ~30 |
-| Inline edit cancel (Escape key) | Event listener on edit forms | ~10 |
-| Chart initialization | `new Chart(ctx, config)` per chart | ~50 |
-| Read/unread visual toggle | CSS class toggle (optional, HTMX swap handles most) | ~10 |
-
----
-
-## New Django Models Summary
-
-| Model | Fields | Purpose |
-|-------|--------|---------|
-| `ThreadReadState` | thread (FK), user (FK), read_at (DateTime), is_read (Bool) | Per-user read/unread tracking |
-| `SpamFeedback` | email (FK), user (FK), action (CharField), created_at (auto) | User spam/not-spam corrections |
-| `SenderReputation` | address, domain, spam_count, ham_count, last_updated | Aggregated sender trust score |
-
-**Model additions to existing models:**
-- `Email`: add `ai_confidence` (FloatField, default=0.0)
-- `Thread`: add `ai_confidence` (FloatField, default=0.0)
-- `TriageResult` DTO: add `confidence` (float, default=0.0)
-
-**New `ActivityLog.Action` choices:**
-- `CATEGORY_CORRECTED` -- user changed category
-- `PRIORITY_CORRECTED` -- user changed priority
-- `MARKED_SPAM` -- user marked as spam
-- `MARKED_NOT_SPAM` -- user marked as not-spam
-- `MARKED_UNREAD` -- user marked as unread
+| Close-with-reason modal show/hide | Toggle visibility | ~10 |
+| Reassign reason validation (client-side hint) | Required field check before submit | ~10 |
 
 ---
 
 ## Integration Points with Existing Stack
 
-| Existing Component | How New Features Integrate |
-|-------------------|---------------------------|
-| `ai_processor.py` | Add `confidence` to prompt schema + parse from response |
-| `spam_filter.py` | Check `SenderReputation` before regex (pass as param to keep Django-free) |
-| `pipeline.py` | Save `ai_confidence` to Email/Thread, check auto-assign threshold |
-| `assignment.py` | Auto-assign when confidence >= threshold + rule exists |
-| `SystemConfig` | New keys: `auto_assign_confidence_threshold`, `spam_reputation_threshold` |
-| `ActivityLog` | New action types for corrections, spam feedback, read state |
-| `_thread_card.html` | Add unread indicator (bold + dot), `hx-trigger="contextmenu"` |
-| `_thread_detail.html` | Add click-to-edit on category/priority fields |
-| `views.py` | New views: context menu partial, inline edit endpoints, reports page, read-state toggle |
-| `urls.py` | New URL patterns for above endpoints |
-| `base.html` | Chart.js script tag (conditional, reports page only) |
+| Existing Component | How v2.7.0 Features Integrate |
+|-------------------|-------------------------------|
+| `User.Role` TextChoices | Add `GATEKEEPER` choice |
+| `User` model properties | Add `can_assign`, `can_mark_irrelevant`, `can_manage_users` |
+| `views.py` (25+ `is_admin` checks) | Replace with `user.can_assign` / `user.can_manage_users` |
+| `assignment.py` service | Add `mark_irrelevant()` function, add reason param to reassign |
+| `Thread` model | Add `close_reason`, `closed_by` fields |
+| `ActivityLog.Action` | Add `MARKED_IRRELEVANT` choice |
+| `SystemConfig` | Add threshold/alert config keys (seeded via migration) |
+| `run_scheduler` command | Add `check_unassigned_alert` job |
+| `ChatNotifier` | Add unassigned alert card/text method |
+| `distillation.py` | Process `MARKED_IRRELEVANT` logs for AI learning |
+| `_context_menu.html` | Add "Mark Irrelevant" option (gatekeeper/admin only) |
+| Templates (assign buttons) | Gate on `can_assign` instead of `is_admin` |
+| Settings page (team tab) | Add gatekeeper role option in user management |
 
 ---
 
@@ -265,21 +279,17 @@ Load Chart.js only on the reports page (not globally) to avoid unnecessary paylo
 
 | Temptation | Why Resist |
 |-----------|-----------|
-| Django REST Framework | No SPA, no mobile app, no external API consumers. HTMX partials are the API. |
-| Celery + Redis | 4-5 users, APScheduler already handles background tasks. No queue needed. |
-| Alpine.js | Already have HTMX. Two reactive frameworks = confusion. Vanilla JS for the ~100 lines needed. |
-| pandas / numpy | Django ORM `annotate()` + `TruncDate` handles all reporting aggregation. |
-| django-tables2 | Reports are charts, not paginated tables. HTML tables with Tailwind for any tabular data. |
-| django-filter | URL params parsed manually in views (already the pattern). 4 filter fields don't justify a library. |
-| Any npm package | No `package.json`, no `node_modules`, no build step. CDN scripts only. |
+| Django REST Framework | No SPA, no mobile app, no API consumers. HTMX partials are the API. |
+| Celery + Redis | 4-5 users, APScheduler already handles background tasks. |
+| django-guardian / django-rules | 3 roles, 5 users. Properties on User model are sufficient. |
+| Any new Python package | Zero new dependencies. Django ORM + existing services cover everything. |
+| Any new JS library | HTMX + vanilla JS. No Alpine, no React, no npm. |
 
 ---
 
 ## Sources
 
-- [Chart.js Installation Docs](https://www.chartjs.org/docs/latest/getting-started/installation.html) -- CDN usage, version 4.5.1 confirmed
-- [Chart.js Releases](https://github.com/chartjs/Chart.js/releases) -- latest stable version
-- [HTMX Click to Edit Example](https://htmx.org/examples/click-to-edit/) -- official inline edit pattern
-- [HTMX contextmenu Issue #1941](https://github.com/bigskysoftware/htmx/issues/1941) -- confirmed standard DOM event works natively
-- [django-htmx-patterns](https://github.com/spookylukey/django-htmx-patterns) -- Django + HTMX form patterns
-- [HTMX hx-on Attribute](https://htmx.org/attributes/hx-on/) -- custom event handling
+- Direct codebase analysis: `apps/accounts/models.py` (User.Role TextChoices), `apps/emails/models.py` (Thread, ActivityLog), `apps/emails/views.py` (25+ `is_admin` checks), `apps/emails/services/assignment.py` (assign/reassign functions)
+- `requirements.txt` -- current dependency list (no changes needed)
+- `.planning/PROJECT.md` -- v2.7.0 feature requirements
+- `apps/core/models.py` -- SystemConfig key-value store pattern

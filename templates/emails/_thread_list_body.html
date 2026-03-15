@@ -5,6 +5,16 @@
     document.title = '{% if unread_total %}({{ unread_total }}) {% endif %}VIPL Triage | Inbox';
 </script>
 
+{% if request.user.can_assign %}
+<div class="flex items-center gap-2 px-3 py-1">
+    <input type="checkbox" id="select-all-checkbox"
+           class="w-3.5 h-3.5 accent-[var(--vipl-primary)]"
+           aria-label="Select all visible threads"
+           onchange="toggleSelectAll(this)">
+    <label for="select-all-checkbox" class="text-[11px] font-semibold text-[var(--vipl-text-dim)] select-none cursor-pointer">Select all</label>
+</div>
+{% endif %}
+
 <span id="thread-count-label" hx-swap-oob="true" class="text-[10px] font-bold text-[var(--vipl-text-muted)] tabular-nums font-mono">{{ total_count }} thread{{ total_count|pluralize }}</span>
 {% endif %}
 
