@@ -284,7 +284,7 @@
                 </div>
             </div>
             <div class="flex items-center justify-between mt-1.5 px-0.5">
-                <span class="text-[10px] font-bold text-slate-400 tabular-nums">{{ total_count }} thread{{ total_count|pluralize }}</span>
+                <span id="thread-count-label" class="text-[10px] font-bold text-slate-400 tabular-nums">{{ total_count }} thread{{ total_count|pluralize }}</span>
                 {% if is_admin and team_members %}
                 <select onchange="if(this.value){htmx.ajax('GET', this.value, {target:'#thread-list-body', pushUrl:true});}"
                         class="text-[10px] font-medium border border-slate-200 rounded-md px-1.5 py-0.5 bg-white text-slate-500 cursor-pointer">
@@ -367,6 +367,24 @@ function closeThreadDetail() {
 if (typeof updateActiveStates === 'function') {
     updateActiveStates();
 }
+
+/* Sync hidden filter inputs when URL changes via HTMX navigation */
+document.body.addEventListener('htmx:pushedIntoHistory', function() {
+    var params = new URLSearchParams(window.location.search);
+    var viewInput = document.querySelector('input[name="view-hidden"]');
+    var inboxInput = document.querySelector('input[name="inbox-hidden"]');
+    if (viewInput) viewInput.value = params.get('view') || 'all_open';
+    if (inboxInput) inboxInput.value = params.get('inbox') || '';
+});
+
+/* Sync hidden filter inputs on browser back/forward */
+window.addEventListener('popstate', function() {
+    var params = new URLSearchParams(window.location.search);
+    var viewInput = document.querySelector('input[name="view-hidden"]');
+    var inboxInput = document.querySelector('input[name="inbox-hidden"]');
+    if (viewInput) viewInput.value = params.get('view') || 'all_open';
+    if (inboxInput) inboxInput.value = params.get('inbox') || '';
+});
 
 /* ---- Context Menu ---- */
 var activeMenuThreadId = null;
