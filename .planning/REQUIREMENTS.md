@@ -40,19 +40,19 @@ Requirements for v2.5.0 Intelligence + UX release. Each maps to roadmap phases.
 
 ### Context Menu
 
-- [ ] **MENU-01**: Right-click on a thread/email card shows a context menu with quick actions
-- [ ] **MENU-02**: Context menu includes: Mark Read/Unread, Assign to, Claim, Acknowledge, Close, Mark Spam
-- [ ] **MENU-03**: Menu actions are role-aware (admin sees Assign, members see Claim if eligible)
-- [ ] **MENU-04**: Long-press on mobile triggers the same context menu
-- [ ] **MENU-05**: Every context menu action is also accessible via the primary UI (no menu-only actions)
+- [x] **MENU-01**: Right-click on a thread/email card shows a context menu with quick actions
+- [x] **MENU-02**: Context menu includes: Mark Read/Unread, Assign to, Claim, Acknowledge, Close, Mark Spam
+- [x] **MENU-03**: Menu actions are role-aware (admin sees Assign, members see Claim if eligible)
+- [x] **MENU-04**: Long-press on mobile triggers the same context menu
+- [x] **MENU-05**: Every context menu action is also accessible via the primary UI (no menu-only actions)
 
 ### Reports
 
 - [x] **RPT-01**: New "Reports" page accessible from sidebar navigation
-- [ ] **RPT-02**: Email volume chart showing daily/weekly incoming emails (bar chart)
-- [ ] **RPT-03**: Response time metrics (avg time to acknowledge, avg time to close) with trends
-- [ ] **RPT-04**: SLA compliance rate displayed as percentage with breach count
-- [ ] **RPT-05**: Team workload chart showing emails handled per team member (bar chart)
+- [x] **RPT-02**: Email volume chart showing daily/weekly incoming emails (bar chart)
+- [x] **RPT-03**: Response time metrics (avg time to acknowledge, avg time to close) with trends
+- [x] **RPT-04**: SLA compliance rate displayed as percentage with breach count
+- [x] **RPT-05**: Team workload chart showing emails handled per team member (bar chart)
 - [x] **RPT-06**: Date range picker to filter all report data
 - [x] **RPT-07**: Charts rendered with Chart.js 4.x via CDN (no build step)
 
@@ -110,16 +110,16 @@ Deferred beyond v2.5.0.
 | READ-03 | Phase 4 | Complete |
 | READ-04 | Phase 4 | Complete |
 | READ-05 | Phase 4 | Complete |
-| MENU-01 | Phase 5 | Pending |
-| MENU-02 | Phase 5 | Pending |
-| MENU-03 | Phase 5 | Pending |
-| MENU-04 | Phase 5 | Pending |
-| MENU-05 | Phase 5 | Pending |
+| MENU-01 | Phase 5 | Complete |
+| MENU-02 | Phase 5 | Complete |
+| MENU-03 | Phase 5 | Complete |
+| MENU-04 | Phase 5 | Complete |
+| MENU-05 | Phase 5 | Complete |
 | RPT-01 | Phase 6 | Complete |
-| RPT-02 | Phase 6 | Pending |
-| RPT-03 | Phase 6 | Pending |
-| RPT-04 | Phase 6 | Pending |
-| RPT-05 | Phase 6 | Pending |
+| RPT-02 | Phase 6 | Complete |
+| RPT-03 | Phase 6 | Complete |
+| RPT-04 | Phase 6 | Complete |
+| RPT-05 | Phase 6 | Complete |
 | RPT-06 | Phase 6 | Complete |
 | RPT-07 | Phase 6 | Complete |
 | FIX-01 | Phase 3 | Complete |

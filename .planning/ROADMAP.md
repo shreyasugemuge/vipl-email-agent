@@ -26,8 +26,8 @@
 - [x] **Phase 2: AI Confidence + Auto-Assign** - Confidence tiers, auto-assignment, and feedback loop (completed 2026-03-15)
 - [x] **Phase 3: Spam Learning + Bug Fixes** - Spam feedback, sender reputation, and pipeline fixes (completed 2026-03-15)
 - [x] **Phase 4: Read/Unread Tracking** - Per-user read state with visual indicators (completed 2026-03-15)
-- [ ] **Phase 5: Editable Attributes + Context Menu** - Inline edit and right-click quick actions
-- [ ] **Phase 6: Reports Module** - Analytics dashboard with Chart.js charts
+- [x] **Phase 5: Editable Attributes + Context Menu** - Inline edit and right-click quick actions (completed 2026-03-15)
+- [x] **Phase 6: Reports Module** - Analytics dashboard with Chart.js charts (completed 2026-03-15)
 
 ## Phase Details
 
@@ -101,7 +101,7 @@ Plans:
   3. Context menu is role-aware (admin sees Assign, members see Claim)
   4. Long-press on mobile triggers the same context menu
   5. Every context menu action is also available via the primary UI (no menu-only actions)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 05-01-PLAN.md -- Inline edit endpoints, dropdown partials, detail panel integration
 - [ ] 05-02-PLAN.md -- Context menu component, JS handler, mobile long-press, role-aware rendering
@@ -116,7 +116,7 @@ Plans:
   3. Response time metrics display average time to acknowledge and close, with trend indicators
   4. SLA compliance percentage and breach count are visible
   5. Team workload bar chart shows emails handled per team member, filterable by date range
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 06-01-PLAN.md -- Reports skeleton: aggregation service, view, template with tabs, date picker, filters, sidebar nav
 - [ ] 06-02-PLAN.md -- Chart.js charts for all tabs, tests, visual verification
@@ -131,5 +131,5 @@ Plans:
 | 2. AI Confidence + Auto-Assign | 4/4 | Complete   | 2026-03-15 |
 | 3. Spam Learning + Bug Fixes | 2/2 | Complete    | 2026-03-15 |
 | 4. Read/Unread Tracking | 2/2 | Complete    | 2026-03-15 |
-| 5. Editable Attributes + Context Menu | 1/2 | In Progress|  |
-| 6. Reports Module | 1/2 | In Progress|  |
+| 5. Editable Attributes + Context Menu | 2/2 | Complete   | 2026-03-15 |
+| 6. Reports Module | 2/2 | Complete   | 2026-03-15 |
