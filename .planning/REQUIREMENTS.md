@@ -98,7 +98,7 @@ Deferred beyond v2.5.0.
 | INTEL-08 | Phase 2 | Complete |
 | INTEL-09 | Phase 5 | Complete |
 | INTEL-10 | Phase 5 | Complete |
-| INTEL-11 | Phase 1 | Pending |
+| INTEL-11 | Phase 7 | Pending |
 | SPAM-01 | Phase 3 | Complete |
 | SPAM-02 | Phase 3 | Complete |
 | SPAM-03 | Phase 3 | Complete |

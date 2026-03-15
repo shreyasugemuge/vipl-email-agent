@@ -6,7 +6,7 @@
 - v2.2 Polish & Hardening -- Phases 7-10 (shipped 2026-03-14) -- [archive](milestones/v2.2-ROADMAP.md)
 - v2.3.6 UI/UX Polish & Bug Fixes -- Phases 11-13 (shipped 2026-03-15) -- [archive](milestones/v2.3.6-ROADMAP.md)
 - v2.4.x Dashboard + Threads -- Phase 14 (shipped 2026-03-15)
-- **v2.5.0 Intelligence + UX** -- Phases 1-6 (in progress)
+- **v2.5.0 Intelligence + UX** -- Phases 1-7 (in progress)
 
 ## Phases
 
@@ -28,6 +28,7 @@
 - [x] **Phase 4: Read/Unread Tracking** - Per-user read state with visual indicators (completed 2026-03-15)
 - [x] **Phase 5: Editable Attributes + Context Menu** - Inline edit and right-click quick actions (completed 2026-03-15)
 - [x] **Phase 6: Reports Module** - Analytics dashboard with Chart.js charts (completed 2026-03-15)
+- [ ] **Phase 7: Pipeline Override Guards** - Fix override flag enforcement and config naming (gap closure)
 
 ## Phase Details
 
@@ -121,9 +122,23 @@ Plans:
 - [ ] 06-01-PLAN.md -- Reports skeleton: aggregation service, view, template with tabs, date picker, filters, sidebar nav
 - [ ] 06-02-PLAN.md -- Chart.js charts for all tabs, tests, visual verification
 
+### Phase 7: Pipeline Override Guards
+**Goal**: Pipeline respects user-edited category/priority overrides, and auto-assign config is clearly named
+**Depends on**: Phase 5, Phase 6
+**Requirements**: INTEL-11
+**Gap Closure**: Closes gaps from v2.5.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. When a thread has `category_overridden=True`, `update_thread_preview()` does NOT overwrite `thread.category`
+  2. When a thread has `priority_overridden=True`, `update_thread_preview()` does NOT overwrite `thread.priority`
+  3. `auto_assign_confidence_threshold` renamed to `auto_assign_confidence_tier` with clear help text in SystemConfig admin
+  4. Tests cover override guard logic and config rename migration
+**Plans:** 0 plans (needs planning)
+Plans:
+- [ ] 07-01-PLAN.md -- Override guards in update_thread_preview, config rename, tests
+
 ## Progress
 
-**Execution Order:** 1 -> 2/3/4 (parallel after 1) -> 5 (after 2+4) -> 6 (after 3+4)
+**Execution Order:** 1 -> 2/3/4 (parallel after 1) -> 5 (after 2+4) -> 6 (after 3+4) -> 7 (after 5+6)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -133,3 +148,4 @@ Plans:
 | 4. Read/Unread Tracking | 2/2 | Complete    | 2026-03-15 |
 | 5. Editable Attributes + Context Menu | 2/2 | Complete   | 2026-03-15 |
 | 6. Reports Module | 2/2 | Complete   | 2026-03-15 |
+| 7. Pipeline Override Guards | 0/1 | Planning needed | - |
