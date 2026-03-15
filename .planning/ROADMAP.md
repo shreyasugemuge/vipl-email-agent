@@ -39,11 +39,11 @@
   2. Gatekeeper sees threads filtered to their assigned categories in the triage queue
   3. Every permission check in the codebase uses `can_assign()` or `is_admin_only()` helpers -- zero inline `is_admin` checks remain
   4. Gatekeeper role appears correctly in welcome banner, sidebar, user badges, and context menu
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Role model + permission properties + team page promote/demote + dev login + tests
+- [ ] 01-02-PLAN.md -- Replace 28+ is_admin checks + category-scoped filtering + template updates + UI elements
 
 ### Phase 2: Assignment Enforcement
 **Goal**: Assignment permissions are enforced so gatekeepers and admins control thread routing while members retain limited self-service
@@ -99,7 +99,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Role + Permission Foundation | 0/TBD | Not started | - |
+| 1. Role + Permission Foundation | 0/2 | Planned | - |
 | 2. Assignment Enforcement | 0/2 | Planned | - |
 | 3. Mark Irrelevant | 0/TBD | Not started | - |
 | 4. Alerts + Bulk Actions | 0/TBD | Not started | - |
