@@ -50,25 +50,25 @@ None deferred — all scoped items included.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | TBD | Pending |
-| BUG-02 | TBD | Pending |
-| BUG-03 | TBD | Pending |
-| BUG-04 | TBD | Pending |
-| BUG-05 | TBD | Pending |
-| BUG-06 | TBD | Pending |
-| BUG-07 | TBD | Pending |
-| UX-01 | TBD | Pending |
-| UX-02 | TBD | Pending |
-| UX-03 | TBD | Pending |
-| UX-04 | TBD | Pending |
-| UX-05 | TBD | Pending |
-| QA-01 | TBD | Pending |
+| BUG-01 | Phase 8 | Pending |
+| BUG-02 | Phase 8 | Pending |
+| BUG-03 | Phase 8 | Pending |
+| BUG-04 | Phase 8 | Pending |
+| BUG-05 | Phase 8 | Pending |
+| BUG-06 | Phase 8 | Pending |
+| BUG-07 | Phase 8 | Pending |
+| UX-01 | Phase 9 | Pending |
+| UX-02 | Phase 9 | Pending |
+| UX-03 | Phase 9 | Pending |
+| UX-04 | Phase 9 | Pending |
+| UX-05 | Phase 9 | Pending |
+| QA-01 | Phase 10 | Pending |
 
 **Coverage:**
 - v2.3.4 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after initial definition*
+*Last updated: 2026-03-15 after roadmap creation*
