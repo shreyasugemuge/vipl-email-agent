@@ -28,8 +28,11 @@ from apps.emails.models import (
     Thread,
 )
 from apps.emails.services.assignment import assign_email as _assign_email
+from apps.emails.services.assignment import assign_thread as _assign_thread
 from apps.emails.services.assignment import change_status as _change_status
+from apps.emails.services.assignment import change_thread_status as _change_thread_status
 from apps.emails.services.assignment import claim_email as _claim_email
+from apps.emails.services.assignment import claim_thread as _claim_thread
 from apps.emails.services.dtos import VALID_CATEGORIES, VALID_PRIORITIES
 
 logger = logging.getLogger(__name__)
@@ -636,6 +639,283 @@ def change_status_view(request, pk):
     )
 
     return _HttpResponse(detail_html + card_html)
+
+
+# ---------------------------------------------------------------------------
+# Thread detail + thread-level action endpoints
+# ---------------------------------------------------------------------------
+
+
+def _build_thread_detail_context(thread, request, is_admin, team_members):
+    """Build context dict for the thread detail partial."""
+
+    # Load all emails in the thread, oldest first
+    emails = (
+        thread.emails
+        .select_related("assigned_to")
+        .prefetch_related("attachments")
+        .order_by("received_at")
+    )
+
+    # Pre-sanitize each email body
+    sanitized_bodies = {}
+    for email in emails:
+        if email.body_html:
+            sanitized_bodies[email.pk] = nh3.clean(
+                email.body_html,
+                tags=SAFE_TAGS,
+                attributes=SAFE_ATTRIBUTES,
+            )
+        else:
+            sanitized_bodies[email.pk] = ""
+
+    # Load thread activity logs (chronological, oldest first)
+    activity_logs = (
+        thread.activity_logs
+        .select_related("user", "email")
+        .order_by("created_at")
+    )
+
+    # Build merged timeline: messages + activity events interleaved by timestamp
+    timeline_items = []
+    for email in emails:
+        timeline_items.append({
+            "type": "message",
+            "timestamp": email.received_at,
+            "obj": email,
+        })
+    for log in activity_logs:
+        timeline_items.append({
+            "type": "activity",
+            "timestamp": log.created_at,
+            "obj": log,
+        })
+    timeline_items.sort(key=lambda x: x["timestamp"])
+
+    # Can this user claim?
+    can_claim = False
+    if thread.assigned_to is None:
+        if is_admin:
+            can_claim = True
+        else:
+            can_claim = CategoryVisibility.objects.filter(
+                user=request.user,
+                category=thread.category,
+            ).exists()
+
+    # AI suggested assignee from the latest completed email
+    ai_suggested_assignee = None
+    latest_completed = (
+        thread.emails
+        .filter(processing_status=Email.ProcessingStatus.COMPLETED)
+        .order_by("-received_at")
+        .first()
+    )
+    if latest_completed:
+        suggestion = latest_completed.ai_suggested_assignee
+        if isinstance(suggestion, dict) and suggestion.get("name"):
+            ai_suggested_assignee = suggestion
+
+    # AI reasoning from latest completed email
+    ai_reasoning = ""
+    if latest_completed and latest_completed.ai_reasoning:
+        ai_reasoning = latest_completed.ai_reasoning
+
+    return {
+        "thread": thread,
+        "timeline_items": timeline_items,
+        "sanitized_bodies": sanitized_bodies,
+        "team_members": team_members,
+        "is_admin": is_admin,
+        "can_claim": can_claim,
+        "ai_suggested_assignee": ai_suggested_assignee,
+        "ai_reasoning": ai_reasoning,
+    }
+
+
+@login_required
+@require_GET
+def thread_detail(request, pk):
+    """Return the thread detail panel partial for HTMX swap."""
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to", "assigned_by"),
+        pk=pk,
+    )
+
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    team_members = []
+    if is_admin:
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    return render(request, "emails/_thread_detail.html", context)
+
+
+@login_required
+@require_POST
+def assign_thread_view(request, pk):
+    """Assign a thread to a team member. Admin only."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+
+    if not is_admin:
+        return HttpResponseForbidden("Only admins can assign threads.")
+
+    thread = get_object_or_404(Thread, pk=pk)
+    assignee_id = request.POST.get("assignee_id")
+
+    if not assignee_id:
+        return HttpResponseForbidden("Missing assignee_id.")
+
+    assignee = get_object_or_404(User, pk=assignee_id)
+    note = request.POST.get("note", "")
+
+    _assign_thread(thread, assignee, user, note=note)
+
+    # Reload with select_related
+    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # Primary: updated detail panel
+    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_html = render_to_string(
+        "emails/_thread_detail.html", detail_context, request=request,
+    )
+
+    # OOB: update thread card in the list
+    card_html = render_to_string(
+        "emails/_thread_card.html",
+        {"thread": thread, "oob": True},
+        request=request,
+    )
+
+    return _HttpResponse(detail_html + card_html)
+
+
+@login_required
+@require_POST
+def change_thread_status_view(request, pk):
+    """Change the status of a thread. Admins or assigned user."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to", "assigned_by"),
+        pk=pk,
+    )
+
+    # Permission: admin or assigned_to user
+    if not is_admin and thread.assigned_to != user:
+        return HttpResponseForbidden("You can only change status on threads assigned to you.")
+
+    new_status = request.POST.get("new_status", "")
+    if not new_status:
+        return HttpResponseForbidden("Missing new_status.")
+
+    _change_thread_status(thread, new_status, user)
+
+    # Reload
+    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
+
+    team_members = []
+    if is_admin:
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # Primary: updated detail panel
+    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_html = render_to_string(
+        "emails/_thread_detail.html", detail_context, request=request,
+    )
+
+    # OOB: update thread card in the list
+    card_html = render_to_string(
+        "emails/_thread_card.html",
+        {"thread": thread, "oob": True},
+        request=request,
+    )
+
+    return _HttpResponse(detail_html + card_html)
+
+
+@login_required
+@require_POST
+def claim_thread_view(request, pk):
+    """Allow a team member to self-claim an unassigned thread."""
+    thread = get_object_or_404(Thread, pk=pk)
+
+    try:
+        _claim_thread(thread, request.user)
+    except (ValueError, PermissionError) as exc:
+        return HttpResponseForbidden(str(exc))
+
+    # Reload with relations
+    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
+
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    team_members = []
+    if is_admin:
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # Primary: updated detail panel
+    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_html = render_to_string(
+        "emails/_thread_detail.html", detail_context, request=request,
+    )
+
+    # OOB: update thread card in the list
+    card_html = render_to_string(
+        "emails/_thread_card.html",
+        {"thread": thread, "oob": True},
+        request=request,
+    )
+
+    return _HttpResponse(detail_html + card_html)
+
+
+@login_required
+@require_POST
+def whitelist_sender_from_thread(request, pk):
+    """Whitelist the primary sender of a thread. Admin only."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to", "assigned_by"),
+        pk=pk,
+    )
+    sender = thread.last_sender_address.strip().lower()
+
+    if not sender:
+        return HttpResponseForbidden("Thread has no sender address to whitelist.")
+
+    from django.db import IntegrityError, transaction
+
+    try:
+        with transaction.atomic():
+            SpamWhitelist.objects.create(
+                entry=sender,
+                entry_type="email",
+                added_by=request.user,
+                reason=f"Whitelisted from thread #{pk}",
+            )
+        updated = _unspam_matching_emails(sender, "email")
+        msg = f"{sender} whitelisted"
+        if updated:
+            msg += f" -- {updated} email(s) unmarked as spam"
+    except IntegrityError:
+        _unspam_matching_emails(sender, "email")
+        msg = f"{sender} is already whitelisted"
+
+    is_admin = True  # already checked above
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # Re-render detail panel with feedback banner
+    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_context["whitelist_msg"] = msg
+
+    return render(request, "emails/_thread_detail.html", detail_context)
 
 
 # ---------------------------------------------------------------------------

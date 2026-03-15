@@ -4,7 +4,7 @@
      {% if oob %}hx-swap-oob="outerHTML"{% endif %}
      class="card-hover border-l-[3px] {{ thread.priority|priority_border }} bg-white mx-2 my-0.5 rounded-lg px-3 py-2 cursor-pointer border border-slate-200/40 hover:border-slate-200
             {% if thread.status == 'new' %}font-semibold{% endif %}"
-     hx-get="{% url 'emails:email_detail' thread.pk %}"
+     hx-get="{% url 'emails:thread_detail' thread.pk %}"
      hx-target="#thread-detail-panel"
      hx-swap="innerHTML"
      role="article" tabindex="0" aria-label="{{ thread.subject }}"

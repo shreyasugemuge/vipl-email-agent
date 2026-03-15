@@ -7,8 +7,12 @@ app_name = "emails"
 urlpatterns = [
     path("", views.thread_list, name="thread_list"),
     path("legacy/", views.email_list, name="email_list"),
-    # Thread detail placeholder — view will be created in Plan 02
-    # path("threads/<int:pk>/detail/", views.thread_detail, name="thread_detail"),
+    # Thread-level endpoints
+    path("threads/<int:pk>/detail/", views.thread_detail, name="thread_detail"),
+    path("threads/<int:pk>/assign/", views.assign_thread_view, name="assign_thread"),
+    path("threads/<int:pk>/status/", views.change_thread_status_view, name="change_thread_status"),
+    path("threads/<int:pk>/claim/", views.claim_thread_view, name="claim_thread"),
+    path("threads/<int:pk>/whitelist-sender/", views.whitelist_sender_from_thread, name="whitelist_thread_sender"),
     path("<int:pk>/detail/", views.email_detail, name="email_detail"),
     path("<int:pk>/assign/", views.assign_email_view, name="assign_email"),
     path("<int:pk>/status/", views.change_status_view, name="change_status"),
