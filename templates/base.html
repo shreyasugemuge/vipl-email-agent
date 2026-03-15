@@ -48,8 +48,8 @@
         .bg-mesh { background: #f8fafc; }
 
         /* Stat card hover */
-        .stat-card { transition: all 0.2s ease; }
-        .stat-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -3px rgba(0,0,0,0.06); }
+        .stat-card { transition: box-shadow 0.2s ease; }
+        .stat-card:hover { box-shadow: 0 4px 12px -3px rgba(0,0,0,0.06); }
 
         /* Smooth content transitions */
         .htmx-settling { transition: opacity 0.15s ease-in; }
@@ -198,7 +198,7 @@
             {% endif %}
             <div class="flex items-center gap-1.5 px-2 mt-1 text-[9px] text-slate-600 font-medium">
                 <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 animate-pulse"></div>
-                v2.0 Online
+                Online
             </div>
         </div>
     </aside>
@@ -245,6 +245,11 @@
             overlay.classList.remove('hidden');
         }
     }
+
+    /* Set aria-current on active nav items */
+    document.querySelectorAll('.nav-active').forEach(function(el) {
+        el.setAttribute('aria-current', 'page');
+    });
 
     /* HTMX global progress bar */
     (function() {
