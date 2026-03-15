@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: milestone
+milestone: v2.5.4
+milestone_name: UI/UX Polish & Bug Fixes
 status: completed
-stopped_at: Completed 07-01-PLAN.md
+stopped_at: Milestone v2.5.4 complete — all 7 phases shipped
 last_updated: "2026-03-15T18:01:03.166Z"
-last_activity: 2026-03-15 — Completed 07-01 (action bar flex-wrap, reports title, SLA doughnut zero-value)
+last_activity: 2026-03-15 — Milestone v2.5.4 audit passed (24/24 requirements)
 progress:
   total_phases: 7
-  completed_phases: 6
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 7
+  total_plans: 10
+  completed_plans: 10
   percent: 100
 ---
 
@@ -88,7 +88,7 @@ None.
 
 ### Pending Todos
 
-15 pending in `.planning/todos/pending/` — most overlap with GitHub issues #15-#30.
+None — all todos resolved.
 
 ## Session Continuity
 

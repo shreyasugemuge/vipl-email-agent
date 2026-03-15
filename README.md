@@ -148,7 +148,7 @@ Fresh installs default to **off** mode — no external API calls, no Gmail polli
 ### Testing
 
 ```bash
-pytest -v                              # All 729 tests (no API keys needed)
+pytest -v                              # All 734 tests (no API keys needed)
 python manage.py test_pipeline         # Smoke test with fake data (no external calls)
 python manage.py test_pipeline --with-ai   # Real Claude triage (~$0.001/email)
 python manage.py run_scheduler --once --dry-run  # Simulated poll cycle
@@ -175,7 +175,7 @@ Two workflows keep CI and CD separate:
 
 **To deploy:**
 ```bash
-gh release create v2.4.0 --title "v2.4.0" --generate-notes
+gh release create v2.5.4 --title "v2.5.4" --generate-notes
 # Creates tag + release → triggers deploy automatically
 ```
 
@@ -186,7 +186,7 @@ This ensures every deploy is intentional, documented, and reversible. Pushing to
 ```bash
 ssh user@vm
 cd /opt/vipl-email-agent
-git fetch --tags && git checkout v2.4.0
+git fetch --tags && git checkout v2.5.4
 sudo docker compose build --no-cache
 sudo docker compose up -d
 sleep 5
@@ -219,6 +219,7 @@ sudo docker compose exec web python manage.py set_mode production   # Full pipel
 
 | Version | Date | Highlights |
 |:---:|:---:|------------|
+| **v2.5.4** | Mar 2026 | UI/UX polish: 24 fixes — expanded cards, pill dropdowns, claim button, retro login, grouped settings, thread-grouped activity, dev inspector overhaul, QA bug fixes. 734 tests. |
 | **v2.5.0** | Mar 2026 | Intelligence + UX: AI confidence scoring, auto-assign, spam learning, read/unread tracking, inline editing, context menu, reports module. 729 tests. |
 | **v2.4.0** | Mar 2026 | Dashboard UX overhaul: single sidebar, settings validation, poll persistence, test consolidation. 555 tests. |
 | **v2.3.6** | Mar 2026 | Email threads & conversation UI, UI/UX v3 QA, OAuth hardening. 556 tests. |

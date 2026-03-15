@@ -88,7 +88,7 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ## Context
 
-**Current state (v2.5.4 complete):** Production at triage.vidarbhainfotech.com. v2.5.0 deployed, v2.5.4 complete (24 UI/UX fixes). Django 4.2 LTS + PostgreSQL 12.3. 0 open GitHub issues.
+**Current state (v2.5.4 complete):** Production at triage.vidarbhainfotech.com. v2.5.0 deployed, v2.5.4 complete on `fixes` branch (24 UI/UX fixes, 734 tests). Django 4.2 LTS + PostgreSQL 12.3. 0 open GitHub issues.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 

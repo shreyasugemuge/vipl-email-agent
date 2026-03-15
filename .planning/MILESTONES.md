@@ -2,10 +2,22 @@
 
 ## v2.5.4 UI/UX Polish & Bug Fixes (Shipped: 2026-03-15)
 
-**Phases completed:** 7 phases, 8 plans, 0 tasks
+**Phases completed:** 7 phases, 10 plans
+**Stats:** 24 requirements resolved, 734 tests
 
 **Key accomplishments:**
-- (none recorded)
+- Bug fixes: welcome banner dedup, pipeline unread state, REOPENED status, AI assign OOB swap
+- Thread card & detail UX: expanded spacing, pill-style dropdowns, context menu readability, AI draft copy button
+- Workflow actions: claim button with toast confirmation, spam toggle undo
+- Page polish: retro-modern login page, grouped settings tabs with descriptions, thread-grouped activity feed, sidebar version badge
+- Dev inspector: force poll inline results, poll history with intervals/dimming/timestamps
+- QA fixes: thread count OOB filter sync, search view preservation, mobile drawer close, Escape key detail close
+- Cosmetic: action button flex-wrap, reports title format, SLA chart zero-value handling
+
+**Archives:**
+- `milestones/v2.5.4-ROADMAP.md`
+- `milestones/v2.5.4-REQUIREMENTS.md`
+- `milestones/v2.5.4-MILESTONE-AUDIT.md`
 
 ---
 
