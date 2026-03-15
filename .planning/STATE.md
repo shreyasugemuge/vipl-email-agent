@@ -78,5 +78,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15T14:29:12.203Z
-Stopped at: Completed 05-02-PLAN.md
-Next: Continue with 06-02 (chart rendering + data wiring)
+Stopped at: Completed 06-02-PLAN.md
+Next: All v2.5.0 plans executed -- ready for milestone wrap-up
