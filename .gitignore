@@ -51,6 +51,10 @@ to_delete/
 # QA media (screenshots, GIFs — ephemeral)
 .planning/qa/
 
+# Node (Tailwind CSS build only)
+node_modules/
+package-lock.json
+
 # OS
 .DS_Store
 Thumbs.db

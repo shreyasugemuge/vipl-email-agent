@@ -1,0 +1,15 @@
+@import "tailwindcss" source("../../templates");
+
+@theme {
+    --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --color-primary-50: #fdf2f8;
+    --color-primary-100: #fce7f1;
+    --color-primary-200: #f9c4db;
+    --color-primary-300: #f49bbe;
+    --color-primary-400: #e06a97;
+    --color-primary-500: #c94476;
+    --color-primary-600: #a83362;
+    --color-primary-700: #8b2852;
+    --color-primary-800: #742345;
+    --color-primary-900: #5f1d3a;
+}

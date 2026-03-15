@@ -1,0 +1,30 @@
+{
+  "name": "vipl-email-agent",
+  "version": "1.0.0",
+  "description": "<div align=\"center\">",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "build:css": "tailwindcss --input static/css/input.css --output static/css/tailwind.css --minify",
+    "watch:css": "tailwindcss --input static/css/input.css --output static/css/tailwind.css --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shreyasugemuge/vipl-email-agent.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/shreyasugemuge/vipl-email-agent/issues"
+  },
+  "homepage": "https://github.com/shreyasugemuge/vipl-email-agent#readme",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.2.1",
+    "tailwindcss": "^4.2.1"
+  }
+}
