@@ -26,9 +26,9 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.accounts.models import User
 from apps.core.models import SystemConfig
 from apps.emails.models import (
-    ActivityLog, AssignmentRule, CategoryVisibility, Email, InternalNote, PollLog,
-    SenderReputation, SLAConfig, SpamFeedback, SpamWhitelist, Thread, ThreadReadState,
-    ThreadViewer,
+    ActivityLog, AssignmentFeedback, AssignmentRule, CategoryVisibility, Email,
+    InternalNote, PollLog, SenderReputation, SLAConfig, SpamFeedback, SpamWhitelist,
+    Thread, ThreadReadState, ThreadViewer,
 )
 from apps.emails.services.assignment import assign_email as _assign_email
 from apps.emails.services.assignment import assign_thread as _assign_thread
@@ -667,6 +667,125 @@ def reject_ai_suggestion(request, pk):
         f'<div id="detail-panel" hx-swap-oob="innerHTML">{detail_html}</div>'
     )
     return _HttpResponse(card_html + oob_detail)
+
+
+# ---------------------------------------------------------------------------
+# Thread-level accept/reject AI suggestion (POST)
+# ---------------------------------------------------------------------------
+
+
+@login_required
+@require_POST
+def accept_thread_suggestion(request, pk):
+    """Accept AI suggested assignee for a thread -- assigns and records feedback."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    if not is_admin:
+        return HttpResponseForbidden("Only admins can accept AI suggestions.")
+
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to", "assigned_by"), pk=pk,
+    )
+
+    # Get suggestion from latest completed email
+    latest_email = (
+        thread.emails
+        .filter(processing_status=Email.ProcessingStatus.COMPLETED)
+        .order_by("-received_at")
+        .first()
+    )
+    suggestion = getattr(latest_email, "ai_suggested_assignee", None) or {}
+    if not isinstance(suggestion, dict) or not suggestion.get("user_id"):
+        return HttpResponseForbidden("No valid AI suggestion to accept.")
+
+    assignee = get_object_or_404(User, pk=suggestion["user_id"])
+
+    # Assign thread
+    thread.assigned_to = assignee
+    thread.assigned_by = user
+    thread.assigned_at = timezone.now()
+    thread.is_auto_assigned = False
+    thread.save(update_fields=["assigned_to", "assigned_by", "assigned_at", "is_auto_assigned", "updated_at"])
+
+    # Record feedback
+    AssignmentFeedback.objects.create(
+        thread=thread,
+        email=latest_email,
+        suggested_user=assignee,
+        actual_user=assignee,
+        action=AssignmentFeedback.FeedbackAction.ACCEPTED,
+        confidence_at_time=thread.ai_confidence,
+        user_who_acted=user,
+    )
+
+    # Activity log
+    ActivityLog.objects.create(
+        thread=thread,
+        user=user,
+        action=ActivityLog.Action.ASSIGNED,
+        detail=f"Accepted AI suggestion — assigned to {assignee.get_full_name() or assignee.username}",
+    )
+
+    # Re-render detail panel
+    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+    context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    return render(request, "emails/_thread_detail.html", context)
+
+
+@login_required
+@require_POST
+def reject_thread_suggestion(request, pk):
+    """Reject AI suggested assignee for a thread -- unassigns and records feedback."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    if not is_admin:
+        return HttpResponseForbidden("Only admins can dismiss AI suggestions.")
+
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to", "assigned_by"), pk=pk,
+    )
+
+    # Get suggestion from latest completed email (for feedback recording)
+    latest_email = (
+        thread.emails
+        .filter(processing_status=Email.ProcessingStatus.COMPLETED)
+        .order_by("-received_at")
+        .first()
+    )
+    suggestion = getattr(latest_email, "ai_suggested_assignee", None) or {}
+    suggested_user = None
+    if isinstance(suggestion, dict) and suggestion.get("user_id"):
+        suggested_user = User.objects.filter(pk=suggestion["user_id"]).first()
+
+    # Unassign thread
+    thread.assigned_to = None
+    thread.assigned_by = None
+    thread.assigned_at = None
+    thread.is_auto_assigned = False
+    thread.save(update_fields=["assigned_to", "assigned_by", "assigned_at", "is_auto_assigned", "updated_at"])
+
+    # Record feedback
+    AssignmentFeedback.objects.create(
+        thread=thread,
+        email=latest_email,
+        suggested_user=suggested_user,
+        actual_user=None,
+        action=AssignmentFeedback.FeedbackAction.REJECTED,
+        confidence_at_time=thread.ai_confidence,
+        user_who_acted=user,
+    )
+
+    # Clear suggestion on latest email so suggestion bar disappears
+    if latest_email:
+        latest_email.ai_suggested_assignee = {}
+        latest_email.save(update_fields=["ai_suggested_assignee", "updated_at"])
+
+    # Re-render detail panel
+    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+    context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    return render(request, "emails/_thread_detail.html", context)
 
 
 # ---------------------------------------------------------------------------
