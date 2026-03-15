@@ -299,6 +299,58 @@ window.addEventListener('popstate', function(e) {
     }
 });
 
+/* Keyboard navigation: Arrow keys between cards, Escape closes detail (UX-04) */
+document.addEventListener('keydown', function(e) {
+    /* Skip when user is typing in form fields */
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+    if (e.key === 'Escape') {
+        closeDetail();
+        return;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        var cards = Array.from(document.querySelectorAll('#email-list [role="article"]'));
+        if (!cards.length) return;
+        var currentIdx = cards.indexOf(document.activeElement);
+        var nextIdx;
+        if (e.key === 'ArrowDown') {
+            nextIdx = currentIdx < cards.length - 1 ? currentIdx + 1 : 0;
+        } else {
+            nextIdx = currentIdx > 0 ? currentIdx - 1 : cards.length - 1;
+        }
+        cards[nextIdx].focus();
+        cards[nextIdx].scrollIntoView({ block: 'nearest' });
+        e.preventDefault();
+    }
+});
+
+/* Loading skeleton for detail panel (UX-05) */
+document.addEventListener('htmx:beforeRequest', function(e) {
+    if (e.detail.target && e.detail.target.id === 'detail-panel') {
+        e.detail.target.innerHTML = '<div class="p-5 space-y-4 animate-pulse">' +
+            '<div class="flex items-center gap-2">' +
+                '<div class="h-5 w-16 bg-slate-200 rounded-md"></div>' +
+                '<div class="h-5 w-20 bg-slate-200 rounded-md"></div>' +
+            '</div>' +
+            '<div class="h-5 w-3/4 bg-slate-200 rounded"></div>' +
+            '<div class="h-4 w-full bg-slate-100 rounded"></div>' +
+            '<div class="flex items-center gap-3 pt-2">' +
+                '<div class="w-8 h-8 bg-slate-200 rounded-full"></div>' +
+                '<div class="space-y-1.5 flex-1">' +
+                    '<div class="h-3.5 w-32 bg-slate-200 rounded"></div>' +
+                    '<div class="h-3 w-48 bg-slate-100 rounded"></div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="space-y-2.5 pt-3">' +
+                '<div class="h-3.5 w-full bg-slate-100 rounded"></div>' +
+                '<div class="h-3.5 w-5/6 bg-slate-100 rounded"></div>' +
+                '<div class="h-3.5 w-4/5 bg-slate-200 rounded"></div>' +
+                '<div class="h-3.5 w-2/3 bg-slate-100 rounded"></div>' +
+            '</div>' +
+        '</div>';
+    }
+});
+
 /* Mobile filters toggle */
 function toggleFilters() {
     var f = document.getElementById('mobile-filters');
