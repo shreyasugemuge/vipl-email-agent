@@ -36,7 +36,7 @@
 **Milestone Goal:** Transform the email triage experience from individual messages to threaded conversations, matching Gmelius/Hiver-level shared inbox UX.
 
 - [x] **Phase 1: Thread Model + Data Migration** - Thread/conversation model with thread-level assignment, status, and migration of existing emails into threads
-- [ ] **Phase 2: Pipeline Integration + Inbox Clarity** - Poller creates/updates threads on new email, deduplication across inboxes, multi-inbox tracking
+- [x] **Phase 2: Pipeline Integration + Inbox Clarity** - Poller creates/updates threads on new email, deduplication across inboxes, multi-inbox tracking
 - [ ] **Phase 3: Conversation UI** - Three-panel layout replacing card list, thread-based browsing with message history detail panel
 - [ ] **Phase 4: Collaboration** - Internal notes with @mentions and collision detection for team coordination
 
@@ -70,7 +70,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Pipeline thread creation/update and reopen logic
-- [ ] 02-02-PLAN.md — Inbox tracking, deduplication, and multi-inbox display
+- [x] 02-02-PLAN.md — Inbox tracking, deduplication, and multi-inbox display
 
 ### Phase 3: Conversation UI
 **Goal**: Users browse and manage threads in a three-panel layout with full message history
@@ -111,6 +111,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Thread Model + Data Migration | 2/2 | Complete | 2026-03-15 |
-| 2. Pipeline Integration + Inbox Clarity | 1/2 | In progress | - |
+| 2. Pipeline Integration + Inbox Clarity | 2/2 | Complete | 2026-03-15 |
 | 3. Conversation UI | 0/3 | Not started | - |
 | 4. Collaboration | 0/2 | Not started | - |

@@ -30,9 +30,9 @@
 
 ### Inbox Clarity
 
-- [ ] **INBOX-01**: Each email clearly shows which inbox it was received on (info@ vs sales@)
-- [ ] **INBOX-02**: When the same email arrives on multiple tracked inboxes, it is deduplicated into a single thread
-- [ ] **INBOX-03**: Deduplicated threads show all inboxes they were received on (e.g., "info@ + sales@")
+- [x] **INBOX-01**: Each email clearly shows which inbox it was received on (info@ vs sales@)
+- [x] **INBOX-02**: When the same email arrives on multiple tracked inboxes, it is deduplicated into a single thread
+- [x] **INBOX-03**: Deduplicated threads show all inboxes they were received on (e.g., "info@ + sales@")
 - [ ] **INBOX-04**: Inbox filter in sidebar allows filtering conversations by receiving inbox
 
 ## Future Requirements
@@ -78,9 +78,9 @@
 | COLLAB-02 | Phase 4 | Pending |
 | COLLAB-03 | Phase 4 | Pending |
 | COLLAB-04 | Phase 4 | Pending |
-| INBOX-01 | Phase 2 | Pending |
-| INBOX-02 | Phase 2 | Pending |
-| INBOX-03 | Phase 2 | Pending |
+| INBOX-01 | Phase 2 | Complete |
+| INBOX-02 | Phase 2 | Complete |
+| INBOX-03 | Phase 2 | Complete |
 | INBOX-04 | Phase 3 | Pending |
 
 **Coverage:**
