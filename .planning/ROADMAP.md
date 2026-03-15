@@ -63,7 +63,7 @@ Execution Order:
 
 Plans:
 - [ ] 01-01-PLAN.md — Backend fixes: unread state creation, REOPENED status, avatar sync
-- [ ] 01-02-PLAN.md — Frontend fixes: welcome banner dedup, AI Assign OOB card swap
+- [x] 01-02-PLAN.md — Frontend fixes: welcome banner dedup, AI Assign OOB card swap
 
 ### Phase 2: Thread Card & Detail UX (M6-P2)
 **Goal**: Thread cards and detail panel feel polished and information-dense without clutter
@@ -124,7 +124,7 @@ Plans:
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 (M6-P1) | Bug Fixes | 0/2 | Planning complete | - |
+| 1 (M6-P1) | Bug Fixes | 1/2 | In progress | - |
 | 2 (M6-P2) | Thread Card & Detail UX | 0/TBD | Not started | - |
 | 3 (M6-P3) | Workflow Actions | 0/1 | Planning complete | - |
 | 4 (M6-P4) | Page Polish | 0/TBD | Not started | - |

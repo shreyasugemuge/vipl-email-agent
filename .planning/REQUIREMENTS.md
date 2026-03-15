@@ -7,11 +7,11 @@
 
 ### Bug Fixes
 
-- [ ] **BUG-01**: Welcome message no longer shows twice at login (#15)
+- [x] **BUG-01**: Welcome message no longer shows twice at login (#15)
 - [ ] **BUG-02**: Read/unread markers visible on thread cards (#16)
 - [ ] **BUG-03**: Reopened status tag and flow works end-to-end (#17)
 - [ ] **BUG-04**: Google avatar syncs on login (#27)
-- [ ] **BUG-05**: AI Assign button in detail card works (#28)
+- [x] **BUG-05**: AI Assign button in detail card works (#28)
 
 ### Thread Cards & Detail
 
@@ -53,11 +53,11 @@ None — this is a polish milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | Phase 1 | Pending |
+| BUG-01 | Phase 1 | Complete |
 | BUG-02 | Phase 1 | Pending |
 | BUG-03 | Phase 1 | Pending |
 | BUG-04 | Phase 1 | Pending |
-| BUG-05 | Phase 1 | Pending |
+| BUG-05 | Phase 1 | Complete |
 | CARD-01 | Phase 2 | Pending |
 | CARD-02 | Phase 2 | Pending |
 | CARD-03 | Phase 2 | Pending |
