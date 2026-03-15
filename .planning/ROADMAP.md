@@ -82,12 +82,11 @@ Plans:
   3. Clicking a thread opens a detail panel showing all messages in chronological order
   4. Thread detail panel includes all actions: assign, acknowledge, close, whitelist sender
   5. Left sidebar has quick-access views (Unassigned, Mine, All Open, Closed) and an inbox filter (info@, sales@, all)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Three-panel layout and thread list (replacing card list)
-- [ ] 03-02: Thread detail panel with message history
-- [ ] 03-03: Sidebar views, filters, and inbox filter
+- [ ] 03-01-PLAN.md — Three-panel layout with sidebar views, inbox filter, and thread list
+- [ ] 03-02-PLAN.md — Thread detail panel with message history and actions
 
 ### Phase 4: Collaboration
 **Goal**: Team members can discuss threads internally and see who else is viewing a thread
@@ -112,5 +111,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Thread Model + Data Migration | 2/2 | Complete | 2026-03-15 |
 | 2. Pipeline Integration + Inbox Clarity | 2/2 | Complete | 2026-03-15 |
-| 3. Conversation UI | 0/3 | Not started | - |
+| 3. Conversation UI | 0/2 | Not started | - |
 | 4. Collaboration | 0/2 | Not started | - |
