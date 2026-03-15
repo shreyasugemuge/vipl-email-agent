@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: milestone
 status: executing
 stopped_at: Phase 2 replanned with UI-SPEC and verified
-last_updated: "2026-03-15T19:16:10.243Z"
-last_activity: 2026-03-15 -- Completed 01-01 (Role + Permission Properties)
+last_updated: "2026-03-15T19:18:06.886Z"
+last_activity: 2026-03-15 -- Completed 01-02 (Permission Refactor + Category Scoping)
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 1
-  percent: 17
+  completed_plans: 2
+  percent: 33
 ---
 
 # Project State
@@ -21,27 +21,28 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** v2.6.0 Phase 1 -- Role + Permission Foundation
+**Current focus:** v2.6.0 Phase 2 -- Assignment Enforcement
 
 ## Current Position
 
-Phase: 1 of 4 (Role + Permission Foundation)
+Phase: 2 of 4 (Assignment Enforcement)
 Plan: 1 of 2 in current phase
 Status: Executing
-Last activity: 2026-03-15 -- Completed 01-01 (Role + Permission Properties)
+Last activity: 2026-03-15 -- Completed 01-02 (Permission Refactor + Category Scoping)
 
-Progress: [█░░░░░░░░░] 17%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 4 min
-- Total execution time: 0.07 hours
+- Total plans completed: 2
+- Average duration: 5 min
+- Total execution time: 0.17 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 01 | 01 | 4 min | 2 | 8 |
+| 01 | 02 | 6 min | 3 | 13 |
 
 ## Accumulated Context
 
@@ -58,6 +59,10 @@ Progress: [█░░░░░░░░░] 17%
 - Permission properties live on User model as @property (not Django permissions framework)
 - team_list/toggle_active use can_approve_users; change_role stays admin-only
 - Role dropdown gated on is_admin_only; triage leads see badge not dropdown
+- Templates use User model properties directly (user.can_assign) -- no context variable passing
+- Context processor for lead_categories ensures sidebar pills work on all pages
+- Settings page read-only (not hidden) for Triage Lead
+- Force poll admin-only; inspector view accessible to can_triage users
 
 ### Blockers/Concerns
 
@@ -65,6 +70,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T19:16:10.241Z
-Stopped at: Phase 2 replanned with UI-SPEC and verified
-Next: Execute 01-02-PLAN.md (Permission Refactor)
+Last session: 2026-03-15T19:16:53Z
+Stopped at: Completed 01-02-PLAN.md (Permission Refactor + Category Scoping)
+Next: Execute 02-01-PLAN.md (Assignment Enforcement)

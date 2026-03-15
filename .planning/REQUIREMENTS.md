@@ -8,7 +8,7 @@
 ### Role & Permissions
 
 - [x] **ROLE-01**: Admin can promote/demote user to gatekeeper role from team page
-- [ ] **ROLE-02**: Gatekeeper sees all threads in their assigned categories (category-scoped visibility)
+- [x] **ROLE-02**: Gatekeeper sees all threads in their assigned categories (category-scoped visibility)
 - [ ] **ROLE-03**: Only gatekeeper and admin can assign threads to other users
 - [ ] **ROLE-04**: Members can self-claim unassigned threads in their category
 - [ ] **ROLE-05**: Members can reassign threads only with a mandatory reason (logged in ActivityLog)
@@ -50,7 +50,7 @@ None deferred — all scoped features included in this milestone.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ROLE-01 | Phase 1 | Complete |
-| ROLE-02 | Phase 1 | Pending |
+| ROLE-02 | Phase 1 | Complete |
 | ROLE-03 | Phase 2 | Pending |
 | ROLE-04 | Phase 2 | Pending |
 | ROLE-05 | Phase 2 | Pending |
