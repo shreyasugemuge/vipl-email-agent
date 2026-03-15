@@ -118,6 +118,9 @@ def email_list(request):
             | Q(ai_summary__icontains=search_query)
         )
 
+    # --- Active filter count (for UX-02 filter indicator) ---
+    active_filter_count = sum(1 for f in [status, priority, category, inbox, search_query] if f)
+
     # --- Sort ---
     sort = request.GET.get("sort", "-created_at")
     if sort not in ALLOWED_SORT_FIELDS:
@@ -192,6 +195,7 @@ def email_list(request):
         "dash_stats": dash_stats,
         "user_visible_categories": user_visible_categories,
         "current_search": search_query,
+        "active_filter_count": active_filter_count,
     }
 
     if getattr(request, "htmx", False):

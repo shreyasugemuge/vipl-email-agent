@@ -304,3 +304,101 @@ class TestEmailCountOOBUpdate:
         )
         content = response.content.decode()
         assert "1 email" in content
+
+
+class TestWelcomeBanner:
+    """UX-01: Welcome banner with role-specific guidance."""
+
+    def test_banner_present_for_admin(self, admin_client, db):
+        """Welcome banner div is present in admin dashboard response."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert 'id="welcome-banner"' in content
+
+    def test_banner_present_for_member(self, member_client, db):
+        """Welcome banner div is present in member dashboard response."""
+        response = member_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert 'id="welcome-banner"' in content
+
+    def test_admin_sees_assign_guidance(self, admin_client, db):
+        """Admin banner contains guidance about assigning emails."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "assign" in content.lower() or "Assign" in content
+
+    def test_member_sees_my_emails_guidance(self, member_client, db):
+        """Member banner contains guidance about My Emails."""
+        response = member_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "My Emails" in content
+
+    def test_banner_has_session_storage_dismiss(self, admin_client, db):
+        """Banner has sessionStorage JS for dismiss logic."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "sessionStorage" in content
+        assert "vipl_welcome_dismissed" in content
+
+
+class TestFilterIndicators:
+    """UX-02: Active filter count and clear-all link."""
+
+    def test_one_filter_shows_indicator(self, admin_client, db):
+        """With one filter active, shows '1 filter active' text."""
+        _create_email(db, message_id="msg_fi_1")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all", "status": "new"},
+        )
+        content = response.content.decode()
+        assert "1 filter active" in content
+
+    def test_two_filters_show_indicator(self, admin_client, db):
+        """With two filters active, shows '2 filters active' text."""
+        _create_email(db, message_id="msg_fi_2")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all", "status": "new", "priority": "HIGH"},
+        )
+        content = response.content.decode()
+        assert "2 filters active" in content
+
+    def test_no_filters_no_indicator(self, admin_client, db):
+        """With no filters active, 'filter active' text is absent."""
+        _create_email(db, message_id="msg_fi_3")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all"},
+        )
+        content = response.content.decode()
+        assert "filter active" not in content
+        assert "filters active" not in content
+
+    def test_clear_all_preserves_view(self, admin_client, db):
+        """Clear all link includes current view param."""
+        _create_email(db, message_id="msg_fi_4")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all", "status": "new"},
+        )
+        content = response.content.decode()
+        assert "Clear all" in content
+        assert "?view=all" in content
+
+
+class TestScrollSnap:
+    """UX-03: Scroll-snap on stat cards for mobile."""
+
+    def test_stat_container_has_snap_classes(self, admin_client, db):
+        """Stat cards container has snap-x and snap-mandatory classes."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "snap-x" in content
+        assert "snap-mandatory" in content
+
+    def test_stat_cards_have_snap_start(self, admin_client, db):
+        """Each stat card has snap-start class."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "snap-start" in content
