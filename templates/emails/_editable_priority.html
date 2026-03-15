@@ -2,7 +2,9 @@
 {% comment %}
 Pill-styled priority badge with click-to-edit dropdown.
 Context: thread, priorities (list of valid priorities).
+Editable only for owner or can_assign users; read-only for members on others' threads.
 {% endcomment %}
+{% if thread.assigned_to == request.user or user.can_assign %}
 <div class="group/pri relative inline-flex items-center" id="editable-priority">
     <!-- Display mode: colored pill -->
     <span class="pri-pill inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer bg-{{ thread.priority|priority_base }}-100 text-{{ thread.priority|priority_base }}-800 border border-{{ thread.priority|priority_base }}-300/50 hover:ring-2 hover:ring-{{ thread.priority|priority_base }}-400/30 transition-all"
@@ -50,3 +52,10 @@ Context: thread, priorities (list of valid priorities).
     </div>
     {% endif %}
 </div>
+{% else %}
+{# Read-only display for members on others' threads #}
+<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-{{ thread.priority|priority_base }}-50 text-{{ thread.priority|priority_base }}-700 border border-{{ thread.priority|priority_base }}-200/50"
+      title="{{ thread.priority|priority_tooltip }}">
+    {{ thread.priority }}
+</span>
+{% endif %}

@@ -24,6 +24,8 @@ from django.utils import timezone
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from django.db.models import Count
+
 from apps.core.models import SystemConfig
 from apps.emails.services.chat_notifier import ChatNotifier
 from apps.emails.services.gmail_poller import GmailPoller
@@ -31,6 +33,123 @@ from apps.emails.services.ai_processor import AIProcessor
 from apps.emails.services.state import StateManager
 
 logger = logging.getLogger(__name__)
+
+
+def _check_unassigned_alert():
+    """Check unassigned thread count and fire rising-edge Chat alert if threshold crossed.
+
+    Rising-edge logic: fires alert exactly once when count crosses threshold upward.
+    Respects cooldown to prevent alert storms. Resets when count drops below threshold.
+    """
+    close_old_connections()
+    try:
+        from apps.emails.models import Thread
+
+        # Read threshold -- if not set or 0, alerts are disabled
+        threshold_cfg = SystemConfig.objects.filter(key="unassigned_alert_threshold").first()
+        if not threshold_cfg or threshold_cfg.value == "0":
+            return
+
+        try:
+            threshold = int(threshold_cfg.value)
+        except (ValueError, TypeError):
+            return
+
+        if threshold <= 0:
+            return
+
+        # Count unassigned threads
+        count = Thread.objects.filter(
+            assigned_to__isnull=True,
+            status__in=["new", "acknowledged"],
+        ).count()
+
+        # Read rising-edge flag
+        was_below_cfg = SystemConfig.objects.filter(key="_unassigned_was_below_threshold").first()
+        was_below = was_below_cfg.value if was_below_cfg else "true"
+
+        if count >= threshold and was_below == "true":
+            # Rising edge -- check cooldown first
+            cooldown_cfg = SystemConfig.objects.filter(key="unassigned_alert_cooldown_minutes").first()
+            cooldown_minutes = 30
+            if cooldown_cfg:
+                try:
+                    cooldown_minutes = int(cooldown_cfg.value)
+                except (ValueError, TypeError):
+                    cooldown_minutes = 30
+
+            last_alert_cfg = SystemConfig.objects.filter(key="last_unassigned_alert_at").first()
+            if last_alert_cfg and last_alert_cfg.value:
+                try:
+                    from datetime import datetime as _dt
+                    last_alert_time = _dt.fromisoformat(last_alert_cfg.value)
+                    if timezone.is_naive(last_alert_time):
+                        from django.utils.timezone import make_aware
+                        last_alert_time = make_aware(last_alert_time)
+                    if (timezone.now() - last_alert_time).total_seconds() < cooldown_minutes * 60:
+                        return  # Still in cooldown
+                except (ValueError, TypeError):
+                    pass  # Invalid timestamp -- proceed
+
+            # Fire alert
+            webhook_url = (
+                SystemConfig.get("chat_webhook_url", "")
+                or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
+            )
+            if webhook_url:
+                # Build category breakdown
+                breakdown_qs = (
+                    Thread.objects.filter(
+                        assigned_to__isnull=True,
+                        status__in=["new", "acknowledged"],
+                    )
+                    .values("category")
+                    .annotate(c=Count("pk"))
+                )
+                breakdown = [
+                    {"category": row["category"] or "Uncategorized", "count": row["c"]}
+                    for row in breakdown_qs
+                ]
+
+                notifier = ChatNotifier(webhook_url=webhook_url)
+                notifier.notify_unassigned_alert(count, threshold, category_breakdown=breakdown)
+
+            # Update last alert timestamp
+            SystemConfig.objects.update_or_create(
+                key="last_unassigned_alert_at",
+                defaults={
+                    "value": timezone.now().isoformat(),
+                    "value_type": SystemConfig.ValueType.STR,
+                    "category": "alerts",
+                },
+            )
+            # Set was_below to false (we're now above threshold)
+            SystemConfig.objects.update_or_create(
+                key="_unassigned_was_below_threshold",
+                defaults={
+                    "value": "false",
+                    "value_type": SystemConfig.ValueType.STR,
+                    "category": "alerts",
+                },
+            )
+
+        elif count >= threshold and was_below != "true":
+            # Already above threshold -- no re-alert
+            pass
+
+        elif count < threshold and was_below != "true":
+            # Dropped below -- reset flag for next rising edge
+            SystemConfig.objects.update_or_create(
+                key="_unassigned_was_below_threshold",
+                defaults={
+                    "value": "true",
+                    "value_type": SystemConfig.ValueType.STR,
+                    "category": "alerts",
+                },
+            )
+
+    except Exception as e:
+        logger.error(f"Unassigned alert check failed: {e}")
 
 
 def _heartbeat_job():
@@ -48,6 +167,12 @@ def _heartbeat_job():
         )
     except Exception as e:
         logger.error(f"Heartbeat write failed: {e}")
+
+    # Check unassigned alert (separate try/except so heartbeat write still succeeds)
+    try:
+        _check_unassigned_alert()
+    except Exception as e:
+        logger.error(f"Unassigned alert check in heartbeat failed: {e}")
 
 
 def _poll_job(gmail_poller, ai_processor, chat_notifier, state_manager):

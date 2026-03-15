@@ -2,7 +2,7 @@
 
 <div id="thread-card-{{ thread.pk }}"
      {% if oob %}hx-swap-oob="outerHTML"{% endif %}
-     class="vipl-card mx-2 my-1 rounded px-3.5 py-3 cursor-pointer transition-all duration-150 bg-[var(--vipl-card)]
+     class="group relative vipl-card mx-2 my-1 rounded px-3.5 py-3 cursor-pointer transition-all duration-150 bg-[var(--vipl-card)]
             {% if thread.is_unread %}border-l-2 border-l-[var(--vipl-cyan)]{% else %}border-l-2 border-l-transparent{% endif %}"
      hx-get="{% url 'emails:thread_detail' thread.pk %}"
      hx-target="#thread-detail-panel"
@@ -14,6 +14,17 @@
      ontouchstart="startLongPress(event, {{ thread.pk }})"
      ontouchend="cancelLongPress()"
      ontouchmove="cancelLongPress()">
+
+    {% if request.user.can_assign %}
+    <input type="checkbox"
+           class="thread-checkbox absolute left-1 top-1/2 -translate-y-1/2
+                  w-4 h-4 accent-[var(--vipl-primary)]
+                  opacity-0 sm:group-hover:opacity-100 max-sm:opacity-100
+                  transition-opacity duration-150 z-10"
+           value="{{ thread.pk }}"
+           aria-label="Select thread: {{ thread.subject|truncatewords:5 }}"
+           onclick="event.stopPropagation(); updateBulkState();">
+    {% endif %}
 
     <!-- Row 1: Sender + timestamp + count -->
     <div class="flex items-center justify-between gap-2 mb-1">
@@ -64,14 +75,17 @@
             {% endif %}
             {% endwith %}
             {% endif %}
+            {% if thread.status == "irrelevant" %}
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold font-pixel uppercase tracking-wider text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/10 border border-[var(--vipl-gold)]/20" title="Marked as irrelevant">Irrelevant</span>
+            {% endif %}
         </div>
 
         <div class="flex items-center gap-1.5 shrink-0">
             <!-- Status -->
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase tracking-wider
-                {% if thread.status == 'new' %}text-[var(--vipl-primary)] bg-[var(--vipl-primary)]/15 border border-[var(--vipl-primary)]/25{% elif thread.status == 'acknowledged' %}text-[var(--vipl-cyan)] bg-[var(--vipl-cyan)]/15 border border-[var(--vipl-cyan)]/25{% elif thread.status == 'reopened' %}text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/15 border border-[var(--vipl-gold)]/25{% elif thread.status == 'closed' %}text-[var(--vipl-text-muted)] bg-white/[0.06] border border-[var(--vipl-border)]{% else %}text-[var(--vipl-text-muted)] bg-white/[0.06] border border-[var(--vipl-border)]{% endif %}"
+                {% if thread.status == 'new' %}text-[var(--vipl-primary)] bg-[var(--vipl-primary)]/15 border border-[var(--vipl-primary)]/25{% elif thread.status == 'acknowledged' %}text-[var(--vipl-cyan)] bg-[var(--vipl-cyan)]/15 border border-[var(--vipl-cyan)]/25{% elif thread.status == 'reopened' %}text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/15 border border-[var(--vipl-gold)]/25{% elif thread.status == 'irrelevant' %}text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/15 border border-[var(--vipl-gold)]/25{% elif thread.status == 'closed' %}text-[var(--vipl-text-muted)] bg-white/[0.06] border border-[var(--vipl-border)]{% else %}text-[var(--vipl-text-muted)] bg-white/[0.06] border border-[var(--vipl-border)]{% endif %}"
                 title="{{ thread.status|status_tooltip }}">
-                <span class="w-1.5 h-1.5 rounded-full {% if thread.status == 'new' %}bg-[var(--vipl-primary)] shadow-[0_0_6px_var(--vipl-primary)]{% elif thread.status == 'acknowledged' %}bg-[var(--vipl-cyan)] shadow-[0_0_6px_var(--vipl-cyan)]{% elif thread.status == 'reopened' %}bg-[var(--vipl-gold)] shadow-[0_0_6px_var(--vipl-gold)]{% elif thread.status == 'closed' %}bg-[var(--vipl-text-muted)]{% else %}bg-[var(--vipl-text-muted)]{% endif %}"></span>
+                <span class="w-1.5 h-1.5 rounded-full {% if thread.status == 'new' %}bg-[var(--vipl-primary)] shadow-[0_0_6px_var(--vipl-primary)]{% elif thread.status == 'acknowledged' %}bg-[var(--vipl-cyan)] shadow-[0_0_6px_var(--vipl-cyan)]{% elif thread.status == 'reopened' %}bg-[var(--vipl-gold)] shadow-[0_0_6px_var(--vipl-gold)]{% elif thread.status == 'irrelevant' %}bg-[var(--vipl-gold)]{% elif thread.status == 'closed' %}bg-[var(--vipl-text-muted)]{% else %}bg-[var(--vipl-text-muted)]{% endif %}"></span>
                 {{ thread.get_status_display }}
             </span>
 

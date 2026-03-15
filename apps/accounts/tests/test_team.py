@@ -21,6 +21,13 @@ def member_client(member_user):
     return c
 
 
+@pytest.fixture
+def triage_lead_client(triage_lead_user):
+    c = Client()
+    c.login(username="triage_lead", password="testpass123")
+    return c
+
+
 @pytest.mark.django_db
 class TestTeamListView:
     def test_admin_can_access(self, admin_client):
@@ -191,4 +198,51 @@ class TestSaveCategories:
             f"/accounts/team/{admin_user.pk}/categories/",
             {"categories": ["General Inquiry"]},
         )
+        assert response.status_code == 403
+
+
+@pytest.mark.django_db
+class TestTriageLeadRole:
+    """Tests for Triage Lead promotion/demotion and team page access."""
+
+    def test_admin_can_promote_to_triage_lead(self, admin_client, member_user):
+        response = admin_client.post(
+            f"/accounts/team/{member_user.pk}/change-role/",
+            {"role": "triage_lead"},
+        )
+        assert response.status_code == 200
+        member_user.refresh_from_db()
+        assert member_user.role == "triage_lead"
+        assert member_user.is_staff is False
+
+    def test_admin_can_demote_triage_lead_to_member(self, admin_client, triage_lead_user):
+        response = admin_client.post(
+            f"/accounts/team/{triage_lead_user.pk}/change-role/",
+            {"role": "member"},
+        )
+        assert response.status_code == 200
+        triage_lead_user.refresh_from_db()
+        assert triage_lead_user.role == "member"
+
+    def test_triage_lead_cannot_change_roles(self, triage_lead_client, member_user):
+        response = triage_lead_client.post(
+            f"/accounts/team/{member_user.pk}/change-role/",
+            {"role": "admin"},
+        )
+        assert response.status_code == 403
+
+    def test_triage_lead_can_view_team_page(self, triage_lead_client):
+        response = triage_lead_client.get("/accounts/team/")
+        assert response.status_code == 200
+
+    def test_triage_lead_can_toggle_active(self, triage_lead_client, member_user):
+        response = triage_lead_client.post(
+            f"/accounts/team/{member_user.pk}/toggle-active/"
+        )
+        assert response.status_code == 200
+        member_user.refresh_from_db()
+        assert member_user.is_active is False
+
+    def test_member_cannot_view_team_page(self, member_client):
+        response = member_client.get("/accounts/team/")
         assert response.status_code == 403

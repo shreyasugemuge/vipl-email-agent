@@ -59,6 +59,7 @@ class TestContextMenuEndpoint:
 
     def test_member_sees_claim_instead_of_assign(self, member_client, member_user, db):
         thread = create_thread()
+        # Member needs CategoryVisibility for the thread's category to see Claim
         CategoryVisibility.objects.create(user=member_user, category=thread.category)
         url = reverse("emails:thread_context_menu", args=[thread.pk])
         resp = member_client.get(url)
@@ -115,13 +116,13 @@ class TestContextMenuEndpoint:
         resp = admin_client.get(url)
         assert resp.status_code == 404
 
-    def test_admin_sees_claim_for_unassigned_thread(self, admin_client, admin_user, db):
-        """Admin should see Claim in context menu for unassigned threads."""
+    def test_admin_sees_assign_for_unassigned_thread(self, admin_client, admin_user, db):
+        """Admin (can_assign) sees Assign, not Claim, for unassigned threads."""
         thread = create_thread()  # unassigned by default
         url = reverse("emails:thread_context_menu", args=[thread.pk])
         resp = admin_client.get(url)
-        # Admin sees both Assign and Claim for unassigned threads
-        assert b"Claim" in resp.content
+        # Admin has can_assign so sees Assign (not Claim)
+        assert b"Assign" in resp.content
 
     def test_no_claim_for_assigned_thread(self, member_client, member_user, admin_user, db):
         """Member should NOT see Claim for a thread assigned to someone else."""

@@ -2,7 +2,9 @@
 {% comment %}
 Inline-editable status badge with pencil-on-hover.
 Context: thread, statuses (Thread.Status.choices).
+Editable only for owner or can_assign users; read-only for members on others' threads.
 {% endcomment %}
+{% if thread.assigned_to == request.user or user.can_assign %}
 <div class="group/sta relative inline-flex items-center" id="editable-status">
     <!-- Display mode: colored badge + pencil -->
     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-{{ thread.status|status_base }}-100 text-{{ thread.status|status_base }}-700 border border-{{ thread.status|status_base }}-300/50 cursor-pointer"
@@ -11,7 +13,6 @@ Context: thread, statuses (Thread.Status.choices).
         <span class="w-1.5 h-1.5 rounded-full bg-{{ thread.status|status_base }}-600"></span>
         {{ thread.get_status_display }}
     </span>
-    {% if thread.assigned_to == request.user or is_admin %}
     <button type="button"
             class="ml-0.5 opacity-0 group-hover/sta:opacity-100 transition-opacity text-[var(--vipl-text-dim)] hover:text-[var(--vipl-text)]"
             onclick="this.closest('#editable-status').querySelector('.sta-edit').classList.remove('hidden'); this.closest('#editable-status').querySelector('.sta-display').classList.add('hidden');"
@@ -47,5 +48,12 @@ Context: thread, statuses (Thread.Status.choices).
             </svg>
         </span>
     </div>
-    {% endif %}
 </div>
+{% else %}
+{# Read-only display for members on others' threads #}
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-semibold bg-{{ thread.status|status_base }}-50 text-{{ thread.status|status_base }}-600 border border-{{ thread.status|status_base }}-200/50"
+      title="{{ thread.status|status_tooltip }}">
+    <span class="w-1 h-1 rounded-full bg-{{ thread.status|status_base }}-500"></span>
+    {{ thread.get_status_display }}
+</span>
+{% endif %}

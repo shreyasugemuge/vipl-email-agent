@@ -9,10 +9,11 @@ class User(AbstractUser):
 
     class Role(models.TextChoices):
         ADMIN = "admin", "Admin"
+        TRIAGE_LEAD = "triage_lead", "Triage Lead"
         MEMBER = "member", "Team Member"
 
     role = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=Role.choices,
         default=Role.MEMBER,
     )
@@ -30,3 +31,28 @@ class User(AbstractUser):
     @property
     def is_admin_role(self):
         return self.role == self.Role.ADMIN
+
+    @property
+    def is_triage_lead(self):
+        """True if user has the Triage Lead role."""
+        return self.role == self.Role.TRIAGE_LEAD
+
+    @property
+    def can_assign(self):
+        """Admin and Triage Lead can assign/reassign threads."""
+        return self.role in (self.Role.ADMIN, self.Role.TRIAGE_LEAD) or self.is_staff
+
+    @property
+    def is_admin_only(self):
+        """Only admin: settings write, role management, force poll."""
+        return self.role == self.Role.ADMIN or self.is_staff
+
+    @property
+    def can_triage(self):
+        """Admin and Triage Lead: mark irrelevant, bulk actions."""
+        return self.can_assign
+
+    @property
+    def can_approve_users(self):
+        """Admin and Triage Lead: approve pending users on team page."""
+        return self.role in (self.Role.ADMIN, self.Role.TRIAGE_LEAD) or self.is_staff

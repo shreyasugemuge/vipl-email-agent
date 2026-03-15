@@ -68,7 +68,7 @@ def _require_admin(user):
 @login_required
 def team_list(request):
     """Team management page — list all users, approve/deny, set roles and categories."""
-    if not _require_admin(request.user):
+    if not request.user.can_approve_users:
         return HttpResponseForbidden("Admin access required.")
 
     users = list(User.objects.all().order_by("is_active", "-role", "first_name", "username"))
@@ -97,8 +97,8 @@ def team_list(request):
 @login_required
 @require_POST
 def toggle_active(request, pk):
-    """Activate or deactivate a user. Admin only."""
-    if not _require_admin(request.user):
+    """Activate or deactivate a user. Admin and Triage Lead."""
+    if not request.user.can_approve_users:
         return HttpResponseForbidden("Admin access required.")
 
     target = get_object_or_404(User, pk=pk)

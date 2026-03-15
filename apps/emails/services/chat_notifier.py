@@ -152,6 +152,69 @@ class ChatNotifier:
             "imageAltText": "VIPL Logo",
         }
 
+    def notify_unassigned_alert(self, count, threshold, category_breakdown=None) -> bool:
+        """Post an alert card when unassigned thread count crosses threshold.
+
+        No quiet hours check -- alerts fire regardless.
+
+        Args:
+            count: Current number of unassigned threads.
+            threshold: Configured alert threshold.
+            category_breakdown: List of dicts with 'category' and 'count' keys,
+                sorted by count descending.
+
+        Returns:
+            True if posted successfully, False otherwise.
+        """
+        # Build breakdown text
+        breakdown_text = ""
+        if category_breakdown:
+            parts = sorted(category_breakdown, key=lambda x: x.get("count", 0), reverse=True)
+            breakdown_text = ", ".join(
+                f"{item['count']} {item['category']}" for item in parts
+            )
+
+        triage_url = f"{self._tracker_url}/emails/?view=unassigned"
+
+        card = {
+            "header": self._branded_header(
+                title=f"Warning: {count} unassigned threads (threshold: {threshold})",
+                subtitle=breakdown_text or "Triage queue needs attention",
+            ),
+            "sections": [
+                {
+                    "widgets": [
+                        {
+                            "decoratedText": {
+                                "topLabel": "Category Breakdown",
+                                "text": breakdown_text or "No breakdown available",
+                            }
+                        },
+                    ]
+                },
+                {
+                    "widgets": [
+                        {
+                            "buttonList": {
+                                "buttons": [
+                                    {
+                                        "text": "Open Triage Queue",
+                                        "onClick": {
+                                            "openLink": {"url": triage_url}
+                                        },
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                VIPL_FOOTER_SECTION,
+            ],
+        }
+
+        payload = {"cardsV2": [{"cardId": "unassigned-alert", "card": card}]}
+        return self._post(payload)
+
     def notify_assignment(self, email, assignee) -> bool:
         """Post a notification card when an email is assigned to a team member.
 

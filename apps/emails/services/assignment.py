@@ -481,8 +481,8 @@ def claim_thread(thread, claimed_by):
             f"Thread {thread.pk} is already assigned to {_user_display(thread.assigned_to)}"
         )
 
-    # Admin/staff bypasses visibility check
-    if not (claimed_by.is_staff or claimed_by.role == "admin"):
+    # Admin/gatekeeper/staff bypasses visibility check
+    if not claimed_by.can_assign:
         has_visibility = CategoryVisibility.objects.filter(
             user=claimed_by,
             category=thread.category,
@@ -506,6 +506,50 @@ def claim_thread(thread, claimed_by):
         last_log.save(update_fields=["action"])
 
     return result
+
+
+def reassign_thread(thread, new_assignee, reassigned_by, reason):
+    """Member-initiated reassignment with mandatory reason.
+
+    Validates:
+    1. reassigned_by is the current assigned_to (owns the thread)
+    2. reason is non-empty after stripping whitespace
+    3. new_assignee has CategoryVisibility for thread's category
+
+    Creates REASSIGNED_BY_MEMBER ActivityLog with reason in detail field.
+    """
+    if not reason or not reason.strip():
+        raise ValueError("A reason is required when reassigning.")
+
+    if thread.assigned_to != reassigned_by:
+        raise PermissionError("You can only reassign threads assigned to you.")
+
+    # Check new_assignee has CategoryVisibility for this thread's category
+    has_visibility = CategoryVisibility.objects.filter(
+        user=new_assignee, category=thread.category,
+    ).exists()
+    if not has_visibility:
+        raise PermissionError(
+            f"{new_assignee.get_full_name()} does not handle {thread.category} threads."
+        )
+
+    old_assignee_name = _user_display(thread.assigned_to)
+
+    thread.assigned_to = new_assignee
+    thread.assigned_by = reassigned_by
+    thread.assigned_at = timezone.now()
+    thread.save(update_fields=["assigned_to", "assigned_by", "assigned_at", "updated_at"])
+
+    ActivityLog.objects.create(
+        thread=thread,
+        user=reassigned_by,
+        action=ActivityLog.Action.REASSIGNED_BY_MEMBER,
+        detail=reason.strip(),
+        old_value=old_assignee_name,
+        new_value=_user_display(new_assignee),
+    )
+
+    return thread
 
 
 def update_thread_preview(thread):
