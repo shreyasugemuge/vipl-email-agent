@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from . import views
 
@@ -6,6 +7,7 @@ app_name = "emails"
 
 urlpatterns = [
     path("", views.thread_list, name="thread_list"),
+    path("v2/", RedirectView.as_view(url="/emails/", permanent=False)),
     path("legacy/", views.email_list, name="email_list"),
     # Thread-level endpoints
     path("threads/<int:pk>/detail/", views.thread_detail, name="thread_detail"),

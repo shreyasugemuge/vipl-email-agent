@@ -1,13 +1,13 @@
 {% if save_success %}
-<div class="mb-4 px-4 py-2 bg-emerald-50 border border-emerald-200/60 rounded-lg text-xs font-medium text-emerald-700">
+<div class="mb-4 px-4 py-2 bg-[var(--vipl-cyan)]/10 border border-[var(--vipl-cyan)]/20 rounded-lg text-xs font-medium text-[var(--vipl-cyan)]">
     SLA configuration saved successfully.
 </div>
 {% endif %}
-<div class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
-    <div class="px-4 py-3 bg-slate-50/60 border-b border-slate-200/40 flex items-center justify-between">
+<div class="bg-[var(--vipl-card)] rounded-xl border border-[var(--vipl-border)] shadow-sm overflow-hidden">
+    <div class="px-4 py-3 bg-[var(--vipl-surface)] border-b border-[var(--vipl-border)] flex items-center justify-between">
         <div>
-            <h3 class="text-xs font-bold text-slate-700">SLA Configuration</h3>
-            <p class="text-[10px] text-slate-400 mt-0.5">Set acknowledgement and response hours per priority and category (business hours).</p>
+            <h3 class="text-xs font-bold text-[var(--vipl-text)]">SLA Configuration</h3>
+            <p class="text-[10px] text-[var(--vipl-text-dim)] mt-0.5">Set acknowledgement and response hours per priority and category (business hours).</p>
         </div>
         <form hx-post="{% url 'emails:settings_sla_save' %}"
               hx-target="#sla-matrix" hx-swap="innerHTML"
@@ -16,57 +16,57 @@
             <input type="hidden" name="bulk" value="true">
         </form>
     </div>
-    <div class="px-4 py-2 bg-white border-b border-slate-200/40 flex items-center gap-2 flex-wrap">
-        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Presets:</span>
+    <div class="px-4 py-2 bg-[var(--vipl-card)] border-b border-[var(--vipl-border)] flex items-center gap-2 flex-wrap">
+        <span class="text-[10px] font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider">Presets:</span>
         <button type="button" onclick="applySLAPreset('standard')"
-                class="px-2.5 py-1 text-[10px] font-semibold text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors">
+                class="px-2.5 py-1 text-[10px] font-semibold text-[var(--vipl-text-muted)] bg-[var(--vipl-card-hover)] rounded-md hover:bg-[var(--vipl-border)] transition-colors">
             Standard
         </button>
         <button type="button" onclick="applySLAPreset('aggressive')"
-                class="px-2.5 py-1 text-[10px] font-semibold text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors">
+                class="px-2.5 py-1 text-[10px] font-semibold text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/10 rounded-md hover:bg-[var(--vipl-gold)]/20 transition-colors">
             Aggressive
         </button>
         <button type="button" onclick="applySLAPreset('relaxed')"
-                class="px-2.5 py-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">
+                class="px-2.5 py-1 text-[10px] font-semibold text-[var(--vipl-cyan)] bg-[var(--vipl-cyan)]/10 rounded-md hover:bg-[var(--vipl-cyan)]/20 transition-colors">
             Relaxed
         </button>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead>
-                <tr class="border-b border-slate-200/40">
-                    <th class="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Priority</th>
-                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Category</th>
-                    <th class="text-center px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Ack Hours</th>
-                    <th class="text-center px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Respond Hours</th>
+                <tr class="border-b border-[var(--vipl-border)]">
+                    <th class="text-left px-4 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Priority</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Category</th>
+                    <th class="text-center px-3 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Ack Hours</th>
+                    <th class="text-center px-3 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Respond Hours</th>
                     <th class="px-3 py-2.5 text-[10px]"></th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in sla_matrix %}
-                <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors {% if item.priority == 'CRITICAL' %}bg-red-50/30{% endif %}">
+                <tr class="border-b border-[var(--vipl-border)] hover:bg-[var(--vipl-card-hover)] transition-colors {% if item.priority == 'CRITICAL' %}bg-[var(--vipl-red)]/5{% endif %}">
                     <form hx-post="{% url 'emails:settings_sla_save' %}"
                           hx-target="#sla-matrix" hx-swap="innerHTML">
                         {% csrf_token %}
                         <input type="hidden" name="priority" value="{{ item.priority }}">
                         <input type="hidden" name="category" value="{{ item.category }}">
-                        <td class="px-4 py-2 font-bold text-slate-700">
+                        <td class="px-4 py-2 font-bold text-[var(--vipl-text)]">
                             <span class="inline-flex items-center gap-1">
-                                <span class="w-1.5 h-1.5 rounded-full bg-{% if item.priority == 'CRITICAL' %}red{% elif item.priority == 'HIGH' %}orange{% elif item.priority == 'MEDIUM' %}amber{% else %}emerald{% endif %}-500"></span>
+                                <span class="w-1.5 h-1.5 rounded-full {% if item.priority == 'CRITICAL' %}bg-[var(--vipl-red)]{% elif item.priority == 'HIGH' %}bg-[var(--vipl-gold)]{% elif item.priority == 'MEDIUM' %}bg-[var(--vipl-gold)]/70{% else %}bg-[var(--vipl-cyan)]{% endif %}"></span>
                                 {{ item.priority }}
                             </span>
                         </td>
-                        <td class="px-3 py-2 text-slate-600">{{ item.category }}</td>
+                        <td class="px-3 py-2 text-[var(--vipl-text-muted)]">{{ item.category }}</td>
                         <td class="px-3 py-2 text-center">
                             <input type="number" name="ack_hours" value="{{ item.ack_hours }}" step="0.5" min="0.5"
-                                   class="w-16 text-xs text-center border border-slate-200/80 rounded-md px-1.5 py-1 bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 tabular-nums">
+                                   class="w-16 text-xs text-center border border-[var(--vipl-border)] rounded-md px-1.5 py-1 bg-[var(--vipl-card)] text-[var(--vipl-text)] focus:ring-2 focus:ring-[var(--vipl-primary)]/20 focus:border-[var(--vipl-primary)] tabular-nums">
                         </td>
                         <td class="px-3 py-2 text-center">
                             <input type="number" name="respond_hours" value="{{ item.respond_hours }}" step="0.5" min="0.5"
-                                   class="w-16 text-xs text-center border border-slate-200/80 rounded-md px-1.5 py-1 bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 tabular-nums">
+                                   class="w-16 text-xs text-center border border-[var(--vipl-border)] rounded-md px-1.5 py-1 bg-[var(--vipl-card)] text-[var(--vipl-text)] focus:ring-2 focus:ring-[var(--vipl-primary)]/20 focus:border-[var(--vipl-primary)] tabular-nums">
                         </td>
                         <td class="px-3 py-2">
-                            <button type="submit" class="px-2.5 py-1 text-[10px] font-bold text-primary-700 bg-primary-50 rounded-md border border-primary-200/60 hover:bg-primary-100 transition-colors">
+                            <button type="submit" class="px-2.5 py-1 text-[10px] font-bold text-white bg-[var(--vipl-primary)] rounded-md border border-[var(--vipl-primary)] hover:bg-[var(--vipl-primary-dim)] transition-colors">
                                 Save
                             </button>
                         </td>

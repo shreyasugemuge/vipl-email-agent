@@ -13,7 +13,7 @@ Context: thread, priorities (list of valid priorities).
     </span>
     {% if thread.assigned_to == request.user or is_admin %}
     <button type="button"
-            class="ml-0.5 opacity-0 group-hover/pri:opacity-100 transition-opacity text-slate-400 hover:text-slate-600"
+            class="ml-0.5 opacity-0 group-hover/pri:opacity-100 transition-opacity text-[var(--vipl-text-dim)] hover:text-[var(--vipl-text)]"
             onclick="this.closest('#editable-priority').querySelector('.pri-edit').classList.remove('hidden'); this.closest('#editable-priority').querySelector('.pri-pill').classList.add('hidden'); this.classList.add('hidden');"
             title="Edit priority">
         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,7 +29,7 @@ Context: thread, priorities (list of valid priorities).
               hx-indicator="#pri-loading">
             {% csrf_token %}
             <select name="priority"
-                    class="text-[10px] font-bold uppercase border border-slate-300 rounded-full px-2 py-0.5 bg-white text-slate-600 focus:ring-2 focus:ring-primary-500/15 focus:border-primary-300 cursor-pointer"
+                    class="vipl-select text-[10px] font-bold uppercase rounded-full px-2 py-0.5 cursor-pointer"
                     hx-trigger="change"
                     hx-post="{% url 'emails:edit_priority' thread.pk %}"
                     hx-target="#thread-detail-panel"
@@ -42,7 +42,7 @@ Context: thread, priorities (list of valid priorities).
             </select>
         </form>
         <span id="pri-loading" class="htmx-indicator ml-1">
-            <svg class="w-3 h-3 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
+            <svg class="w-3 h-3 animate-spin text-[var(--vipl-text-dim)]" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
             </svg>

@@ -1,7 +1,7 @@
 {% load socialaccount %}
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,16 +12,80 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+
+    <!-- Anti-FOUC: apply theme before render -->
+    <script>
+    (function() {
+        var saved = localStorage.getItem('vipl-theme');
+        if (!saved) saved = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', saved);
+    })();
+    </script>
+
     <style>
+        /* ===== THEME VARIABLES ===== */
+        [data-theme="dark"] {
+            --login-bg: #0f1117;
+            --login-card-bg: rgba(30, 27, 46, 0.95);
+            --login-text: #e0e0e0;
+            --login-text-dim: #8888aa;
+            --login-text-muted: #555577;
+            --login-border: #2a2a3a;
+            --login-input-bg: rgba(255,255,255,0.05);
+            --login-input-border: #2a2a3a;
+            --login-primary: #e06a97;
+            --login-primary-dim: rgba(168,51,98,0.15);
+            --login-glow: rgba(168,51,98,0.3);
+            --login-scanline: rgba(0,0,0,0.015);
+            --login-grid: rgba(168,51,98,0.04);
+            --login-accent-line: rgba(255,255,255,0.06);
+            --login-footer-text: rgba(224,106,151,0.25);
+            --login-google-bg: rgba(255,255,255,0.06);
+            --login-google-border: rgba(255,255,255,0.1);
+            --login-google-text: #e0e0e0;
+            --login-google-hover-bg: rgba(255,255,255,0.1);
+            --login-dot-bg: rgba(224,106,151,0.3);
+        }
+        [data-theme="light"] {
+            --login-bg: #f8fafc;
+            --login-card-bg: rgba(255, 255, 255, 0.97);
+            --login-text: #1e293b;
+            --login-text-dim: #64748b;
+            --login-text-muted: #94a3b8;
+            --login-border: #e2e8f0;
+            --login-input-bg: rgba(241,245,249,0.8);
+            --login-input-border: #e2e8f0;
+            --login-primary: #a83262;
+            --login-primary-dim: rgba(168,51,98,0.08);
+            --login-glow: rgba(168,51,98,0.15);
+            --login-scanline: transparent;
+            --login-grid: rgba(168,51,98,0.03);
+            --login-accent-line: rgba(0,0,0,0.06);
+            --login-footer-text: rgba(168,50,98,0.35);
+            --login-google-bg: #ffffff;
+            --login-google-border: #e2e8f0;
+            --login-google-text: #334155;
+            --login-google-hover-bg: #f8fafc;
+            --login-dot-bg: rgba(168,50,98,0.3);
+        }
+
         .gradient-bg {
-            background: #0f1117;
+            background: var(--login-bg);
+        }
+        [data-theme="dark"] .gradient-bg {
             background-image:
-                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(168,51,98,0.15) 0%, transparent 60%),
+                radial-gradient(ellipse 80% 50% at 50% -20%, var(--login-primary-dim) 0%, transparent 60%),
                 radial-gradient(ellipse 60% 40% at 80% 50%, rgba(120,40,80,0.08) 0%, transparent 50%),
                 radial-gradient(ellipse 60% 40% at 20% 80%, rgba(168,51,98,0.06) 0%, transparent 50%);
         }
+        [data-theme="light"] .gradient-bg {
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(168,51,98,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 50%, rgba(168,51,98,0.03) 0%, transparent 50%);
+        }
+
         .glass-card {
-            background: rgba(255,255,255,0.97);
+            background: var(--login-card-bg);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
         }
@@ -32,8 +96,8 @@
         /* Retro grid background */
         .retro-grid {
             background-image:
-                linear-gradient(rgba(168,51,98,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(168,51,98,0.04) 1px, transparent 1px);
+                linear-gradient(var(--login-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--login-grid) 1px, transparent 1px);
             background-size: 40px 40px;
         }
 
@@ -46,8 +110,8 @@
                 0deg,
                 transparent,
                 transparent 2px,
-                rgba(0,0,0,0.015) 2px,
-                rgba(0,0,0,0.015) 4px
+                var(--login-scanline) 2px,
+                var(--login-scanline) 4px
             );
             pointer-events: none;
             z-index: 1;
@@ -63,7 +127,7 @@
             inset: -1px;
             border-radius: 1.25rem;
             padding: 1px;
-            background: linear-gradient(135deg, rgba(168,51,98,0.3), rgba(255,255,255,0.1) 40%, rgba(168,51,98,0.15) 80%, rgba(255,255,255,0.05));
+            background: linear-gradient(135deg, var(--login-glow), rgba(255,255,255,0.1) 40%, var(--login-primary-dim) 80%, rgba(255,255,255,0.05));
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: xor;
@@ -71,9 +135,14 @@
             pointer-events: none;
         }
 
-        /* Logo background blend — makes the white/colored rectangle transparent */
+        /* Logo background blend -- makes the white/colored rectangle transparent */
         .logo-blend {
             mix-blend-mode: multiply;
+        }
+        /* In dark mode, use different blend to keep logo visible */
+        [data-theme="dark"] .logo-blend {
+            mix-blend-mode: normal;
+            border-radius: 0.5rem;
         }
 
         /* Subtle float animation for decorative elements */
@@ -90,21 +159,21 @@
 </head>
 <body class="gradient-bg retro-grid scanlines font-sans min-h-screen flex items-center justify-center p-4">
     <!-- Decorative geometric shapes -->
-    <div class="fixed top-16 left-12 w-20 h-20 border border-primary-500/10 rounded-lg rotate-12 float-slow hidden md:block"></div>
-    <div class="fixed bottom-20 right-16 w-16 h-16 border border-primary-500/8 rounded-full float-delayed hidden md:block"></div>
-    <div class="fixed top-1/3 right-1/5 w-1.5 h-1.5 bg-primary-400/30 rounded-full float-slow hidden md:block"></div>
-    <div class="fixed bottom-1/3 left-1/5 w-1 h-1 bg-amber-400/20 rounded-full float-delayed hidden md:block"></div>
+    <div class="fixed top-16 left-12 w-20 h-20 border border-[var(--login-primary)]/10 rounded-lg rotate-12 float-slow hidden md:block"></div>
+    <div class="fixed bottom-20 right-16 w-16 h-16 border border-[var(--login-primary)]/8 rounded-full float-delayed hidden md:block"></div>
+    <div class="fixed top-1/3 right-1/5 w-1.5 h-1.5 bg-[var(--login-primary)]/30 rounded-full float-slow hidden md:block"></div>
+    <div class="fixed bottom-1/3 left-1/5 w-1 h-1 bg-[var(--login-primary)]/20 rounded-full float-delayed hidden md:block"></div>
 
     <!-- Decorative horizontal accent lines -->
-    <div class="fixed top-1/4 left-0 w-24 h-px bg-gradient-to-r from-transparent via-primary-500/20 to-transparent hidden md:block"></div>
-    <div class="fixed bottom-1/4 right-0 w-32 h-px bg-gradient-to-l from-transparent via-primary-500/15 to-transparent hidden md:block"></div>
+    <div class="fixed top-1/4 left-0 w-24 h-px bg-gradient-to-r from-transparent via-[var(--login-primary)]/20 to-transparent hidden md:block"></div>
+    <div class="fixed bottom-1/4 right-0 w-32 h-px bg-gradient-to-l from-transparent via-[var(--login-primary)]/15 to-transparent hidden md:block"></div>
 
     <div class="w-full max-w-[380px] relative z-10">
         <!-- System status accent -->
         <div class="flex items-center justify-center gap-2 mb-6">
-            <div class="h-px flex-1 bg-gradient-to-r from-transparent to-primary-500/20"></div>
-            <span class="mono text-[10px] text-primary-400/40 font-medium tracking-widest uppercase">vipl.triage.sys</span>
-            <div class="h-px flex-1 bg-gradient-to-l from-transparent to-primary-500/20"></div>
+            <div class="h-px flex-1 bg-gradient-to-r from-transparent to-[var(--login-primary)]/20"></div>
+            <span class="mono text-[10px] text-[var(--login-primary)]/40 font-medium tracking-widest uppercase">vipl.triage.sys</span>
+            <div class="h-px flex-1 bg-gradient-to-l from-transparent to-[var(--login-primary)]/20"></div>
         </div>
 
         <div class="glass-card card-glow rounded-2xl shadow-2xl shadow-black/30 p-9">
@@ -115,13 +184,13 @@
 
                 <!-- Decorative line accent -->
                 <div class="flex items-center gap-3 mb-5">
-                    <div class="flex-1 h-px bg-gradient-to-r from-transparent to-slate-200"></div>
-                    <div class="w-1.5 h-1.5 rounded-full bg-primary-500/30"></div>
-                    <div class="flex-1 h-px bg-gradient-to-l from-transparent to-slate-200"></div>
+                    <div class="flex-1 h-px bg-gradient-to-r from-transparent to-[var(--login-border)]"></div>
+                    <div class="w-1.5 h-1.5 rounded-full" style="background: var(--login-dot-bg);"></div>
+                    <div class="flex-1 h-px bg-gradient-to-l from-transparent to-[var(--login-border)]"></div>
                 </div>
 
-                <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Welcome back</h1>
-                <p class="text-[13px] text-slate-400 mt-1.5 font-medium tracking-wide">Sign in to VIPL Triage</p>
+                <h1 class="text-xl font-extrabold tracking-tight" style="color: var(--login-text);">Welcome back</h1>
+                <p class="text-[13px] mt-1.5 font-medium tracking-wide" style="color: var(--login-text-dim);">Sign in to VIPL Triage</p>
             </div>
 
             <!-- Error messages -->
@@ -137,9 +206,9 @@
             {% endif %}
 
             {% if request.GET.pending %}
-            <div class="mb-5 p-3 bg-blue-50 border border-blue-100 rounded-xl text-[13px] text-blue-600 font-medium flex items-center gap-2.5">
-                <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                    <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="mb-5 p-3 bg-[var(--login-primary)]/10 border border-[var(--login-primary)]/20 rounded-xl text-[13px] font-medium flex items-center gap-2.5" style="color: var(--login-primary);">
+                <div class="w-7 h-7 rounded-lg bg-[var(--login-primary)]/15 flex items-center justify-center shrink-0">
+                    <svg class="w-3.5 h-3.5" style="color: var(--login-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
@@ -173,26 +242,36 @@
             <form method="post" class="space-y-4">
                 {% csrf_token %}
                 <div>
-                    <label for="id_username" class="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Username</label>
+                    <label for="id_username" class="block text-[11px] font-bold mb-1.5 uppercase tracking-wider" style="color: var(--login-text-dim);">Username</label>
                     <input type="text" name="username" id="id_username" autofocus
-                           class="input-focus w-full px-3.5 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-primary-400 transition-all placeholder:text-slate-400"
+                           class="input-focus w-full px-3.5 py-2.5 rounded-xl text-sm font-medium focus:outline-none transition-all"
+                           style="background: var(--login-input-bg); border: 1px solid var(--login-input-border); color: var(--login-text);"
+                           onfocus="this.style.borderColor='var(--login-primary)'"
+                           onblur="this.style.borderColor='var(--login-input-border)'"
                            placeholder="Enter your username">
                 </div>
                 <div>
-                    <label for="id_password" class="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Password</label>
+                    <label for="id_password" class="block text-[11px] font-bold mb-1.5 uppercase tracking-wider" style="color: var(--login-text-dim);">Password</label>
                     <input type="password" name="password" id="id_password"
-                           class="input-focus w-full px-3.5 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-primary-400 transition-all placeholder:text-slate-400"
+                           class="input-focus w-full px-3.5 py-2.5 rounded-xl text-sm font-medium focus:outline-none transition-all"
+                           style="background: var(--login-input-bg); border: 1px solid var(--login-input-border); color: var(--login-text);"
+                           onfocus="this.style.borderColor='var(--login-primary)'"
+                           onblur="this.style.borderColor='var(--login-input-border)'"
                            placeholder="Enter your password">
                 </div>
                 <button type="submit"
-                        class="w-full py-2.5 px-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white text-sm font-bold rounded-xl hover:from-primary-700 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:ring-offset-2 transition-all shadow-lg shadow-primary-500/20 active:scale-[0.98]">
+                        class="w-full py-2.5 px-4 text-white text-sm font-bold rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all shadow-lg active:scale-[0.98]"
+                        style="background: linear-gradient(to right, var(--login-primary), var(--login-primary)); box-shadow: 0 4px 14px var(--login-primary-dim); --tw-ring-color: var(--login-primary);">
                     Sign in
                 </button>
             </form>
             {% else %}
             <!-- GOOGLE MODE: prominent Google Sign-In button -->
             <a href="{% provider_login_url 'google' %}" aria-label="Sign in with your Google Workspace account"
-               class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:ring-offset-2 transition-all shadow-sm active:scale-[0.98]">
+               class="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all shadow-sm active:scale-[0.98]"
+               style="background: var(--login-google-bg); border: 1px solid var(--login-google-border); color: var(--login-google-text); --tw-ring-color: var(--login-primary);"
+               onmouseover="this.style.background='var(--login-google-hover-bg)'"
+               onmouseout="this.style.background='var(--login-google-bg)'">
                 <svg class="w-5 h-5" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -203,13 +282,15 @@
             </a>
 
             <!-- Workspace domain hint -->
-            <p class="text-center text-[10px] text-slate-400 mt-3 font-medium">@vidarbhainfotech.com accounts only</p>
+            <p class="text-center text-[10px] mt-3 font-medium" style="color: var(--login-text-dim);">@vidarbhainfotech.com accounts only</p>
             {% endif %}
         </div>
 
         {% if debug %}
         <div class="text-center mt-4">
-            <a href="{% url 'dev_login' %}" class="mono text-[11px] text-amber-400/50 hover:text-amber-400 font-medium transition-colors tracking-wider">
+            <a href="{% url 'dev_login' %}" class="mono text-[11px] font-medium transition-colors tracking-wider" style="color: var(--login-text-muted);"
+               onmouseover="this.style.color='var(--login-primary)'"
+               onmouseout="this.style.color='var(--login-text-muted)'">
                 dev_login --pick-role
             </a>
         </div>
@@ -217,9 +298,9 @@
 
         <!-- Footer with retro accent -->
         <div class="flex items-center justify-center gap-3 mt-8">
-            <div class="h-px flex-1 bg-gradient-to-r from-transparent to-white/[0.06]"></div>
-            <p class="text-[10px] text-primary-200/25 font-semibold tracking-widest uppercase">Vidarbha Infotech Pvt. Ltd.</p>
-            <div class="h-px flex-1 bg-gradient-to-l from-transparent to-white/[0.06]"></div>
+            <div class="h-px flex-1 bg-gradient-to-r from-transparent" style="--tw-gradient-to: var(--login-accent-line);"></div>
+            <p class="text-[10px] font-semibold tracking-widest uppercase" style="color: var(--login-footer-text);">Vidarbha Infotech Pvt. Ltd.</p>
+            <div class="h-px flex-1 bg-gradient-to-l from-transparent" style="--tw-gradient-to: var(--login-accent-line);"></div>
         </div>
     </div>
 </body>

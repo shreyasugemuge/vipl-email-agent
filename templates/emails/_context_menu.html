@@ -1,11 +1,11 @@
 {% load email_tags %}
 {# Context menu partial: role-aware grouped actions for thread cards #}
 
-<div class="bg-slate-800 text-slate-100 rounded-lg shadow-2xl border border-slate-700 py-1 min-w-[200px]">
+<div class="bg-[var(--vipl-card)] text-[var(--vipl-text)] rounded-lg shadow-2xl border border-[var(--vipl-border)] py-1 min-w-[200px]">
 
     {# Group 1: Read state #}
     <button role="menuitem" tabindex="-1"
-            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-slate-700/60 transition-colors"
+            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-[var(--vipl-card-hover)] transition-colors"
             hx-post="{% url 'emails:mark_thread_unread' thread.pk %}"
             hx-target="#thread-detail-panel"
             onclick="closeContextMenu()">
@@ -15,15 +15,15 @@
             </svg>
             Mark Unread
         </span>
-        <kbd class="text-slate-500 text-[10px] font-mono ml-4">U</kbd>
+        <kbd class="text-[var(--vipl-text-muted)] text-[10px] font-mono ml-4">U</kbd>
     </button>
 
     {# Group 2: Assignment #}
-    <hr class="border-slate-700 my-1">
+    <hr class="border-[var(--vipl-border)] my-1">
 
     {% if is_admin %}
     <button role="menuitem" tabindex="-1"
-            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-slate-700/60 transition-colors"
+            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-[var(--vipl-card-hover)] transition-colors"
             hx-get="{% url 'emails:thread_detail' thread.pk %}"
             hx-target="#thread-detail-panel"
             onclick="closeContextMenu()">
@@ -33,13 +33,13 @@
             </svg>
             Assign to...
         </span>
-        <kbd class="text-slate-500 text-[10px] font-mono ml-4">A</kbd>
+        <kbd class="text-[var(--vipl-text-muted)] text-[10px] font-mono ml-4">A</kbd>
     </button>
     {% endif %}
 
     {% if can_claim %}
     <button role="menuitem" tabindex="-1"
-            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-slate-700/60 transition-colors"
+            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-[var(--vipl-card-hover)] transition-colors"
             hx-post="{% url 'emails:claim_thread' thread.pk %}"
             hx-target="#thread-detail-panel"
             onclick="closeContextMenu()">
@@ -49,18 +49,18 @@
             </svg>
             Claim
         </span>
-        <kbd class="text-slate-500 text-[10px] font-mono ml-4">C</kbd>
+        <kbd class="text-[var(--vipl-text-muted)] text-[10px] font-mono ml-4">C</kbd>
     </button>
     {% endif %}
 
     {# Group 3: Status #}
     {% if can_acknowledge or can_close %}
-    <hr class="border-slate-700 my-1">
+    <hr class="border-[var(--vipl-border)] my-1">
     {% endif %}
 
     {% if can_acknowledge %}
     <button role="menuitem" tabindex="-1"
-            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-slate-700/60 transition-colors"
+            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-[var(--vipl-card-hover)] transition-colors"
             hx-post="{% url 'emails:edit_status' thread.pk %}"
             hx-vals='{"new_status": "acknowledged"}'
             hx-target="#thread-detail-panel"
@@ -71,13 +71,13 @@
             </svg>
             Acknowledge
         </span>
-        <kbd class="text-slate-500 text-[10px] font-mono ml-4">K</kbd>
+        <kbd class="text-[var(--vipl-text-muted)] text-[10px] font-mono ml-4">K</kbd>
     </button>
     {% endif %}
 
     {% if can_close %}
     <button role="menuitem" tabindex="-1"
-            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-slate-700/60 transition-colors"
+            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-[var(--vipl-card-hover)] transition-colors"
             hx-post="{% url 'emails:edit_status' thread.pk %}"
             hx-vals='{"new_status": "closed"}'
             hx-target="#thread-detail-panel"
@@ -88,15 +88,15 @@
             </svg>
             Close
         </span>
-        <kbd class="text-slate-500 text-[10px] font-mono ml-4">X</kbd>
+        <kbd class="text-[var(--vipl-text-muted)] text-[10px] font-mono ml-4">X</kbd>
     </button>
     {% endif %}
 
     {# Group 4: Spam #}
-    <hr class="border-slate-700 my-1">
+    <hr class="border-[var(--vipl-border)] my-1">
 
     <button role="menuitem" tabindex="-1"
-            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-slate-700/60 transition-colors"
+            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-[var(--vipl-card-hover)] transition-colors"
             hx-post="{% url 'emails:mark_spam' thread.pk %}"
             hx-target="#thread-detail-panel"
             onclick="closeContextMenu()">
@@ -106,12 +106,12 @@
             </svg>
             Mark Spam
         </span>
-        <kbd class="text-slate-500 text-[10px] font-mono ml-4">S</kbd>
+        <kbd class="text-[var(--vipl-text-muted)] text-[10px] font-mono ml-4">S</kbd>
     </button>
 
     {% if is_admin %}
     <button role="menuitem" tabindex="-1"
-            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-slate-700/60 transition-colors"
+            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-[var(--vipl-card-hover)] transition-colors"
             hx-post="{% url 'emails:whitelist_thread_sender' thread.pk %}"
             hx-target="#thread-detail-panel"
             onclick="closeContextMenu()">
@@ -121,7 +121,7 @@
             </svg>
             Whitelist Sender
         </span>
-        <kbd class="text-slate-500 text-[10px] font-mono ml-4">W</kbd>
+        <kbd class="text-[var(--vipl-text-muted)] text-[10px] font-mono ml-4">W</kbd>
     </button>
     {% endif %}
 </div>

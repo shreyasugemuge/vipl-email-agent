@@ -2,7 +2,7 @@
 
 <div id="config-editor">
     {% if save_success %}
-    <div class="mb-4 px-4 py-2 bg-emerald-50 border border-emerald-200/60 rounded-lg text-xs font-medium text-emerald-700">
+    <div class="mb-4 px-4 py-2 bg-[var(--vipl-cyan)]/10 border border-[var(--vipl-cyan)]/20 rounded-lg text-xs font-medium text-[var(--vipl-cyan)]">
         Configuration saved successfully.
     </div>
     {% endif %}
@@ -10,9 +10,9 @@
     {% if config_groups %}
     <div class="space-y-4">
         {% for category, configs in config_groups.items %}
-        <div class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 bg-slate-50/60 border-b border-slate-200/40">
-                <h3 class="text-xs font-bold text-slate-700 capitalize">{{ category }}</h3>
+        <div class="bg-[var(--vipl-card)] rounded-xl border border-[var(--vipl-border)] shadow-sm overflow-hidden">
+            <div class="px-4 py-3 bg-[var(--vipl-surface)] border-b border-[var(--vipl-border)]">
+                <h3 class="text-xs font-bold text-[var(--vipl-text)] capitalize">{{ category }}</h3>
             </div>
             <form hx-post="{% url 'emails:settings_config_save' %}"
                   hx-target="#config-editor" hx-swap="innerHTML"
@@ -23,15 +23,15 @@
                 {% for cfg in configs %}
                 <div class="flex flex-col gap-1">
                     <div class="flex items-center gap-2">
-                        <label class="text-xs font-semibold text-slate-600 min-w-[200px]" for="config_{{ cfg.key }}">
+                        <label class="text-xs font-semibold text-[var(--vipl-text-muted)] min-w-[200px]" for="config_{{ cfg.key }}">
                             {{ cfg.key }}
                         </label>
-                        <span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-500">
+                        <span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--vipl-card-hover)] text-[var(--vipl-text-dim)]">
                             {{ cfg.value_type }}
                         </span>
                     </div>
                     {% if cfg.description %}
-                    <p class="text-[10px] text-slate-400">{{ cfg.description }}</p>
+                    <p class="text-[10px] text-[var(--vipl-text-dim)]">{{ cfg.description }}</p>
                     {% endif %}
 
                     {% if cfg.value_type == "bool" %}
@@ -39,34 +39,34 @@
                         <input type="hidden" name="config_{{ cfg.key }}" value="false">
                         <input type="checkbox" name="config_{{ cfg.key }}" value="true"
                                {% if cfg.typed_value %}checked{% endif %}
-                               class="rounded border-slate-300 text-primary-600 focus:ring-primary-500/20">
-                        <span class="text-xs text-slate-600">{% if cfg.typed_value %}Enabled{% else %}Disabled{% endif %}</span>
+                               class="rounded border-[var(--vipl-border)] text-[var(--vipl-primary)] focus:ring-[var(--vipl-primary)]/20">
+                        <span class="text-xs text-[var(--vipl-text-muted)]">{% if cfg.typed_value %}Enabled{% else %}Disabled{% endif %}</span>
                     </label>
                     {% elif cfg.value_type == "json" %}
                     <div class="flex items-start gap-1 w-full">
                         <textarea name="config_{{ cfg.key }}" id="config_{{ cfg.key }}" rows="3"
-                                  class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none w-full font-mono">{{ cfg.value }}</textarea>
+                                  class="text-sm border border-[var(--vipl-border)] rounded-lg px-3 py-1.5 bg-[var(--vipl-card)] text-[var(--vipl-text)] focus:ring-2 focus:ring-[var(--vipl-primary)]/20 focus:border-[var(--vipl-primary)] outline-none w-full font-mono">{{ cfg.value }}</textarea>
                         <span class="config-validation text-xs ml-1 text-transparent select-none" aria-hidden="true">-</span>
                     </div>
                     {% elif cfg.value_type == "int" %}
                     <div class="flex items-center gap-1">
                         <input type="number" name="config_{{ cfg.key }}" value="{{ cfg.value }}" step="1"
                                id="config_{{ cfg.key }}"
-                               class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none max-w-xs">
+                               class="text-sm border border-[var(--vipl-border)] rounded-lg px-3 py-1.5 bg-[var(--vipl-card)] text-[var(--vipl-text)] focus:ring-2 focus:ring-[var(--vipl-primary)]/20 focus:border-[var(--vipl-primary)] outline-none max-w-xs">
                         <span class="config-validation text-xs ml-1 text-transparent select-none" aria-hidden="true">-</span>
                     </div>
                     {% elif cfg.value_type == "float" %}
                     <div class="flex items-center gap-1">
                         <input type="number" name="config_{{ cfg.key }}" value="{{ cfg.value }}" step="0.1"
                                id="config_{{ cfg.key }}"
-                               class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none max-w-xs">
+                               class="text-sm border border-[var(--vipl-border)] rounded-lg px-3 py-1.5 bg-[var(--vipl-card)] text-[var(--vipl-text)] focus:ring-2 focus:ring-[var(--vipl-primary)]/20 focus:border-[var(--vipl-primary)] outline-none max-w-xs">
                         <span class="config-validation text-xs ml-1 text-transparent select-none" aria-hidden="true">-</span>
                     </div>
                     {% else %}
                     <div class="flex items-center gap-1 w-full">
                         <input type="text" name="config_{{ cfg.key }}" value="{{ cfg.value }}"
                                id="config_{{ cfg.key }}"
-                               class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none w-full">
+                               class="text-sm border border-[var(--vipl-border)] rounded-lg px-3 py-1.5 bg-[var(--vipl-card)] text-[var(--vipl-text)] focus:ring-2 focus:ring-[var(--vipl-primary)]/20 focus:border-[var(--vipl-primary)] outline-none w-full">
                         <span class="config-validation text-xs ml-1 text-transparent select-none" aria-hidden="true">-</span>
                     </div>
                     {% endif %}
@@ -75,7 +75,7 @@
 
                 <div class="pt-2">
                     <button type="submit"
-                            class="px-4 py-2 text-xs font-bold text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+                            class="px-4 py-2 text-xs font-bold text-white bg-[var(--vipl-primary)] rounded-lg hover:bg-[var(--vipl-primary-dim)] transition-colors shadow-sm">
                         Save {{ category }}
                     </button>
                 </div>
@@ -84,7 +84,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="text-sm text-slate-400 italic py-4 text-center">
+    <div class="text-sm text-[var(--vipl-text-dim)] italic py-4 text-center">
         No system configuration entries found.
     </div>
     {% endif %}
@@ -111,6 +111,6 @@ document.addEventListener('input', function(e) {
     }
 
     indicator.textContent = valid ? '\u2713' : '\u2717';
-    indicator.className = 'config-validation text-xs ml-1 select-none ' + (valid ? 'text-emerald-500' : 'text-red-400');
+    indicator.className = 'config-validation text-xs ml-1 select-none ' + (valid ? 'text-[var(--vipl-cyan)]' : 'text-[var(--vipl-red)]');
 });
 </script>

@@ -2,20 +2,20 @@
 <div class="flex items-center gap-1" title="{% for v in active_viewers %}{{ v.user.get_full_name|default:v.user.username }}{% if not forloop.last %}, {% endif %}{% endfor %} viewing">
     <div class="flex -space-x-2">
         {% for v in active_viewers|slice:":2" %}
-        <div class="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold shrink-0
-            {% if v.user.avatar_url %}{% else %}bg-blue-100 text-blue-600{% endif %}"
+        <div class="w-6 h-6 rounded-full border-2 border-[var(--vipl-surface)] flex items-center justify-center text-[8px] font-bold shrink-0
+            {% if v.user.avatar_url %}{% else %}bg-[var(--vipl-cyan)]/15 text-[var(--vipl-cyan)]{% endif %}"
             {% if v.user.avatar_url %}style="background-image: url('{{ v.user.avatar_url }}'); background-size: cover;"{% endif %}>
             {% if not v.user.avatar_url %}{{ v.user.first_name.0|default:v.user.username.0|upper }}{% endif %}
         </div>
         {% endfor %}
         {% with extra=active_viewers|length %}
         {% if extra > 2 %}
-        <div class="w-6 h-6 rounded-full border-2 border-white bg-slate-200 text-slate-600 flex items-center justify-center text-[8px] font-bold shrink-0">
+        <div class="w-6 h-6 rounded-full border-2 border-[var(--vipl-surface)] bg-[var(--vipl-card)] text-[var(--vipl-text-muted)] flex items-center justify-center text-[8px] font-bold shrink-0">
             +{{ extra|add:"-2" }}
         </div>
         {% endif %}
         {% endwith %}
     </div>
-    <span class="text-[10px] font-medium text-slate-500 animate-pulse">viewing</span>
+    <span class="text-[10px] font-medium text-[var(--vipl-text-dim)] animate-pulse">viewing</span>
 </div>
 {% endif %}

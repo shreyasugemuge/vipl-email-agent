@@ -2,15 +2,14 @@
 
 <div id="thread-card-{{ thread.pk }}"
      {% if oob %}hx-swap-oob="outerHTML"{% endif %}
-     class="card-hover border-l-[3px] {{ thread.priority|priority_border }} mx-2 my-1.5 rounded-xl px-3.5 py-3 cursor-pointer border border-slate-200/50 hover:border-slate-300/70 transition-all duration-200
-            {% if thread.is_unread %}bg-white shadow-sm{% else %}bg-white/80{% endif %}"
-     style="backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px)"
+     class="vipl-card mx-2 my-1 rounded px-3.5 py-3 cursor-pointer transition-all duration-150 bg-[var(--vipl-card)]
+            {% if thread.is_unread %}border-l-2 border-l-[var(--vipl-cyan)]{% else %}border-l-2 border-l-transparent{% endif %}"
      hx-get="{% url 'emails:thread_detail' thread.pk %}"
      hx-target="#thread-detail-panel"
      hx-swap="innerHTML"
      role="article" tabindex="0" aria-label="{{ thread.subject }}"
      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"
-     onclick="document.querySelectorAll('.card-selected').forEach(c=>c.classList.remove('card-selected'));this.classList.add('card-selected');"
+     onclick="document.querySelectorAll('.vipl-card-selected').forEach(c=>c.classList.remove('vipl-card-selected'));this.classList.add('vipl-card-selected');"
      oncontextmenu="showContextMenu(event, {{ thread.pk }})"
      ontouchstart="startLongPress(event, {{ thread.pk }})"
      ontouchend="cancelLongPress()"
@@ -20,47 +19,45 @@
     <div class="flex items-center justify-between gap-2 mb-1">
         <div class="flex items-center gap-1.5 min-w-0 flex-1">
             {% if thread.is_unread %}
-            <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0" style="box-shadow: 0 0 6px rgba(59,130,246,0.5)"></span>
+            <span class="w-2 h-2 rounded-full bg-[var(--vipl-cyan)] shrink-0" style="box-shadow: 0 0 6px var(--vipl-cyan)"></span>
             {% endif %}
-            <span class="text-[13px] tracking-tight {% if thread.is_unread %}font-semibold text-slate-900{% else %}font-medium text-slate-600{% endif %} truncate" style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif">{{ thread.last_sender|default:thread.last_sender_address|default:"Unknown" }}</span>
+            <span class="text-[12px] tracking-tight font-mono {% if thread.is_unread %}font-semibold text-[var(--vipl-text)]{% else %}font-normal text-[var(--vipl-text-dim)]{% endif %} truncate">{{ thread.last_sender|default:thread.last_sender_address|default:"Unknown" }}</span>
             {% if thread.last_sender and thread.last_sender_address %}
-            <span class="text-[11px] text-slate-400/80 truncate hidden sm:inline tracking-tight">{{ thread.last_sender_address|truncatechars:22 }}</span>
+            <span class="text-[10px] text-[var(--vipl-text-muted)] truncate hidden sm:inline">{{ thread.last_sender_address|truncatechars:22 }}</span>
             {% endif %}
         </div>
         <div class="flex items-center gap-2 shrink-0">
-            <span class="text-[11px] text-slate-400 tabular-nums tracking-tight">{{ thread.last_message_at|time_ago }}</span>
+            <span class="text-[10px] text-[var(--vipl-text-muted)] tabular-nums font-mono">{{ thread.last_message_at|time_ago }}</span>
             {% if thread.email_count|default:thread.message_count != 1 %}
-            <span class="text-[10px] font-semibold text-slate-500 bg-slate-100/80 px-1.5 py-0.5 rounded-md tabular-nums">{{ thread.email_count|default:thread.message_count }}</span>
+            <span class="font-pixel text-[7px] text-[var(--vipl-primary)] bg-[var(--vipl-primary)]/10 px-1.5 py-0.5 rounded tabular-nums">{{ thread.email_count|default:thread.message_count }}</span>
             {% endif %}
         </div>
     </div>
 
     <!-- Row 2: Subject -->
     <div class="mb-2">
-        <span class="text-[13px] leading-snug tracking-tight {% if thread.is_unread %}font-semibold text-slate-800{% else %}font-normal text-slate-500{% endif %} truncate block" style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif">{{ thread.subject|default:"(no subject)" }}</span>
+        <span class="text-[12px] leading-snug font-mono {% if thread.is_unread %}font-semibold text-[var(--vipl-text)]{% else %}font-normal text-[var(--vipl-text-dim)]{% endif %} truncate block">{{ thread.subject|default:"(no subject)" }}</span>
     </div>
 
     <!-- Row 3: Tags bar -->
     <div class="flex items-center justify-between gap-1.5">
-        <!-- Left: metadata chips -->
         <div class="flex items-center gap-1 min-w-0 flex-wrap">
             {% if thread.priority %}
-            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide
-                {% if thread.priority == 'CRITICAL' %}text-red-700{% elif thread.priority == 'HIGH' %}text-orange-700{% elif thread.priority == 'MEDIUM' %}text-amber-700{% else %}text-emerald-700{% endif %}"
-                style="{% if thread.priority == 'CRITICAL' %}background: rgba(239,68,68,0.1){% elif thread.priority == 'HIGH' %}background: rgba(249,115,22,0.1){% elif thread.priority == 'MEDIUM' %}background: rgba(245,158,11,0.1){% else %}background: rgba(16,185,129,0.1){% endif %}"
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider
+                {% if thread.priority == 'CRITICAL' %}text-[var(--vipl-red)] bg-[var(--vipl-red)]/10 border border-[var(--vipl-red)]/20{% elif thread.priority == 'HIGH' %}text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/10 border border-[var(--vipl-gold)]/20{% elif thread.priority == 'MEDIUM' %}text-[var(--vipl-cyan)] bg-[var(--vipl-cyan)]/10 border border-[var(--vipl-cyan)]/20{% else %}text-[var(--vipl-primary)] bg-[var(--vipl-primary)]/10 border border-[var(--vipl-primary)]/20{% endif %}"
                 title="{{ thread.priority|priority_tooltip }}">{{ thread.priority }}</span>
             {% endif %}
             {% if thread.category %}
-            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium text-slate-500 truncate max-w-[90px]" style="background: rgba(148,163,184,0.12)" title="{{ thread.category }}">{{ thread.category }}</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium font-mono text-[var(--vipl-text-dim)] bg-white/[0.04] border border-[var(--vipl-border)] truncate max-w-[90px]" title="{{ thread.category }}">{{ thread.category }}</span>
             {% endif %}
             {% thread_inbox_badges thread %}
             {% if thread.has_spam %}
-            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-widest text-red-600" style="background: rgba(239,68,68,0.1)">Spam</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold font-pixel uppercase text-[var(--vipl-red)] bg-[var(--vipl-red)]/10 border border-[var(--vipl-red)]/20">SPAM</span>
             {% endif %}
             {% if thread.sla_respond_deadline %}
             {% with sla_col=thread.sla_respond_deadline|sla_color %}
             {% if "red" in sla_col or "amber" in sla_col or "orange" in sla_col %}
-            <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[9px] font-bold text-{{ sla_col }}-700 bg-{{ sla_col }}-50">
+            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold font-mono text-[var(--vipl-red)] bg-[var(--vipl-red)]/10 border border-[var(--vipl-red)]/20">
                 <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 {{ thread.sla_respond_deadline|sla_countdown }}
             </span>
@@ -69,32 +66,33 @@
             {% endif %}
         </div>
 
-        <!-- Right: status + assignee -->
         <div class="flex items-center gap-1.5 shrink-0">
-            <!-- Status pill -->
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-tight bg-{{ thread.status|status_base }}-50 text-{{ thread.status|status_base }}-600" title="{{ thread.status|status_tooltip }}" style="backdrop-filter: blur(4px)">
-                <span class="w-1.5 h-1.5 rounded-full bg-{{ thread.status|status_base }}-500"></span>
+            <!-- Status -->
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold font-mono
+                {% if thread.status == 'new' %}text-[var(--vipl-primary)] bg-[var(--vipl-primary)]/8 border border-[var(--vipl-primary)]/15{% elif thread.status == 'acknowledged' %}text-[var(--vipl-cyan)] bg-[var(--vipl-cyan)]/8 border border-[var(--vipl-cyan)]/15{% else %}text-[var(--vipl-text-muted)] bg-white/[0.04] border border-[var(--vipl-border)]{% endif %}"
+                title="{{ thread.status|status_tooltip }}">
+                <span class="w-1.5 h-1.5 rounded-full {% if thread.status == 'new' %}bg-[var(--vipl-primary)] shadow-[0_0_4px_var(--vipl-primary)]{% elif thread.status == 'acknowledged' %}bg-[var(--vipl-cyan)] shadow-[0_0_4px_var(--vipl-cyan)]{% else %}bg-[var(--vipl-text-muted)]{% endif %}"></span>
                 {{ thread.get_status_display }}
             </span>
 
-            <!-- AI suggestion pill -->
+            <!-- AI suggestion -->
             {% if thread.ai_suggested_assignee_name and not thread.assigned_to %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-blue-600" style="background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.15)" title="AI suggests: {{ thread.ai_suggested_assignee_name }}">
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium font-mono text-[var(--vipl-purple)] bg-[var(--vipl-purple)]/8 border border-[var(--vipl-purple)]/15" title="AI suggests: {{ thread.ai_suggested_assignee_name }}">
                 <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 {{ thread.ai_suggested_assignee_name|truncatewords:1 }}
             </span>
             {% endif %}
 
-            <!-- Assignee pill -->
+            <!-- Assignee -->
             {% if thread.assigned_to %}
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-primary-700" style="background: rgba(168,51,98,0.08); border: 1px solid rgba(168,51,98,0.12)">
-                <span class="w-4 h-4 rounded-full bg-gradient-to-br from-primary-400 to-primary-500 flex items-center justify-center text-white text-[7px] font-bold shrink-0">{{ thread.assigned_to.first_name.0|default:thread.assigned_to.username.0|upper }}</span>
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold font-mono text-[var(--vipl-primary)] bg-[var(--vipl-primary)]/8 border border-[var(--vipl-primary)]/15">
+                <span class="w-4 h-4 rounded border border-[var(--vipl-primary)]/30 bg-[var(--vipl-primary)]/10 flex items-center justify-center text-[var(--vipl-primary)] text-[7px] font-bold shrink-0">{{ thread.assigned_to.first_name.0|default:thread.assigned_to.username.0|upper }}</span>
                 {{ thread.assigned_to.first_name|default:thread.assigned_to.username|truncatechars:10 }}
             </span>
             {% else %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-slate-400" style="background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.15)">
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium font-mono text-[var(--vipl-text-muted)] bg-white/[0.03] border border-[var(--vipl-border)]">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                Unassigned
+                ---
             </span>
             {% endif %}
         </div>

@@ -3,7 +3,7 @@
 
 {% block title %}VIPL Triage | Activity{% endblock %}
 {% block page_title %}Activity{% endblock %}
-{% block nav_activity_active %}nav-active{% endblock %}
+{% block nav_activity_active %}vipl-nav-active{% endblock %}
 
 {% block content %}
 <div class="p-4 md:p-5 max-w-5xl">
@@ -14,90 +14,90 @@
            hx-get="{% url 'emails:activity_log' %}"
            hx-target="#activity-feed" hx-push-url="true"
            data-stat="all"
-           class="stat-card bg-white rounded-xl border border-slate-200/60 p-3.5 cursor-pointer hover:shadow-md hover:border-slate-300 transition-all
-                  {% if not action_filter and not date_filter %}ring-2 ring-primary-500/30{% endif %}">
+           class="bg-[var(--vipl-card)] rounded-xl border border-[var(--vipl-border)] p-3.5 cursor-pointer hover:bg-[var(--vipl-card-hover)] hover:border-[var(--vipl-primary)] transition-all
+                  {% if not action_filter and not date_filter %}vipl-stat-active{% endif %}">
             <div class="flex items-center justify-between mb-2">
-                <div class="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-200/60">
-                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-7 h-7 rounded-lg bg-[var(--vipl-surface)] flex items-center justify-center border border-[var(--vipl-border)]">
+                    <svg class="w-3.5 h-3.5 text-[var(--vipl-text-dim)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                     </svg>
                 </div>
             </div>
-            <div class="text-xl font-extrabold text-slate-800 tabular-nums">{{ mis_stats.total }}</div>
-            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Total Events</div>
+            <div class="text-xl font-extrabold text-[var(--vipl-text)] tabular-nums font-mono">{{ mis_stats.total }}</div>
+            <div class="text-[9px] font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider mt-0.5 font-mono">Total Events</div>
         </a>
 
         <a href="{% url 'emails:activity_log' %}?date=today"
            hx-get="{% url 'emails:activity_log' %}?date=today"
            hx-target="#activity-feed" hx-push-url="true"
            data-stat="today"
-           class="stat-card bg-white rounded-xl border border-primary-200/50 p-3.5 cursor-pointer hover:shadow-md hover:border-primary-300 transition-all
-                  {% if date_filter == 'today' %}ring-2 ring-primary-500/30{% endif %}">
+           class="bg-[var(--vipl-card)] rounded-xl border border-[var(--vipl-border)] p-3.5 cursor-pointer hover:bg-[var(--vipl-card-hover)] hover:border-[var(--vipl-primary)] transition-all
+                  {% if date_filter == 'today' %}vipl-stat-active{% endif %}">
             <div class="flex items-center justify-between mb-2">
-                <div class="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center border border-primary-200/50">
-                    <svg class="w-3.5 h-3.5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-7 h-7 rounded-lg bg-[var(--vipl-primary)]/10 flex items-center justify-center border border-[var(--vipl-primary)]/20">
+                    <svg class="w-3.5 h-3.5 text-[var(--vipl-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
             </div>
-            <div class="text-xl font-extrabold text-primary-700 tabular-nums">{{ mis_stats.today }}</div>
-            <div class="text-[9px] font-bold text-primary-400/70 uppercase tracking-wider mt-0.5">Today</div>
+            <div class="text-xl font-extrabold text-[var(--vipl-primary)] tabular-nums font-mono">{{ mis_stats.today }}</div>
+            <div class="text-[9px] font-bold text-[var(--vipl-primary)]/70 uppercase tracking-wider mt-0.5 font-mono">Today</div>
         </a>
 
         <a href="{% url 'emails:activity_log' %}?action=assigned"
            hx-get="{% url 'emails:activity_log' %}?action=assigned"
            hx-target="#activity-feed" hx-push-url="true"
            data-stat="assigned"
-           class="stat-card bg-white rounded-xl border border-blue-200/50 p-3.5 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all
-                  {% if action_filter == 'assigned' %}ring-2 ring-primary-500/30{% endif %}">
+           class="bg-[var(--vipl-card)] rounded-xl border border-[var(--vipl-border)] p-3.5 cursor-pointer hover:bg-[var(--vipl-card-hover)] hover:border-[var(--vipl-cyan)] transition-all
+                  {% if action_filter == 'assigned' %}vipl-stat-active{% endif %}">
             <div class="flex items-center justify-between mb-2">
-                <div class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-200/50">
-                    <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-7 h-7 rounded-lg bg-[var(--vipl-cyan)]/10 flex items-center justify-center border border-[var(--vipl-cyan)]/20">
+                    <svg class="w-3.5 h-3.5 text-[var(--vipl-cyan)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                     </svg>
                 </div>
             </div>
-            <div class="text-xl font-extrabold text-blue-700 tabular-nums">{{ mis_stats.assignments }}</div>
-            <div class="text-[9px] font-bold text-blue-400/70 uppercase tracking-wider mt-0.5">Assignments</div>
+            <div class="text-xl font-extrabold text-[var(--vipl-cyan)] tabular-nums font-mono">{{ mis_stats.assignments }}</div>
+            <div class="text-[9px] font-bold text-[var(--vipl-cyan)]/70 uppercase tracking-wider mt-0.5 font-mono">Assignments</div>
         </a>
 
         <a href="{% url 'emails:activity_log' %}?action=acknowledged"
            hx-get="{% url 'emails:activity_log' %}?action=acknowledged"
            hx-target="#activity-feed" hx-push-url="true"
            data-stat="acknowledged"
-           class="stat-card bg-white rounded-xl border border-emerald-200/50 p-3.5 cursor-pointer hover:shadow-md hover:border-emerald-300 transition-all
-                  {% if action_filter == 'acknowledged' %}ring-2 ring-primary-500/30{% endif %}">
+           class="bg-[var(--vipl-card)] rounded-xl border border-[var(--vipl-border)] p-3.5 cursor-pointer hover:bg-[var(--vipl-card-hover)] hover:border-[var(--vipl-cyan)] transition-all
+                  {% if action_filter == 'acknowledged' %}vipl-stat-active{% endif %}">
             <div class="flex items-center justify-between mb-2">
-                <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center border border-emerald-200/50">
-                    <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-7 h-7 rounded-lg bg-[var(--vipl-cyan)]/10 flex items-center justify-center border border-[var(--vipl-cyan)]/20">
+                    <svg class="w-3.5 h-3.5 text-[var(--vipl-cyan)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                 </div>
             </div>
-            <div class="text-xl font-extrabold text-emerald-700 tabular-nums">{{ mis_stats.status_changes }}</div>
-            <div class="text-[9px] font-bold text-emerald-400/70 uppercase tracking-wider mt-0.5">Status Changes</div>
+            <div class="text-xl font-extrabold text-[var(--vipl-cyan)] tabular-nums font-mono">{{ mis_stats.status_changes }}</div>
+            <div class="text-[9px] font-bold text-[var(--vipl-cyan)]/70 uppercase tracking-wider mt-0.5 font-mono">Status Changes</div>
         </a>
     </div>
 
     <!-- Quick filter chips -->
     <div class="flex flex-wrap items-center gap-1.5 mb-4 pb-1">
-        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Filter</span>
+        <span class="text-[9px] font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider shrink-0 mr-1 font-mono">Filter</span>
         <a hx-get="{% url 'emails:activity_log' %}"
            hx-target="#activity-feed" hx-push-url="true"
-           class="px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap transition-all duration-150 {% if not action_filter %}bg-slate-900 text-white{% else %}text-slate-500 bg-white border border-slate-200/60 hover:text-slate-700 hover:border-slate-300{% endif %} cursor-pointer">
+           class="px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap transition-all duration-150 font-mono {% if not action_filter %}bg-[var(--vipl-primary)] text-white{% else %}text-[var(--vipl-text-dim)] bg-[var(--vipl-card)] border border-[var(--vipl-border)] hover:text-[var(--vipl-text)] hover:border-[var(--vipl-primary)]{% endif %} cursor-pointer">
             All
         </a>
         {% for value, label in action_choices %}
         <a hx-get="{% url 'emails:activity_log' %}?action={{ value }}"
            hx-target="#activity-feed" hx-push-url="true"
-           class="px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap transition-all duration-150 {% if action_filter == value %}bg-slate-900 text-white{% else %}text-slate-500 bg-white border border-slate-200/60 hover:text-slate-700 hover:border-slate-300{% endif %} cursor-pointer">
+           class="px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap transition-all duration-150 font-mono {% if action_filter == value %}bg-[var(--vipl-primary)] text-white{% else %}text-[var(--vipl-text-dim)] bg-[var(--vipl-card)] border border-[var(--vipl-border)] hover:text-[var(--vipl-text)] hover:border-[var(--vipl-primary)]{% endif %} cursor-pointer">
             {{ label }}
         </a>
         {% endfor %}
     </div>
 
     <!-- Activity feed -->
-    <div id="activity-feed" class="bg-white rounded-xl border border-slate-200/60 overflow-hidden">
+    <div id="activity-feed" class="bg-[var(--vipl-surface)] rounded-xl border border-[var(--vipl-border)] overflow-hidden">
         {% include "emails/_activity_feed.html" %}
     </div>
 </div>

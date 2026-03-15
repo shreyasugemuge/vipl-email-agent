@@ -1,11 +1,11 @@
 {% if save_success %}
-<div class="mb-3 px-3 py-2 bg-emerald-50 border border-emerald-200/60 rounded-lg text-[11px] font-semibold text-emerald-700">
+<div class="mb-3 px-3 py-2 bg-[var(--vipl-cyan)]/10 border border-[var(--vipl-cyan)]/20 rounded-lg text-[11px] font-semibold text-[var(--vipl-cyan)]">
     Webhook URLs saved.
 </div>
 {% endif %}
 
 <div class="space-y-2">
-    <p class="text-xs text-slate-400 mb-3">
+    <p class="text-xs text-[var(--vipl-text-dim)] mb-3">
         Assignment notifications go to the category's webhook. If not set, the global webhook (System tab) is used as fallback.
     </p>
 
@@ -16,21 +16,21 @@
         {% csrf_token %}
 
         {% for item in category_webhooks %}
-        <div class="flex items-center gap-3 px-3 py-2.5 bg-white rounded-lg border border-slate-200/60">
-            <span class="text-[11px] font-bold text-slate-600 uppercase tracking-wide w-32 shrink-0">{{ item.category }}</span>
+        <div class="flex items-center gap-3 px-3 py-2.5 bg-[var(--vipl-card)] rounded-lg border border-[var(--vipl-border)]">
+            <span class="text-[11px] font-bold text-[var(--vipl-text-muted)] uppercase tracking-wide w-32 shrink-0">{{ item.category }}</span>
             <div class="flex-1 min-w-0">
                 <!-- Masked display (shown by default) -->
                 <div class="webhook-masked flex items-center gap-2" id="masked-{{ item.category|lower }}">
                     <input type="hidden" name="webhook_{{ item.category|lower }}" value="{{ item.webhook_url }}">
                     {% if item.webhook_url %}
-                    <span class="text-[11px] font-mono text-slate-500 truncate">{{ item.webhook_url|truncatechars:25 }}****{{ item.webhook_url|slice:"-4:" }}</span>
-                    <svg class="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    <span class="text-[11px] font-mono text-[var(--vipl-text-dim)] truncate">{{ item.webhook_url|truncatechars:25 }}****{{ item.webhook_url|slice:"-4:" }}</span>
+                    <svg class="w-3.5 h-3.5 text-[var(--vipl-cyan)] shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                     {% else %}
-                    <span class="text-[11px] text-slate-400 italic">Not configured</span>
-                    <svg class="w-3.5 h-3.5 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                    <span class="text-[11px] text-[var(--vipl-text-dim)] italic">Not configured</span>
+                    <svg class="w-3.5 h-3.5 text-[var(--vipl-red)] shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
                     {% endif %}
                     <button type="button" onclick="toggleWebhookReveal('{{ item.category|lower }}')"
-                            class="text-[10px] font-semibold text-primary-500 hover:text-primary-700 transition-colors">
+                            class="text-[10px] font-semibold text-[var(--vipl-primary)] hover:text-[var(--vipl-primary-dim)] transition-colors">
                         Reveal
                     </button>
                 </div>
@@ -40,9 +40,9 @@
                         <input type="url" name="webhook_{{ item.category|lower }}"
                                value="{{ item.webhook_url }}" disabled
                                placeholder="https://chat.googleapis.com/v1/spaces/..."
-                               class="flex-1 text-[11px] font-medium border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-primary-500/15 focus:border-primary-300 transition-all placeholder:text-slate-300">
+                               class="flex-1 text-[11px] font-medium border border-[var(--vipl-border)] rounded-md px-2.5 py-1.5 bg-[var(--vipl-card)] text-[var(--vipl-text-muted)] focus:ring-2 focus:ring-[var(--vipl-primary)]/15 focus:border-[var(--vipl-primary)] transition-all placeholder:text-[var(--vipl-text-muted)]">
                         <button type="button" onclick="toggleWebhookReveal('{{ item.category|lower }}')"
-                                class="text-[10px] font-semibold text-slate-400 hover:text-slate-600 transition-colors">
+                                class="text-[10px] font-semibold text-[var(--vipl-text-dim)] hover:text-[var(--vipl-text-muted)] transition-colors">
                             Hide
                         </button>
                     </div>
@@ -52,7 +52,7 @@
         {% endfor %}
 
         <div class="pt-2">
-            <button type="submit" class="px-4 py-1.5 text-[11px] font-bold text-white bg-primary-600 rounded-md hover:bg-primary-700 transition-colors cursor-pointer">
+            <button type="submit" class="px-4 py-1.5 text-[11px] font-bold text-white bg-[var(--vipl-primary)] rounded-md hover:bg-[var(--vipl-primary-dim)] transition-colors cursor-pointer">
                 Save Webhooks
             </button>
         </div>

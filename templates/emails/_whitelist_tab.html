@@ -2,18 +2,18 @@
 
 <div id="whitelist-tab-content">
     {% if save_success %}
-    <div class="mb-4 px-4 py-2 bg-emerald-50 border border-emerald-200/60 rounded-lg text-xs font-medium text-emerald-700">
+    <div class="mb-4 px-4 py-2 bg-[var(--vipl-cyan)]/10 border border-[var(--vipl-cyan)]/20 rounded-lg text-xs font-medium text-[var(--vipl-cyan)]">
         {{ save_message|default:"Whitelist saved successfully." }}
     </div>
     {% endif %}
     {% if save_error %}
-    <div class="mb-4 px-4 py-2 bg-red-50 border border-red-200/60 rounded-lg text-xs font-medium text-red-700">
+    <div class="mb-4 px-4 py-2 bg-[var(--vipl-red)]/10 border border-[var(--vipl-red)]/20 rounded-lg text-xs font-medium text-[var(--vipl-red)]">
         {{ save_error }}
     </div>
     {% endif %}
 
     <!-- Whitelist section -->
-    <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Whitelisted Senders</h3>
+    <h3 class="text-xs font-bold text-[var(--vipl-text-muted)] uppercase tracking-wider mb-3">Whitelisted Senders</h3>
 
     <!-- Add form -->
     <form hx-post="{% url 'emails:whitelist_add' %}"
@@ -21,49 +21,49 @@
           class="flex items-center gap-2 mb-4">
         {% csrf_token %}
         <input type="text" name="entry" placeholder="email@example.com or example.com"
-               class="flex-1 text-sm border border-slate-200/80 rounded-lg px-3 py-2 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none">
-        <select name="entry_type" class="text-xs border border-slate-200/80 rounded-lg px-2.5 py-2 bg-white text-slate-600">
+               class="flex-1 text-sm border border-[var(--vipl-border)] rounded-lg px-3 py-2 bg-[var(--vipl-card)] text-[var(--vipl-text)] focus:ring-2 focus:ring-[var(--vipl-primary)]/20 focus:border-[var(--vipl-primary)] outline-none">
+        <select name="entry_type" class="vipl-select text-xs rounded-lg px-2.5 py-2">
             <option value="email">Email</option>
             <option value="domain">Domain</option>
         </select>
         <button type="submit"
-                class="px-4 py-2 text-xs font-bold text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+                class="px-4 py-2 text-xs font-bold text-white bg-[var(--vipl-primary)] rounded-lg hover:bg-[var(--vipl-primary-dim)] transition-colors shadow-sm">
             Add
         </button>
     </form>
 
     <!-- Whitelist entries table -->
     {% if whitelist_entries %}
-    <div class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden mb-8">
+    <div class="bg-[var(--vipl-card)] rounded-xl border border-[var(--vipl-border)] shadow-sm overflow-hidden mb-8">
         <table class="w-full text-xs">
             <thead>
-                <tr class="border-b border-slate-200/40">
-                    <th class="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Entry</th>
-                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Type</th>
-                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Added By</th>
-                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Date</th>
+                <tr class="border-b border-[var(--vipl-border)]">
+                    <th class="text-left px-4 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Entry</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Type</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Added By</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Date</th>
                     <th class="px-3 py-2.5 text-[10px]"></th>
                 </tr>
             </thead>
             <tbody>
                 {% for wl in whitelist_entries %}
-                <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors" id="wl-row-{{ wl.pk }}">
-                    <td class="px-4 py-2.5 font-semibold text-slate-700">{{ wl.entry }}</td>
+                <tr class="border-b border-[var(--vipl-border)] hover:bg-[var(--vipl-card-hover)] transition-colors" id="wl-row-{{ wl.pk }}">
+                    <td class="px-4 py-2.5 font-semibold text-[var(--vipl-text)]">{{ wl.entry }}</td>
                     <td class="px-3 py-2.5">
                         <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase
-                            {% if wl.entry_type == 'email' %}bg-primary-50 text-primary-600{% else %}bg-amber-50 text-amber-600{% endif %}">
+                            {% if wl.entry_type == 'email' %}bg-[var(--vipl-primary)]/10 text-[var(--vipl-primary)]{% else %}bg-[var(--vipl-gold)]/10 text-[var(--vipl-gold)]{% endif %}">
                             {{ wl.get_entry_type_display }}
                         </span>
                     </td>
-                    <td class="px-3 py-2.5 text-slate-500">{{ wl.added_by.get_full_name|default:wl.added_by.username|default:"--" }}</td>
-                    <td class="px-3 py-2.5 text-slate-400 tabular-nums">{{ wl.created_at|date:"M d, Y" }}</td>
+                    <td class="px-3 py-2.5 text-[var(--vipl-text-dim)]">{{ wl.added_by.get_full_name|default:wl.added_by.username|default:"--" }}</td>
+                    <td class="px-3 py-2.5 text-[var(--vipl-text-dim)] tabular-nums">{{ wl.created_at|date:"M d, Y" }}</td>
                     <td class="px-3 py-2.5">
                         <form hx-post="{% url 'emails:whitelist_delete' wl.pk %}"
                               hx-target="#whitelist-content" hx-swap="innerHTML"
                               class="inline">
                             {% csrf_token %}
                             <button type="submit"
-                                    class="text-slate-300 hover:text-red-500 transition-colors" title="Delete">
+                                    class="text-[var(--vipl-text-muted)] hover:text-[var(--vipl-red)] transition-colors" title="Delete">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
@@ -76,38 +76,38 @@
         </table>
     </div>
     {% else %}
-    <div class="text-sm text-slate-400 italic py-4 text-center mb-8">
+    <div class="text-sm text-[var(--vipl-text-dim)] italic py-4 text-center mb-8">
         No whitelisted senders yet. Use "Whitelist Sender" on any email to add one here.
     </div>
     {% endif %}
 
     <!-- Blocked Senders section -->
-    <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Blocked Senders</h3>
-    <p class="text-[11px] text-slate-400 mb-3">Senders auto-blocked when spam ratio exceeds 80% with 3+ emails. Blocked senders are silently skipped by the pipeline.</p>
+    <h3 class="text-xs font-bold text-[var(--vipl-text-muted)] uppercase tracking-wider mb-3">Blocked Senders</h3>
+    <p class="text-[11px] text-[var(--vipl-text-dim)] mb-3">Senders auto-blocked when spam ratio exceeds 80% with 3+ emails. Blocked senders are silently skipped by the pipeline.</p>
 
     {% if blocked_senders %}
-    <div class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
+    <div class="bg-[var(--vipl-card)] rounded-xl border border-[var(--vipl-border)] shadow-sm overflow-hidden">
         <table class="w-full text-xs">
             <thead>
-                <tr class="border-b border-slate-200/40">
-                    <th class="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Sender</th>
-                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Spam Ratio</th>
-                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Total Emails</th>
-                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Status</th>
+                <tr class="border-b border-[var(--vipl-border)]">
+                    <th class="text-left px-4 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Sender</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Spam Ratio</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Total Emails</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px]">Status</th>
                     <th class="px-3 py-2.5 text-[10px]"></th>
                 </tr>
             </thead>
             <tbody>
                 {% for rep in blocked_senders %}
-                <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
-                    <td class="px-4 py-2.5 font-semibold text-slate-700">{{ rep.sender_address }}</td>
-                    <td class="px-3 py-2.5 text-slate-600 tabular-nums">{{ rep.spam_count }}/{{ rep.total_count }}{% if rep.total_count %} ({{ rep.spam_ratio|floatformat:2 }}){% endif %}</td>
-                    <td class="px-3 py-2.5 text-slate-500 tabular-nums">{{ rep.total_count }}</td>
+                <tr class="border-b border-[var(--vipl-border)] hover:bg-[var(--vipl-card-hover)] transition-colors">
+                    <td class="px-4 py-2.5 font-semibold text-[var(--vipl-text)]">{{ rep.sender_address }}</td>
+                    <td class="px-3 py-2.5 text-[var(--vipl-text-muted)] tabular-nums">{{ rep.spam_count }}/{{ rep.total_count }}{% if rep.total_count %} ({{ rep.spam_ratio|floatformat:2 }}){% endif %}</td>
+                    <td class="px-3 py-2.5 text-[var(--vipl-text-dim)] tabular-nums">{{ rep.total_count }}</td>
                     <td class="px-3 py-2.5">
                         {% if rep.is_blocked %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-red-50 text-red-600 border border-red-200/50">Blocked</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-[var(--vipl-red)]/10 text-[var(--vipl-red)] border border-[var(--vipl-red)]/20">Blocked</span>
                         {% else %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-amber-50 text-amber-600 border border-amber-200/50">Tracked</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-[var(--vipl-gold)]/10 text-[var(--vipl-gold)] border border-[var(--vipl-gold)]/20">Tracked</span>
                         {% endif %}
                     </td>
                     <td class="px-3 py-2.5">
@@ -117,7 +117,7 @@
                               class="inline">
                             {% csrf_token %}
                             <button type="submit"
-                                    class="px-2.5 py-1 text-[10px] font-bold text-amber-600 bg-amber-50 rounded-md hover:bg-amber-100 transition-colors border border-amber-200/60">
+                                    class="px-2.5 py-1 text-[10px] font-bold text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/10 rounded-md hover:bg-[var(--vipl-gold)]/20 transition-colors border border-[var(--vipl-gold)]/20">
                                 Unblock
                             </button>
                         </form>
@@ -129,7 +129,7 @@
         </table>
     </div>
     {% else %}
-    <div class="text-sm text-slate-400 italic py-4 text-center">
+    <div class="text-sm text-[var(--vipl-text-dim)] italic py-4 text-center">
         No blocked or tracked senders yet. Senders are tracked automatically when emails are processed.
     </div>
     {% endif %}

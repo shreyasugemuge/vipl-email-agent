@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block title %}VIPL Triage | Reports{% endblock %}
 {% block page_title %}Reports{% endblock %}
-{% block nav_reports_active %}nav-active{% endblock %}
+{% block nav_reports_active %}vipl-nav-active{% endblock %}
 
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
     .tab-btn { border-bottom: 2px solid transparent; transition: all 0.15s ease; }
-    .tab-btn:hover { color: #334155; border-color: #cbd5e1; }
-    .tab-btn.active { color: #a83362; border-color: #a83362; font-weight: 600; }
+    .tab-btn:hover { color: var(--vipl-text); border-color: var(--vipl-text-muted); }
+    .tab-btn.active { color: var(--vipl-primary); border-color: var(--vipl-primary); font-weight: 600; }
     .chart-container { position: relative; min-height: 300px; }
 </style>
 {% endblock %}
@@ -21,10 +21,10 @@
         <div class="flex flex-col lg:flex-row lg:items-end gap-4">
             {# Date range preset #}
             <div class="flex-1">
-                <label for="preset" class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Date Range</label>
+                <label for="preset" class="block text-[11px] font-semibold text-[var(--vipl-text-dim)] uppercase tracking-wider mb-1">Date Range</label>
                 <div class="flex gap-2">
                     <select name="preset" id="preset" onchange="handlePresetChange(this)"
-                            class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 min-w-[160px]">
+                            class="vipl-select text-sm px-3 py-2 rounded-lg min-w-[160px]">
                         <option value="today" {% if preset == "today" %}selected{% endif %}>Today</option>
                         <option value="this_week" {% if preset == "this_week" %}selected{% endif %}>This Week</option>
                         <option value="this_month" {% if preset == "this_month" %}selected{% endif %}>This Month</option>
@@ -37,10 +37,10 @@
                     </select>
                     <div id="custom-dates" class="flex gap-2 {% if preset != 'custom' %}hidden{% endif %}">
                         <input type="date" name="start" value="{{ custom_start }}"
-                               class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
-                        <span class="self-center text-slate-400 text-sm">to</span>
+                               class="vipl-select text-sm px-3 py-2 rounded-lg">
+                        <span class="self-center text-[var(--vipl-text-muted)] text-sm">to</span>
                         <input type="date" name="end" value="{{ custom_end }}"
-                               class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
+                               class="vipl-select text-sm px-3 py-2 rounded-lg">
                     </div>
                 </div>
             </div>
@@ -48,9 +48,9 @@
             {# Filters #}
             <div class="flex flex-wrap gap-3">
                 <div>
-                    <label for="inbox" class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Inbox</label>
+                    <label for="inbox" class="block text-[11px] font-semibold text-[var(--vipl-text-dim)] uppercase tracking-wider mb-1">Inbox</label>
                     <select name="inbox" id="inbox" onchange="this.form.submit()"
-                            class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 min-w-[140px]">
+                            class="vipl-select text-sm px-3 py-2 rounded-lg min-w-[140px]">
                         <option value="">All Inboxes</option>
                         {% for ib in distinct_inboxes %}
                         <option value="{{ ib }}" {% if inbox_filter == ib %}selected{% endif %}>{{ ib }}</option>
@@ -58,9 +58,9 @@
                     </select>
                 </div>
                 <div>
-                    <label for="category" class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Category</label>
+                    <label for="category" class="block text-[11px] font-semibold text-[var(--vipl-text-dim)] uppercase tracking-wider mb-1">Category</label>
                     <select name="category" id="category" onchange="this.form.submit()"
-                            class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 min-w-[140px]">
+                            class="vipl-select text-sm px-3 py-2 rounded-lg min-w-[140px]">
                         <option value="">All Categories</option>
                         {% for cat in distinct_categories %}
                         <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>{{ cat }}</option>
@@ -68,9 +68,9 @@
                     </select>
                 </div>
                 <div>
-                    <label for="member" class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Team Member</label>
+                    <label for="member" class="block text-[11px] font-semibold text-[var(--vipl-text-dim)] uppercase tracking-wider mb-1">Team Member</label>
                     <select name="member" id="member" onchange="this.form.submit()"
-                            class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 min-w-[140px]">
+                            class="vipl-select text-sm px-3 py-2 rounded-lg min-w-[140px]">
                         <option value="">All Members</option>
                         {% for u in active_users %}
                         <option value="{{ u.pk }}" {% if member_filter == u.pk|stringformat:"d" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
@@ -81,28 +81,30 @@
 
             {# Apply (for custom date) #}
             <button type="submit" id="apply-btn"
-                    class="{% if preset != 'custom' %}hidden{% endif %} px-4 py-2 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors shrink-0">
+                    class="{% if preset != 'custom' %}hidden{% endif %} px-4 py-2 text-sm font-semibold rounded-lg transition-colors shrink-0"
+                    style="background: var(--vipl-primary); color: #fff;"
+                    onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
                 Apply
             </button>
         </div>
     </form>
 
     {# ---- Tab Navigation ---- #}
-    <div class="border-b border-slate-200" role="tablist" aria-label="Report sections">
+    <div class="border-b border-[var(--vipl-border)]" role="tablist" aria-label="Report sections">
         <div class="flex gap-6">
             <button role="tab" class="tab-btn active px-1 pb-2.5 pt-1 text-sm"
                     data-tab="overview" aria-selected="true" aria-controls="tab-overview" id="btn-overview">
                 Overview
             </button>
-            <button role="tab" class="tab-btn px-1 pb-2.5 pt-1 text-sm text-slate-500"
+            <button role="tab" class="tab-btn px-1 pb-2.5 pt-1 text-sm text-[var(--vipl-text-dim)]"
                     data-tab="volume" aria-selected="false" aria-controls="tab-volume" id="btn-volume">
                 Volume
             </button>
-            <button role="tab" class="tab-btn px-1 pb-2.5 pt-1 text-sm text-slate-500"
+            <button role="tab" class="tab-btn px-1 pb-2.5 pt-1 text-sm text-[var(--vipl-text-dim)]"
                     data-tab="team" aria-selected="false" aria-controls="tab-team" id="btn-team">
                 Team
             </button>
-            <button role="tab" class="tab-btn px-1 pb-2.5 pt-1 text-sm text-slate-500"
+            <button role="tab" class="tab-btn px-1 pb-2.5 pt-1 text-sm text-[var(--vipl-text-dim)]"
                     data-tab="sla" aria-selected="false" aria-controls="tab-sla" id="btn-sla">
                 SLA
             </button>
@@ -116,51 +118,53 @@
         {# KPI Cards #}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {# Total Emails #}
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 stat-card">
+            <div class="rounded-xl shadow-sm p-4 stat-card vipl-card" style="background: var(--vipl-card);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: color-mix(in srgb, var(--vipl-primary) 12%, transparent);">
+                        <svg class="w-5 h-5" style="color: var(--vipl-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
                                   d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                         </svg>
                     </div>
                     <div>
-                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Emails</p>
-                        <p class="text-2xl font-bold text-slate-800">{{ overview_kpis.total_emails }}</p>
+                        <p class="text-[11px] font-semibold text-[var(--vipl-text-dim)] uppercase tracking-wider">Total Emails</p>
+                        <p class="text-2xl font-bold text-[var(--vipl-text)]">{{ overview_kpis.total_emails }}</p>
                     </div>
                 </div>
             </div>
 
             {# Avg Response Time #}
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 stat-card">
+            <div class="rounded-xl shadow-sm p-4 stat-card vipl-card" style="background: var(--vipl-card);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: color-mix(in srgb, var(--vipl-gold) 12%, transparent);">
+                        <svg class="w-5 h-5" style="color: var(--vipl-gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
                                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
                     <div>
-                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Avg Response</p>
-                        <p class="text-2xl font-bold text-slate-800" id="kpi-avg-response">--</p>
+                        <p class="text-[11px] font-semibold text-[var(--vipl-text-dim)] uppercase tracking-wider">Avg Response</p>
+                        <p class="text-2xl font-bold text-[var(--vipl-text)]" id="kpi-avg-response">--</p>
                     </div>
                 </div>
             </div>
 
             {# SLA Compliance #}
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 stat-card">
+            <div class="rounded-xl shadow-sm p-4 stat-card vipl-card" style="background: var(--vipl-card);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg flex items-center justify-center
-                                {% if overview_kpis.sla_compliance_pct >= 90 %}bg-emerald-50{% elif overview_kpis.sla_compliance_pct >= 70 %}bg-amber-50{% else %}bg-red-50{% endif %}">
-                        <svg class="w-5 h-5 {% if overview_kpis.sla_compliance_pct >= 90 %}text-emerald-500{% elif overview_kpis.sla_compliance_pct >= 70 %}text-amber-500{% else %}text-red-500{% endif %}"
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+                         style="background: color-mix(in srgb, {% if overview_kpis.sla_compliance_pct >= 90 %}var(--vipl-cyan){% elif overview_kpis.sla_compliance_pct >= 70 %}var(--vipl-gold){% else %}var(--vipl-red){% endif %} 12%, transparent);">
+                        <svg class="w-5 h-5"
+                             style="color: {% if overview_kpis.sla_compliance_pct >= 90 %}var(--vipl-cyan){% elif overview_kpis.sla_compliance_pct >= 70 %}var(--vipl-gold){% else %}var(--vipl-red){% endif %};"
                              fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
                                   d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                         </svg>
                     </div>
                     <div>
-                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">SLA Compliance</p>
-                        <p class="text-2xl font-bold {% if overview_kpis.sla_compliance_pct >= 90 %}text-emerald-600{% elif overview_kpis.sla_compliance_pct >= 70 %}text-amber-600{% else %}text-red-600{% endif %}">
+                        <p class="text-[11px] font-semibold text-[var(--vipl-text-dim)] uppercase tracking-wider">SLA Compliance</p>
+                        <p class="text-2xl font-bold"
+                           style="color: {% if overview_kpis.sla_compliance_pct >= 90 %}var(--vipl-cyan){% elif overview_kpis.sla_compliance_pct >= 70 %}var(--vipl-gold){% else %}var(--vipl-red){% endif %};">
                             {{ overview_kpis.sla_compliance_pct }}%
                         </p>
                     </div>
@@ -168,25 +172,25 @@
             </div>
 
             {# Open Threads #}
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 stat-card">
+            <div class="rounded-xl shadow-sm p-4 stat-card vipl-card" style="background: var(--vipl-card);">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: color-mix(in srgb, var(--vipl-text-muted) 15%, transparent);">
+                        <svg class="w-5 h-5" style="color: var(--vipl-text-dim);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
                                   d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
                         </svg>
                     </div>
                     <div>
-                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Open Threads</p>
-                        <p class="text-2xl font-bold text-slate-800">{{ overview_kpis.open_threads }}</p>
+                        <p class="text-[11px] font-semibold text-[var(--vipl-text-dim)] uppercase tracking-wider">Open Threads</p>
+                        <p class="text-2xl font-bold text-[var(--vipl-text)]">{{ overview_kpis.open_threads }}</p>
                     </div>
                 </div>
             </div>
         </div>
 
         {# Overview Chart #}
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Email Volume Overview</h3>
+        <div class="rounded-xl shadow-sm p-5" style="background: var(--vipl-card); border: 1px solid var(--vipl-border);">
+            <h3 class="text-sm font-semibold text-[var(--vipl-text)] mb-4">Email Volume Overview</h3>
             <div class="chart-container">
                 <canvas id="overviewChart"></canvas>
             </div>
@@ -195,8 +199,8 @@
 
     {# Volume #}
     <div id="tab-volume" role="tabpanel" aria-labelledby="btn-volume" class="hidden">
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-            <h3 class="text-sm font-semibold text-slate-700 mb-4">Daily Email Volume by Inbox</h3>
+        <div class="rounded-xl shadow-sm p-5" style="background: var(--vipl-card); border: 1px solid var(--vipl-border);">
+            <h3 class="text-sm font-semibold text-[var(--vipl-text)] mb-4">Daily Email Volume by Inbox</h3>
             <div class="chart-container">
                 <canvas id="volumeChart"></canvas>
             </div>
@@ -206,14 +210,14 @@
     {# Team #}
     <div id="tab-team" role="tabpanel" aria-labelledby="btn-team" class="hidden">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <h3 class="text-sm font-semibold text-slate-700 mb-4">Emails Handled per Team Member</h3>
+            <div class="rounded-xl shadow-sm p-5" style="background: var(--vipl-card); border: 1px solid var(--vipl-border);">
+                <h3 class="text-sm font-semibold text-[var(--vipl-text)] mb-4">Emails Handled per Team Member</h3>
                 <div class="chart-container">
                     <canvas id="teamHandleChart"></canvas>
                 </div>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <h3 class="text-sm font-semibold text-slate-700 mb-4">Avg Response Time (minutes)</h3>
+            <div class="rounded-xl shadow-sm p-5" style="background: var(--vipl-card); border: 1px solid var(--vipl-border);">
+                <h3 class="text-sm font-semibold text-[var(--vipl-text)] mb-4">Avg Response Time (minutes)</h3>
                 <div class="chart-container">
                     <canvas id="teamResponseChart"></canvas>
                 </div>
@@ -224,14 +228,14 @@
     {# SLA #}
     <div id="tab-sla" role="tabpanel" aria-labelledby="btn-sla" class="hidden">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <h3 class="text-sm font-semibold text-slate-700 mb-4">SLA Compliance</h3>
+            <div class="rounded-xl shadow-sm p-5" style="background: var(--vipl-card); border: 1px solid var(--vipl-border);">
+                <h3 class="text-sm font-semibold text-[var(--vipl-text)] mb-4">SLA Compliance</h3>
                 <div class="chart-container" style="max-height: 280px;">
                     <canvas id="slaDonutChart"></canvas>
                 </div>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <h3 class="text-sm font-semibold text-slate-700 mb-4">SLA Compliance Trend</h3>
+            <div class="rounded-xl shadow-sm p-5" style="background: var(--vipl-card); border: 1px solid var(--vipl-border);">
+                <h3 class="text-sm font-semibold text-[var(--vipl-text)] mb-4">SLA Compliance Trend</h3>
                 <div class="chart-container">
                     <canvas id="slaTrendChart"></canvas>
                 </div>
@@ -239,13 +243,13 @@
         </div>
 
         {# SLA Breaches Table #}
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="px-5 py-4 border-b border-slate-100">
-                <h3 class="text-sm font-semibold text-slate-700">Recent SLA Breaches</h3>
+        <div class="rounded-xl shadow-sm overflow-hidden" style="background: var(--vipl-card); border: 1px solid var(--vipl-border);">
+            <div class="px-5 py-4" style="border-bottom: 1px solid var(--vipl-border);">
+                <h3 class="text-sm font-semibold text-[var(--vipl-text)]">Recent SLA Breaches</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
-                    <thead class="bg-slate-50 text-slate-500">
+                    <thead style="background: var(--vipl-surface); color: var(--vipl-text-dim);">
                         <tr>
                             <th class="text-left px-5 py-2.5 font-semibold text-[11px] uppercase tracking-wider">Subject</th>
                             <th class="text-left px-5 py-2.5 font-semibold text-[11px] uppercase tracking-wider">Priority</th>
@@ -254,7 +258,7 @@
                             <th class="text-left px-5 py-2.5 font-semibold text-[11px] uppercase tracking-wider">Exceeded By</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100" id="sla-breaches-body">
+                    <tbody id="sla-breaches-body" style="color: var(--vipl-text);">
                     </tbody>
                 </table>
             </div>
@@ -274,10 +278,29 @@
 (function() {
     'use strict';
 
+    // ---- Theme-aware color helper ----
+    function getChartThemeColors() {
+        var style = getComputedStyle(document.documentElement);
+        return {
+            primary: style.getPropertyValue('--vipl-primary').trim(),
+            cyan: style.getPropertyValue('--vipl-cyan').trim(),
+            gold: style.getPropertyValue('--vipl-gold').trim(),
+            red: style.getPropertyValue('--vipl-red').trim(),
+            purple: style.getPropertyValue('--vipl-purple').trim(),
+            text: style.getPropertyValue('--vipl-text').trim(),
+            textDim: style.getPropertyValue('--vipl-text-dim').trim(),
+            textMuted: style.getPropertyValue('--vipl-text-muted').trim(),
+            border: style.getPropertyValue('--vipl-border').trim(),
+            surface: style.getPropertyValue('--vipl-surface').trim(),
+            card: style.getPropertyValue('--vipl-card').trim(),
+        };
+    }
+
     // ---- Global Chart.js defaults ----
+    var tc = getChartThemeColors();
     Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
     Chart.defaults.font.size = 12;
-    Chart.defaults.color = '#64748b';
+    Chart.defaults.color = tc.textDim;
 
     // ---- Center text plugin for donut chart ----
     var centerTextPlugin = {
@@ -286,12 +309,13 @@
             if (chart.config.type !== 'doughnut') return;
             var pct = chart.config._pct;
             if (pct === undefined) return;
+            var colors = getChartThemeColors();
             var ctx = chart.ctx;
             var width = chart.width;
             var height = chart.height;
             ctx.save();
             ctx.font = 'bold 28px "Plus Jakarta Sans"';
-            ctx.fillStyle = '#1e293b';
+            ctx.fillStyle = colors.text;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(pct + '%', width / 2, height / 2);
@@ -324,18 +348,21 @@
     var slaData = JSON.parse(document.getElementById('sla-data').textContent);
     var overviewData = JSON.parse(document.getElementById('overview-data').textContent);
 
-    // ---- Common chart options ----
-    var commonOpts = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 16 } }
-        },
-        scales: {
-            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
-        }
-    };
+    // ---- Common chart options (theme-aware) ----
+    function getCommonOpts() {
+        var colors = getChartThemeColors();
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 16, color: colors.textDim } }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11 }, color: colors.textDim } },
+                y: { grid: { color: colors.border }, ticks: { font: { size: 11 }, color: colors.textDim }, beginAtZero: true }
+            }
+        };
+    }
 
     // ---- Lazy initialization tracking ----
     var initialized = {};
@@ -354,6 +381,8 @@
 
     // ---- Overview tab -- summary line chart ----
     function initOverview() {
+        var colors = getChartThemeColors();
+
         // Sum across all inboxes per date for total volume
         var totals = volumeData.labels.map(function(_, i) {
             var sum = 0;
@@ -368,15 +397,15 @@
                 datasets: [{
                     label: 'Total Emails',
                     data: totals,
-                    borderColor: '#a83362',
-                    backgroundColor: 'rgba(168, 51, 98, 0.08)',
+                    borderColor: colors.primary,
+                    backgroundColor: colors.primary + '14',
                     fill: true,
                     tension: 0.3,
                     pointRadius: 2,
                     pointHoverRadius: 5
                 }]
             },
-            options: commonOpts
+            options: getCommonOpts()
         });
 
         // Format avg response in KPI card
@@ -397,11 +426,14 @@
 
     // ---- Volume tab -- stacked bar chart ----
     function initVolume() {
-        var datasets = volumeData.datasets.map(function(ds) {
+        var colors = getChartThemeColors();
+        var palette = [colors.primary, colors.cyan, colors.gold, colors.purple, colors.red];
+
+        var datasets = volumeData.datasets.map(function(ds, idx) {
             return {
                 label: ds.label,
                 data: ds.data,
-                backgroundColor: ds.backgroundColor,
+                backgroundColor: ds.backgroundColor || palette[idx % palette.length],
                 borderRadius: 4
             };
         });
@@ -413,7 +445,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'top', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 16 } },
+                    legend: { position: 'top', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 16, color: colors.textDim } },
                     tooltip: {
                         callbacks: {
                             label: function(ctx) {
@@ -423,8 +455,8 @@
                     }
                 },
                 scales: {
-                    x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 15 } },
-                    y: { stacked: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+                    x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 15, color: colors.textDim } },
+                    y: { stacked: true, grid: { color: colors.border }, ticks: { font: { size: 11 }, color: colors.textDim }, beginAtZero: true }
                 }
             }
         });
@@ -432,7 +464,17 @@
 
     // ---- Team tab -- grouped bar chart ----
     function initTeam() {
+        var colors = getChartThemeColors();
         var useHorizontal = teamData.labels.length > 5;
+
+        var scalesHorizontal = {
+            x: { grid: { color: colors.border }, ticks: { font: { size: 11 }, color: colors.textDim }, beginAtZero: true },
+            y: { grid: { display: false }, ticks: { font: { size: 11 }, color: colors.textDim } }
+        };
+        var scalesVertical = {
+            x: { grid: { display: false }, ticks: { font: { size: 11 }, color: colors.textDim } },
+            y: { grid: { color: colors.border }, ticks: { font: { size: 11 }, color: colors.textDim }, beginAtZero: true }
+        };
 
         createChart('teamHandleChart', {
             type: 'bar',
@@ -441,7 +483,7 @@
                 datasets: [{
                     label: 'Emails Handled',
                     data: teamData.datasets.handle_count,
-                    backgroundColor: '#a83362',
+                    backgroundColor: colors.primary,
                     borderRadius: 4
                 }]
             },
@@ -452,13 +494,7 @@
                 plugins: {
                     legend: { display: false }
                 },
-                scales: useHorizontal ? {
-                    x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true },
-                    y: { grid: { display: false }, ticks: { font: { size: 11 } } }
-                } : {
-                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                    y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
-                }
+                scales: useHorizontal ? scalesHorizontal : scalesVertical
             }
         });
 
@@ -469,7 +505,7 @@
                 datasets: [{
                     label: 'Avg Response (min)',
                     data: teamData.datasets.avg_response_minutes,
-                    backgroundColor: '#f59e0b',
+                    backgroundColor: colors.gold,
                     borderRadius: 4
                 }]
             },
@@ -480,19 +516,15 @@
                 plugins: {
                     legend: { display: false }
                 },
-                scales: useHorizontal ? {
-                    x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true },
-                    y: { grid: { display: false }, ticks: { font: { size: 11 } } }
-                } : {
-                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                    y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
-                }
+                scales: useHorizontal ? scalesHorizontal : scalesVertical
             }
         });
     }
 
     // ---- SLA tab -- donut + trend + breaches table ----
     function initSLA() {
+        var colors = getChartThemeColors();
+
         // Donut chart with center text
         var met = slaData.donut_data.met;
         var breached = slaData.donut_data.breached;
@@ -506,7 +538,7 @@
                     labels: ['No Data'],
                     datasets: [{
                         data: [1],
-                        backgroundColor: ['#e2e8f0'],
+                        backgroundColor: [colors.border],
                         borderWidth: 0
                     }]
                 },
@@ -529,7 +561,7 @@
                     labels: ['Met'],
                     datasets: [{
                         data: [met],
-                        backgroundColor: ['#10b981'],
+                        backgroundColor: [colors.cyan],
                         borderWidth: 0,
                         hoverOffset: 4
                     }]
@@ -539,7 +571,7 @@
                     maintainAspectRatio: false,
                     cutout: '70%',
                     plugins: {
-                        legend: { position: 'bottom', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 20 } }
+                        legend: { position: 'bottom', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 20, color: colors.textDim } }
                     }
                 }
             };
@@ -552,7 +584,7 @@
                     labels: ['Met', 'Breached'],
                     datasets: [{
                         data: [met, breached],
-                        backgroundColor: ['#10b981', '#ef4444'],
+                        backgroundColor: [colors.cyan, colors.red],
                         borderWidth: 0,
                         hoverOffset: 4
                     }]
@@ -562,7 +594,7 @@
                     maintainAspectRatio: false,
                     cutout: '70%',
                     plugins: {
-                        legend: { position: 'bottom', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 20 } }
+                        legend: { position: 'bottom', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 20, color: colors.textDim } }
                     }
                 }
             };
@@ -585,8 +617,8 @@
                     {
                         label: 'SLA Compliance %',
                         data: trendValues,
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                        borderColor: colors.cyan,
+                        backgroundColor: colors.cyan + '14',
                         fill: true,
                         tension: 0.3,
                         pointRadius: 2,
@@ -595,7 +627,7 @@
                     {
                         label: '90% Target',
                         data: refLine,
-                        borderColor: '#ef4444',
+                        borderColor: colors.red,
                         borderDash: [6, 4],
                         borderWidth: 1.5,
                         pointRadius: 0,
@@ -607,11 +639,11 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 16 } }
+                    legend: { labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 16, color: colors.textDim } }
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 10 } },
-                    y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, min: 0, max: 100 }
+                    x: { grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 10, color: colors.textDim } },
+                    y: { grid: { color: colors.border }, ticks: { font: { size: 11 }, color: colors.textDim }, min: 0, max: 100 }
                 }
             }
         });
@@ -620,20 +652,20 @@
         var tbody = document.getElementById('sla-breaches-body');
         if (tbody && slaData.breaches) {
             if (slaData.breaches.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-slate-400 text-sm">No SLA breaches in this period</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-sm" style="color: var(--vipl-text-muted);">No SLA breaches in this period</td></tr>';
             } else {
                 var html = '';
                 slaData.breaches.forEach(function(b) {
-                    var priorityClass = 'text-slate-600';
-                    if (b.priority === 'CRITICAL') priorityClass = 'text-red-600 font-semibold';
-                    else if (b.priority === 'HIGH') priorityClass = 'text-amber-600 font-semibold';
+                    var priorityStyle = 'color: var(--vipl-text-muted);';
+                    if (b.priority === 'CRITICAL') priorityStyle = 'color: var(--vipl-red); font-weight: 600;';
+                    else if (b.priority === 'HIGH') priorityStyle = 'color: var(--vipl-gold); font-weight: 600;';
 
-                    html += '<tr class="hover:bg-slate-50/50">' +
-                        '<td class="px-5 py-3 text-slate-700 max-w-[250px] truncate"><a href="/emails/threads/' + b.thread_id + '/detail/" class="hover:text-primary-600 hover:underline">' + (b.subject || '(no subject)') + '</a></td>' +
-                        '<td class="px-5 py-3 ' + priorityClass + '">' + (b.priority || '-') + '</td>' +
-                        '<td class="px-5 py-3 text-slate-500">' + formatDate(b.deadline) + '</td>' +
-                        '<td class="px-5 py-3 text-slate-500">' + (b.actual === 'Not acknowledged' ? '<span class="text-red-500">Not acknowledged</span>' : formatDate(b.actual)) + '</td>' +
-                        '<td class="px-5 py-3 text-red-500 font-medium">' + (b.exceeded_by || '-') + '</td>' +
+                    html += '<tr style="border-bottom: 1px solid var(--vipl-border);" onmouseover="this.style.background=\'var(--vipl-card-hover)\'" onmouseout="this.style.background=\'\'">' +
+                        '<td class="px-5 py-3 max-w-[250px] truncate" style="color: var(--vipl-text);"><a href="/emails/threads/' + b.thread_id + '/detail/" style="color: var(--vipl-text);" onmouseover="this.style.color=\'var(--vipl-primary)\'" onmouseout="this.style.color=\'var(--vipl-text)\'">' + (b.subject || '(no subject)') + '</a></td>' +
+                        '<td class="px-5 py-3" style="' + priorityStyle + '">' + (b.priority || '-') + '</td>' +
+                        '<td class="px-5 py-3" style="color: var(--vipl-text-dim);">' + formatDate(b.deadline) + '</td>' +
+                        '<td class="px-5 py-3" style="color: var(--vipl-text-dim);">' + (b.actual === 'Not acknowledged' ? '<span style="color: var(--vipl-red);">Not acknowledged</span>' : formatDate(b.actual)) + '</td>' +
+                        '<td class="px-5 py-3" style="color: var(--vipl-red); font-weight: 500;">' + (b.exceeded_by || '-') + '</td>' +
                         '</tr>';
                 });
                 tbody.innerHTML = html;
@@ -661,11 +693,10 @@
             // Update buttons
             tabBtns.forEach(function(b) {
                 b.classList.remove('active');
-                b.classList.add('text-slate-500');
+                b.style.color = '';
                 b.setAttribute('aria-selected', 'false');
             });
             btn.classList.add('active');
-            btn.classList.remove('text-slate-500');
             btn.setAttribute('aria-selected', 'true');
 
             // Update panels
@@ -692,6 +723,27 @@
             applyBtn.classList.add('hidden');
             select.form.submit();
         }
+    };
+
+    // ---- Theme change handler: destroy + recreate all charts ----
+    window.onThemeChange = function() {
+        // Update Chart.js global defaults with new theme colors
+        var newColors = getChartThemeColors();
+        Chart.defaults.color = newColors.textDim;
+
+        // Reset init tracking so charts get recreated
+        var previouslyInitialized = Object.keys(initialized).filter(function(k) { return initialized[k]; });
+        initialized = {};
+
+        // Destroy all existing charts
+        Object.keys(charts).forEach(function(k) {
+            if (charts[k]) { charts[k].destroy(); delete charts[k]; }
+        });
+
+        // Recreate charts that were previously initialized
+        previouslyInitialized.forEach(function(tab) {
+            initTab(tab);
+        });
     };
 
     // ---- Initialize default tab (overview) on page load ----

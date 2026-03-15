@@ -1,86 +1,160 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VIPL Triage | Dev Inspector</title>
+<script>
+(function() {
+    var saved = localStorage.getItem('vipl-theme');
+    if (!saved) saved = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+})();
+</script>
 <style>
+  /* Theme variables */
+  [data-theme="dark"] {
+      --vipl-bg: #0a0a0f;
+      --vipl-surface: #111118;
+      --vipl-card: #1a1a25;
+      --vipl-card-hover: #22222e;
+      --vipl-border: #2a2a3a;
+      --vipl-primary: #e06a97;
+      --vipl-primary-dim: #c94476;
+      --vipl-cyan: #4ECDC4;
+      --vipl-gold: #FFD700;
+      --vipl-red: #FF6B6B;
+      --vipl-purple: #A855F7;
+      --vipl-text: #e0e0e0;
+      --vipl-text-dim: #8888aa;
+      --vipl-text-muted: #555577;
+  }
+  [data-theme="light"] {
+      --vipl-bg: #f8fafc;
+      --vipl-surface: #ffffff;
+      --vipl-card: #ffffff;
+      --vipl-card-hover: #f1f5f9;
+      --vipl-border: #e2e8f0;
+      --vipl-primary: #a83262;
+      --vipl-primary-dim: #8b2852;
+      --vipl-cyan: #0d9488;
+      --vipl-gold: #b45309;
+      --vipl-red: #dc2626;
+      --vipl-purple: #7c3aed;
+      --vipl-text: #1e293b;
+      --vipl-text-dim: #64748b;
+      --vipl-text-muted: #94a3b8;
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.5; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--vipl-bg); color: var(--vipl-text); line-height: 1.5; }
   .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
   h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; }
-  .subtitle { color: #94a3b8; margin-bottom: 24px; font-size: 0.875rem; }
+  .subtitle { color: var(--vipl-text-dim); margin-bottom: 24px; font-size: 0.875rem; }
 
   /* Stats bar */
   .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; }
-  .stat-card { background: #1e293b; border-radius: 8px; padding: 16px 20px; min-width: 120px; }
-  .stat-card .label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-card { background: var(--vipl-card); border-radius: 8px; padding: 16px 20px; min-width: 120px; border: 1px solid var(--vipl-border); }
+  .stat-card .label { font-size: 0.75rem; color: var(--vipl-text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
   .stat-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
-  .stat-card .breakdown { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+  .stat-card .breakdown { font-size: 0.75rem; color: var(--vipl-text-muted); margin-top: 4px; }
 
   /* Email cards */
-  .email-card { background: #1e293b; border-radius: 10px; margin-bottom: 16px; overflow: hidden; border: 1px solid #334155; }
+  .email-card { background: var(--vipl-card); border-radius: 10px; margin-bottom: 16px; overflow: hidden; border: 1px solid var(--vipl-border); }
   .email-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; cursor: pointer; }
-  .email-header:hover { background: #253044; }
+  .email-header:hover { background: var(--vipl-card-hover); }
   .priority-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: #fff; white-space: nowrap; }
-  .category-badge { background: #334155; color: #cbd5e1; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; }
+  .category-badge { background: var(--vipl-border); color: var(--vipl-text-dim); padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; }
   .email-subject { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .email-meta { font-size: 0.75rem; color: #64748b; white-space: nowrap; }
-  .expand-icon { color: #475569; font-size: 1.2rem; transition: transform 0.2s; }
+  .email-meta { font-size: 0.75rem; color: var(--vipl-text-muted); white-space: nowrap; }
+  .expand-icon { color: var(--vipl-text-muted); font-size: 1.2rem; transition: transform 0.2s; }
   .email-card.open .expand-icon { transform: rotate(90deg); }
 
-  .email-body { display: none; border-top: 1px solid #334155; }
+  .email-body { display: none; border-top: 1px solid var(--vipl-border); }
   .email-card.open .email-body { display: block; }
 
   .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
   @media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; } }
 
   .detail-section { padding: 16px 20px; }
-  .detail-section + .detail-section { border-left: 1px solid #334155; }
-  @media (max-width: 768px) { .detail-section + .detail-section { border-left: none; border-top: 1px solid #334155; } }
-  .detail-section h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 8px; }
-  .detail-section p, .detail-section pre { font-size: 0.875rem; color: #cbd5e1; }
+  .detail-section + .detail-section { border-left: 1px solid var(--vipl-border); }
+  @media (max-width: 768px) { .detail-section + .detail-section { border-left: none; border-top: 1px solid var(--vipl-border); } }
+  .detail-section h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--vipl-text-dim); margin-bottom: 8px; }
+  .detail-section p, .detail-section pre { font-size: 0.875rem; color: var(--vipl-text); }
 
   .field { margin-bottom: 12px; }
-  .field .label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+  .field .label { font-size: 0.7rem; color: var(--vipl-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .field .value { margin-top: 2px; }
 
   /* Chat preview */
-  .chat-preview { background: #0f172a; border-radius: 8px; padding: 14px; border: 1px solid #334155; }
+  .chat-preview { background: var(--vipl-surface); border-radius: 8px; padding: 14px; border: 1px solid var(--vipl-border); }
   .chat-preview .chat-header { font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
-  .chat-preview .chat-sub { font-size: 0.8rem; color: #94a3b8; margin-bottom: 10px; }
+  .chat-preview .chat-sub { font-size: 0.8rem; color: var(--vipl-text-dim); margin-bottom: 10px; }
   .chat-preview .chat-field { margin-bottom: 6px; }
-  .chat-preview .chat-field-label { font-size: 0.7rem; color: #64748b; }
+  .chat-preview .chat-field-label { font-size: 0.7rem; color: var(--vipl-text-muted); }
   .chat-preview .chat-field-value { font-size: 0.85rem; }
 
   /* Draft reply */
-  .draft-reply { background: #0f172a; border-radius: 8px; padding: 14px; border: 1px solid #334155; font-size: 0.875rem; white-space: pre-wrap; }
+  .draft-reply { background: var(--vipl-surface); border-radius: 8px; padding: 14px; border: 1px solid var(--vipl-border); font-size: 0.875rem; white-space: pre-wrap; }
 
   /* JSON preview */
-  pre.json { background: #0f172a; border-radius: 8px; padding: 12px; font-size: 0.75rem; overflow-x: auto; border: 1px solid #334155; color: #94a3b8; max-height: 200px; }
+  pre.json { background: var(--vipl-surface); border-radius: 8px; padding: 12px; font-size: 0.75rem; overflow-x: auto; border: 1px solid var(--vipl-border); color: var(--vipl-text-dim); max-height: 200px; }
 
   /* Tags */
   .tags { display: flex; flex-wrap: wrap; gap: 4px; }
-  .tag { background: #334155; color: #94a3b8; padding: 1px 8px; border-radius: 4px; font-size: 0.7rem; }
+  .tag { background: var(--vipl-border); color: var(--vipl-text-dim); padding: 1px 8px; border-radius: 4px; font-size: 0.7rem; }
 
   .spam-badge { background: #991b1b; color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
   .model-badge { background: #1e3a5f; color: #7dd3fc; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
 
-  .full-row { grid-column: 1 / -1; border-top: 1px solid #334155; }
+  .full-row { grid-column: 1 / -1; border-top: 1px solid var(--vipl-border); }
 
-  .empty { text-align: center; padding: 60px; color: #475569; }
+  .empty { text-align: center; padding: 60px; color: var(--vipl-text-muted); }
 
   /* Mode badge */
   .mode-badge { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; vertical-align: middle; margin-left: 12px; }
   .mode-off { background: #166534; color: #bbf7d0; }
   .mode-dev { background: #854d0e; color: #fef08a; }
   .mode-production { background: #991b1b; color: #fca5a5; }
-  .mode-unknown { background: #334155; color: #94a3b8; }
+  .mode-unknown { background: var(--vipl-border); color: var(--vipl-text-dim); }
+
+  /* Theme toggle */
+  .theme-toggle { background: var(--vipl-card); border: 1px solid var(--vipl-border); border-radius: 8px; padding: 6px 12px; font-size: 0.8rem; color: var(--vipl-text-dim); cursor: pointer; transition: background 0.15s, color 0.15s; }
+  .theme-toggle:hover { background: var(--vipl-card-hover); color: var(--vipl-text); }
+
+  /* Poll history table */
+  .poll-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .poll-table th { text-align: left; padding: 8px 12px; color: var(--vipl-text-dim); font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+  .poll-table thead tr { border-bottom: 2px solid var(--vipl-border); }
+  .poll-table tbody tr { border-bottom: 1px solid var(--vipl-border); }
+
+  /* Force poll button */
+  .force-poll-btn { background: var(--vipl-card); color: var(--vipl-text); border: 1px solid var(--vipl-border); border-radius: 8px; padding: 10px 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .force-poll-btn:hover { background: var(--vipl-card-hover); }
+
+  /* CRT / scanline effects — dark mode only */
+  [data-theme="dark"] body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+  }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>VIPL Email Agent — Dev Inspector<span class="mode-badge mode-{{ current_mode|default:'unknown' }}">{{ current_mode|default:"unknown" }}</span></h1>
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+    <h1>VIPL Email Agent — Dev Inspector<span class="mode-badge mode-{{ current_mode|default:'unknown' }}">{{ current_mode|default:"unknown" }}</span></h1>
+    <button type="button" class="theme-toggle" onclick="(function(btn){var html=document.documentElement;var next=html.getAttribute('data-theme')==='dark'?'light':'dark';html.setAttribute('data-theme',next);localStorage.setItem('vipl-theme',next);btn.textContent=next==='dark'?'Light Mode':'Dark Mode';})(this)">Light Mode</button>
+  </div>
   <p class="subtitle">Read-only view of triaged emails. Simulated Chat & draft reply output. No external calls.</p>
 
   <!-- Poll countdown timer -->
@@ -92,7 +166,7 @@
         <div class="value" id="poll-countdown" style="font-variant-numeric:tabular-nums;">--:--</div>
         <div class="breakdown" id="poll-last">Last poll: calculating...</div>
       </div>
-      <div style="width:1px;height:36px;background:#334155;"></div>
+      <div style="width:1px;height:36px;background:var(--vipl-border);"></div>
       <div>
         <div class="label">Interval</div>
         <div class="value" style="font-size:1rem;">{{ poll_interval_minutes }}m</div>
@@ -100,9 +174,7 @@
     </div>
     <div style="display:inline-flex; align-items:center; gap:12px;">
       <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
-      <button type="button" id="force-poll-btn"
-              style="background:#334155; color:#e2e8f0; border:1px solid #475569; border-radius:8px; padding:10px 20px; font-size:0.85rem; font-weight:600; cursor:pointer; transition:background 0.15s;"
-              onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'">
+      <button type="button" id="force-poll-btn" class="force-poll-btn">
         Force Poll Now
       </button>
     </div>
@@ -191,12 +263,12 @@
 
       if (remaining <= 0) {
         countdownEl.textContent = 'Due now';
-        countdownEl.style.color = '#f59e0b';
+        countdownEl.style.color = 'var(--vipl-gold)';
       } else {
         var m = Math.floor(remaining / 60);
         var s = remaining % 60;
         countdownEl.textContent = m + 'm ' + (s < 10 ? '0' : '') + s + 's';
-        countdownEl.style.color = remaining < 60 ? '#f59e0b' : '#e2e8f0';
+        countdownEl.style.color = remaining < 60 ? 'var(--vipl-gold)' : 'var(--vipl-text)';
       }
 
       // Format last poll time
@@ -214,7 +286,7 @@
   {% else %}
   <div class="stat-card" style="display:inline-flex; align-items:center; gap:8px; margin-bottom:24px;">
     <div class="label">Poll Timer</div>
-    <div class="value" style="font-size:0.875rem; color:#64748b;">No poll data yet</div>
+    <div class="value" style="font-size:0.875rem; color:var(--vipl-text-muted);">No poll data yet</div>
   </div>
   {% endif %}
 
@@ -227,7 +299,7 @@
     {% for pri, cnt in stats.by_priority.items %}
     <div class="stat-card">
       <div class="label">{{ pri }}</div>
-      <div class="value" style="color: {% if pri == 'CRITICAL' %}#dc2626{% elif pri == 'HIGH' %}#ea580c{% elif pri == 'MEDIUM' %}#ca8a04{% else %}#16a34a{% endif %}">{{ cnt }}</div>
+      <div class="value" style="color: {% if pri == 'CRITICAL' %}var(--vipl-red){% elif pri == 'HIGH' %}#ea580c{% elif pri == 'MEDIUM' %}var(--vipl-gold){% else %}var(--vipl-cyan){% endif %}">{{ cnt }}</div>
     </div>
     {% endfor %}
   </div>
@@ -246,35 +318,35 @@
   <h2 style="font-size:1.1rem; font-weight:600; margin-bottom:12px; margin-top:24px;">Poll History</h2>
   {% if poll_logs %}
   <div style="overflow-x:auto; margin-bottom:32px;">
-    <table style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+    <table class="poll-table">
       <thead>
-        <tr style="border-bottom:2px solid #334155;">
-          <th style="text-align:left; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Time</th>
-          <th style="text-align:left; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Interval</th>
-          <th style="text-align:left; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Status</th>
-          <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Found</th>
-          <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Processed</th>
-          <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Spam</th>
-          <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Duration</th>
-          <th style="text-align:left; padding:8px 12px; color:#94a3b8; font-weight:600; text-transform:uppercase; font-size:0.7rem; letter-spacing:0.05em;">Error</th>
+        <tr>
+          <th>Time</th>
+          <th>Interval</th>
+          <th>Status</th>
+          <th style="text-align:right;">Found</th>
+          <th style="text-align:right;">Processed</th>
+          <th style="text-align:right;">Spam</th>
+          <th style="text-align:right;">Duration</th>
+          <th>Error</th>
         </tr>
       </thead>
       <tbody id="poll-history-tbody">
         {% for log in poll_logs %}
-        <tr style="border-bottom:1px solid #334155;{% if log.emails_found == 0 and log.status == 'success' %} color:#475569;{% endif %}">
-          <td style="padding:6px 12px; {% if log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#cbd5e1;{% endif %} white-space:nowrap;" data-ts="{{ log.started_at|date:'U' }}">{{ log.started_at|date:"g:i:s A" }}</td>
-          <td style="padding:6px 12px; white-space:nowrap; {% if log.interval_gap %}color:#f59e0b; font-weight:600;{% elif log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#94a3b8;{% endif %}">{{ log.interval_display }}{% if log.interval_gap %} &#9888;{% endif %}</td>
+        <tr style="{% if log.emails_found == 0 and log.status == 'success' %}color:var(--vipl-text-muted);{% endif %}">
+          <td style="padding:6px 12px; {% if log.emails_found == 0 and log.status == 'success' %}color:var(--vipl-text-muted);{% else %}color:var(--vipl-text);{% endif %} white-space:nowrap;" data-ts="{{ log.started_at|date:'U' }}">{{ log.started_at|date:"g:i:s A" }}</td>
+          <td style="padding:6px 12px; white-space:nowrap; {% if log.interval_gap %}color:var(--vipl-gold); font-weight:600;{% elif log.emails_found == 0 and log.status == 'success' %}color:var(--vipl-text-muted);{% else %}color:var(--vipl-text-dim);{% endif %}">{{ log.interval_display }}{% if log.interval_gap %} &#9888;{% endif %}</td>
           <td style="padding:6px 12px;">
             <span style="padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:600;
               {% if log.status == 'success' %}background:#166534; color:#bbf7d0;
               {% elif log.status == 'error' %}background:#991b1b; color:#fca5a5;
               {% else %}background:#854d0e; color:#fef08a;{% endif %}">{{ log.status }}</span>
           </td>
-          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#cbd5e1;{% endif %}">{{ log.emails_found }}</td>
-          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#cbd5e1;{% endif %}">{{ log.emails_processed }}</td>
-          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#cbd5e1;{% endif %}">{{ log.spam_filtered }}</td>
-          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:#475569;{% else %}color:#cbd5e1;{% endif %}">{{ log.duration_ms }}ms</td>
-          <td style="padding:6px 12px; color:#f87171; font-size:0.75rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ log.error_message|truncatechars:50 }}</td>
+          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:var(--vipl-text-muted);{% else %}color:var(--vipl-text);{% endif %}">{{ log.emails_found }}</td>
+          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:var(--vipl-text-muted);{% else %}color:var(--vipl-text);{% endif %}">{{ log.emails_processed }}</td>
+          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:var(--vipl-text-muted);{% else %}color:var(--vipl-text);{% endif %}">{{ log.spam_filtered }}</td>
+          <td style="padding:6px 12px; text-align:right; {% if log.emails_found == 0 and log.status == 'success' %}color:var(--vipl-text-muted);{% else %}color:var(--vipl-text);{% endif %}">{{ log.duration_ms }}ms</td>
+          <td style="padding:6px 12px; color:var(--vipl-red); font-size:0.75rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ log.error_message|truncatechars:50 }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -298,7 +370,7 @@
       if (existing) existing.remove();
       var span = document.createElement('span');
       span.className = 'rel-time';
-      span.style.cssText = 'color:#64748b; font-size:0.7rem; margin-left:6px;';
+      span.style.cssText = 'color:var(--vipl-text-muted); font-size:0.7rem; margin-left:6px;';
       span.textContent = '(' + rel + ')';
       cell.appendChild(span);
     });
@@ -307,7 +379,7 @@
   setInterval(updateRelativeTimes, 60000);
   </script>
   {% else %}
-  <div style="padding:24px; text-align:center; color:#475569; margin-bottom:32px;">No poll logs yet.</div>
+  <div style="padding:24px; text-align:center; color:var(--vipl-text-muted); margin-bottom:32px;">No poll logs yet.</div>
   {% endif %}
 
   <!-- Email list -->
@@ -335,7 +407,7 @@
           {% if email.ai_tags %}<div class="field"><div class="label">Tags</div><div class="tags">{% for tag in email.ai_tags %}<span class="tag">{{ tag }}</span>{% endfor %}</div></div>{% endif %}
           {% if email.language %}<div class="field"><div class="label">Language</div><div class="value">{{ email.language }}</div></div>{% endif %}
           <div class="field"><div class="label">AI Summary</div><div class="value">{{ email.ai_summary|default:"(none)" }}</div></div>
-          <div class="field"><div class="label">AI Reasoning</div><div class="value" style="color:#64748b">{{ email.ai_reasoning|default:"(none)" }}</div></div>
+          <div class="field"><div class="label">AI Reasoning</div><div class="value" style="color:var(--vipl-text-muted)">{{ email.ai_reasoning|default:"(none)" }}</div></div>
         </div>
 
         <!-- Right: Simulated Chat card + Draft reply -->
@@ -364,9 +436,18 @@
   {% else %}
   <div class="empty">
     <p>No emails yet. Run:</p>
-    <pre style="margin-top:12px; display:inline-block; text-align:left; background:#1e293b; padding:12px 16px; border-radius:8px; font-size:0.85rem;">python manage.py test_pipeline --count 5</pre>
+    <pre style="margin-top:12px; display:inline-block; text-align:left; background:var(--vipl-card); padding:12px 16px; border-radius:8px; font-size:0.85rem;">python manage.py test_pipeline --count 5</pre>
   </div>
   {% endif %}
 </div>
+<script>
+// Initialize theme toggle button text
+(function() {
+  var btn = document.querySelector('.theme-toggle');
+  if (btn) {
+    btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? 'Light Mode' : 'Dark Mode';
+  }
+})();
+</script>
 </body>
 </html>

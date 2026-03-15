@@ -3,53 +3,54 @@
 
 {% block title %}VIPL Triage | Settings{% endblock %}
 {% block page_title %}Settings{% endblock %}
+{% block nav_settings_active %}vipl-nav-active{% endblock %}
 
 {% block content %}
 <div class="flex flex-col h-full">
 
     <!-- Tab bar -->
-    <div class="bg-white border-b border-slate-200/60 px-4 md:px-5 py-2 shrink-0">
+    <div class="bg-[var(--vipl-surface)] border-b border-[var(--vipl-border)] px-4 md:px-5 py-2 shrink-0">
         <div class="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
             <!-- Assignment group -->
-            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Assignment</span>
+            <span class="text-[9px] font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider shrink-0 mr-1">Assignment</span>
             <button onclick="switchTab('rules')" id="tab-rules"
-                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 bg-slate-900 text-white cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 bg-[var(--vipl-primary)] text-white cursor-pointer">
                 Assignment Rules
             </button>
             <button onclick="switchTab('visibility')" id="tab-visibility"
-                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-[var(--vipl-text-dim)] hover:text-[var(--vipl-text)] hover:bg-[var(--vipl-card-hover)] cursor-pointer">
                 Team Visibility
             </button>
             <button onclick="switchTab('sla')" id="tab-sla"
-                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-[var(--vipl-text-dim)] hover:text-[var(--vipl-text)] hover:bg-[var(--vipl-card-hover)] cursor-pointer">
                 SLA Targets
             </button>
             <!-- Divider -->
-            <div class="w-px h-5 bg-slate-200/60 mx-2 shrink-0"></div>
+            <div class="w-px h-5 bg-[var(--vipl-border)] mx-2 shrink-0"></div>
             <!-- Integrations group -->
-            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Integrations</span>
+            <span class="text-[9px] font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider shrink-0 mr-1">Integrations</span>
             <button onclick="switchTab('webhooks')" id="tab-webhooks"
-                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-[var(--vipl-text-dim)] hover:text-[var(--vipl-text)] hover:bg-[var(--vipl-card-hover)] cursor-pointer">
                 Chat Webhooks
             </button>
             <button onclick="switchTab('inboxes')" id="tab-inboxes"
-                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-[var(--vipl-text-dim)] hover:text-[var(--vipl-text)] hover:bg-[var(--vipl-card-hover)] cursor-pointer">
                 Email Inboxes
             </button>
             <!-- Divider -->
-            <div class="w-px h-5 bg-slate-200/60 mx-2 shrink-0"></div>
+            <div class="w-px h-5 bg-[var(--vipl-border)] mx-2 shrink-0"></div>
             <!-- System group -->
-            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">System</span>
+            <span class="text-[9px] font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider shrink-0 mr-1">System</span>
             <button onclick="switchTab('config')" id="tab-config"
-                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-[var(--vipl-text-dim)] hover:text-[var(--vipl-text)] hover:bg-[var(--vipl-card-hover)] cursor-pointer">
                 System Config
             </button>
             <button onclick="switchTab('whitelist')" id="tab-whitelist"
-                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-[var(--vipl-text-dim)] hover:text-[var(--vipl-text)] hover:bg-[var(--vipl-card-hover)] cursor-pointer">
                 Spam Whitelist
             </button>
         </div>
-        <p id="tab-description" class="text-[11px] text-slate-400 mt-1.5 px-1">
+        <p id="tab-description" class="text-[11px] text-[var(--vipl-text-dim)] mt-1.5 px-1">
             Configure automatic email assignment rules by category.
         </p>
     </div>
@@ -59,11 +60,11 @@
 
         <!-- Assignment Rules tab -->
         <div id="panel-rules" class="tab-panel">
-            <h3 class="text-sm font-bold text-slate-700 mb-1">Assignment Rules</h3>
-            <p class="text-xs text-slate-400 mb-4">Configure automatic email assignment rules by category.</p>
+            <h3 class="text-sm font-bold text-[var(--vipl-text)] mb-1">Assignment Rules</h3>
+            <p class="text-xs text-[var(--vipl-text-dim)] mb-4">Configure automatic email assignment rules by category.</p>
             <div class="grid gap-3 md:grid-cols-2">
                 {% for category, rules in rules_by_category %}
-                <div id="rules-{{ forloop.counter }}" class="bg-white rounded-xl border border-slate-200/60 overflow-hidden">
+                <div id="rules-{{ forloop.counter }}" class="bg-[var(--vipl-card)] rounded-xl border border-[var(--vipl-border)] overflow-hidden">
                     {% include "emails/_assignment_rules.html" with category=category rules=rules team_members=team_members %}
                 </div>
                 {% endfor %}
@@ -72,8 +73,8 @@
 
         <!-- Team Visibility tab -->
         <div id="panel-visibility" class="tab-panel hidden">
-            <h3 class="text-sm font-bold text-slate-700 mb-1">Team Visibility</h3>
-            <p class="text-xs text-slate-400 mb-4">Control which email categories each team member can see.</p>
+            <h3 class="text-sm font-bold text-[var(--vipl-text)] mb-1">Team Visibility</h3>
+            <p class="text-xs text-[var(--vipl-text-dim)] mb-4">Control which email categories each team member can see.</p>
             <div id="visibility-matrix">
                 {% include "emails/_category_visibility.html" with team_members=team_members visibility_by_user=visibility_by_user valid_categories=valid_categories %}
             </div>
@@ -81,8 +82,8 @@
 
         <!-- SLA Targets tab -->
         <div id="panel-sla" class="tab-panel hidden">
-            <h3 class="text-sm font-bold text-slate-700 mb-1">SLA Targets</h3>
-            <p class="text-xs text-slate-400 mb-4">Set acknowledgment and response time targets by priority and category.</p>
+            <h3 class="text-sm font-bold text-[var(--vipl-text)] mb-1">SLA Targets</h3>
+            <p class="text-xs text-[var(--vipl-text-dim)] mb-4">Set acknowledgment and response time targets by priority and category.</p>
             <div id="sla-matrix">
                 {% include "emails/_sla_config.html" with sla_matrix=sla_matrix valid_priorities=valid_priorities valid_categories=valid_categories %}
             </div>
@@ -91,8 +92,8 @@
         <!-- Chat Webhooks tab -->
         <div id="panel-webhooks" class="tab-panel hidden">
             <div class="max-w-2xl">
-                <h3 class="text-sm font-bold text-slate-700 mb-1">Chat Webhooks</h3>
-                <p class="text-xs text-slate-400 mb-4">Configure Google Chat webhook URLs for category notifications.</p>
+                <h3 class="text-sm font-bold text-[var(--vipl-text)] mb-1">Chat Webhooks</h3>
+                <p class="text-xs text-[var(--vipl-text-dim)] mb-4">Configure Google Chat webhook URLs for category notifications.</p>
                 <div id="webhooks-content">
                     {% include "emails/_webhooks_tab.html" with category_webhooks=category_webhooks %}
                 </div>
@@ -102,24 +103,24 @@
         <!-- Email Inboxes tab -->
         <div id="panel-inboxes" class="tab-panel hidden">
             <div class="max-w-xl">
-                <h3 class="text-sm font-bold text-slate-700 mb-1">Email Inboxes</h3>
-                <p class="text-xs text-slate-400 mb-4">Email addresses the agent polls for new messages.</p>
+                <h3 class="text-sm font-bold text-[var(--vipl-text)] mb-1">Email Inboxes</h3>
+                <p class="text-xs text-[var(--vipl-text-dim)] mb-4">Email addresses the agent polls for new messages.</p>
                 {% include "emails/_inboxes_tab.html" with monitored_inboxes=monitored_inboxes %}
             </div>
         </div>
 
         <!-- System Config tab -->
         <div id="panel-config" class="tab-panel hidden">
-            <h3 class="text-sm font-bold text-slate-700 mb-1">System Configuration</h3>
-            <p class="text-xs text-slate-400 mb-4">System-level settings, feature toggles, and operational parameters.</p>
+            <h3 class="text-sm font-bold text-[var(--vipl-text)] mb-1">System Configuration</h3>
+            <p class="text-xs text-[var(--vipl-text-dim)] mb-4">System-level settings, feature toggles, and operational parameters.</p>
             {% include "emails/_config_editor.html" with config_groups=config_groups %}
         </div>
 
         <!-- Spam Whitelist tab -->
         <div id="panel-whitelist" class="tab-panel hidden">
             <div class="max-w-2xl">
-                <h3 class="text-sm font-bold text-slate-700 mb-1">Spam Whitelist</h3>
-                <p class="text-xs text-slate-400 mb-4">Whitelisted senders skip the spam pre-filter but still go through AI triage.</p>
+                <h3 class="text-sm font-bold text-[var(--vipl-text)] mb-1">Spam Whitelist</h3>
+                <p class="text-xs text-[var(--vipl-text-dim)] mb-4">Whitelisted senders skip the spam pre-filter but still go through AI triage.</p>
                 <div id="whitelist-content">
                     {% include "emails/_whitelist_tab.html" with whitelist_entries=whitelist_entries %}
                 </div>
@@ -144,11 +145,11 @@ var tabDescriptions = {
 function switchTab(tab) {
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.add('hidden'); });
     document.querySelectorAll('.tab-btn').forEach(function(b) {
-        b.className = 'tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer';
+        b.className = 'tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-[var(--vipl-text-dim)] hover:text-[var(--vipl-text)] hover:bg-[var(--vipl-card-hover)] cursor-pointer';
     });
     document.getElementById('panel-' + tab).classList.remove('hidden');
     var activeBtn = document.getElementById('tab-' + tab);
-    activeBtn.className = 'tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 bg-slate-900 text-white cursor-pointer';
+    activeBtn.className = 'tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 bg-[var(--vipl-primary)] text-white cursor-pointer';
     var descEl = document.getElementById('tab-description');
     if (descEl && tabDescriptions[tab]) descEl.textContent = tabDescriptions[tab];
 }
@@ -165,7 +166,7 @@ function initSortables() {
         if (el._sortable) return;
         el._sortable = new Sortable(el, {
             animation: 150,
-            ghostClass: 'bg-primary-50',
+            ghostClass: 'bg-[var(--vipl-card-hover)]',
             onEnd: function(evt) {
                 var category = el.dataset.category;
                 var items = el.querySelectorAll('[data-assignee-id]');

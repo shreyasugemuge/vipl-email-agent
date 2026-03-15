@@ -2,7 +2,7 @@
 
 <div id="inboxes-list">
     {% if save_success %}
-    <div class="mb-4 px-4 py-2 bg-emerald-50 border border-emerald-200/60 rounded-lg text-xs font-medium text-emerald-700">
+    <div class="mb-4 px-4 py-2 bg-[var(--vipl-cyan)]/10 border border-[var(--vipl-cyan)]/20 rounded-lg text-xs font-medium text-[var(--vipl-cyan)]">
         Inbox configuration saved successfully.
     </div>
     {% endif %}
@@ -13,9 +13,9 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="add">
         <input type="email" name="inbox_email" placeholder="email@example.com" required
-               class="flex-1 text-sm border border-slate-200/80 rounded-lg px-3 py-2 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none">
+               class="flex-1 text-sm border border-[var(--vipl-border)] rounded-lg px-3 py-2 bg-[var(--vipl-card)] text-[var(--vipl-text)] focus:ring-2 focus:ring-[var(--vipl-primary)]/20 focus:border-[var(--vipl-primary)] outline-none">
         <button type="submit"
-                class="px-4 py-2 text-xs font-bold text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+                class="px-4 py-2 text-xs font-bold text-white bg-[var(--vipl-primary)] rounded-lg hover:bg-[var(--vipl-primary-dim)] transition-colors shadow-sm">
             Add Inbox
         </button>
     </form>
@@ -24,13 +24,13 @@
     {% if monitored_inboxes %}
     <div class="space-y-2">
         {% for inbox in monitored_inboxes %}
-        <div class="flex items-center justify-between gap-2 px-4 py-3 bg-white border border-slate-200/60 rounded-lg">
+        <div class="flex items-center justify-between gap-2 px-4 py-3 bg-[var(--vipl-card)] border border-[var(--vipl-border)] rounded-lg">
             <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-[var(--vipl-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
-                <span class="text-sm font-medium text-slate-700">{{ inbox }}</span>
+                <span class="text-sm font-medium text-[var(--vipl-text)]">{{ inbox }}</span>
             </div>
             <form hx-post="{% url 'emails:settings_inboxes_save' %}"
                   hx-target="#inboxes-list" hx-swap="innerHTML"
@@ -38,7 +38,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="action" value="remove">
                 <input type="hidden" name="inbox_email" value="{{ inbox }}">
-                <button type="submit" class="text-slate-300 hover:text-red-500 transition-colors" title="Remove inbox">
+                <button type="submit" class="text-[var(--vipl-text-muted)] hover:text-[var(--vipl-red)] transition-colors" title="Remove inbox">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -48,7 +48,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="text-sm text-slate-400 italic py-4 text-center">
+    <div class="text-sm text-[var(--vipl-text-dim)] italic py-4 text-center">
         No monitored inboxes configured. Add one above.
     </div>
     {% endif %}

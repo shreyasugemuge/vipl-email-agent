@@ -62,6 +62,8 @@ SAFE_ATTRIBUTES = {
 }
 
 
+
+
 # ---------------------------------------------------------------------------
 # Unread annotation helper
 # ---------------------------------------------------------------------------
@@ -1170,7 +1172,7 @@ def mark_thread_unread(request, pk):
     )
     close_html = (
         '<div id="thread-detail-panel" class="flex items-center justify-center h-full">'
-        '<span class="text-sm text-slate-400">Select a thread</span></div>'
+        '<span class="font-pixel text-[8px] text-[var(--vipl-text-dim)]">Select a thread</span></div>'
     )
     return _HttpResponse(close_html + card_html)
 

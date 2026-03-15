@@ -5,7 +5,7 @@
     document.title = '{% if unread_total %}({{ unread_total }}) {% endif %}VIPL Triage | Inbox';
 </script>
 
-<span id="thread-count-label" hx-swap-oob="true" class="text-[10px] font-bold text-slate-400 tabular-nums">{{ total_count }} thread{{ total_count|pluralize }}</span>
+<span id="thread-count-label" hx-swap-oob="true" class="text-[10px] font-bold text-[var(--vipl-text-muted)] tabular-nums font-mono">{{ total_count }} thread{{ total_count|pluralize }}</span>
 {% endif %}
 
 {% if threads %}
@@ -16,20 +16,20 @@
 </div>
 {% else %}
 <div class="flex flex-col items-center justify-center h-64">
-    <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-        <svg class="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="w-14 h-14 rounded border border-[var(--vipl-border)] bg-[var(--vipl-card)] flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-[var(--vipl-primary)]/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25"
                   d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
         </svg>
     </div>
-    <span class="text-sm font-medium text-slate-400">No threads found</span>
-    <span class="text-xs text-slate-300 mt-1">Try adjusting your filters</span>
+    <span class="font-pixel text-[8px] text-[var(--vipl-text-dim)]">No threads found</span>
+    <span class="text-[10px] text-[var(--vipl-text-muted)] mt-1 font-mono">Try adjusting your filters</span>
 </div>
 {% endif %}
 
 {% if page_obj.has_other_pages %}
-<div class="flex items-center justify-between px-4 py-2.5 mx-2 mb-1.5 bg-white rounded-xl border border-slate-200/40 shadow-sm">
-    <div class="text-[10px] font-bold text-slate-400 tabular-nums">
+<div class="flex items-center justify-between px-4 py-2.5 mx-2 mb-1.5 bg-[var(--vipl-card)] rounded border border-[var(--vipl-border)]">
+    <div class="font-pixel text-[7px] text-[var(--vipl-text-muted)] tabular-nums">
         {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
     </div>
     <div class="flex gap-1.5">
@@ -37,7 +37,7 @@
         <a href="{% url 'emails:thread_list' %}?page={{ page_obj.previous_page_number }}{% if query_params %}&{{ query_params }}{% endif %}"
            hx-get="{% url 'emails:thread_list' %}?page={{ page_obj.previous_page_number }}{% if query_params %}&{{ query_params }}{% endif %}"
            hx-target="#thread-list-body" hx-push-url="true"
-           class="px-3 py-1 text-[10px] font-bold text-slate-500 border border-slate-200/60 rounded-lg hover:bg-slate-50 transition-all">
+           class="px-3 py-1 text-[10px] font-bold font-mono text-[var(--vipl-primary)] border border-[var(--vipl-primary)]/20 rounded hover:bg-[var(--vipl-primary)]/5 transition-all">
             Prev
         </a>
         {% endif %}
@@ -45,7 +45,7 @@
         <a href="{% url 'emails:thread_list' %}?page={{ page_obj.next_page_number }}{% if query_params %}&{{ query_params }}{% endif %}"
            hx-get="{% url 'emails:thread_list' %}?page={{ page_obj.next_page_number }}{% if query_params %}&{{ query_params }}{% endif %}"
            hx-target="#thread-list-body" hx-push-url="true"
-           class="px-3 py-1 text-[10px] font-bold text-slate-500 border border-slate-200/60 rounded-lg hover:bg-slate-50 transition-all">
+           class="px-3 py-1 text-[10px] font-bold font-mono text-[var(--vipl-primary)] border border-[var(--vipl-primary)]/20 rounded hover:bg-[var(--vipl-primary)]/5 transition-all">
             Next
         </a>
         {% endif %}

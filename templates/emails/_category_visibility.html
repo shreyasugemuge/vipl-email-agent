@@ -1,22 +1,22 @@
 {% load email_tags %}
 
 {% if save_success %}
-<div class="mb-4 px-4 py-2 bg-emerald-50 border border-emerald-200/60 rounded-lg text-xs font-medium text-emerald-700">
+<div class="mb-4 px-4 py-2 bg-[var(--vipl-cyan)]/10 border border-[var(--vipl-cyan)]/20 rounded-lg text-xs font-medium text-[var(--vipl-cyan)]">
     Category visibility saved successfully.
 </div>
 {% endif %}
-<div class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
-    <div class="px-4 py-3 bg-slate-50/60 border-b border-slate-200/40">
-        <h3 class="text-xs font-bold text-slate-700">Category Visibility per Team Member</h3>
-        <p class="text-[10px] text-slate-400 mt-0.5">Check categories each member can see and claim emails from.</p>
+<div class="bg-[var(--vipl-card)] rounded-xl border border-[var(--vipl-border)] shadow-sm overflow-hidden">
+    <div class="px-4 py-3 bg-[var(--vipl-surface)] border-b border-[var(--vipl-border)]">
+        <h3 class="text-xs font-bold text-[var(--vipl-text)]">Category Visibility per Team Member</h3>
+        <p class="text-[10px] text-[var(--vipl-text-dim)] mt-0.5">Check categories each member can see and claim emails from.</p>
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead>
-                <tr class="border-b border-slate-200/40">
-                    <th class="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] sticky left-0 bg-white z-10">Member</th>
+                <tr class="border-b border-[var(--vipl-border)]">
+                    <th class="text-left px-4 py-2.5 font-bold text-[var(--vipl-text-dim)] uppercase tracking-wider text-[10px] sticky left-0 bg-[var(--vipl-surface)] z-10">Member</th>
                     {% for cat in valid_categories %}
-                    <th class="px-2 py-2.5 font-semibold text-slate-500 text-[10px] text-center whitespace-nowrap">{{ cat }}</th>
+                    <th class="px-2 py-2.5 font-semibold text-[var(--vipl-text-dim)] text-[10px] text-center whitespace-nowrap">{{ cat }}</th>
                     {% endfor %}
                     <th class="px-3 py-2.5 text-[10px]"></th>
                 </tr>
@@ -24,26 +24,26 @@
             <tbody>
                 {% for member in team_members %}
                 {% with user_cats=visibility_by_user|dict_get:member.pk %}
-                <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
+                <tr class="border-b border-[var(--vipl-border)] hover:bg-[var(--vipl-card-hover)] transition-colors">
                     <form hx-post="{% url 'emails:settings_visibility_save' %}"
                           hx-target="#visibility-matrix" hx-swap="innerHTML">
                         {% csrf_token %}
                         <input type="hidden" name="user_id" value="{{ member.pk }}">
-                        <td class="px-4 py-2.5 font-semibold text-slate-700 sticky left-0 bg-white whitespace-nowrap z-10">
+                        <td class="px-4 py-2.5 font-semibold text-[var(--vipl-text)] sticky left-0 bg-[var(--vipl-card)] whitespace-nowrap z-10">
                             {{ member.get_full_name|default:member.username }}
                             {% if user_cats %}
-                            <span class="ml-1.5 text-[9px] font-medium text-primary-400 tabular-nums">{{ user_cats|length }}</span>
+                            <span class="ml-1.5 text-[9px] font-medium text-[var(--vipl-primary)] tabular-nums">{{ user_cats|length }}</span>
                             {% endif %}
                         </td>
                         {% for cat in valid_categories %}
                         <td class="px-2 py-2.5 text-center">
                             <input type="checkbox" name="categories[]" value="{{ cat }}"
                                    {% if cat|in_set:user_cats %}checked{% endif %}
-                                   class="w-3.5 h-3.5 rounded border-slate-300 text-primary-600 focus:ring-primary-500/20 cursor-pointer">
+                                   class="w-3.5 h-3.5 rounded border-[var(--vipl-border)] text-[var(--vipl-primary)] focus:ring-[var(--vipl-primary)]/20 cursor-pointer">
                         </td>
                         {% endfor %}
                         <td class="px-3 py-2.5">
-                            <button type="submit" class="px-2.5 py-1 text-[10px] font-bold text-primary-700 bg-primary-50 rounded-md border border-primary-200/60 hover:bg-primary-100 transition-colors">
+                            <button type="submit" class="px-2.5 py-1 text-[10px] font-bold text-white bg-[var(--vipl-primary)] rounded-md border border-[var(--vipl-primary)] hover:bg-[var(--vipl-primary-dim)] transition-colors">
                                 Save
                             </button>
                         </td>
