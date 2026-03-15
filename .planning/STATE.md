@@ -44,6 +44,9 @@ Progress: [██░░░░░░░░] 15%
 - Sender reputation (not ML) for spam learning -- volume too low for statistical approaches
 - Confidence defaults to empty string (not None) -- consistent with existing DTO CharField pattern
 - Confidence added to TRIAGE_TOOL required fields -- Claude must always provide it
+- Spam badge annotation correct as-is -- SoftDeleteManager consistently filters in list + detail
+- FIX-01 avatar: works correctly, URL expiry is Google-side signed URL TTL
+- FIX-02 dedup: works correctly with proper window boundary and same-inbox exclusion
 
 ### Pending Todos
 
@@ -55,6 +58,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T13:50:00.000Z
-Stopped at: Completed 02-01-PLAN.md
-Next: Phase 2 remaining plans or Phase 3
+Last session: 2026-03-15T13:48:44.000Z
+Stopped at: Completed 03-02-PLAN.md
+Next: Phase 3 complete, proceed to Phase 4

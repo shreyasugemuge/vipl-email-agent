@@ -28,7 +28,7 @@ Requirements for v2.5.0 Intelligence + UX release. Each maps to roadmap phases.
 - [ ] **SPAM-03**: Sender reputation is tracked (total emails, spam count, spam ratio per sender address)
 - [ ] **SPAM-04**: Senders with spam ratio > 0.8 and >= 3 total emails are auto-blocked in future polls
 - [ ] **SPAM-05**: Marking "Not Spam" on a blocked sender auto-creates a SpamWhitelist entry
-- [ ] **SPAM-06**: Spam badge displays correctly on thread cards (fix has_spam annotation bug)
+- [x] **SPAM-06**: Spam badge displays correctly on thread cards (fix has_spam annotation bug)
 
 ### Read/Unread
 
@@ -58,8 +58,8 @@ Requirements for v2.5.0 Intelligence + UX release. Each maps to roadmap phases.
 
 ### Bug Fixes
 
-- [ ] **FIX-01**: Gmail profile picture imports correctly on OAuth login (avatar_url field)
-- [ ] **FIX-02**: Cross-inbox email deduplication handles same email arriving in info@ and sales@
+- [x] **FIX-01**: Gmail profile picture imports correctly on OAuth login (avatar_url field)
+- [x] **FIX-02**: Cross-inbox email deduplication handles same email arriving in info@ and sales@
 
 ## Future Requirements
 
@@ -104,7 +104,7 @@ Deferred beyond v2.5.0.
 | SPAM-03 | Phase 3 | Pending |
 | SPAM-04 | Phase 3 | Pending |
 | SPAM-05 | Phase 3 | Pending |
-| SPAM-06 | Phase 3 | Pending |
+| SPAM-06 | Phase 3 | Complete |
 | READ-01 | Phase 4 | Pending |
 | READ-02 | Phase 4 | Pending |
 | READ-03 | Phase 4 | Pending |
@@ -122,8 +122,8 @@ Deferred beyond v2.5.0.
 | RPT-05 | Phase 6 | Pending |
 | RPT-06 | Phase 6 | Pending |
 | RPT-07 | Phase 6 | Pending |
-| FIX-01 | Phase 3 | Pending |
-| FIX-02 | Phase 3 | Pending |
+| FIX-01 | Phase 3 | Complete |
+| FIX-02 | Phase 3 | Complete |
 
 **Coverage:**
 - v2.5.0 requirements: 30 total
