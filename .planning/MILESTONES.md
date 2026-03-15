@@ -1,5 +1,14 @@
 # Milestones
 
+## v2.5.4 UI/UX Polish & Bug Fixes (Shipped: 2026-03-15)
+
+**Phases completed:** 7 phases, 8 plans, 0 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
 ## v2.5.0 Intelligence + UX (Shipped: 2026-03-15)
 
 **Phases completed:** 7 phases, 14 plans
