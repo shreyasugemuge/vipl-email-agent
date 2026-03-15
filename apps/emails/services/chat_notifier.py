@@ -222,6 +222,35 @@ class ChatNotifier:
         payload = {"cardsV2": [{"cardId": f"assign-{email.pk}", "card": card}]}
         return self._post(payload)
 
+    def notify_cross_inbox_duplicate(self, email_obj) -> bool:
+        """Post a lightweight notification when same email arrives on another inbox.
+
+        Per user decision: "Thread [subject] also received on sales@" -- not a full triage card.
+        """
+        if self._is_quiet_hours():
+            return False
+
+        thread = email_obj.thread
+        subject = (thread.subject if thread else email_obj.subject or "")[:50]
+        inbox = email_obj.to_inbox or ""
+        # Short inbox label: "info@" or "sales@"
+        inbox_short = inbox.split("@")[0] + "@" if "@" in inbox else inbox
+
+        card = {
+            "header": self._branded_header(
+                title=f"Also received on {inbox_short}",
+                subtitle=subject,
+            ),
+            "sections": [
+                {"widgets": [
+                    {"textParagraph": {"text": f"Thread <b>{subject}</b> also arrived on <b>{inbox}</b>. No additional triage needed."}}
+                ]},
+                VIPL_FOOTER_SECTION,
+            ],
+        }
+        payload = {"cardsV2": [{"cardId": f"crossinbox-{email_obj.pk}", "card": card}]}
+        return self._post(payload)
+
     def notify_thread_update(self, email_obj, reopened=False) -> bool:
         """Post a notification card when a new message arrives on an existing thread.
 
