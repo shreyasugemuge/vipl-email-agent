@@ -4,6 +4,7 @@
 
 - **v2.1 VIPL Email Agent v2** — Phases 1-6 (shipped 2026-03-14) — [archive](milestones/v2.1-ROADMAP.md)
 - **v2.2 Polish & Hardening** — Phases 1-4 (shipped 2026-03-14) — [archive](milestones/v2.2-ROADMAP.md)
+- **v2.3.5 Email Threads & Inbox** — Phases 1-4 (in progress)
 
 ## Phases
 
@@ -29,3 +30,87 @@
 - [x] Phase 6: Migration + Cutover (2/2 plans) — completed 2026-03-14
 
 </details>
+
+### v2.3.5 Email Threads & Inbox (In Progress)
+
+**Milestone Goal:** Transform the email triage experience from individual messages to threaded conversations, matching Gmelius/Hiver-level shared inbox UX.
+
+- [ ] **Phase 1: Thread Model + Data Migration** - Thread/conversation model with thread-level assignment, status, and migration of existing emails into threads
+- [ ] **Phase 2: Pipeline Integration + Inbox Clarity** - Poller creates/updates threads on new email, deduplication across inboxes, multi-inbox tracking
+- [ ] **Phase 3: Conversation UI** - Three-panel layout replacing card list, thread-based browsing with message history detail panel
+- [ ] **Phase 4: Collaboration** - Internal notes with @mentions and collision detection for team coordination
+
+## Phase Details
+
+### Phase 1: Thread Model + Data Migration
+**Goal**: Emails are grouped into threads with thread-level ownership and lifecycle
+**Depends on**: Nothing (first phase)
+**Requirements**: THRD-01, THRD-02, THRD-03, THRD-05
+**Success Criteria** (what must be TRUE):
+  1. All existing Email records are grouped into Thread objects by their `gmail_thread_id`
+  2. Each thread has its own status (New/Acknowledged/Closed) that is independent of individual message statuses
+  3. Assigning a thread sets ownership of all messages within it — there is one assignee per thread
+  4. Thread displays a message count and the latest message preview (subject, sender, timestamp)
+**Plans**: TBD
+
+Plans:
+- [ ] 01-01: Thread model, relationships, and data migration
+- [ ] 01-02: Thread-level assignment and status logic
+
+### Phase 2: Pipeline Integration + Inbox Clarity
+**Goal**: New emails automatically land in the correct thread, and multi-inbox emails are deduplicated
+**Depends on**: Phase 1
+**Requirements**: THRD-04, INBOX-01, INBOX-02, INBOX-03
+**Success Criteria** (what must be TRUE):
+  1. When a new email arrives on an existing thread, the thread bumps to the top of the list and reopens if it was closed
+  2. Each email clearly shows which inbox it was received on (info@ vs sales@)
+  3. When the same email arrives on both info@ and sales@, it appears as a single thread (not duplicated)
+  4. Deduplicated threads display all inboxes they were received on (e.g., "info@ + sales@")
+**Plans**: TBD
+
+Plans:
+- [ ] 02-01: Pipeline thread creation/update and reopen logic
+- [ ] 02-02: Inbox tracking, deduplication, and multi-inbox display
+
+### Phase 3: Conversation UI
+**Goal**: Users browse and manage threads in a three-panel layout with full message history
+**Depends on**: Phase 2
+**Requirements**: UI-01, UI-02, UI-03, UI-04, UI-05, INBOX-04
+**Success Criteria** (what must be TRUE):
+  1. Dashboard shows a three-panel layout: left sidebar (views/filters), center (thread list), right (detail panel)
+  2. Center panel shows threads (not individual emails) with assignee, status, priority, SLA, and category inline
+  3. Clicking a thread opens a detail panel showing all messages in chronological order
+  4. Thread detail panel includes all actions: assign, acknowledge, close, whitelist sender
+  5. Left sidebar has quick-access views (Unassigned, Mine, All Open, Closed) and an inbox filter (info@, sales@, all)
+**Plans**: TBD
+
+Plans:
+- [ ] 03-01: Three-panel layout and thread list (replacing card list)
+- [ ] 03-02: Thread detail panel with message history
+- [ ] 03-03: Sidebar views, filters, and inbox filter
+
+### Phase 4: Collaboration
+**Goal**: Team members can discuss threads internally and see who else is viewing a thread
+**Depends on**: Phase 3
+**Requirements**: COLLAB-01, COLLAB-02, COLLAB-03, COLLAB-04
+**Success Criteria** (what must be TRUE):
+  1. User can add an internal note on any thread — notes are never visible to the email sender
+  2. Notes support @mentions that trigger a notification to the mentioned team member
+  3. Notes appear inline in the thread detail, visually distinct from email messages (different background, "Internal note" label)
+  4. When another user has a thread open, a "X is viewing this" indicator appears in the detail panel
+**Plans**: TBD
+
+Plans:
+- [ ] 04-01: Internal notes model and @mention notifications
+- [ ] 04-02: Collision detection (polling-based "viewing" indicator)
+
+## Progress
+
+**Execution Order:** 1 -> 2 -> 3 -> 4
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Thread Model + Data Migration | 0/2 | Not started | - |
+| 2. Pipeline Integration + Inbox Clarity | 0/2 | Not started | - |
+| 3. Conversation UI | 0/3 | Not started | - |
+| 4. Collaboration | 0/2 | Not started | - |

@@ -64,30 +64,30 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| THRD-01 | — | Pending |
-| THRD-02 | — | Pending |
-| THRD-03 | — | Pending |
-| THRD-04 | — | Pending |
-| THRD-05 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
-| UI-03 | — | Pending |
-| UI-04 | — | Pending |
-| UI-05 | — | Pending |
-| COLLAB-01 | — | Pending |
-| COLLAB-02 | — | Pending |
-| COLLAB-03 | — | Pending |
-| COLLAB-04 | — | Pending |
-| INBOX-01 | — | Pending |
-| INBOX-02 | — | Pending |
-| INBOX-03 | — | Pending |
-| INBOX-04 | — | Pending |
+| THRD-01 | Phase 1 | Pending |
+| THRD-02 | Phase 1 | Pending |
+| THRD-03 | Phase 1 | Pending |
+| THRD-04 | Phase 2 | Pending |
+| THRD-05 | Phase 1 | Pending |
+| UI-01 | Phase 3 | Pending |
+| UI-02 | Phase 3 | Pending |
+| UI-03 | Phase 3 | Pending |
+| UI-04 | Phase 3 | Pending |
+| UI-05 | Phase 3 | Pending |
+| COLLAB-01 | Phase 4 | Pending |
+| COLLAB-02 | Phase 4 | Pending |
+| COLLAB-03 | Phase 4 | Pending |
+| COLLAB-04 | Phase 4 | Pending |
+| INBOX-01 | Phase 2 | Pending |
+| INBOX-02 | Phase 2 | Pending |
+| INBOX-03 | Phase 2 | Pending |
+| INBOX-04 | Phase 3 | Pending |
 
 **Coverage:**
 - v2.3.5 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after initial definition*
+*Last updated: 2026-03-15 after roadmap creation*
