@@ -28,7 +28,7 @@
 - [x] **Phase 4: Read/Unread Tracking** - Per-user read state with visual indicators (completed 2026-03-15)
 - [x] **Phase 5: Editable Attributes + Context Menu** - Inline edit and right-click quick actions (completed 2026-03-15)
 - [x] **Phase 6: Reports Module** - Analytics dashboard with Chart.js charts (completed 2026-03-15)
-- [ ] **Phase 7: Pipeline Override Guards** - Fix override flag enforcement and config naming (gap closure)
+- [x] **Phase 7: Pipeline Override Guards** - Fix override flag enforcement and config naming (gap closure) (completed 2026-03-15)
 
 ## Phase Details
 
@@ -132,7 +132,7 @@ Plans:
   2. When a thread has `priority_overridden=True`, `update_thread_preview()` does NOT overwrite `thread.priority`
   3. `auto_assign_confidence_threshold` renamed to `auto_assign_confidence_tier` with clear help text in SystemConfig admin
   4. Tests cover override guard logic and config rename migration
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
 - [ ] 07-01-PLAN.md -- Override guards in update_thread_preview, config rename with data migration, tests
 
@@ -148,4 +148,4 @@ Plans:
 | 4. Read/Unread Tracking | 2/2 | Complete    | 2026-03-15 |
 | 5. Editable Attributes + Context Menu | 2/2 | Complete   | 2026-03-15 |
 | 6. Reports Module | 2/2 | Complete   | 2026-03-15 |
-| 7. Pipeline Override Guards | 0/1 | Planning complete | - |
+| 7. Pipeline Override Guards | 1/1 | Complete   | 2026-03-15 |

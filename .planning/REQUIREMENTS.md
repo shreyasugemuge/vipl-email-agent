@@ -19,7 +19,7 @@ Requirements for v2.5.0 Intelligence + UX release. Each maps to roadmap phases.
 - [x] **INTEL-08**: Recent correction history is injected into AI prompt to improve future triages
 - [x] **INTEL-09**: User can inline-edit thread category from detail panel (dropdown with existing categories)
 - [x] **INTEL-10**: User can inline-edit thread priority from detail panel (dropdown with CRITICAL/HIGH/MEDIUM/LOW)
-- [ ] **INTEL-11**: Category/priority overrides are preserved when new emails arrive in the thread (override flags)
+- [x] **INTEL-11**: Category/priority overrides are preserved when new emails arrive in the thread (override flags)
 
 ### Spam
 
@@ -98,7 +98,7 @@ Deferred beyond v2.5.0.
 | INTEL-08 | Phase 2 | Complete |
 | INTEL-09 | Phase 5 | Complete |
 | INTEL-10 | Phase 5 | Complete |
-| INTEL-11 | Phase 7 | Pending |
+| INTEL-11 | Phase 7 | Complete |
 | SPAM-01 | Phase 3 | Complete |
 | SPAM-02 | Phase 3 | Complete |
 | SPAM-03 | Phase 3 | Complete |
