@@ -153,6 +153,9 @@
             if (newTbody) {
               document.getElementById('poll-history-tbody').innerHTML = newTbody.innerHTML;
               updateRelativeTimes();
+              // Update countdown timer epoch from refreshed page
+              var epochMatch = html.match(/var lastEpoch = (\d+)/);
+              if (epochMatch) { window.__pollLastEpoch = parseInt(epochMatch[1]); }
             }
           });
       })
@@ -175,7 +178,7 @@
   </script>
   <script>
   (function() {
-    var lastEpoch = {{ last_poll_epoch }};
+    window.__pollLastEpoch = {{ last_poll_epoch }};
     var intervalMin = {{ poll_interval_minutes }};
     var intervalSec = intervalMin * 60;
     var countdownEl = document.getElementById('poll-countdown');
@@ -183,7 +186,7 @@
 
     function update() {
       var now = Math.floor(Date.now() / 1000);
-      var elapsed = now - lastEpoch;
+      var elapsed = now - window.__pollLastEpoch;
       var remaining = intervalSec - elapsed;
 
       if (remaining <= 0) {
@@ -197,7 +200,7 @@
       }
 
       // Format last poll time
-      var lastDate = new Date(lastEpoch * 1000);
+      var lastDate = new Date(window.__pollLastEpoch * 1000);
       var agoMin = Math.floor(elapsed / 60);
       if (agoMin < 1) lastEl.textContent = 'Last poll: just now';
       else if (agoMin < 60) lastEl.textContent = 'Last poll: ' + agoMin + 'm ago';
