@@ -48,13 +48,13 @@ Requirements for v2.5.0 Intelligence + UX release. Each maps to roadmap phases.
 
 ### Reports
 
-- [ ] **RPT-01**: New "Reports" page accessible from sidebar navigation
+- [x] **RPT-01**: New "Reports" page accessible from sidebar navigation
 - [ ] **RPT-02**: Email volume chart showing daily/weekly incoming emails (bar chart)
 - [ ] **RPT-03**: Response time metrics (avg time to acknowledge, avg time to close) with trends
 - [ ] **RPT-04**: SLA compliance rate displayed as percentage with breach count
 - [ ] **RPT-05**: Team workload chart showing emails handled per team member (bar chart)
-- [ ] **RPT-06**: Date range picker to filter all report data
-- [ ] **RPT-07**: Charts rendered with Chart.js 4.x via CDN (no build step)
+- [x] **RPT-06**: Date range picker to filter all report data
+- [x] **RPT-07**: Charts rendered with Chart.js 4.x via CDN (no build step)
 
 ### Bug Fixes
 
@@ -115,13 +115,13 @@ Deferred beyond v2.5.0.
 | MENU-03 | Phase 5 | Pending |
 | MENU-04 | Phase 5 | Pending |
 | MENU-05 | Phase 5 | Pending |
-| RPT-01 | Phase 6 | Pending |
+| RPT-01 | Phase 6 | Complete |
 | RPT-02 | Phase 6 | Pending |
 | RPT-03 | Phase 6 | Pending |
 | RPT-04 | Phase 6 | Pending |
 | RPT-05 | Phase 6 | Pending |
-| RPT-06 | Phase 6 | Pending |
-| RPT-07 | Phase 6 | Pending |
+| RPT-06 | Phase 6 | Complete |
+| RPT-07 | Phase 6 | Complete |
 | FIX-01 | Phase 3 | Complete |
 | FIX-02 | Phase 3 | Complete |
 
