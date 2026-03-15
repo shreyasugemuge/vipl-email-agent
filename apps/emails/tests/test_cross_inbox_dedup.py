@@ -389,3 +389,60 @@ class TestNotifyCrossInboxDuplicate:
 
         assert result is False
         mock_post.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestCrossInboxDedupEdgeCases:
+    """Edge case tests for cross-inbox dedup (FIX-02 verification)."""
+
+    def test_dedup_same_inbox_not_detected(self):
+        """Same email arriving twice in same inbox is NOT cross-inbox duplicate.
+
+        The query excludes same-inbox matches via .exclude(to_inbox=email_msg.inbox).
+        """
+        from apps.emails.services.pipeline import save_email_to_db, _detect_cross_inbox_duplicate
+
+        ts = datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc)
+        email_msg1 = make_email_message(
+            thread_id="thread_same_inbox_001", message_id="msg_same_inbox_001",
+            inbox="info@vidarbhainfotech.com", sender_email="client@example.com",
+            timestamp=ts,
+        )
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        # Same inbox, same thread, same sender -- NOT cross-inbox
+        email_msg2 = make_email_message(
+            thread_id="thread_same_inbox_001", message_id="msg_same_inbox_002",
+            inbox="info@vidarbhainfotech.com", sender_email="client@example.com",
+            timestamp=ts + timedelta(minutes=1),
+        )
+
+        original = _detect_cross_inbox_duplicate(email_msg2)
+        assert original is None
+
+    def test_dedup_just_outside_window_boundary(self):
+        """Email at exactly 5min + 1sec after original is NOT a duplicate.
+
+        Exercises the boundary condition: window is 5 minutes, cutoff = timestamp - 5min.
+        """
+        from apps.emails.services.pipeline import save_email_to_db, _detect_cross_inbox_duplicate
+
+        ts = datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc)
+        email_msg1 = make_email_message(
+            thread_id="thread_boundary_001", message_id="msg_boundary_001",
+            inbox="info@vidarbhainfotech.com", sender_email="client@example.com",
+            timestamp=ts,
+        )
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        # 5 min 1 sec later on different inbox
+        email_msg2 = make_email_message(
+            thread_id="thread_boundary_001", message_id="msg_boundary_002",
+            inbox="sales@vidarbhainfotech.com", sender_email="client@example.com",
+            timestamp=ts + timedelta(minutes=5, seconds=1),
+        )
+
+        original = _detect_cross_inbox_duplicate(email_msg2)
+        assert original is None

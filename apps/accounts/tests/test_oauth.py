@@ -726,3 +726,62 @@ class TestGetSuperadminEmails:
         from apps.accounts.adapters import _get_superadmin_emails
 
         assert _get_superadmin_emails() == set()
+
+
+@pytest.mark.django_db
+class TestAvatarEdgeCases:
+    """Edge case tests for avatar import (FIX-01 verification).
+
+    Avatar import works correctly. If avatars disappear after time,
+    it's Google URL expiry (signed URL TTL), not a Django bug.
+    """
+
+    def test_avatar_url_with_query_params(self):
+        """Signed Google avatar URL with query params is stored correctly."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        signed_url = "https://lh3.googleusercontent.com/a/ACg8ocK...=s96-c"
+        user = User.objects.create_user(
+            username="signedurl",
+            email="signedurl@vidarbhainfotech.com",
+            avatar_url="",
+        )
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="signedurl@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            picture=signed_url,
+            is_existing=True,
+            user=user,
+        )
+
+        adapter.pre_social_login(request, sociallogin)
+
+        user.refresh_from_db()
+        assert user.avatar_url == signed_url
+
+    def test_avatar_url_empty_string_does_not_overwrite_existing(self):
+        """Empty string picture from Google does not overwrite existing avatar."""
+        from apps.accounts.adapters import VIPLSocialAccountAdapter
+
+        existing_avatar = "https://lh3.googleusercontent.com/a/existing.jpg"
+        user = User.objects.create_user(
+            username="keepavatar",
+            email="keepavatar@vidarbhainfotech.com",
+            avatar_url=existing_avatar,
+        )
+        adapter = VIPLSocialAccountAdapter()
+        request = _make_request()
+        sociallogin = _make_sociallogin(
+            email="keepavatar@vidarbhainfotech.com",
+            hd="vidarbhainfotech.com",
+            picture="",  # Google returns empty
+            is_existing=True,
+            user=user,
+        )
+
+        adapter.pre_social_login(request, sociallogin)
+
+        user.refresh_from_db()
+        assert user.avatar_url == existing_avatar
