@@ -101,7 +101,10 @@ Plans:
   3. Context menu is role-aware (admin sees Assign, members see Claim)
   4. Long-press on mobile triggers the same context menu
   5. Every context menu action is also available via the primary UI (no menu-only actions)
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 05-01-PLAN.md -- Inline edit endpoints, dropdown partials, detail panel integration
+- [ ] 05-02-PLAN.md -- Context menu component, JS handler, mobile long-press, role-aware rendering
 
 ### Phase 6: Reports Module
 **Goal**: Manager can view email volume, response times, SLA compliance, and team workload from a dedicated reports page
@@ -125,5 +128,5 @@ Plans:
 | 2. AI Confidence + Auto-Assign | 0/4 | Planning complete | - |
 | 3. Spam Learning + Bug Fixes | 0/2 | Planning complete | - |
 | 4. Read/Unread Tracking | 0/2 | Planning complete | - |
-| 5. Editable Attributes + Context Menu | 0/TBD | Not started | - |
+| 5. Editable Attributes + Context Menu | 0/2 | Planning complete | - |
 | 6. Reports Module | 0/TBD | Not started | - |
