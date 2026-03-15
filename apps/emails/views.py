@@ -657,17 +657,16 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
         .order_by("received_at")
     )
 
-    # Pre-sanitize each email body
-    sanitized_bodies = {}
+    # Pre-sanitize each email body and attach to the object
     for email in emails:
         if email.body_html:
-            sanitized_bodies[email.pk] = nh3.clean(
+            email.sanitized_body_html = nh3.clean(
                 email.body_html,
                 tags=SAFE_TAGS,
                 attributes=SAFE_ATTRIBUTES,
             )
         else:
-            sanitized_bodies[email.pk] = ""
+            email.sanitized_body_html = ""
 
     # Load thread activity logs (chronological, oldest first)
     activity_logs = (
@@ -724,7 +723,6 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
     return {
         "thread": thread,
         "timeline_items": timeline_items,
-        "sanitized_bodies": sanitized_bodies,
         "team_members": team_members,
         "is_admin": is_admin,
         "can_claim": can_claim,
