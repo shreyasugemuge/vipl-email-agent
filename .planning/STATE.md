@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: null
-milestone_name: null
-status: idle
-stopped_at: "v2.2 milestone complete"
-last_updated: "2026-03-14T23:50:00Z"
-last_activity: 2026-03-14 — v2.2 milestone archived
+milestone: "v2.3.5"
+milestone_name: "Email Threads & Inbox"
+status: defining_requirements
+stopped_at: null
+last_updated: "2026-03-15T00:00:00Z"
+last_activity: 2026-03-15 — Milestone v2.3.5 started
 progress:
   total_phases: 0
   completed_phases: 0
@@ -18,20 +18,23 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-14)
+See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v2.3.5 Email Threads & Inbox
 
 ## Current Position
 
-No active milestone. v2.2 shipped 2026-03-14.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-15 — Milestone v2.3.5 started
 
 ## Accumulated Context
 
 ### Decisions
 
-(Archived in RETROSPECTIVE.md and milestones/v2.2-ROADMAP.md)
+(Archived in milestones/v2.2-ROADMAP.md)
 
 ### Pending Todos
 
@@ -43,6 +46,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-14
-Stopped at: v2.2 milestone complete
-Next: /gsd:new-milestone or deploy v2.2 to VM
+Last session: 2026-03-15
+Stopped at: Milestone v2.3.5 requirements definition
+Next: Define requirements → create roadmap

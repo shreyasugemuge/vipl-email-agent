@@ -47,7 +47,15 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ### Active
 
-(None — next milestone not yet planned)
+- [ ] Thread/conversation model — group emails by `gmail_thread_id`, thread-level assignment + status
+- [ ] Conversation UI — inbox shows threads, detail panel shows full message history
+- [ ] Internal notes — team discusses emails internally with `@mentions`
+- [ ] Contact history — see all threads from same sender in sidebar
+- [ ] Snooze — temporarily hide a thread, resurface later
+- [ ] Response templates — canned replies for repetitive emails
+- [ ] Collision detection — "X is viewing this" indicator (polling-based)
+- [ ] Keyboard shortcuts — `j/k` navigate, `a` assign, `e` close, `n` note
+- [ ] Batch operations — select multiple threads, assign/close in bulk
 
 ### Out of Scope
 
@@ -57,10 +65,26 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - Multi-tenant / SaaS — single company tool
 - Round-robin assignment — category rules more accurate for 3-person team
 - Ticket numbering — nobody references ticket numbers, email subject is identifier
+- Kanban board view — threads as cards on columns, overkill for 3-person team
+- Analytics dashboards — volume/response time charts, defer to future milestone
+- Shared drafts — collaborative reply editing, low value when team replies from Gmail
+
+## Current Milestone: v2.3.5 Email Threads & Inbox
+
+**Goal:** Transform the email triage experience from individual messages to threaded conversations, matching Gmelius/Hiver-level shared inbox UX.
+
+**Target features:**
+- Thread/conversation grouping with thread-level assignment + status
+- Full conversation UI (inbox shows threads, detail shows message history)
+- Internal notes with @mentions for team collaboration
+- Contact history sidebar, snooze, response templates
+- Collision detection, keyboard shortcuts, batch operations
 
 ## Context
 
 **Current state (v2.2 shipped):** Production at triage.vidarbhainfotech.com since 2026-03-14. Full pipeline: Gmail polling → spam filter (13 regex + whitelist) → Claude AI triage → auto-assign → SLA tracking → Google Chat notifications (branded cards with deep links). Google OAuth SSO with domain lock. VIPL brand identity across all pages and Chat cards. 18,763 LOC Python, 349 tests passing, Django 4.2 LTS + PostgreSQL 12.3.
+
+**Threading readiness:** `gmail_thread_id` already fetched and stored on every Email record. `fetch_thread_message()` method exists in gmail_poller. Foundation is there — just unused.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
@@ -95,4 +119,4 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | _sla_urgency_label module-level function | Cross-method reuse, consistent formatting | ✓ Good — v2.2 |
 
 ---
-*Last updated: 2026-03-14 after v2.2 milestone complete*
+*Last updated: 2026-03-15 after v2.3.5 milestone started*
