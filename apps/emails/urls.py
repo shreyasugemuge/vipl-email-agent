@@ -7,6 +7,10 @@ app_name = "emails"
 urlpatterns = [
     path("", views.thread_list, name="thread_list"),
     path("legacy/", views.email_list, name="email_list"),
+    # Bulk action endpoints (before threads/<int:pk>/ to avoid URL conflicts)
+    path("threads/bulk-assign/", views.bulk_assign, name="bulk_assign"),
+    path("threads/bulk-mark-irrelevant/", views.bulk_mark_irrelevant, name="bulk_mark_irrelevant"),
+    path("threads/bulk-undo/", views.bulk_undo, name="bulk_undo"),
     # Thread-level endpoints
     path("threads/<int:pk>/detail/", views.thread_detail, name="thread_detail"),
     path("threads/<int:pk>/note/", views.add_note_view, name="add_note"),
