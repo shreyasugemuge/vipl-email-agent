@@ -24,7 +24,7 @@
 ### v2.6.0 Gatekeeper Role + Irrelevant Emails
 
 - [x] **Phase 1: Role + Permission Foundation** - Gatekeeper role on User model, centralized permission helpers replacing 25+ scattered is_admin checks (completed 2026-03-15)
-- [ ] **Phase 2: Assignment Enforcement** - Gatekeepers/admins control assignment; members self-claim or reassign with mandatory reason
+- [x] **Phase 2: Assignment Enforcement** - Gatekeepers/admins control assignment; members self-claim or reassign with mandatory reason (completed 2026-03-15)
 - [ ] **Phase 3: Mark Irrelevant** - Close-with-reason action for queue hygiene, excluded from unassigned counts
 - [ ] **Phase 4: Alerts + Bulk Actions** - Unassigned count alerts via Chat, bulk assign, bulk mark-irrelevant, AI feedback summary
 
@@ -100,6 +100,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Role + Permission Foundation | 2/2 | Complete   | 2026-03-15 |
-| 2. Assignment Enforcement | 1/2 | In Progress|  |
+| 2. Assignment Enforcement | 2/2 | Complete   | 2026-03-15 |
 | 3. Mark Irrelevant | 1/2 | In Progress|  |
 | 4. Alerts + Bulk Actions | 0/3 | Planned | - |
