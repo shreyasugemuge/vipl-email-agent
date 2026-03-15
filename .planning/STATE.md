@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-02-PLAN.md (UI Gating)
-last_updated: "2026-03-15T20:04:26.938Z"
-last_activity: 2026-03-16 -- Completed 02-02 (Assignment Enforcement UI Gating)
+stopped_at: Completed 04-03-PLAN.md (AI Corrections Digest)
+last_updated: "2026-03-15T20:11:33.873Z"
+last_activity: 2026-03-16 -- Completed 04-03 (AI Corrections Digest)
 progress:
   total_phases: 4
   completed_phases: 3
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** v2.6.0 Phases 1-3 complete, Phase 4 (Alerts + Bulk Actions) next
+**Current focus:** v2.6.0 Phase 4 (Alerts + Bulk Actions) -- plan 3 of 3 complete
 
 ## Current Position
 
-Phase: 4 of 4 (Alerts + Bulk Actions -- next)
-Plan: 0 of 3 in current phase
+Phase: 4 of 4 (Alerts + Bulk Actions)
+Plan: 3 of 3 in current phase
 Status: Executing
-Last activity: 2026-03-16 -- Completed 02-02 (Assignment Enforcement UI Gating)
+Last activity: 2026-03-16 -- Completed 04-03 (AI Corrections Digest)
 
-Progress: [██████████] 100% (Phases 1-3 complete, Phase 4 pending)
+Progress: [██████████] 100% (Phase 4 plan 3 of 3 complete)
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [██████████] 100% (Phases 1-3 complete, Phase 4 pe
 | 02 | 01 | 7 min | 1 | 5 |
 | 03 | 02 | 8 min | 3 | 3 |
 | 02 | 02 | 21 min | 2 | 7 |
+| Phase 04 P03 | 4 min | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,7 @@ Progress: [██████████] 100% (Phases 1-3 complete, Phase 4 pe
 - REASSIGNED_BY_MEMBER distinct from REASSIGNED for filtering/reporting
 - [Phase 03]: Used is_admin template gate for irrelevant UI permission checks; modal auto-open via ?open_modal= query param bridges context menu to detail panel
 - [Phase 02]: claim_disabled computed in view context for disabled button rendering
+- [Phase 04]: Used can_triage (admin + triage lead) instead of is_admin for digest visibility -- matches gatekeeper role design
 
 ### Blockers/Concerns
 
@@ -80,6 +82,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T19:59:53.452Z
-Stopped at: Completed 02-02-PLAN.md (UI Gating)
+Last session: 2026-03-15T20:11:33.871Z
+Stopped at: Completed 04-03-PLAN.md (AI Corrections Digest)
 Next: Execute Phase 4 (Alerts + Bulk Actions) -- Phases 1-3 complete
