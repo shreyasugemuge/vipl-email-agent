@@ -70,6 +70,7 @@ Plans:
 **Depends on**: Phase 1
 **Parallel with**: Phase 3, Phase 4
 **Requirements**: CARD-01, CARD-02, CARD-03, CARD-04
+**Plans:** 2 plans
 **Success Criteria** (what must be TRUE):
   1. Thread cards have comfortable spacing with more vertical height for content
   2. Category and priority dropdowns render as compact inline pills (not full-width selects)
@@ -77,8 +78,8 @@ Plans:
   4. AI draft reply is visible in the thread detail panel when available
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] M6-P2-01-PLAN.md — Card spacing redesign + context menu readability
+- [ ] M6-P2-02-PLAN.md — Pill-style dropdowns + AI draft copy button
 
 ### Phase 3: Workflow Actions (M6-P3)
 **Goal**: Users can self-serve on common actions — claim threads and undo spam mistakes
@@ -125,7 +126,7 @@ Plans:
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
 | 1 (M6-P1) | Bug Fixes | 1/2 | In progress | - |
-| 2 (M6-P2) | Thread Card & Detail UX | 0/TBD | Not started | - |
+| 2 (M6-P2) | Thread Card & Detail UX | 0/2 | Planning complete | - |
 | 3 (M6-P3) | Workflow Actions | 0/1 | Planning complete | - |
 | 4 (M6-P4) | Page Polish | 0/TBD | Not started | - |
 | 5 (M6-P5) | Dev Inspector | 0/TBD | Not started | - |
