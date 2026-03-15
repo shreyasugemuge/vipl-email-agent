@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-15T13:51:03.000Z"
-last_activity: 2026-03-15 -- Completed 04-01 (read/unread tracking backend)
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-03-15T13:55:16.000Z"
+last_activity: 2026-03-15 -- Completed 02-04 (feedback distillation + prompt injection)
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 4
-  completed_plans: 4
-  percent: 20
+  total_plans: 6
+  completed_plans: 6
+  percent: 30
 ---
 
 # Project State
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 Phase: 4 of 6 (Read/Unread Tracking)
 Plan: 1 of 2 (04-01 complete)
 Status: Executing
-Last activity: 2026-03-15 -- Completed 04-01 (read/unread tracking backend)
+Last activity: 2026-03-15 -- Completed 02-04 (feedback distillation + prompt injection)
 
-Progress: [██░░░░░░░░] 20%
+Progress: [███░░░░░░░] 30%
 
 ## Accumulated Context
 
@@ -52,6 +52,10 @@ Progress: [██░░░░░░░░] 20%
 - All users can mark spam (not admin-only) -- SpamFeedback records user identity
 - Pipeline block order: whitelist -> block check -> spam filter -> AI (cheapest path)
 - Auto-block threshold: spam_ratio > 0.8 AND total_count >= 3
+- Inline auto-assign uses optimistic locking (assigned_to__isnull=True filter) -- same pattern as batch
+- Auto-assign threshold default "100" (disabled) -- no confidence tier matches string "100"
+- Correction rules stored as STR in SystemConfig (not JSON) -- plain text for prompt injection
+- Distillation wrapped in double try/except for defense-in-depth -- never crashes pipeline
 
 ### Pending Todos
 
@@ -63,6 +67,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T13:51:03.000Z
-Stopped at: Completed 04-01-PLAN.md
-Next: Execute 04-02 (templates/UI for read/unread tracking)
+Last session: 2026-03-15T13:55:16.000Z
+Stopped at: Completed 02-04-PLAN.md
+Next: Continue with remaining plans

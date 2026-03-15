@@ -55,10 +55,10 @@ Plans:
   3. Auto-assigned threads display "(auto)" badge and assignee can reject with one click
   4. User can accept or reject an AI suggestion, and the action is recorded in AssignmentFeedback
   5. Recent corrections appear in AI prompt context, influencing subsequent triage decisions
-**Plans:** 1/4 plans executed
+**Plans:** 3/4 plans executed
 Plans:
-- [ ] 02-01-PLAN.md -- Confidence in AI triage: DTO, schema, pipeline save, template filters
-- [ ] 02-02-PLAN.md -- Inline auto-assign in pipeline with threshold config
+- [x] 02-01-PLAN.md -- Confidence in AI triage: DTO, schema, pipeline save, template filters
+- [x] 02-02-PLAN.md -- Inline auto-assign in pipeline with threshold config
 - [ ] 02-03-PLAN.md -- Accept/reject suggestion UI, feedback recording, confidence dots
 - [ ] 02-04-PLAN.md -- Distillation service: correction rules into AI prompt
 
@@ -128,7 +128,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Models + Migrations | 0/1 | Planning complete | - |
-| 2. AI Confidence + Auto-Assign | 1/4 | In Progress|  |
+| 2. AI Confidence + Auto-Assign | 3/4 | In Progress|  |
 | 3. Spam Learning + Bug Fixes | 2/2 | Complete   | 2026-03-15 |
 | 4. Read/Unread Tracking | 1/2 | In Progress|  |
 | 5. Editable Attributes + Context Menu | 0/2 | Planning complete | - |
