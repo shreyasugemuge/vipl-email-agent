@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3.6
-milestone_name: UI/UX Polish & Bug Fixes
-status: milestone_complete
-stopped_at: Milestone v2.3.6 archived
+milestone: v2.5.0
+milestone_name: Intelligence + UX
+status: defining_requirements
+stopped_at: Researching domain ecosystem
 last_updated: "2026-03-15"
-last_activity: 2026-03-15 -- Milestone v2.3.6 archived, ready for merge to main
+last_activity: 2026-03-15 -- Milestone v2.5.0 started, researching
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,23 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Milestone v2.3.6 complete — merge fix/ui-ux to main, deploy
+**Current focus:** Milestone v2.5.0 — Intelligence + UX
 
 ## Current Position
 
-Milestone: v2.3.6 UI/UX Polish & Bug Fixes — COMPLETE
-All 3 phases shipped, 6 plans executed, 443 tests passing.
-Next: Merge fix/ui-ux branch to main, create release, deploy.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Researching domain ecosystem
+Last activity: 2026-03-15 — Milestone v2.5.0 started
 
 ## Accumulated Context
 
 ### Decisions
 
-(Archived in milestones/v2.3.6-ROADMAP.md)
+(None yet for v2.5.0)
 
 ### Pending Todos
 
-None.
+10 todos captured in `.planning/todos/pending/` — all scoped into this milestone.
 
 ### Blockers/Concerns
 
@@ -46,5 +47,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Milestone v2.3.6 archived
-Next: Merge to main, release, deploy
+Stopped at: Researching domain ecosystem
+Next: Define requirements after research

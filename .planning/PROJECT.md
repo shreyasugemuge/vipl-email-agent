@@ -57,7 +57,19 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ### Active
 
-(No active requirements — planning next milestone)
+## Current Milestone: v2.5.0 Intelligence + UX
+
+**Goal:** Add AI intelligence layer (confidence scoring, auto-assign, spam learning, feedback loops) and complete UX gaps (read/unread tracking, context menus, editable attributes, reports module, bug fixes).
+
+**Target features:**
+- AI assignment confidence scoring with auto-assign (>80%)
+- Spam feedback learning (mark spam/not-spam, pattern training)
+- Read/unread tracking with mark-as-unread
+- Right-click context menu on cards
+- Editable thread attributes (category, priority)
+- MIS and reports module (analytics dashboard)
+- Activity page redesign
+- Bug fixes (spam label, Gmail avatar, cross-inbox dedup)
 
 ### Out of Scope
 
@@ -109,4 +121,4 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | sessionStorage + localStorage for welcome banner | Session dismiss + permanent "don't show again" | ✓ Good — v2.3.6 |
 
 ---
-*Last updated: 2026-03-15 after v2.3.6 milestone complete*
+*Last updated: 2026-03-15 after v2.5.0 milestone started*
