@@ -262,24 +262,34 @@
     </script>
     {% block extra_js %}{% endblock %}
 
-    <!-- Welcome toast (shows Django messages) -->
+    <!-- Toast notifications (Django messages) -->
     {% if messages %}
-    {% for message in messages %}
-    <div id="welcome-toast" class="fixed top-4 right-4 z-[100] flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-lg shadow-black/10 border border-slate-200"
-         style="animation: toast-in 0.3s ease-out, toast-out 0.3s ease-in 3.5s forwards;">
-        {% if user.avatar_url %}
-        <img src="{{ user.avatar_url }}" alt="" class="w-8 h-8 rounded-full object-cover" referrerpolicy="no-referrer">
-        {% endif %}
-        <div>
-            <p class="text-sm font-semibold text-slate-800">{{ message }}</p>
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-3" role="status" aria-live="polite">
+        {% for message in messages %}
+        <div class="toast-item flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-lg shadow-black/10 border border-slate-200 max-w-sm"
+             style="animation: toast-in 0.3s ease-out;"
+             data-toast-id="{{ forloop.counter }}">
+            {% if user.avatar_url %}
+            <img src="{{ user.avatar_url }}" alt="" class="w-8 h-8 rounded-full object-cover shrink-0" referrerpolicy="no-referrer">
+            {% else %}
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                {% if message.tags == 'error' %}!{% elif message.tags == 'success' %}&#10003;{% else %}i{% endif %}
+            </div>
+            {% endif %}
+            <p class="text-sm font-semibold text-slate-800 flex-1">{{ message }}</p>
+            <button onclick="this.closest('.toast-item').remove()" class="text-slate-300 hover:text-slate-500 transition-colors shrink-0" aria-label="Dismiss notification">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
     <script>
-    setTimeout(function() {
-        var toast = document.getElementById('welcome-toast');
-        if (toast) toast.remove();
-    }, 4000);
+    document.querySelectorAll('.toast-item').forEach(function(toast, i) {
+        setTimeout(function() {
+            toast.style.animation = 'toast-out 0.3s ease-in forwards';
+            setTimeout(function() { toast.remove(); }, 300);
+        }, 4000 + (i * 500));
+    });
     </script>
     {% endif %}
 </body>
