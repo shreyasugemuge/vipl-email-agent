@@ -46,6 +46,9 @@
             {% if thread.priority %}
             <span class="w-2 h-2 rounded-full bg-{{ thread.priority|priority_base }}-500 shrink-0" title="{{ thread.priority|priority_tooltip }}"></span>
             {% endif %}
+            {% if thread.ai_confidence %}
+            <span class="w-2 h-2 rounded-full bg-{{ thread.ai_confidence|confidence_base }}-500 shrink-0" title="{{ thread.ai_confidence|confidence_tooltip }}"></span>
+            {% endif %}
             <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-semibold bg-{{ thread.status|status_base }}-50 text-{{ thread.status|status_base }}-600" title="{{ thread.status|status_tooltip }}">
                 <span class="w-1 h-1 rounded-full bg-{{ thread.status|status_base }}-500"></span>
                 {{ thread.get_status_display }}

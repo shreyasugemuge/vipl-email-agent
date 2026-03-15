@@ -945,6 +945,15 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
     # Check if any email in the thread is spam
     has_spam = any(e.is_spam for e in emails)
 
+    # Determine if suggestion bar should show:
+    # (1) unassigned thread with valid ai_suggested_assignee, or (2) auto-assigned thread
+    show_suggestion_bar = False
+    suggested_assignee_name = ""
+    if ai_suggested_assignee and ai_suggested_assignee.get("user_id"):
+        if thread.assigned_to is None or thread.is_auto_assigned:
+            show_suggestion_bar = True
+            suggested_assignee_name = ai_suggested_assignee.get("name", "")
+
     return {
         "thread": thread,
         "timeline_items": timeline_items,
@@ -955,6 +964,8 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
         "ai_suggested_assignee": ai_suggested_assignee,
         "ai_reasoning": ai_reasoning,
         "has_spam": has_spam,
+        "show_suggestion_bar": show_suggestion_bar,
+        "suggested_assignee_name": suggested_assignee_name,
     }
 
 

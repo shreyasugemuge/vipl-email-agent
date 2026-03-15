@@ -73,18 +73,40 @@
         </div>
         {% endif %}
 
-        <!-- AI suggested assignee (prominent, above action bar) -->
-        {% if ai_suggested_assignee and not thread.assigned_to %}
+        <!-- AI suggestion bar with accept/reject (shows for unassigned-with-suggestion or auto-assigned) -->
+        {% if show_suggestion_bar %}
         <div class="px-5 py-2 border-t border-blue-200/60 bg-blue-50/50">
             <div class="flex items-center gap-2 text-[11px]">
                 <svg class="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                 </svg>
-                <span class="font-semibold text-blue-700">AI suggests assigning to</span>
-                <span class="font-bold text-blue-900">{{ ai_suggested_assignee.name }}</span>
-                {% if ai_suggested_assignee.reason %}
-                <span class="text-blue-500 italic truncate">&mdash; {{ ai_suggested_assignee.reason }}</span>
+                <span class="font-semibold text-blue-700">AI suggests</span>
+                <span class="font-bold text-blue-900">{{ suggested_assignee_name }}</span>
+                {% if thread.ai_confidence %}
+                <span class="w-1.5 h-1.5 rounded-full bg-{{ thread.ai_confidence|confidence_base }}-500"></span>
                 {% endif %}
+                <div class="ml-auto flex items-center gap-1.5">
+                    <button hx-post="{% url 'emails:accept_thread_suggestion' thread.pk %}"
+                            hx-target="#thread-detail-panel" hx-swap="innerHTML"
+                            hx-disabled-elt="this"
+                            class="p-1 rounded hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer"
+                            title="Accept suggestion">
+                        {% csrf_token %}
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </button>
+                    <button hx-post="{% url 'emails:reject_thread_suggestion' thread.pk %}"
+                            hx-target="#thread-detail-panel" hx-swap="innerHTML"
+                            hx-disabled-elt="this"
+                            class="p-1 rounded hover:bg-red-100 text-red-400 transition-colors cursor-pointer"
+                            title="Dismiss suggestion">
+                        {% csrf_token %}
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
         {% endif %}
@@ -130,6 +152,9 @@
                                 {{ thread.assigned_to.first_name.0|default:thread.assigned_to.username.0|upper }}
                             </div>
                             <span class="text-[11px] font-semibold text-slate-600">{{ thread.assigned_to.get_full_name|default:thread.assigned_to.username }}</span>
+                            {% if thread.is_auto_assigned %}
+                            <span class="text-[8px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">auto</span>
+                            {% endif %}
                         </div>
                         {% elif can_claim %}
                         <form hx-post="{% url 'emails:claim_thread' thread.pk %}"
@@ -250,6 +275,12 @@
             </button>
         </div>
         <p id="ai-summary-text" class="text-[12px] text-slate-600 leading-relaxed">{{ thread.ai_summary }}</p>
+        {% if thread.ai_confidence %}
+        <div class="flex items-center gap-1.5 text-[11px] text-slate-500 mt-1">
+            <span class="w-2 h-2 rounded-full bg-{{ thread.ai_confidence|confidence_base }}-500"></span>
+            <span>{{ thread.ai_confidence|confidence_tooltip }}</span>
+        </div>
+        {% endif %}
         <!-- Hidden edit form -->
         <form id="ai-summary-edit-form" class="hidden mt-2"
               hx-post="{% url 'emails:edit_ai_summary' thread.pk %}"
