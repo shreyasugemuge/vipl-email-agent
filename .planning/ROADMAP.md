@@ -66,11 +66,11 @@ Plans:
   2. Each email clearly shows which inbox it was received on (info@ vs sales@)
   3. When the same email arrives on both info@ and sales@, it appears as a single thread (not duplicated)
   4. Deduplicated threads display all inboxes they were received on (e.g., "info@ + sales@")
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Pipeline thread creation/update and reopen logic
-- [ ] 02-02: Inbox tracking, deduplication, and multi-inbox display
+- [ ] 02-01-PLAN.md — Pipeline thread creation/update and reopen logic
+- [ ] 02-02-PLAN.md — Inbox tracking, deduplication, and multi-inbox display
 
 ### Phase 3: Conversation UI
 **Goal**: Users browse and manage threads in a three-panel layout with full message history
