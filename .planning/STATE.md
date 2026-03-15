@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: milestone
-status: completed
-stopped_at: Phase 4 context gathered
+milestone: v2.5.4
+milestone_name: UI/UX Polish & Bug Fixes
+status: active
+stopped_at: Completed 01-01-PLAN.md
 last_updated: "2026-03-15T17:14:59.778Z"
 last_activity: 2026-03-15 — Completed 01-01-PLAN (pipeline unread state + REOPENED status + avatar verify)
 progress:
@@ -35,18 +35,22 @@ Progress: [█░░░░░░░░░] 10%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
+- Total plans completed: 2
 - Average duration: 5min
-- Total execution time: 5min
+- Total execution time: 10min
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
+| 01 | 01 | 5min | 2 | 5 |
 | 01 | 02 | 5min | 2 | 3 |
 
 ## Accumulated Context
 
 ### Decisions
 
+- [P1-01] REOPENED as TextChoices addition -- no migration needed (CharField max_length=20)
+- [P1-01] Reopen resets ALL existing read states to unread + creates missing ones
+- [P1-01] Avatar sync verified working -- no code changes needed (BUG-04)
 - [P1-02] Used existing `_render_thread_detail_with_oob_card` helper for accept/reject views (consistency over duplication)
 - [P1-02] sessionStorage `vipl_welcome_shown` flag set before display to prevent OAuth redirect race condition
 
@@ -60,6 +64,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T17:14:59.776Z
-Stopped at: Phase 4 context gathered
-Next: Next plan in phase 1, or `/gsd:execute-phase 1` for remaining plans
+Last session: 2026-03-15
+Stopped at: Completed 01-01-PLAN.md (phase 1 complete)
+Next: `/gsd:execute-phase 2` or `/gsd:plan-phase 2`

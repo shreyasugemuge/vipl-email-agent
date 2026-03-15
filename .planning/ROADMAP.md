@@ -41,7 +41,7 @@ Execution Order:
 **Wave 1 (parallel):** P1 + P5 (no dependencies between them)
 **Wave 2 (parallel after P1):** P2 + P3 + P4
 
-- [ ] **Phase 1: Bug Fixes** — Fix 5 known bugs: welcome double-show, read/unread markers, reopened status, avatar sync, AI assign
+- [x] **Phase 1: Bug Fixes** — Fix 5 known bugs: welcome double-show, read/unread markers, reopened status, avatar sync, AI assign (completed 2026-03-15)
 - [ ] **Phase 2: Thread Card & Detail UX** — Polish cards and detail: spacing, pill dropdowns, context menu font, AI draft display *(after P1)*
 - [ ] **Phase 3: Workflow Actions** — Claim button for unassigned threads, undo spam feedback *(after P1)*
 - [ ] **Phase 4: Page Polish** — Login logo, settings reorganization, activity redesign, sidebar version *(after P1)*
@@ -53,7 +53,7 @@ Execution Order:
 **Goal**: All known bugs from v2.5.0 are resolved — users no longer encounter broken behaviors
 **Depends on**: Nothing (first phase, all others wait on this)
 **Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 **Success Criteria** (what must be TRUE):
   1. Welcome banner shows once per session on login, never duplicates
   2. Thread cards display read/unread state with visible bold text and blue dot indicators
@@ -125,7 +125,7 @@ Plans:
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 (M6-P1) | Bug Fixes | 1/2 | In progress | - |
+| 1 (M6-P1) | 2/2 | Complete   | 2026-03-15 | - |
 | 2 (M6-P2) | Thread Card & Detail UX | 0/2 | Planning complete | - |
 | 3 (M6-P3) | Workflow Actions | 0/1 | Planning complete | - |
 | 4 (M6-P4) | Page Polish | 0/TBD | Not started | - |
