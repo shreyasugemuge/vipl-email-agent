@@ -60,6 +60,9 @@ class Thread(SoftDeleteModel, TimestampedModel):
     # AI confidence tier (v2.5.0) -- HIGH/MEDIUM/LOW
     ai_confidence = models.CharField(max_length=10, blank=True, default="")
 
+    # Auto-assignment tracking (v2.5.0)
+    is_auto_assigned = models.BooleanField(default=False)
+
     class Meta:
         ordering = ["-last_message_at"]
 
