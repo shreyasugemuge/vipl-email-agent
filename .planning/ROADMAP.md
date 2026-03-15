@@ -53,6 +53,7 @@ Execution Order:
 **Goal**: All known bugs from v2.5.0 are resolved — users no longer encounter broken behaviors
 **Depends on**: Nothing (first phase, all others wait on this)
 **Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05
+**Plans:** 2 plans
 **Success Criteria** (what must be TRUE):
   1. Welcome banner shows once per session on login, never duplicates
   2. Thread cards display read/unread state with visible bold text and blue dot indicators
@@ -61,8 +62,8 @@ Execution Order:
   5. AI Assign button in thread detail triggers assignment and updates the card without errors
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — Backend fixes: unread state creation, REOPENED status, avatar sync
+- [ ] 01-02-PLAN.md — Frontend fixes: welcome banner dedup, AI Assign OOB card swap
 
 ### Phase 2: Thread Card & Detail UX (M6-P2)
 **Goal**: Thread cards and detail panel feel polished and information-dense without clutter
@@ -122,7 +123,7 @@ Plans:
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 (M6-P1) | Bug Fixes | 0/TBD | Not started | - |
+| 1 (M6-P1) | Bug Fixes | 0/2 | Planning complete | - |
 | 2 (M6-P2) | Thread Card & Detail UX | 0/TBD | Not started | - |
 | 3 (M6-P3) | Workflow Actions | 0/TBD | Not started | - |
 | 4 (M6-P4) | Page Polish | 0/TBD | Not started | - |
