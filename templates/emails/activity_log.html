@@ -60,7 +60,7 @@
     </div>
 
     <!-- Quick filter chips -->
-    <div class="flex items-center gap-1.5 mb-4 overflow-x-auto pb-1">
+    <div class="flex flex-wrap items-center gap-1.5 mb-4 pb-1">
         <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Filter</span>
         <a hx-get="{% url 'emails:activity_log' %}"
            hx-target="#activity-feed" hx-push-url="true"
