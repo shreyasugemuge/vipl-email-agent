@@ -27,7 +27,7 @@ Requirements for UI/UX polish & bug fixes. Each maps to roadmap phases.
 
 ### QA
 
-- [ ] **QA-01**: All interactive elements tested via Chrome browser automation (clicks, forms, HTMX swaps)
+- [x] **QA-01**: All interactive elements tested via Chrome browser automation (clicks, forms, HTMX swaps)
 
 ## Future Requirements
 
@@ -62,7 +62,7 @@ None deferred — all scoped items included.
 | UX-03 | Phase 2 | Complete |
 | UX-04 | Phase 2 | Complete |
 | UX-05 | Phase 2 | Complete |
-| QA-01 | Phase 3 | Pending |
+| QA-01 | Phase 3 | Complete |
 
 **Coverage:**
 - v2.3.4 requirements: 13 total
@@ -71,4 +71,4 @@ None deferred — all scoped items included.
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after roadmap creation*
+*Last updated: 2026-03-15 after Phase 3 QA completion*
