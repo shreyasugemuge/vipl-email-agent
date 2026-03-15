@@ -132,6 +132,20 @@ def _get_team_workload() -> list:
         return []
 
 
+def _clean_xml_tags(text):
+    """Strip XML parameter tags from text (e.g. Claude occasionally wraps names in XML).
+
+    Returns text as-is if falsy (None, empty string).
+    """
+    if not text:
+        return text
+    # Strip <parameter name="...">...</parameter> wrappers
+    cleaned = re.sub(r'<parameter\s+name="[^"]*">(.*?)</parameter>', r'\1', text)
+    # Fallback: strip any remaining XML-like tags
+    cleaned = re.sub(r'<[^>]+>', '', cleaned)
+    return cleaned.strip()
+
+
 def _parse_suggested_assignee(raw) -> dict:
     """Parse suggested_assignee from Claude response into structured dict.
 
@@ -143,13 +157,13 @@ def _parse_suggested_assignee(raw) -> dict:
 
     if isinstance(raw, dict):
         return {
-            "name": raw.get("name", ""),
+            "name": _clean_xml_tags(raw.get("name", "")),
             "reason": raw.get("reason", ""),
         }
 
     if isinstance(raw, str):
         if raw.strip():
-            return {"name": raw.strip(), "reason": ""}
+            return {"name": _clean_xml_tags(raw.strip()), "reason": ""}
         return {}
 
     return {}
