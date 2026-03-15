@@ -49,10 +49,9 @@
                 </svg>
             </div>
 
-            {% if form %}
             <form method="post" id="google-login-form">
                 {% csrf_token %}
-                {{ form.as_p }}
+                {% if form %}{{ form.as_p }}{% endif %}
                 <button type="submit"
                         class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:ring-offset-2 transition-all shadow-sm active:scale-[0.98]">
                     <svg class="w-5 h-5" viewBox="0 0 24 24">
@@ -65,7 +64,6 @@
                 </button>
             </form>
             <script>document.getElementById('google-login-form').submit();</script>
-            {% endif %}
         </div>
         <p class="text-center text-[11px] text-primary-200/30 mt-6 font-semibold tracking-wide">Vidarbha Infotech Private Limited</p>
     </div>
