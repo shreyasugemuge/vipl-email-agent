@@ -37,6 +37,19 @@
 - [x] **DEV-01**: Poll UX — live timer, force poll fix, history improvements (#23)
 - [x] **DEV-02**: Poll history table — human-readable times, interval column, empty vs fetched distinction
 
+### QA Bug Fixes
+
+- [ ] **QA-01**: Thread count label reflects current view filter (#31)
+- [ ] **QA-02**: Search preserves sidebar view filter in URL (#32)
+- [ ] **QA-03**: Mobile detail drawer opens on thread tap (#35)
+- [ ] **QA-04**: Escape key closes detail panel (#36)
+
+### QA Cosmetic & Layout
+
+- [ ] **QA-05**: Detail panel action buttons don't overflow at 1440px (#33)
+- [ ] **QA-06**: Reports page title follows "VIPL Triage | Reports" format (#37)
+- [ ] **QA-07**: SLA Compliance bar chart renders at 100% data (#38)
+
 ## Future Requirements
 
 None — this is a polish milestone.
@@ -71,11 +84,19 @@ None — this is a polish milestone.
 | DEV-01 | Phase 5 | Complete |
 | DEV-02 | Phase 5 | Complete |
 
+| QA-01 | Phase 6 | Pending |
+| QA-02 | Phase 6 | Pending |
+| QA-03 | Phase 6 | Pending |
+| QA-04 | Phase 6 | Pending |
+| QA-05 | Phase 7 | Pending |
+| QA-06 | Phase 7 | Pending |
+| QA-07 | Phase 7 | Pending |
+
 **Coverage:**
-- v2.5.4 requirements: 17 total
-- Mapped to phases: 17
+- v2.5.4 requirements: 24 total
+- Mapped to phases: 24
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after roadmap creation*
+*Last updated: 2026-03-15 after QA report phases added*

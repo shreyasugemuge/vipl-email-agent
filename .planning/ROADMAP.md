@@ -7,7 +7,7 @@
 - M3 v2.3.6 UI/UX Polish & Bug Fixes -- Phases 11-13 (shipped 2026-03-15) -- [archive](milestones/v2.3.6-ROADMAP.md)
 - M4 v2.4.x Dashboard + Threads -- Phase 14 (shipped 2026-03-15)
 - M5 v2.5.0 Intelligence + UX -- Phases 1-7 (shipped 2026-03-15) -- [archive](milestones/v2.5.0-ROADMAP.md)
-- **M6 v2.5.4 UI/UX Polish & Bug Fixes -- Phases 1-5 (in progress)**
+- **M6 v2.5.4 UI/UX Polish & Bug Fixes -- Phases 1-7 (in progress)**
 
 ## Phases
 
@@ -46,6 +46,8 @@ Execution Order:
 - [x] **Phase 3: Workflow Actions** — Claim button for unassigned threads, undo spam feedback *(after P1)* (completed 2026-03-15)
 - [x] **Phase 4: Page Polish** — Login logo, settings reorganization, activity redesign, sidebar version *(after P1)* (completed 2026-03-15)
 - [x] **Phase 5: Dev Inspector** — Poll timer, force poll fix, history table improvements *(independent)* (completed 2026-03-15)
+- [ ] **Phase 6: QA Bug Fixes** — Thread count filter, search view reset, mobile drawer, Escape key *(parallel with P7)*
+- [ ] **Phase 7: QA Cosmetic & Layout** — Button overflow, reports title, SLA chart empty *(parallel with P6)*
 
 ## Phase Details
 
@@ -123,6 +125,33 @@ Plans:
 Plans:
 - [ ] 05-01-PLAN.md — Force poll inline results + poll history table enhancements
 
+### Phase 6: QA Bug Fixes (M6-P6)
+**Goal**: Fix functional bugs found during QA front-end review
+**Depends on**: Nothing (independent of P7)
+**Parallel with**: Phase 7
+**Requirements**: QA-01, QA-02, QA-03, QA-04
+**Success Criteria** (what must be TRUE):
+  1. Thread count label reflects the current view filter (e.g., "3 threads" for Unassigned, not total)
+  2. Search preserves the current sidebar view filter in the URL
+  3. Mobile detail drawer opens when tapping a thread card on mobile viewport
+  4. Pressing Escape closes the thread detail panel
+
+Plans:
+- [ ] 06-01: TBD
+
+### Phase 7: QA Cosmetic & Layout (M6-P7)
+**Goal**: Fix cosmetic and layout issues found during QA front-end review
+**Depends on**: Nothing (independent of P6)
+**Parallel with**: Phase 6
+**Requirements**: QA-05, QA-06, QA-07
+**Success Criteria** (what must be TRUE):
+  1. Detail panel action buttons don't overflow or clip at right edge at 1440px
+  2. Reports page title follows "VIPL Triage | Reports" format
+  3. SLA Compliance bar chart renders correctly when data is 100% met / 0% breached
+
+Plans:
+- [ ] 07-01: TBD
+
 ## Progress
 
 | Phase | Name | Plans | Status | Completed |
@@ -132,3 +161,5 @@ Plans:
 | 3 (M6-P3) | 1/1 | Complete   | 2026-03-15 | - |
 | 4 (M6-P4) | 2/2 | Complete   | 2026-03-15 | - |
 | 5 (M6-P5) | 1/1 | Complete   | 2026-03-15 | - |
+| 6 (M6-P6) | QA Bug Fixes | 0/TBD | Not started | - |
+| 7 (M6-P7) | QA Cosmetic & Layout | 0/TBD | Not started | - |
