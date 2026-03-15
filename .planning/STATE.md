@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
-status: completed
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-03-15T07:20:41.578Z"
-last_activity: 2026-03-15 — Thread detail panel with actions and timeline
+status: in_progress
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-15T07:28:00Z"
+last_activity: 2026-03-15 — Internal notes with @mentions and inline timeline display
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 8
-  completed_plans: 6
-  percent: 67
+  completed_plans: 7
+  percent: 88
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Phase 3 — Conversation UI
+**Current focus:** Phase 4 — Collaboration
 
 ## Current Position
 
-Phase: 3 of 4 (Conversation UI)
-Plan: 2 of 2 in current phase
-Status: Phase 3 complete
-Last activity: 2026-03-15 — Thread detail panel with actions and timeline
+Phase: 4 of 4 (Collaboration)
+Plan: 1 of 2 in current phase
+Status: Plan 04-01 complete
+Last activity: 2026-03-15 — Internal notes with @mentions and inline timeline display
 
-Progress: [######....] 67%
+Progress: [########..] 88%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: 5min
-- Total execution time: 28min
+- Total execution time: 33min
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -47,6 +47,7 @@ Progress: [######....] 67%
 | 02 | 02 | 4min | 2 | 5 |
 | 03 | 01 | 4min | 2 | 6 |
 | 03 | 02 | 4min | 2 | 5 |
+| 04 | 01 | 5min | 2 | 8 |
 
 ## Accumulated Context
 
@@ -74,6 +75,10 @@ Progress: [######....] 67%
 - Merged timeline sorts messages + activity logs by timestamp for interleaved chronological view
 - Thread card hx-get points to thread_detail (not email_detail)
 - AI reasoning sourced from latest COMPLETED email in thread
+- Notes use plain text with linebreaksbr, not rich text -- lightweight Slack-style replies
+- Mention autocomplete is vanilla JS (no external library) -- zero added dependencies
+- Notes inline in timeline (not separate tab) -- consistent with existing messages + activity pattern
+- notify_mention uses simple Chat text message (not Cards v2) -- lightweight for mentions
 
 ### Pending Todos
 
@@ -85,6 +90,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T07:15:26Z
-Stopped at: Completed 03-02-PLAN.md
-Next: `/gsd:execute-phase 04-01`
+Last session: 2026-03-15T07:28:00Z
+Stopped at: Completed 04-01-PLAN.md
+Next: `/gsd:execute-phase 04-02`

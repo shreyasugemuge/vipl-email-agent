@@ -100,7 +100,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Internal notes model, @mention notifications, inline display
+- [x] 04-01-PLAN.md — Internal notes model, @mention notifications, inline display
 - [ ] 04-02-PLAN.md — Collision detection (polling-based "viewing" indicator)
 
 ## Progress
@@ -112,4 +112,4 @@ Plans:
 | 1. Thread Model + Data Migration | 2/2 | Complete | 2026-03-15 |
 | 2. Pipeline Integration + Inbox Clarity | 2/2 | Complete | 2026-03-15 |
 | 3. Conversation UI | 2/2 | Complete | 2026-03-15 |
-| 4. Collaboration | 0/2 | Not started | - |
+| 4. Collaboration | 1/2 | In progress | - |
