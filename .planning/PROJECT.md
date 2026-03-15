@@ -67,7 +67,14 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ### Active
 
-(No active milestone — run `/gsd:new-milestone` to start next)
+#### v2.6.0 — Gatekeeper Role + Irrelevant Emails
+
+- [ ] Gatekeeper role: new user role alongside admin/member, multiple users allowed
+- [ ] Exclusive assignment: only gatekeeper/admin can assign; members reassign with mandatory reason
+- [ ] Enhanced triage queue: bulk assign, quick-dismiss, AI feedback summary for gatekeeper
+- [ ] Unassigned count alert: configurable threshold, dashboard badge + Google Chat notification
+- [ ] Mark irrelevant: close-with-reason action for gatekeeper/admin, removes from unassigned count
+- [ ] AI learning: gatekeeper corrections feed existing distillation pipeline
 
 ### Out of Scope
 
@@ -80,7 +87,7 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ## Context
 
-**Current state (v2.5.0 complete, v2.4.0 deployed):** Production at triage.vidarbhainfotech.com since 2026-03-14 (v2.4.0). v2.5.0 complete but not yet deployed — adds AI confidence scoring, auto-assign, spam learning, read/unread tracking, context menus, inline editing, reports module. 626 tests passing, Django 4.2 LTS + PostgreSQL 12.3. 90 commits ahead of origin.
+**Current state (v2.5.0 deployed):** Production at triage.vidarbhainfotech.com since 2026-03-15 (v2.5.0). Full pipeline running: AI confidence, auto-assign, spam learning, read/unread, inline editing, reports. 626 tests, Django 4.2 LTS + PostgreSQL 12.3.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
@@ -125,4 +132,4 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | Context menu fetched server-side (GET) | Role-aware rendering without duplicating permission logic in JS | ✓ Good — v2.5.0 |
 
 ---
-*Last updated: 2026-03-15 after v2.5.0 milestone completed*
+*Last updated: 2026-03-15 after v2.6.0 milestone started*
