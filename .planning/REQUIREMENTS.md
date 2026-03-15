@@ -50,19 +50,19 @@ None deferred — all scoped items included.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | Phase 8 | Pending |
-| BUG-02 | Phase 8 | Pending |
-| BUG-03 | Phase 8 | Pending |
-| BUG-04 | Phase 8 | Pending |
-| BUG-05 | Phase 8 | Pending |
-| BUG-06 | Phase 8 | Pending |
-| BUG-07 | Phase 8 | Pending |
-| UX-01 | Phase 9 | Pending |
-| UX-02 | Phase 9 | Pending |
-| UX-03 | Phase 9 | Pending |
-| UX-04 | Phase 9 | Pending |
-| UX-05 | Phase 9 | Pending |
-| QA-01 | Phase 10 | Pending |
+| BUG-01 | Phase 1 | Pending |
+| BUG-02 | Phase 1 | Pending |
+| BUG-03 | Phase 1 | Pending |
+| BUG-04 | Phase 1 | Pending |
+| BUG-05 | Phase 1 | Pending |
+| BUG-06 | Phase 1 | Pending |
+| BUG-07 | Phase 1 | Pending |
+| UX-01 | Phase 2 | Pending |
+| UX-02 | Phase 2 | Pending |
+| UX-03 | Phase 2 | Pending |
+| UX-04 | Phase 2 | Pending |
+| UX-05 | Phase 2 | Pending |
+| QA-01 | Phase 3 | Pending |
 
 **Coverage:**
 - v2.3.4 requirements: 13 total

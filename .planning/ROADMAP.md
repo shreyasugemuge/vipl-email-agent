@@ -4,7 +4,7 @@
 
 - **v2.1 VIPL Email Agent v2** — Phases 1-6 (shipped 2026-03-14) — [archive](milestones/v2.1-ROADMAP.md)
 - **v2.2 Polish & Hardening** — Phases 1-4 (shipped 2026-03-14) — [archive](milestones/v2.2-ROADMAP.md)
-- **v2.3.4 UI/UX Polish & Bug Fixes** — Phases 8-10 (in progress)
+- **v2.3.4 UI/UX Polish & Bug Fixes** — Phases 1-3 (in progress)
 
 ## Phases
 
@@ -33,13 +33,13 @@
 
 ### v2.3.4 UI/UX Polish & Bug Fixes
 
-- [ ] **Phase 8: Data & Bug Fixes** - Fix AI XML rendering, mobile layout bugs, count accuracy, title consistency, toast positioning
-- [ ] **Phase 9: Polish & UX** - Welcome banner, filter indicators, scroll snap, keyboard nav, loading skeleton
-- [ ] **Phase 10: QA & Verification** - Chrome browser automation testing of all interactions
+- [ ] **Phase 1: Data & Bug Fixes** - Fix AI XML rendering, mobile layout bugs, count accuracy, title consistency, toast positioning
+- [ ] **Phase 2: Polish & UX** - Welcome banner, filter indicators, scroll snap, keyboard nav, loading skeleton
+- [ ] **Phase 3: QA & Verification** - Chrome browser automation testing of all interactions
 
 ## Phase Details
 
-### Phase 8: Data & Bug Fixes
+### Phase 1: Data & Bug Fixes
 **Goal**: Users see clean, accurate, consistent information across all pages and devices
 **Depends on**: Nothing (first phase of v2.3.4)
 **Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05, BUG-06, BUG-07
@@ -53,9 +53,9 @@
   7. Toast notifications appear below the header on mobile with touch-friendly close buttons
 **Plans**: TBD
 
-### Phase 9: Polish & UX
+### Phase 2: Polish & UX
 **Goal**: Dashboard feels polished with guided onboarding, visible filter state, and responsive interactions
-**Depends on**: Phase 8
+**Depends on**: Phase 1
 **Requirements**: UX-01, UX-02, UX-03, UX-04, UX-05
 **Success Criteria** (what must be TRUE):
   1. First-time users see a welcome banner with role-specific guidance that can be dismissed and does not reappear in the same session
@@ -65,9 +65,9 @@
   5. Detail panel shows a loading skeleton (pulsing placeholder) while HTMX fetches email content
 **Plans**: TBD
 
-### Phase 10: QA & Verification
+### Phase 3: QA & Verification
 **Goal**: All interactive elements verified working through automated browser testing
-**Depends on**: Phase 9
+**Depends on**: Phase 2
 **Requirements**: QA-01
 **Success Criteria** (what must be TRUE):
   1. Chrome browser automation script exercises all clickable elements, form submissions, and HTMX swaps without errors
@@ -76,10 +76,10 @@
 
 ## Progress
 
-**Execution Order:** Phase 8 → Phase 9 → Phase 10
+**Execution Order:** Phase 1 → Phase 2 → Phase 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 8. Data & Bug Fixes | 0/? | Not started | - |
-| 9. Polish & UX | 0/? | Not started | - |
-| 10. QA & Verification | 0/? | Not started | - |
+| 1. Data & Bug Fixes | 0/? | Not started | - |
+| 2. Polish & UX | 0/? | Not started | - |
+| 3. QA & Verification | 0/? | Not started | - |
