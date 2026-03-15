@@ -116,7 +116,10 @@ Plans:
   3. Response time metrics display average time to acknowledge and close, with trend indicators
   4. SLA compliance percentage and breach count are visible
   5. Team workload bar chart shows emails handled per team member, filterable by date range
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 06-01-PLAN.md -- Reports skeleton: aggregation service, view, template with tabs, date picker, filters, sidebar nav
+- [ ] 06-02-PLAN.md -- Chart.js charts for all tabs, tests, visual verification
 
 ## Progress
 
@@ -129,4 +132,4 @@ Plans:
 | 3. Spam Learning + Bug Fixes | 2/2 | Complete   | 2026-03-15 |
 | 4. Read/Unread Tracking | 1/2 | In Progress|  |
 | 5. Editable Attributes + Context Menu | 0/2 | Planning complete | - |
-| 6. Reports Module | 0/TBD | Not started | - |
+| 6. Reports Module | 0/2 | Planning complete | - |
