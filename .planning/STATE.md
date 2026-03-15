@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Phase 8 — Data & Bug Fixes
+**Current focus:** Phase 1 — Data & Bug Fixes
 
 ## Current Position
 
-Phase: 8 of 10 (Data & Bug Fixes) — first phase of v2.3.4
+Phase: 1 of 3 (Data & Bug Fixes) — first phase of v2.3.4
 Plan: —
 Status: Ready to plan
 Last activity: 2026-03-15 — Roadmap created
@@ -66,5 +66,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Roadmap created, ready to plan Phase 8
+Stopped at: Roadmap created, ready to plan Phase 1
 Next: `/gsd:plan-phase 8`
