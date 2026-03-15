@@ -85,12 +85,13 @@ Plans:
 **Depends on**: Phase 1
 **Parallel with**: Phase 2, Phase 4
 **Requirements**: FLOW-01, FLOW-02
+**Plans:** 1 plan
 **Success Criteria** (what must be TRUE):
   1. Any team member can click "Claim" on an unassigned thread to assign it to themselves
   2. User who marked a thread as spam can undo that action from the same UI location
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md — Fix Claim button bugs, add toast, verify spam toggle
 
 ### Phase 4: Page Polish (M6-P4)
 **Goal**: Login, settings, activity, and sidebar pages feel cohesive and well-organized
@@ -125,6 +126,6 @@ Plans:
 |-------|------|-------|--------|-----------|
 | 1 (M6-P1) | Bug Fixes | 0/2 | Planning complete | - |
 | 2 (M6-P2) | Thread Card & Detail UX | 0/TBD | Not started | - |
-| 3 (M6-P3) | Workflow Actions | 0/TBD | Not started | - |
+| 3 (M6-P3) | Workflow Actions | 0/1 | Planning complete | - |
 | 4 (M6-P4) | Page Polish | 0/TBD | Not started | - |
 | 5 (M6-P5) | Dev Inspector | 0/TBD | Not started | - |
