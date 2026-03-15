@@ -309,24 +309,22 @@
     </div>
 
     <!-- Right panel: thread detail -->
-    <div class="hidden lg:flex flex-1 min-w-0">
-        <!-- Detail overlay (mobile/tablet) -->
-        <div id="thread-detail-overlay" class="fixed inset-0 bg-slate-900/60 z-40 hidden lg:hidden" onclick="closeThreadDetail()"></div>
+    <!-- Detail overlay (mobile/tablet) -->
+    <div id="thread-detail-overlay" class="fixed inset-0 bg-slate-900/60 z-40 hidden lg:hidden" onclick="closeThreadDetail()"></div>
 
-        <!-- Detail panel -->
-        <div id="thread-detail-panel"
-             class="fixed inset-0 z-50 bg-white translate-x-full transition-transform duration-300 ease-out
-                    lg:relative lg:translate-x-0 lg:flex lg:w-full lg:z-auto overflow-auto">
-            <div class="flex flex-col items-center justify-center w-full h-full">
-                <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                    <svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+    <!-- Detail panel -->
+    <div id="thread-detail-panel"
+         class="fixed inset-0 z-50 bg-white translate-x-full transition-transform duration-300 ease-out
+                lg:relative lg:translate-x-0 lg:flex lg:flex-1 lg:min-w-0 lg:z-auto overflow-auto">
+        <div class="flex flex-col items-center justify-center w-full h-full">
+            <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                <svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                     </svg>
-                </div>
-                <span class="text-[13px] font-semibold text-slate-400">Select a thread to view</span>
-                <span class="text-[11px] text-slate-300 mt-1">Click any conversation on the left</span>
             </div>
+            <span class="text-[13px] font-semibold text-slate-400">Select a thread to view</span>
+            <span class="text-[11px] text-slate-300 mt-1">Click any conversation on the left</span>
         </div>
     </div>
 
@@ -358,9 +356,23 @@ document.addEventListener('htmx:afterSwap', function(e) {
 });
 
 function closeThreadDetail() {
-    document.getElementById('thread-detail-panel').classList.add('translate-x-full');
-    var overlay = document.getElementById('thread-detail-overlay');
-    if (overlay) overlay.classList.add('hidden');
+    var panel = document.getElementById('thread-detail-panel');
+    if (!panel) return;
+    if (window.innerWidth < 1024) {
+        /* Mobile: slide panel off-screen */
+        panel.classList.add('translate-x-full');
+        var overlay = document.getElementById('thread-detail-overlay');
+        if (overlay) overlay.classList.add('hidden');
+    } else {
+        /* Desktop: restore placeholder content */
+        panel.innerHTML = '<div class="flex flex-col items-center justify-center w-full h-full">' +
+            '<div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">' +
+            '<svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>' +
+            '</svg></div>' +
+            '<span class="text-[13px] font-semibold text-slate-400">Select a thread to view</span>' +
+            '<span class="text-[11px] text-slate-300 mt-1">Click any conversation on the left</span></div>';
+    }
 }
 
 /* Run active state manager on initial page load */
@@ -426,7 +438,7 @@ document.addEventListener('click', function(e) {
 
 /* Close on Escape + arrow key navigation within menu */
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') { closeContextMenu(); return; }
+    if (e.key === 'Escape') { closeContextMenu(); closeThreadDetail(); return; }
     var menu = document.getElementById('context-menu-container');
     if (!menu || menu.classList.contains('hidden')) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
