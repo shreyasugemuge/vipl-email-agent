@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-15T07:08:54.535Z"
-last_activity: 2026-03-15 — Phase 2 complete (Pipeline integration + inbox clarity)
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-15T07:08:18Z"
+last_activity: 2026-03-15 — Thread list view + three-panel layout complete
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 6
   completed_plans: 5
-  percent: 44
+  percent: 55
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Phase 2 — Pipeline Integration + Inbox Clarity
+**Current focus:** Phase 3 — Conversation UI
 
 ## Current Position
 
-Phase: 2 of 4 (Pipeline Integration + Inbox Clarity) -- COMPLETE
-Plan: 2 of 2 in current phase -- COMPLETE
+Phase: 3 of 4 (Conversation UI)
+Plan: 1 of 2 in current phase
 Status: In progress
-Last activity: 2026-03-15 — Phase 2 complete (Pipeline integration + inbox clarity)
+Last activity: 2026-03-15 — Thread list view + three-panel layout complete
 
-Progress: [####......] 44%
+Progress: [#####.....] 55%
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Progress: [####......] 44%
 | 01 | 02 | 4min | 2 | 2 |
 | 02 | 01 | 4min | 2 | 4 |
 | 02 | 02 | 4min | 2 | 5 |
+| 03 | 01 | 4min | 2 | 6 |
 
 ## Accumulated Context
 
@@ -64,6 +65,10 @@ Progress: [####......] 44%
 - 5-minute dedup window balances catching duplicates vs not blocking genuine replies
 - Duplicates skip both spam filter AND AI triage, reusing original's full triage result
 - Cross-inbox dups routed to separate notification path (not mixed with new/update)
+- Inner sidebar is within content area (white/light), not replacing base.html dark sidebar
+- thread_list replaces email_list as default at /emails/, legacy view at /emails/legacy/
+- Default view: all_open for admins, mine for members
+- Thread card uses 2-line compact layout for density (15-20 visible without scrolling)
 
 ### Pending Todos
 
@@ -75,6 +80,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T07:08:54.533Z
-Stopped at: Phase 4 context gathered
-Next: `/gsd:execute-phase 03-01`
+Last session: 2026-03-15T07:08:18Z
+Stopped at: Completed 03-01-PLAN.md
+Next: `/gsd:execute-phase 03-02`

@@ -15,11 +15,11 @@
 
 ### Conversation UI
 
-- [ ] **UI-01**: Three-panel layout: left sidebar (views/filters), center (conversation list), right (detail panel)
-- [ ] **UI-02**: Conversation list shows threads (not individual messages) with inline metadata: assignee, status, priority, SLA, category
+- [x] **UI-01**: Three-panel layout: left sidebar (views/filters), center (conversation list), right (detail panel)
+- [x] **UI-02**: Conversation list shows threads (not individual messages) with inline metadata: assignee, status, priority, SLA, category
 - [ ] **UI-03**: Detail panel shows full message history in chronological order within a thread
 - [ ] **UI-04**: Thread detail panel shows all existing actions: assign, acknowledge, close, whitelist sender
-- [ ] **UI-05**: Left sidebar has quick-access views: Unassigned, Mine, All Open, Closed
+- [x] **UI-05**: Left sidebar has quick-access views: Unassigned, Mine, All Open, Closed
 
 ### Collaboration
 
@@ -33,7 +33,7 @@
 - [x] **INBOX-01**: Each email clearly shows which inbox it was received on (info@ vs sales@)
 - [x] **INBOX-02**: When the same email arrives on multiple tracked inboxes, it is deduplicated into a single thread
 - [x] **INBOX-03**: Deduplicated threads show all inboxes they were received on (e.g., "info@ + sales@")
-- [ ] **INBOX-04**: Inbox filter in sidebar allows filtering conversations by receiving inbox
+- [x] **INBOX-04**: Inbox filter in sidebar allows filtering conversations by receiving inbox
 
 ## Future Requirements
 
@@ -69,11 +69,11 @@
 | THRD-03 | Phase 1 | Complete |
 | THRD-04 | Phase 2 | Complete |
 | THRD-05 | Phase 1 | Complete |
-| UI-01 | Phase 3 | Pending |
-| UI-02 | Phase 3 | Pending |
+| UI-01 | Phase 3 | Complete |
+| UI-02 | Phase 3 | Complete |
 | UI-03 | Phase 3 | Pending |
 | UI-04 | Phase 3 | Pending |
-| UI-05 | Phase 3 | Pending |
+| UI-05 | Phase 3 | Complete |
 | COLLAB-01 | Phase 4 | Pending |
 | COLLAB-02 | Phase 4 | Pending |
 | COLLAB-03 | Phase 4 | Pending |
@@ -81,7 +81,7 @@
 | INBOX-01 | Phase 2 | Complete |
 | INBOX-02 | Phase 2 | Complete |
 | INBOX-03 | Phase 2 | Complete |
-| INBOX-04 | Phase 3 | Pending |
+| INBOX-04 | Phase 3 | Complete |
 
 **Coverage:**
 - v2.3.5 requirements: 18 total

@@ -111,5 +111,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Thread Model + Data Migration | 2/2 | Complete | 2026-03-15 |
 | 2. Pipeline Integration + Inbox Clarity | 2/2 | Complete | 2026-03-15 |
-| 3. Conversation UI | 0/2 | Not started | - |
+| 3. Conversation UI | 1/2 | In Progress|  |
 | 4. Collaboration | 0/2 | Not started | - |
