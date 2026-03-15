@@ -67,7 +67,10 @@ Plans:
   3. Marking "Not Spam" on a blocked sender auto-whitelists them
   4. Spam badge displays correctly on thread cards (has_spam annotation fix)
   5. Gmail avatar imports correctly on OAuth login, and cross-inbox dedup works for the same email in info@ and sales@
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 03-01-PLAN.md -- Spam feedback views, pipeline block check, sender reputation, combined settings tab
+- [ ] 03-02-PLAN.md -- Bug fixes: force poll, spam badge, avatar/dedup edge cases
 
 ### Phase 4: Read/Unread Tracking
 **Goal**: Users can see which threads they have and have not read, with visual distinction and manual override
@@ -112,7 +115,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Models + Migrations | 0/1 | Planning complete | - |
 | 2. AI Confidence + Auto-Assign | 0/TBD | Not started | - |
-| 3. Spam Learning + Bug Fixes | 0/TBD | Not started | - |
+| 3. Spam Learning + Bug Fixes | 0/2 | Planning complete | - |
 | 4. Read/Unread Tracking | 0/TBD | Not started | - |
 | 5. Editable Attributes + Context Menu | 0/TBD | Not started | - |
 | 6. Reports Module | 0/TBD | Not started | - |
