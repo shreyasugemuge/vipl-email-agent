@@ -41,7 +41,9 @@
   3. SenderReputation model exists with sender_address, total_count, spam_count, and is_blocked flag
   4. Thread model has category_overridden and priority_overridden boolean fields (default False)
   5. `python manage.py migrate` runs cleanly on fresh SQLite and production PostgreSQL
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 01-01-PLAN.md -- Add v2.5.0 models, fields, migration, and tests
 
 ### Phase 2: AI Confidence + Auto-Assign
 **Goal**: AI triage includes confidence tiers, high-confidence threads auto-assign, and user feedback improves future triages
@@ -108,7 +110,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Models + Migrations | 0/TBD | Not started | - |
+| 1. Models + Migrations | 0/1 | Planning complete | - |
 | 2. AI Confidence + Auto-Assign | 0/TBD | Not started | - |
 | 3. Spam Learning + Bug Fixes | 0/TBD | Not started | - |
 | 4. Read/Unread Tracking | 0/TBD | Not started | - |
