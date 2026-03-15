@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-15T07:08:18Z"
-last_activity: 2026-03-15 — Thread list view + three-panel layout complete
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-15T07:15:26Z"
+last_activity: 2026-03-15 — Thread detail panel with actions and timeline
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 6
-  completed_plans: 5
-  percent: 55
+  completed_plans: 6
+  percent: 67
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 3 of 4 (Conversation UI)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-03-15 — Thread list view + three-panel layout complete
+Plan: 2 of 2 in current phase
+Status: Phase 3 complete
+Last activity: 2026-03-15 — Thread detail panel with actions and timeline
 
-Progress: [#####.....] 55%
+Progress: [######....] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 6
 - Average duration: 5min
-- Total execution time: 20min
+- Total execution time: 28min
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -46,6 +46,7 @@ Progress: [#####.....] 55%
 | 02 | 01 | 4min | 2 | 4 |
 | 02 | 02 | 4min | 2 | 5 |
 | 03 | 01 | 4min | 2 | 6 |
+| 03 | 02 | 4min | 2 | 5 |
 
 ## Accumulated Context
 
@@ -69,6 +70,10 @@ Progress: [#####.....] 55%
 - thread_list replaces email_list as default at /emails/, legacy view at /emails/legacy/
 - Default view: all_open for admins, mine for members
 - Thread card uses 2-line compact layout for density (15-20 visible without scrolling)
+- Sanitized body HTML attached directly to email objects (Django templates forbid underscore attrs and dict key lookups)
+- Merged timeline sorts messages + activity logs by timestamp for interleaved chronological view
+- Thread card hx-get points to thread_detail (not email_detail)
+- AI reasoning sourced from latest COMPLETED email in thread
 
 ### Pending Todos
 
@@ -80,6 +85,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T07:08:18Z
-Stopped at: Completed 03-01-PLAN.md
-Next: `/gsd:execute-phase 03-02`
+Last session: 2026-03-15T07:15:26Z
+Stopped at: Completed 03-02-PLAN.md
+Next: `/gsd:execute-phase 04-01`

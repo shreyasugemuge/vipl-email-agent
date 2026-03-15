@@ -17,8 +17,8 @@
 
 - [x] **UI-01**: Three-panel layout: left sidebar (views/filters), center (conversation list), right (detail panel)
 - [x] **UI-02**: Conversation list shows threads (not individual messages) with inline metadata: assignee, status, priority, SLA, category
-- [ ] **UI-03**: Detail panel shows full message history in chronological order within a thread
-- [ ] **UI-04**: Thread detail panel shows all existing actions: assign, acknowledge, close, whitelist sender
+- [x] **UI-03**: Detail panel shows full message history in chronological order within a thread
+- [x] **UI-04**: Thread detail panel shows all existing actions: assign, acknowledge, close, whitelist sender
 - [x] **UI-05**: Left sidebar has quick-access views: Unassigned, Mine, All Open, Closed
 
 ### Collaboration
@@ -71,8 +71,8 @@
 | THRD-05 | Phase 1 | Complete |
 | UI-01 | Phase 3 | Complete |
 | UI-02 | Phase 3 | Complete |
-| UI-03 | Phase 3 | Pending |
-| UI-04 | Phase 3 | Pending |
+| UI-03 | Phase 3 | Complete |
+| UI-04 | Phase 3 | Complete |
 | UI-05 | Phase 3 | Complete |
 | COLLAB-01 | Phase 4 | Pending |
 | COLLAB-02 | Phase 4 | Pending |

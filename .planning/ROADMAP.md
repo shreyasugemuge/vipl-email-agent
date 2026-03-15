@@ -37,7 +37,7 @@
 
 - [x] **Phase 1: Thread Model + Data Migration** - Thread/conversation model with thread-level assignment, status, and migration of existing emails into threads
 - [x] **Phase 2: Pipeline Integration + Inbox Clarity** - Poller creates/updates threads on new email, deduplication across inboxes, multi-inbox tracking
-- [ ] **Phase 3: Conversation UI** - Three-panel layout replacing card list, thread-based browsing with message history detail panel
+- [x] **Phase 3: Conversation UI** - Three-panel layout replacing card list, thread-based browsing with message history detail panel
 - [ ] **Phase 4: Collaboration** - Internal notes with @mentions and collision detection for team coordination
 
 ## Phase Details
@@ -85,8 +85,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Three-panel layout with sidebar views, inbox filter, and thread list
-- [ ] 03-02-PLAN.md — Thread detail panel with message history and actions
+- [x] 03-01-PLAN.md — Three-panel layout with sidebar views, inbox filter, and thread list
+- [x] 03-02-PLAN.md — Thread detail panel with message history and actions
 
 ### Phase 4: Collaboration
 **Goal**: Team members can discuss threads internally and see who else is viewing a thread
@@ -111,5 +111,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Thread Model + Data Migration | 2/2 | Complete | 2026-03-15 |
 | 2. Pipeline Integration + Inbox Clarity | 2/2 | Complete | 2026-03-15 |
-| 3. Conversation UI | 1/2 | In Progress|  |
+| 3. Conversation UI | 2/2 | Complete | 2026-03-15 |
 | 4. Collaboration | 0/2 | Not started | - |
