@@ -539,8 +539,10 @@ def update_thread_preview(thread):
         .first()
     )
     if latest_triaged:
-        thread.category = latest_triaged.category
-        thread.priority = latest_triaged.priority
+        if not thread.category_overridden:
+            thread.category = latest_triaged.category
+        if not thread.priority_overridden:
+            thread.priority = latest_triaged.priority
         thread.ai_summary = latest_triaged.ai_summary
         thread.ai_draft_reply = latest_triaged.ai_draft_reply
         thread.ai_confidence = latest_triaged.ai_confidence
