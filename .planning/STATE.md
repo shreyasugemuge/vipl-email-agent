@@ -4,13 +4,13 @@ milestone: v2.1
 milestone_name: milestone
 status: completed
 stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-15T17:28:00Z"
+last_updated: "2026-03-15T17:26:09.841Z"
 last_activity: 2026-03-15 — Completed 04-01 (version badge + login retheme)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 3
   percent: 63
 ---
 
@@ -44,6 +44,7 @@ Progress: [██████░░░░] 63%
 | 01 | 01 | 5min | 2 | 5 |
 | 01 | 02 | 5min | 2 | 3 |
 | 02 | 01 | 4min | 2 | 2 |
+| 02 | 02 | 2min | 2 | 3 |
 | 04 | 01 | 5min | 2 | 6 |
 
 ## Accumulated Context
@@ -72,6 +73,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15
-Stopped at: Completed M6-P2-01-PLAN.md
-Next: Execute M6-P2-02 (thread detail panel UX)
+Last session: 2026-03-15T17:26:09.839Z
+Stopped at: Completed 04-01-PLAN.md
+Next: Execute 04-02 (remaining page polish)

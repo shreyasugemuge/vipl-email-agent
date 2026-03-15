@@ -27,10 +27,10 @@
 
 ### Pages
 
-- [ ] **PAGE-01**: Login page logo has no background (#21)
+- [x] **PAGE-01**: Login page logo has no background (#21)
 - [ ] **PAGE-02**: Settings page has better labeling and organization (#24)
 - [ ] **PAGE-03**: Activity page redesigned with grouped sections (#25)
-- [ ] **PAGE-04**: Sidebar shows version instead of "Online" (#26)
+- [x] **PAGE-04**: Sidebar shows version instead of "Online" (#26)
 
 ### Dev Inspector
 
@@ -64,10 +64,10 @@ None — this is a polish milestone.
 | CARD-04 | Phase 2 | Pending |
 | FLOW-01 | Phase 3 | Pending |
 | FLOW-02 | Phase 3 | Pending |
-| PAGE-01 | Phase 4 | Pending |
+| PAGE-01 | Phase 4 | Complete |
 | PAGE-02 | Phase 4 | Pending |
 | PAGE-03 | Phase 4 | Pending |
-| PAGE-04 | Phase 4 | Pending |
+| PAGE-04 | Phase 4 | Complete |
 | DEV-01 | Phase 5 | Pending |
 | DEV-02 | Phase 5 | Pending |
 
