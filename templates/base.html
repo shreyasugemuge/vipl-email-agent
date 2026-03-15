@@ -256,7 +256,7 @@
         el.setAttribute('aria-current', 'page');
     });
 
-    /* HTMX global progress bar */
+    /* HTMX global progress bar + error handling */
     (function() {
         var bar = document.getElementById('htmx-progress');
         document.addEventListener('htmx:beforeRequest', function() {
@@ -267,6 +267,17 @@
         document.addEventListener('htmx:afterRequest', function() {
             bar.className = 'done';
             setTimeout(function() { bar.className = ''; }, 500);
+        });
+        /* Show toast on non-2xx HTMX responses (403, 500, etc.) */
+        document.addEventListener('htmx:responseError', function(evt) {
+            var xhr = evt.detail.xhr;
+            var msg = xhr.responseText || ('Request failed: ' + xhr.status);
+            if (msg.length > 100) msg = 'Request failed (' + xhr.status + ')';
+            if (typeof showToast === 'function') {
+                showToast(msg, 'error');
+            } else {
+                alert(msg);
+            }
         });
     })();
 
