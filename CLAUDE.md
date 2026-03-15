@@ -6,20 +6,18 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v2.3.4** (main branch) | **Live** — deployed to VM, all phases complete | Self-hosted VM (Docker Compose) |
+| **v2.3.6** (main branch) | **Live** — deployed to VM, all phases complete | Self-hosted VM (Docker Compose) |
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.3.4
+**GitHub Release**: v2.3.6
 
 ## Active Branches
 
 | Branch | Worktree | Purpose | Status |
 |--------|----------|---------|--------|
-| `main` | `.` | Production branch, deployed to VM | Stable, v2.3.4 |
-| `feature/email-threads-inbox` | `../vipl-email-agent-threads` | Email threading & conversation grouping (milestone v2.3.5) | In progress — roadmap + requirements defined |
+| `main` | `.` | Production branch, deployed to VM | Stable, v2.3.6 |
 | `feature/analytics-dashboard` | `../vipl-email-agent-analytics` | Analytics & reporting dashboard | Not started |
-| `fix/ui-ux` | `../vipl-email-agent-ui-ux` | Merged into main via v2.3.4 — can be deleted | Complete |
 
 ## Stack
 - **Backend**: Django 4.2 LTS + PostgreSQL 12.3 (Taiga's existing DB container)
@@ -119,6 +117,8 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **Phase 7** (UI/UX Polish): HTMX loading indicator, button loading states, accessibility (skip-to-content, aria-labels, keyboard nav, focus-visible), mobile responsive (detail drawer, filter toggle, settings tab scroll, team table), toast improvements, visual polish
 - **Phase 8** (OAuth Hardening): Google avatar fetch fix, `_update_avatar()` helper, structured OAuth logging, 22 edge case tests
 - **Phase 9** (UI/UX v2 — PR #6): XML assignee cleanup, mobile detail panel with history API, clickable stat cards, welcome banner, collapsible filter panel with badge, keyboard nav (arrow keys), loading skeleton, scroll-snap, underline tabs, search icon
+- **Phase 10** (Email Threads — PR #8): Thread model + data migration, cross-inbox dedup, pipeline thread integration, conversation UI with thread list/detail, internal notes, viewer tracking, thread assignment + collaboration
+- **Phase 11** (UI/UX v3 — PR #9): QA verification (13/13 pass), inline bug fixes, milestone v2.3.6 archive
 
 ### Email Pipeline Architecture
 ```
@@ -186,7 +186,7 @@ Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled` (false), `eod
 source .venv/bin/activate
 
 # --- Unit Tests (no API keys needed) ---
-pytest -v                           # All 443 tests
+pytest -v                           # All 556 tests
 pytest apps/accounts -v             # Account/auth tests
 pytest apps/emails -v               # Email + dashboard + assignment + EOD tests
 pytest apps/core -v                 # Core model + health + config tests
