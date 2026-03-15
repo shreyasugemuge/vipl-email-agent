@@ -38,13 +38,13 @@ created: 2026-03-15
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 02-01-01 | 01 | 1 | ROLE-03 | unit | `pytest apps/emails/tests/test_assignment_permissions.py -k test_admin_can_assign` | ❌ W0 | ⬜ pending |
-| 02-01-02 | 01 | 1 | ROLE-03 | unit | `pytest apps/emails/tests/test_assignment_permissions.py -k test_gatekeeper_can_assign` | ❌ W0 | ⬜ pending |
-| 02-01-03 | 01 | 1 | ROLE-03 | unit | `pytest apps/emails/tests/test_assignment_permissions.py -k test_member_cannot_assign_others` | ❌ W0 | ⬜ pending |
-| 02-01-04 | 01 | 1 | ROLE-04 | unit | `pytest apps/emails/tests/test_assignment_permissions.py -k test_member_can_claim_unassigned` | ❌ W0 | ⬜ pending |
-| 02-01-05 | 01 | 1 | ROLE-05 | unit | `pytest apps/emails/tests/test_assignment_permissions.py -k test_member_reassign_requires_reason` | ❌ W0 | ⬜ pending |
-| 02-02-01 | 02 | 2 | ROLE-03 | integration | `pytest apps/emails/tests/test_assignment_permissions.py -k test_assign_button_hidden_for_member` | ❌ W0 | ⬜ pending |
-| 02-02-02 | 02 | 2 | ROLE-05 | integration | `pytest apps/emails/tests/test_assignment_permissions.py -k test_reassign_reason_in_activity_log` | ❌ W0 | ⬜ pending |
+| 02-01-01 | 01 | 1 | ROLE-03 | unit | `pytest apps/emails/tests/test_assignment_enforcement.py -k test_admin_can_assign` | ❌ W0 | ⬜ pending |
+| 02-01-02 | 01 | 1 | ROLE-03 | unit | `pytest apps/emails/tests/test_assignment_enforcement.py -k test_gatekeeper_can_assign` | ❌ W0 | ⬜ pending |
+| 02-01-03 | 01 | 1 | ROLE-03 | unit | `pytest apps/emails/tests/test_assignment_enforcement.py -k test_member_cannot_assign_others` | ❌ W0 | ⬜ pending |
+| 02-01-04 | 01 | 1 | ROLE-04 | unit | `pytest apps/emails/tests/test_assignment_enforcement.py -k test_member_can_claim_unassigned` | ❌ W0 | ⬜ pending |
+| 02-01-05 | 01 | 1 | ROLE-05 | unit | `pytest apps/emails/tests/test_assignment_enforcement.py -k test_member_reassign_requires_reason` | ❌ W0 | ⬜ pending |
+| 02-02-01 | 02 | 2 | ROLE-03 | integration | `pytest apps/emails/tests/test_assignment_enforcement.py -k test_assign_button_hidden_for_member` | ❌ W0 | ⬜ pending |
+| 02-02-02 | 02 | 2 | ROLE-05 | integration | `pytest apps/emails/tests/test_assignment_enforcement.py -k test_reassign_reason_in_activity_log` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -52,7 +52,7 @@ created: 2026-03-15
 
 ## Wave 0 Requirements
 
-- [ ] `apps/emails/tests/test_assignment_permissions.py` — stubs for ROLE-03, ROLE-04, ROLE-05
+- [ ] `apps/emails/tests/test_assignment_enforcement.py` — stubs for ROLE-03, ROLE-04, ROLE-05
 - [ ] Test fixtures for admin, gatekeeper, and member users with CategoryVisibility setup
 
 *Existing test infrastructure (pytest, conftest.py, factories) covers framework needs.*
