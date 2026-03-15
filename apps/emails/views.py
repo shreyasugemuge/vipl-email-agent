@@ -195,7 +195,16 @@ def email_list(request):
     }
 
     if getattr(request, "htmx", False):
-        return render(request, "emails/_email_list_body.html", context)
+        list_html = render_to_string("emails/_email_list_body.html", context, request=request)
+        # OOB swap to update the email count in the tab bar
+        count = paginator.count
+        plural = "s" if count != 1 else ""
+        count_html = (
+            f'<span id="email-count" hx-swap-oob="true" '
+            f'class="ml-auto text-[11px] font-bold text-slate-400 whitespace-nowrap tabular-nums">'
+            f'{count} email{plural}</span>'
+        )
+        return _HttpResponse(list_html + count_html)
     return render(request, "emails/email_list.html", context)
 
 
