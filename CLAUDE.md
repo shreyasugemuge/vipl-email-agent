@@ -10,7 +10,16 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.3.2
+**GitHub Release**: v2.3.3.1
+
+## Active Branches
+
+| Branch | Owner | Purpose | Status |
+|--------|-------|---------|--------|
+| `main` | — | Production branch, deployed to VM | Stable, v2.3.3.1 |
+| `feature/email-threads-inbox` | Dev 1 | Email threading & conversation grouping (milestone v2.3.5) | In progress — roadmap + requirements defined |
+| `fix/ui-ux` | Dev 2 | UI/UX polish & bug fixes (milestone v2.2.1) | In progress — research complete |
+| `feature/analytics-dashboard` | Dev 3 | Analytics & reporting dashboard | Not started — worktree at `../vipl-email-agent-analytics` |
 
 ## Stack
 - **Backend**: Django 4.2 LTS + PostgreSQL 12.3 (Taiga's existing DB container)
