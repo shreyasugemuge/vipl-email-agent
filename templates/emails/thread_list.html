@@ -498,6 +498,14 @@ document.addEventListener('keydown', function(e) {
         var next = e.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
         if (items[next]) items[next].focus();
     }
+    // Keyboard shortcuts for context menu actions
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    var key = e.key.toLowerCase();
+    var shortcutMap = {'r': '[data-action="reassign"]'};
+    if (shortcutMap[key]) {
+        var btn = menu.querySelector(shortcutMap[key]);
+        if (btn) { e.preventDefault(); btn.click(); }
+    }
 });
 
 /* Close on scroll */

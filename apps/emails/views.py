@@ -933,14 +933,29 @@ def _build_thread_detail_context(thread, request, can_assign, team_members):
 
     # Can this user claim?
     can_claim = False
+    claim_disabled = False
     if thread.assigned_to is None:
         if can_assign:
             can_claim = True
         else:
-            can_claim = CategoryVisibility.objects.filter(
+            has_visibility = CategoryVisibility.objects.filter(
                 user=request.user,
                 category=thread.category,
             ).exists()
+            if has_visibility:
+                can_claim = True
+            else:
+                claim_disabled = True
+
+    # Reassign candidates (category-filtered active users for member reassign form)
+    reassign_candidates = []
+    if not can_assign and thread.assigned_to == request.user:
+        reassign_candidates = User.objects.filter(
+            is_active=True,
+            pk__in=CategoryVisibility.objects.filter(
+                category=thread.category,
+            ).values_list("user_id", flat=True),
+        ).exclude(pk=request.user.pk).order_by("first_name", "username")
 
     # AI suggested assignee from the latest completed email
     ai_suggested_assignee = None
@@ -989,6 +1004,8 @@ def _build_thread_detail_context(thread, request, can_assign, team_members):
         "team_members": team_members,
         "team_members_json": team_members_json,
         "can_claim": can_claim,
+        "claim_disabled": claim_disabled,
+        "reassign_candidates": reassign_candidates,
         "ai_suggested_assignee": ai_suggested_assignee,
         "ai_reasoning": ai_reasoning,
         "categories": VALID_CATEGORIES,
@@ -1251,13 +1268,21 @@ def thread_context_menu(request, pk):
         pk=pk,
     )
 
-    can_claim = (
-        not can_assign
-        and thread.assigned_to != user
-        and thread.status != Thread.Status.CLOSED
-    )
-    can_acknowledge = thread.status not in (Thread.Status.ACKNOWLEDGED, Thread.Status.CLOSED)
-    can_close = thread.status != Thread.Status.CLOSED
+    # Can claim: unassigned thread, member has CategoryVisibility (or can_assign)
+    can_claim = False
+    if thread.assigned_to is None and thread.status != Thread.Status.CLOSED:
+        if can_assign:
+            can_claim = True
+        else:
+            can_claim = CategoryVisibility.objects.filter(
+                user=user,
+                category=thread.category,
+            ).exists()
+
+    # Status actions: only for owner or can_assign
+    is_owner_or_assigner = (thread.assigned_to == user or can_assign)
+    can_acknowledge = is_owner_or_assigner and thread.status not in (Thread.Status.ACKNOWLEDGED, Thread.Status.CLOSED)
+    can_close = is_owner_or_assigner and thread.status != Thread.Status.CLOSED
 
     context = {
         "thread": thread,

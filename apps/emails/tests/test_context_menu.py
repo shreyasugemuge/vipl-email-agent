@@ -5,7 +5,7 @@ from django.test import Client
 from django.urls import reverse
 
 from apps.accounts.models import User
-from apps.emails.models import Thread
+from apps.emails.models import CategoryVisibility, Thread
 from conftest import create_thread
 
 
@@ -59,6 +59,8 @@ class TestContextMenuEndpoint:
 
     def test_member_sees_claim_instead_of_assign(self, member_client, member_user, db):
         thread = create_thread()
+        # Member needs CategoryVisibility for the thread's category to see Claim
+        CategoryVisibility.objects.create(user=member_user, category=thread.category)
         url = reverse("emails:thread_context_menu", args=[thread.pk])
         resp = member_client.get(url)
         assert b"Claim" in resp.content

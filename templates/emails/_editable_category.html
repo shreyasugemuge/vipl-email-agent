@@ -1,7 +1,9 @@
 {% comment %}
 Inline-editable category badge with pencil-on-hover.
 Context: thread, categories (list of valid categories).
+Editable only for owner or can_assign users; read-only for members on others' threads.
 {% endcomment %}
+{% if thread.assigned_to == request.user or user.can_assign %}
 <div class="group/cat relative inline-flex items-center" id="editable-category">
     <!-- Display mode: badge + pencil -->
     <span class="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-slate-100 text-slate-500 cursor-pointer"
@@ -64,3 +66,9 @@ Context: thread, categories (list of valid categories).
         </span>
     </div>
 </div>
+{% else %}
+{# Read-only display for members on others' threads #}
+<span class="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-slate-100 text-slate-500">
+    {{ thread.category|default:"Uncategorized" }}
+</span>
+{% endif %}

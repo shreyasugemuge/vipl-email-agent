@@ -116,8 +116,10 @@
         <div class="px-5 py-2 border-t border-slate-200/60">
             <div class="flex items-center justify-between gap-3">
                 <!-- Assignment -->
-                <div class="flex items-center gap-2">
+                <div class="flex flex-col gap-2">
+                    {# Branch 1: Admin/Gatekeeper -- full assign dropdown #}
                     {% if user.can_assign %}
+                    <div class="flex items-center gap-2">
                     <form hx-post="{% url 'emails:assign_thread' thread.pk %}"
                           hx-target="#thread-detail-panel"
                           hx-swap="innerHTML"
@@ -146,18 +148,68 @@
                             Assign
                         </button>
                     </form>
-                    {% else %}
-                        {% if thread.assigned_to %}
+                    </div>
+
+                    {# Branch 2: Member on their own assigned thread -- Reassign button + inline form #}
+                    {% elif thread.assigned_to == request.user %}
+                    <div class="flex items-center gap-2">
                         <div class="flex items-center gap-2 px-2.5 py-1 bg-slate-50 rounded-md">
+                            {% if thread.assigned_to.avatar_url %}
+                            <img src="{{ thread.assigned_to.avatar_url }}" alt="" class="w-5 h-5 rounded-full">
+                            {% else %}
                             <div class="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-500 flex items-center justify-center text-white text-[8px] font-bold">
                                 {{ thread.assigned_to.first_name.0|default:thread.assigned_to.username.0|upper }}
                             </div>
-                            <span class="text-[11px] font-semibold text-slate-600">{{ thread.assigned_to.get_full_name|default:thread.assigned_to.username }}</span>
+                            {% endif %}
+                            <span class="text-[11px] font-medium text-slate-700">{{ thread.assigned_to.get_full_name|default:thread.assigned_to.username }}</span>
                             {% if thread.is_auto_assigned %}
                             <span class="text-[8px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">auto</span>
                             {% endif %}
                         </div>
-                        {% elif can_claim %}
+                        <button type="button"
+                                onclick="document.getElementById('reassign-form-{{ thread.pk }}').style.display = document.getElementById('reassign-form-{{ thread.pk }}').style.display === 'none' ? 'block' : 'none'"
+                                class="px-3 py-2 text-[10px] font-bold text-white bg-amber-500 rounded-md hover:bg-amber-600 transition-colors cursor-pointer">
+                            Reassign
+                        </button>
+                    </div>
+
+                    {# Inline reassign form -- hidden by default #}
+                    <div id="reassign-form-{{ thread.pk }}" style="display: none" class="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <form hx-post="{% url 'emails:reassign_thread' thread.pk %}"
+                              hx-target="#thread-detail-panel" hx-swap="innerHTML">
+                            {% csrf_token %}
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">Reassign to</label>
+                            <select name="assignee_id" required
+                                    class="w-full text-[11px] font-medium border border-slate-200 rounded-md px-2 py-2 mb-2 bg-white">
+                                <option value="">Select team member...</option>
+                                {% for candidate in reassign_candidates %}
+                                <option value="{{ candidate.pk }}">{{ candidate.get_full_name|default:candidate.username }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if not reassign_candidates %}
+                            <p class="text-[11px] font-medium text-slate-400 mb-2">No eligible team members for this category</p>
+                            {% endif %}
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">Reason (required)</label>
+                            <textarea name="reason" required rows="2"
+                                      placeholder="Why are you reassigning this thread?"
+                                      class="w-full text-[11px] font-medium border border-slate-200 rounded-md px-2 py-2 mb-2 resize-none"></textarea>
+                            <div class="flex gap-2">
+                                <button type="submit" hx-disabled-elt="this"
+                                        class="px-3 py-2 text-[10px] font-bold text-white bg-amber-500 rounded-md hover:bg-amber-600 transition-colors cursor-pointer">
+                                    Reassign Thread
+                                </button>
+                                <button type="button"
+                                        onclick="this.closest('[id^=reassign-form]').style.display='none'"
+                                        class="px-3 py-2 text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                                    Keep Thread
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {# Branch 3: Member on unassigned thread in their category -- Claim button #}
+                    {% elif can_claim %}
+                    <div class="flex items-center gap-2">
                         <form hx-post="{% url 'emails:claim_thread' thread.pk %}"
                               hx-target="#thread-detail-panel" hx-swap="innerHTML" class="inline">
                             {% csrf_token %}
@@ -165,9 +217,30 @@
                                 Claim Thread
                             </button>
                         </form>
+                    </div>
+
+                    {# Branch 3b: Member on unassigned thread outside their category -- disabled Claim #}
+                    {% elif claim_disabled %}
+                    <div class="flex items-center gap-2">
+                        <button disabled
+                                title="This thread is outside your assigned categories"
+                                class="px-3 py-2 text-[10px] font-bold text-white bg-emerald-500 rounded-md opacity-50 cursor-not-allowed">
+                            Claim Thread
+                        </button>
+                    </div>
+
+                    {# Branch 4: Member on someone else's thread -- read-only #}
+                    {% elif thread.assigned_to %}
+                    <div class="flex items-center gap-2 px-2.5 py-1 bg-slate-50 rounded-md">
+                        {% if thread.assigned_to.avatar_url %}
+                        <img src="{{ thread.assigned_to.avatar_url }}" alt="" class="w-5 h-5 rounded-full">
                         {% else %}
-                        <span class="text-[11px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-md">Unassigned</span>
+                        <div class="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-500 flex items-center justify-center text-white text-[8px] font-bold">
+                            {{ thread.assigned_to.first_name.0|default:thread.assigned_to.username.0|upper }}
+                        </div>
                         {% endif %}
+                        <span class="text-[11px] font-medium text-slate-700">Assigned to {{ thread.assigned_to.get_full_name|default:thread.assigned_to.username }}</span>
+                    </div>
                     {% endif %}
                 </div>
 
@@ -433,6 +506,17 @@
                                 Reverted to New by {{ item.obj.user.get_full_name|default:item.obj.user.username }}
                             </div>
                             <span class="text-[10px] text-blue-500 tabular-nums mt-0.5">{{ item.obj.created_at|time_ago }}</span>
+                        </div>
+                    </div>
+                    {% elif item.obj.action == "reassigned_by_member" %}
+                    <div class="flex items-start gap-2 px-5 py-2.5 bg-amber-50 border-l-2 border-amber-300 mx-2 my-1 rounded-r-md">
+                        <div class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[11px] font-bold text-amber-800">
+                                Reassigned by {{ item.obj.user.get_full_name|default:item.obj.user.username }} to {{ item.obj.new_value }}
+                            </div>
+                            {% if item.obj.detail %}<p class="text-[11px] text-amber-700 mt-0.5 leading-relaxed">{{ item.obj.detail }}</p>{% endif %}
+                            <span class="text-[10px] text-amber-500 tabular-nums mt-0.5">{{ item.obj.created_at|time_ago }}</span>
                         </div>
                     </div>
                     {% else %}
