@@ -2,6 +2,23 @@
 
 AI-powered shared inbox monitoring, triage, and response system for Vidarbha Infotech Private Limited.
 
+## QA Branch Context
+
+This branch (`qa`) is dedicated to comprehensive visual, functional, and UX testing of the v2.5.0 application. The QA process is conducted from the perspective of a Head Designer + CTO + Engineering Expert, covering:
+- Every UI flow and click path
+- Visual/aesthetic quality (spacing, alignment, colors, typography, responsiveness)
+- Functional correctness (HTMX interactions, filters, assignments, settings, reports)
+- Accessibility (keyboard nav, screen reader, focus states)
+- Mobile responsiveness
+- Edge cases and error states
+
+**Artifacts produced:**
+- `qa_report.md` — comprehensive QA findings
+- GitHub issues for each bug/improvement found
+- Todo items for tracking
+
+**Testing URL:** https://triage.vidarbhainfotech.com (production) or http://triage.local (local dev)
+
 ## Status
 
 | Version | Status | Platform |
