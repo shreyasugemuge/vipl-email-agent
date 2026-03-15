@@ -4,14 +4,14 @@ milestone: v2.1
 milestone_name: milestone
 status: executing
 stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-03-15T13:55:16.000Z"
-last_activity: 2026-03-15 -- Completed 02-04 (feedback distillation + prompt injection)
+last_updated: "2026-03-15T13:59:49.984Z"
+last_activity: 2026-03-15 -- Completed 04-02 (read/unread UI indicators)
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
-  percent: 30
+  total_plans: 13
+  completed_plans: 8
+  percent: 62
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 4 of 6 (Read/Unread Tracking)
-Plan: 1 of 2 (04-01 complete)
+Plan: 2 of 2 (04-02 complete -- phase done)
 Status: Executing
-Last activity: 2026-03-15 -- Completed 02-04 (feedback distillation + prompt injection)
+Last activity: 2026-03-15 -- Completed 04-02 (read/unread UI indicators)
 
-Progress: [███░░░░░░░] 30%
+Progress: [██████░░░░] 62%
 
 ## Accumulated Context
 
@@ -56,6 +56,8 @@ Progress: [███░░░░░░░] 30%
 - Auto-assign threshold default "100" (disabled) -- no confidence tier matches string "100"
 - Correction rules stored as STR in SystemConfig (not JSON) -- plain text for prompt injection
 - Distillation wrapped in double try/except for defense-in-depth -- never crashes pipeline
+- Replaced status=='new' with is_unread for bold/dot -- decouples visual state from thread status
+- Mark as Unread outside admin guard -- all users can mark their own read state
 
 ### Pending Todos
 

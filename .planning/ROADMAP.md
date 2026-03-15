@@ -129,7 +129,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Models + Migrations | 0/1 | Planning complete | - |
 | 2. AI Confidence + Auto-Assign | 3/4 | In Progress|  |
-| 3. Spam Learning + Bug Fixes | 2/2 | Complete   | 2026-03-15 |
+| 3. Spam Learning + Bug Fixes | 2/2 | Complete    | 2026-03-15 |
 | 4. Read/Unread Tracking | 1/2 | In Progress|  |
 | 5. Editable Attributes + Context Menu | 0/2 | Planning complete | - |
 | 6. Reports Module | 0/2 | Planning complete | - |
