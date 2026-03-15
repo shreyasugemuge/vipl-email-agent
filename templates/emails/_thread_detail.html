@@ -215,6 +215,20 @@
                     {% endif %}
                 </div>
                 {% endif %}
+
+                <!-- Mark as Unread (all logged-in users) -->
+                <form hx-post="{% url 'emails:mark_thread_unread' thread.pk %}"
+                      hx-target="#thread-detail-panel" hx-swap="innerHTML" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" hx-disabled-elt="this"
+                            class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors cursor-pointer"
+                            title="Mark as unread">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -506,6 +520,15 @@
         setTimeout(function() { dropdown.classList.add('hidden'); }, 200);
     });
 })();
+
+// 'U' key = mark as unread
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'u' || e.key === 'U') {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        var form = document.querySelector('[hx-post*="mark-unread"]');
+        if (form) { htmx.trigger(form, 'submit'); }
+    }
+});
 
 // AI Summary inline edit toggle
 (function() {

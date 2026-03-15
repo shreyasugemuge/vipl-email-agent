@@ -1,5 +1,9 @@
 {% load email_tags %}
 
+<script id="title-updater" hx-swap-oob="true">
+    document.title = '{% if unread_total %}({{ unread_total }}) {% endif %}VIPL Triage | Inbox';
+</script>
+
 {% if threads %}
 <div class="py-0.5">
     {% for thread in threads %}

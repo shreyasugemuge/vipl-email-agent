@@ -57,7 +57,11 @@
                 </svg>
                 Unassigned
             </span>
+            {% if sidebar_counts.unread_unassigned > 0 %}
+            <span class="view-count text-[10px] font-bold text-white bg-blue-500 px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.unread_unassigned }}</span>
+            {% else %}
             <span class="view-count text-[10px] font-bold text-slate-500 bg-white/[0.06] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.unassigned }}</span>
+            {% endif %}
         </a>
     </nav>
 </div>
@@ -78,7 +82,11 @@
                 </svg>
                 Mine
             </span>
+            {% if sidebar_counts.unread_mine > 0 %}
+            <span class="view-count text-[10px] font-bold text-white bg-blue-500 px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.unread_mine }}</span>
+            {% else %}
             <span class="view-count text-[10px] font-bold text-slate-500 bg-white/[0.06] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.mine }}</span>
+            {% endif %}
         </a>
     </nav>
 </div>
@@ -102,7 +110,11 @@
                 </svg>
                 All Open
             </span>
+            {% if sidebar_counts.unread_open > 0 %}
+            <span class="view-count text-[10px] font-bold text-white bg-blue-500 px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.unread_open }}</span>
+            {% else %}
             <span class="view-count text-[10px] font-bold text-slate-500 bg-white/[0.06] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.all_open }}</span>
+            {% endif %}
         </a>
         <a href="{% url 'emails:thread_list' %}?view=closed{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
            hx-get="{% url 'emails:thread_list' %}?view=closed{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
@@ -116,7 +128,11 @@
                 </svg>
                 Closed
             </span>
+            {% if sidebar_counts.unread_closed > 0 %}
+            <span class="view-count text-[10px] font-bold text-white bg-blue-500 px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.unread_closed }}</span>
+            {% else %}
             <span class="view-count text-[10px] font-bold text-slate-500 bg-white/[0.06] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.closed }}</span>
+            {% endif %}
         </a>
     </nav>
 </div>

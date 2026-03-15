@@ -200,6 +200,9 @@ def thread_list(request):
     ).count()
     sidebar_counts["unread_closed"] = unread_base.filter(status="closed").count()
 
+    # Total unread for browser tab title
+    unread_total = sidebar_counts["unread_open"] + sidebar_counts["unread_closed"]
+
     # --- Inbox list for filter pills ---
     inboxes = list(
         Email.objects.values_list("to_inbox", flat=True)
@@ -250,6 +253,7 @@ def thread_list(request):
         "query_params": query_params.urlencode(),
         "statuses": Thread.Status.choices,
         "priorities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "unread_total": unread_total,
     }
 
     if getattr(request, "htmx", False):
