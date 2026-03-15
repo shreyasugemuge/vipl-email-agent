@@ -87,26 +87,32 @@
                 <span class="w-1.5 h-1.5 rounded-full bg-{{ thread.ai_confidence|confidence_base }}-500"></span>
                 {% endif %}
                 <div class="ml-auto flex items-center gap-1.5">
-                    <button hx-post="{% url 'emails:accept_thread_suggestion' thread.pk %}"
-                            hx-target="#thread-detail-panel" hx-swap="innerHTML"
-                            hx-disabled-elt="this"
-                            class="p-1 rounded hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer"
-                            title="Accept suggestion">
+                    <form hx-post="{% url 'emails:accept_thread_suggestion' thread.pk %}"
+                          hx-target="#thread-detail-panel" hx-swap="innerHTML"
+                          class="inline">
                         {% csrf_token %}
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                        </svg>
-                    </button>
-                    <button hx-post="{% url 'emails:reject_thread_suggestion' thread.pk %}"
-                            hx-target="#thread-detail-panel" hx-swap="innerHTML"
-                            hx-disabled-elt="this"
-                            class="p-1 rounded hover:bg-red-100 text-red-400 transition-colors cursor-pointer"
-                            title="Dismiss suggestion">
+                        <button type="submit"
+                                hx-disabled-elt="this"
+                                class="p-1 rounded hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer"
+                                title="Accept suggestion">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </button>
+                    </form>
+                    <form hx-post="{% url 'emails:reject_thread_suggestion' thread.pk %}"
+                          hx-target="#thread-detail-panel" hx-swap="innerHTML"
+                          class="inline">
                         {% csrf_token %}
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
+                        <button type="submit"
+                                hx-disabled-elt="this"
+                                class="p-1 rounded hover:bg-red-100 text-red-400 transition-colors cursor-pointer"
+                                title="Dismiss suggestion">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

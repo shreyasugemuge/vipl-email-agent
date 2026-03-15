@@ -279,9 +279,11 @@
         document.querySelectorAll('[data-view]').forEach(function(el) {
             var isActive = el.dataset.view === view;
             el.classList.toggle('view-active', isActive);
-            // Remove default inactive state when active
+            // Toggle inactive text color
             if (isActive) {
                 el.classList.remove('text-slate-400');
+            } else {
+                el.classList.add('text-slate-400');
             }
         });
 

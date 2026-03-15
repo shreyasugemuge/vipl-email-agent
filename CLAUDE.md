@@ -17,9 +17,9 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 
 | Branch | Worktree | Purpose | Status |
 |--------|----------|---------|--------|
-| `main` | `.` | Production branch, deployed to VM | v2.5.0 deployed |
-| `fixes` | `../vipl-email-agent-fixes` | UI/UX polish & bug fixes (v2.5.4) | Complete, pending merge |
+| `main` | `.` | Production branch, deployed to VM | v2.5.4 deployed |
 | `feature/analytics-dashboard` | `../vipl-email-agent-analytics` | Analytics & reporting dashboard | Not started |
+| `feature/gatekeeper-role` | `../vipl-email-agent-gatekeeper` | Gatekeeper role feature | In progress |
 
 ## Stack
 - **Backend**: Django 4.2 LTS + PostgreSQL 12.3 (Taiga's existing DB container)

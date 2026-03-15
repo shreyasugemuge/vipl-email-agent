@@ -139,10 +139,19 @@ class TestContextMenuEndpoint:
         resp = member_client.get(url)
         assert b"Claim" not in resp.content
 
-    def test_member_no_claim_without_category_visibility(self, member_client, member_user, db):
-        """Member without CategoryVisibility should NOT see Claim."""
+    def test_member_can_claim_without_category_visibility(self, member_client, member_user, db):
+        """Member with no CategoryVisibility rows can claim any thread (default-open)."""
         thread = create_thread()
-        # No CategoryVisibility created
+        # No CategoryVisibility created — should default to all categories visible
+        url = reverse("emails:thread_context_menu", args=[thread.pk])
+        resp = member_client.get(url)
+        assert b"Claim" in resp.content
+
+    def test_member_no_claim_with_restricted_visibility(self, member_client, member_user, db):
+        """Member with explicit CategoryVisibility rows cannot claim outside their categories."""
+        thread = create_thread()
+        # Give member visibility to a DIFFERENT category only
+        CategoryVisibility.objects.create(user=member_user, category="Other Category")
         url = reverse("emails:thread_context_menu", args=[thread.pk])
         resp = member_client.get(url)
         assert b"Claim" not in resp.content
