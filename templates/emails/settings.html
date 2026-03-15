@@ -9,33 +9,33 @@
 
     <!-- Tab bar -->
     <div class="bg-white border-b border-slate-200/60 px-4 md:px-5 py-2 shrink-0">
-        <div class="flex items-center gap-0.5">
+        <div class="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
             <button onclick="switchTab('rules')" id="tab-rules"
-                    class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 bg-slate-900 text-white cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 bg-slate-900 text-white cursor-pointer">
                 Assignment Rules
             </button>
             <button onclick="switchTab('visibility')" id="tab-visibility"
-                    class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
                 Category Visibility
             </button>
             <button onclick="switchTab('sla')" id="tab-sla"
-                    class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
                 SLA Configuration
             </button>
             <button onclick="switchTab('webhooks')" id="tab-webhooks"
-                    class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
                 Webhooks
             </button>
             <button onclick="switchTab('inboxes')" id="tab-inboxes"
-                    class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
                 Inboxes
             </button>
             <button onclick="switchTab('config')" id="tab-config"
-                    class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
                 System
             </button>
             <button onclick="switchTab('whitelist')" id="tab-whitelist"
-                    class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+                    class="tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
                 Whitelist
             </button>
         </div>
@@ -112,11 +112,11 @@
 function switchTab(tab) {
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.add('hidden'); });
     document.querySelectorAll('.tab-btn').forEach(function(b) {
-        b.className = 'tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer';
+        b.className = 'tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 text-slate-500 hover:text-slate-700 hover:bg-slate-100 cursor-pointer';
     });
     document.getElementById('panel-' + tab).classList.remove('hidden');
     var activeBtn = document.getElementById('tab-' + tab);
-    activeBtn.className = 'tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 bg-slate-900 text-white cursor-pointer';
+    activeBtn.className = 'tab-btn px-2.5 md:px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 bg-slate-900 text-white cursor-pointer';
 }
 
 document.addEventListener('DOMContentLoaded', function() {

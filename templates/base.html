@@ -28,8 +28,8 @@
     </style>
     <style>
         /* Premium transitions */
-        .card-hover { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        .card-hover:hover { transform: translateY(-1px); box-shadow: 0 4px 20px -4px rgba(0,0,0,0.08); }
+        .card-hover { transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card-hover:hover { box-shadow: 0 4px 20px -4px rgba(0,0,0,0.08); }
 
         /* Sleek scrollbar */
         ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -48,21 +48,46 @@
         .bg-mesh { background: #f8fafc; }
 
         /* Stat card hover */
-        .stat-card { transition: all 0.2s ease; }
-        .stat-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -3px rgba(0,0,0,0.06); }
+        .stat-card { transition: box-shadow 0.2s ease; }
+        .stat-card:hover { box-shadow: 0 4px 12px -3px rgba(0,0,0,0.06); }
 
         /* Smooth content transitions */
         .htmx-settling { transition: opacity 0.15s ease-in; }
         .htmx-swapping { opacity: 0.6; transition: opacity 0.15s ease-out; }
 
+        /* HTMX request states */
+        .htmx-request { opacity: 0.7; transition: opacity 0.2s; }
+        .htmx-request button[type="submit"] { pointer-events: none; }
+
+        /* Button disabled state */
+        button[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+        /* Global HTMX progress bar */
+        #htmx-progress { position: fixed; top: 0; left: 0; height: 2px; background: var(--color-primary-500); z-index: 9999; width: 0; transition: width 0.3s ease; pointer-events: none; }
+        #htmx-progress.active { width: 70%; transition: width 2s ease-out; }
+        #htmx-progress.done { width: 100%; transition: width 0.15s ease-in; opacity: 0; transition: width 0.15s ease-in, opacity 0.3s ease 0.15s; }
+
         /* Welcome toast animations */
         @keyframes toast-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes toast-out { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+
+        /* Scrollbar hide utility */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Global focus-visible style */
+        *:focus-visible { outline: 2px solid var(--color-primary-500); outline-offset: 2px; border-radius: 4px; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="h-screen flex overflow-hidden bg-slate-50 font-sans text-slate-900 antialiased"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+    <!-- Skip to content (accessibility) -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:bg-white focus:text-primary-600 focus:rounded-lg focus:shadow-lg focus:text-sm focus:font-bold">Skip to content</a>
+
+    <!-- HTMX global progress bar -->
+    <div id="htmx-progress"></div>
 
     <!-- Mobile sidebar overlay -->
     <div id="sidebar-overlay"
@@ -83,7 +108,7 @@
                     <span class="block text-[9px] text-slate-500 font-semibold tracking-widest uppercase">Dashboard</span>
                 </div>
             </div>
-            <button onclick="toggleSidebar()"
+            <button onclick="toggleSidebar()" aria-label="Close sidebar"
                     class="ml-auto md:hidden text-slate-500 hover:text-white transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -164,7 +189,7 @@
                     <div class="text-[11px] font-semibold text-slate-200 truncate">{{ user.get_full_name|default:user.username }}</div>
                     <div class="text-[9px] text-slate-600 font-medium">{{ user.role|default:"Admin" }}</div>
                 </div>
-                <a href="{% url 'logout' %}" class="text-slate-600 hover:text-slate-400 transition-colors" title="Logout">
+                <a href="{% url 'logout' %}" class="text-slate-600 hover:text-slate-400 transition-colors" title="Logout" aria-label="Sign out">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                     </svg>
@@ -173,7 +198,7 @@
             {% endif %}
             <div class="flex items-center gap-1.5 px-2 mt-1 text-[9px] text-slate-600 font-medium">
                 <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 animate-pulse"></div>
-                v2.0 Online
+                Online
             </div>
         </div>
     </aside>
@@ -183,7 +208,7 @@
         <!-- Top bar -->
         <header class="h-12 bg-white border-b border-slate-200/80 flex items-center justify-between px-4 md:px-5 shrink-0 sticky top-0 z-30">
             <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()"
+                <button onclick="toggleSidebar()" aria-label="Open menu"
                         class="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -197,7 +222,7 @@
         </header>
 
         <!-- Content -->
-        <main class="flex-1 overflow-auto bg-mesh">
+        <main id="main-content" class="flex-1 overflow-auto bg-mesh">
             {% block content %}{% endblock %}
         </main>
 
@@ -220,27 +245,56 @@
             overlay.classList.remove('hidden');
         }
     }
+
+    /* Set aria-current on active nav items */
+    document.querySelectorAll('.nav-active').forEach(function(el) {
+        el.setAttribute('aria-current', 'page');
+    });
+
+    /* HTMX global progress bar */
+    (function() {
+        var bar = document.getElementById('htmx-progress');
+        document.addEventListener('htmx:beforeRequest', function() {
+            bar.className = '';
+            bar.offsetWidth; /* force reflow */
+            bar.className = 'active';
+        });
+        document.addEventListener('htmx:afterRequest', function() {
+            bar.className = 'done';
+            setTimeout(function() { bar.className = ''; }, 500);
+        });
+    })();
     </script>
     {% block extra_js %}{% endblock %}
 
-    <!-- Welcome toast (shows Django messages) -->
+    <!-- Toast notifications (Django messages) -->
     {% if messages %}
-    {% for message in messages %}
-    <div id="welcome-toast" class="fixed top-4 right-4 z-[100] flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-lg shadow-black/10 border border-slate-200"
-         style="animation: toast-in 0.3s ease-out, toast-out 0.3s ease-in 3.5s forwards;">
-        {% if user.avatar_url %}
-        <img src="{{ user.avatar_url }}" alt="" class="w-8 h-8 rounded-full object-cover" referrerpolicy="no-referrer">
-        {% endif %}
-        <div>
-            <p class="text-sm font-semibold text-slate-800">{{ message }}</p>
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-3" role="status" aria-live="polite">
+        {% for message in messages %}
+        <div class="toast-item flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-lg shadow-black/10 border border-slate-200 max-w-sm"
+             style="animation: toast-in 0.3s ease-out;"
+             data-toast-id="{{ forloop.counter }}">
+            {% if user.avatar_url %}
+            <img src="{{ user.avatar_url }}" alt="" class="w-8 h-8 rounded-full object-cover shrink-0" referrerpolicy="no-referrer">
+            {% else %}
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                {% if message.tags == 'error' %}!{% elif message.tags == 'success' %}&#10003;{% else %}i{% endif %}
+            </div>
+            {% endif %}
+            <p class="text-sm font-semibold text-slate-800 flex-1">{{ message }}</p>
+            <button onclick="this.closest('.toast-item').remove()" class="text-slate-300 hover:text-slate-500 transition-colors shrink-0" aria-label="Dismiss notification">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
     <script>
-    setTimeout(function() {
-        var toast = document.getElementById('welcome-toast');
-        if (toast) toast.remove();
-    }, 4000);
+    document.querySelectorAll('.toast-item').forEach(function(toast, i) {
+        setTimeout(function() {
+            toast.style.animation = 'toast-out 0.3s ease-in forwards';
+            setTimeout(function() { toast.remove(); }, 300);
+        }, 4000 + (i * 500));
+    });
     </script>
     {% endif %}
 </body>
