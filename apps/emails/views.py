@@ -733,6 +733,40 @@ def reject_ai_suggestion(request, pk):
 # ---------------------------------------------------------------------------
 
 
+def _resolve_user_by_name(full_name: str):
+    """Resolve a User from a full name like 'Jyotsna Ugemuge'.
+
+    Strategy:
+    1. Try first_name + last_name exact match (case-insensitive)
+    2. Try first_name only (handles single-name suggestions like 'Aniket')
+    3. Try username icontains as fallback
+    """
+    from django.db.models import Q
+
+    parts = full_name.strip().split()
+    if not parts:
+        return None
+
+    first = parts[0]
+    last = parts[-1] if len(parts) > 1 else None
+
+    # 1. Exact first+last match
+    if last:
+        user = User.objects.filter(
+            first_name__iexact=first, last_name__iexact=last, is_active=True,
+        ).first()
+        if user:
+            return user
+
+    # 2. First name only
+    user = User.objects.filter(first_name__iexact=first, is_active=True).first()
+    if user:
+        return user
+
+    # 3. Username fallback
+    return User.objects.filter(username__iexact=first, is_active=True).first()
+
+
 @login_required
 @require_POST
 def accept_thread_suggestion(request, pk):
@@ -762,14 +796,7 @@ def accept_thread_suggestion(request, pk):
     if suggestion.get("user_id"):
         assignee = User.objects.filter(pk=suggestion["user_id"], is_active=True).first()
     if not assignee and suggestion.get("name"):
-        from django.db.models import Q
-        name = suggestion["name"]
-        # Try exact full-name match first, then partial on each word
-        parts = name.strip().split()
-        q = Q()
-        for part in parts:
-            q |= Q(first_name__icontains=part) | Q(last_name__icontains=part) | Q(username__icontains=part)
-        assignee = User.objects.filter(q, is_active=True).first()
+        assignee = _resolve_user_by_name(suggestion["name"])
     if not assignee:
         return HttpResponseForbidden(f"Could not resolve user \"{suggestion.get('name')}\".")
 

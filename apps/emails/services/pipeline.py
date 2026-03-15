@@ -61,10 +61,20 @@ def _map_suggested_assignee(triage: TriageResult) -> dict:
 
             name = detail["name"]
             parts = name.strip().split()
-            q = Q()
-            for part in parts:
-                q |= Q(first_name__icontains=part) | Q(last_name__icontains=part) | Q(username__icontains=part)
-            user = User.objects.filter(q, is_active=True).first()
+            first = parts[0]
+            last = parts[-1] if len(parts) > 1 else None
+            user = None
+            # Exact first+last match
+            if last:
+                user = User.objects.filter(
+                    first_name__iexact=first, last_name__iexact=last, is_active=True,
+                ).first()
+            # First name only
+            if not user:
+                user = User.objects.filter(first_name__iexact=first, is_active=True).first()
+            # Username fallback
+            if not user:
+                user = User.objects.filter(username__iexact=first, is_active=True).first()
             if user:
                 detail["user_id"] = user.pk
         except Exception:
