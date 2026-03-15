@@ -1,5 +1,14 @@
 # Milestones
 
+## v2.3.5 Email Threads & Inbox (Shipped: 2026-03-15)
+
+**Phases completed:** 5 phases, 10 plans, 0 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
 ## v2.2 Polish & Hardening (Shipped: 2026-03-14)
 
 **Phases completed:** 4 phases, 6 plans
@@ -17,6 +26,8 @@
 **Archives:**
 - `milestones/v2.2-ROADMAP.md`
 - `milestones/v2.2-MILESTONE-AUDIT.md`
+- `milestones/v2.2-RETROSPECTIVE.md`
+- `milestones/v2.2-research/`
 
 ---
 

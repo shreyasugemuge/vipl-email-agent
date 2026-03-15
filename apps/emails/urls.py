@@ -5,7 +5,17 @@ from . import views
 app_name = "emails"
 
 urlpatterns = [
-    path("", views.email_list, name="email_list"),
+    path("", views.thread_list, name="thread_list"),
+    path("legacy/", views.email_list, name="email_list"),
+    # Thread-level endpoints
+    path("threads/<int:pk>/detail/", views.thread_detail, name="thread_detail"),
+    path("threads/<int:pk>/note/", views.add_note_view, name="add_note"),
+    path("threads/<int:pk>/assign/", views.assign_thread_view, name="assign_thread"),
+    path("threads/<int:pk>/status/", views.change_thread_status_view, name="change_thread_status"),
+    path("threads/<int:pk>/claim/", views.claim_thread_view, name="claim_thread"),
+    path("threads/<int:pk>/heartbeat/", views.viewer_heartbeat, name="viewer_heartbeat"),
+    path("threads/<int:pk>/clear-viewer/", views.clear_viewer, name="clear_viewer"),
+    path("threads/<int:pk>/whitelist-sender/", views.whitelist_sender_from_thread, name="whitelist_thread_sender"),
     path("<int:pk>/detail/", views.email_detail, name="email_detail"),
     path("<int:pk>/assign/", views.assign_email_view, name="assign_email"),
     path("<int:pk>/status/", views.change_status_view, name="change_status"),

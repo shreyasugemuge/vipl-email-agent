@@ -1,10 +1,10 @@
-"""Tests for Email and AttachmentMetadata models."""
+"""Tests for Email, Thread, and AttachmentMetadata models."""
 
 import pytest
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.emails.models import AttachmentMetadata, Email
+from apps.emails.models import ActivityLog, AttachmentMetadata, Email, Thread
 
 
 @pytest.mark.django_db
@@ -111,3 +111,245 @@ class TestAttachmentMetadata:
             mime_type="image/jpeg",
         )
         assert email.attachments.count() == 2
+
+
+@pytest.mark.django_db
+class TestThreadModel:
+    @pytest.fixture
+    def thread(self):
+        return Thread.objects.create(
+            gmail_thread_id="thread-abc-123",
+            subject="Test thread subject",
+        )
+
+    @pytest.fixture
+    def user(self):
+        return User.objects.create_user(username="worker", password="pass123")
+
+    def test_thread_created_with_defaults(self, thread):
+        assert thread.status == Thread.Status.NEW
+        assert thread.assigned_to is None
+        assert thread.assigned_by is None
+        assert thread.assigned_at is None
+        assert thread.category == ""
+        assert thread.priority == ""
+        assert thread.ai_summary == ""
+        assert thread.ai_draft_reply == ""
+        assert thread.sla_ack_deadline is None
+        assert thread.sla_respond_deadline is None
+        assert thread.last_message_at is None
+        assert thread.last_sender == ""
+        assert thread.last_sender_address == ""
+
+    def test_thread_status_choices(self):
+        choices = [c[0] for c in Thread.Status.choices]
+        assert "new" in choices
+        assert "acknowledged" in choices
+        assert "closed" in choices
+        # REPLIED is email-level, not thread-level
+        assert "replied" not in choices
+
+    def test_email_thread_fk(self, thread):
+        email = Email.objects.create(
+            message_id="fk-test@example.com",
+            from_address="sender@example.com",
+            to_inbox="info@vidarbhainfotech.com",
+            subject="Test",
+            received_at=timezone.now(),
+            thread=thread,
+        )
+        assert email.thread == thread
+        assert thread.emails.count() == 1
+
+    def test_multiple_emails_same_thread(self, thread):
+        for i in range(3):
+            Email.objects.create(
+                message_id=f"multi-{i}@example.com",
+                from_address="sender@example.com",
+                to_inbox="info@vidarbhainfotech.com",
+                subject="Test",
+                received_at=timezone.now(),
+                gmail_thread_id="thread-abc-123",
+                thread=thread,
+            )
+        assert thread.emails.count() == 3
+
+    def test_thread_triage_fields(self, thread):
+        thread.category = "complaint"
+        thread.priority = "HIGH"
+        thread.ai_summary = "Customer complaint about billing"
+        thread.ai_draft_reply = "Dear customer..."
+        thread.save()
+        thread.refresh_from_db()
+        assert thread.category == "complaint"
+        assert thread.priority == "HIGH"
+        assert thread.ai_summary == "Customer complaint about billing"
+        assert thread.ai_draft_reply == "Dear customer..."
+
+    def test_thread_assignment_fields(self, thread, user):
+        now = timezone.now()
+        admin = User.objects.create_user(username="admin", password="pass123")
+        thread.assigned_to = user
+        thread.assigned_by = admin
+        thread.assigned_at = now
+        thread.save()
+        thread.refresh_from_db()
+        assert thread.assigned_to == user
+        assert thread.assigned_by == admin
+        assert thread.assigned_at is not None
+
+    def test_thread_sla_fields(self, thread):
+        now = timezone.now()
+        thread.sla_ack_deadline = now
+        thread.sla_respond_deadline = now
+        thread.save()
+        thread.refresh_from_db()
+        assert thread.sla_ack_deadline is not None
+        assert thread.sla_respond_deadline is not None
+
+    def test_thread_message_count(self, thread):
+        assert thread.message_count == 0
+        Email.objects.create(
+            message_id="count-1@example.com",
+            from_address="s@e.com",
+            to_inbox="info@vidarbhainfotech.com",
+            subject="A",
+            received_at=timezone.now(),
+            thread=thread,
+        )
+        assert thread.message_count == 1
+
+    def test_thread_message_count_excludes_soft_deleted(self, thread):
+        e1 = Email.objects.create(
+            message_id="sd-1@example.com",
+            from_address="s@e.com",
+            to_inbox="info@vidarbhainfotech.com",
+            subject="A",
+            received_at=timezone.now(),
+            thread=thread,
+        )
+        Email.objects.create(
+            message_id="sd-2@example.com",
+            from_address="s@e.com",
+            to_inbox="info@vidarbhainfotech.com",
+            subject="B",
+            received_at=timezone.now(),
+            thread=thread,
+        )
+        e1.delete()
+        assert thread.message_count == 1
+
+    def test_thread_latest_message_at(self, thread):
+        early = timezone.now() - timezone.timedelta(hours=2)
+        late = timezone.now()
+        Email.objects.create(
+            message_id="lm-1@example.com",
+            from_address="s@e.com",
+            to_inbox="info@vidarbhainfotech.com",
+            subject="A",
+            received_at=early,
+            thread=thread,
+        )
+        Email.objects.create(
+            message_id="lm-2@example.com",
+            from_address="s@e.com",
+            to_inbox="info@vidarbhainfotech.com",
+            subject="B",
+            received_at=late,
+            thread=thread,
+        )
+        assert thread.latest_message_at == late
+
+    def test_thread_subject_from_earliest_email(self, thread):
+        # Thread.subject is set directly on the model, not derived
+        assert thread.subject == "Test thread subject"
+
+    def test_thread_str(self, thread):
+        s = str(thread)
+        assert "thread-abc-1" in s
+        assert "Test thread" in s
+
+    def test_thread_uses_soft_delete(self, thread):
+        pk = thread.pk
+        thread.delete()
+        assert Thread.all_objects.filter(pk=pk).exists()
+        assert not Thread.objects.filter(pk=pk).exists()
+
+    def test_thread_uses_timestamped(self, thread):
+        assert thread.created_at is not None
+        assert thread.updated_at is not None
+
+    def test_thread_default_ordering(self):
+        t1 = Thread.objects.create(
+            gmail_thread_id="order-1",
+            subject="First",
+            last_message_at=timezone.now() - timezone.timedelta(hours=1),
+        )
+        t2 = Thread.objects.create(
+            gmail_thread_id="order-2",
+            subject="Second",
+            last_message_at=timezone.now(),
+        )
+        threads = list(Thread.objects.all())
+        assert threads[0] == t2
+        assert threads[1] == t1
+
+    def test_email_empty_gmail_thread_id_in_thread(self, thread):
+        email = Email.objects.create(
+            message_id="empty-tid@example.com",
+            from_address="s@e.com",
+            to_inbox="info@vidarbhainfotech.com",
+            subject="No thread id",
+            received_at=timezone.now(),
+            gmail_thread_id="",
+            thread=thread,
+        )
+        assert email.thread == thread
+
+
+@pytest.mark.django_db
+class TestActivityLogThread:
+    @pytest.fixture
+    def thread(self):
+        return Thread.objects.create(
+            gmail_thread_id="al-thread-123",
+            subject="Activity log thread",
+        )
+
+    @pytest.fixture
+    def user(self):
+        return User.objects.create_user(username="actor", password="pass123")
+
+    def test_activity_log_thread_fk_required(self, thread, user):
+        log = ActivityLog.objects.create(
+            thread=thread,
+            user=user,
+            action=ActivityLog.Action.ASSIGNED,
+            detail="Assigned to worker",
+        )
+        assert log.thread == thread
+        assert log.email is None
+
+    def test_activity_log_email_fk_optional(self, thread, user):
+        email = Email.objects.create(
+            message_id="al-email@example.com",
+            from_address="s@e.com",
+            to_inbox="info@vidarbhainfotech.com",
+            subject="Test",
+            received_at=timezone.now(),
+            thread=thread,
+        )
+        log = ActivityLog.objects.create(
+            thread=thread,
+            email=email,
+            user=user,
+            action=ActivityLog.Action.STATUS_CHANGED,
+        )
+        assert log.thread == thread
+        assert log.email == email
+
+    def test_new_action_types_exist(self):
+        actions = [a[0] for a in ActivityLog.Action.choices]
+        assert "new_email_received" in actions
+        assert "reopened" in actions
+        assert "thread_created" in actions

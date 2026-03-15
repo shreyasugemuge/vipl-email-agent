@@ -330,3 +330,286 @@ class TestRetryFailedEmails:
         email_obj.refresh_from_db()
         assert email_obj.retry_count == 3
         assert email_obj.processing_status == Email.ProcessingStatus.EXHAUSTED
+
+
+@pytest.mark.django_db
+class TestPipelineThreading:
+    """Test thread-aware pipeline: create/update/reopen logic."""
+
+    def test_save_creates_new_thread(self):
+        """save_email_to_db creates a new Thread when no thread exists for gmail_thread_id."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread
+
+        email_msg = make_email_message(thread_id="thread_new_001", message_id="msg_new_001")
+        triage = make_triage_result()
+        email_obj = save_email_to_db(email_msg, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_new_001")
+        assert thread is not None
+        assert email_obj.thread == thread
+
+    def test_save_links_to_existing_thread(self):
+        """save_email_to_db links the Email to existing Thread when gmail_thread_id matches."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread
+
+        email_msg1 = make_email_message(thread_id="thread_existing_001", message_id="msg_exist_001")
+        triage = make_triage_result()
+        email_obj1 = save_email_to_db(email_msg1, triage)
+
+        email_msg2 = make_email_message(thread_id="thread_existing_001", message_id="msg_exist_002")
+        email_obj2 = save_email_to_db(email_msg2, triage)
+
+        assert Thread.objects.filter(gmail_thread_id="thread_existing_001").count() == 1
+        assert email_obj1.thread == email_obj2.thread
+
+    def test_save_calls_update_thread_preview(self):
+        """save_email_to_db calls update_thread_preview after saving email."""
+        from apps.emails.services.pipeline import save_email_to_db
+
+        email_msg = make_email_message(thread_id="thread_preview_001", message_id="msg_preview_001")
+        triage = make_triage_result()
+
+        with patch("apps.emails.services.pipeline.update_thread_preview") as mock_preview:
+            email_obj = save_email_to_db(email_msg, triage)
+            mock_preview.assert_called_once()
+            call_arg = mock_preview.call_args[0][0]
+            assert call_arg.gmail_thread_id == "thread_preview_001"
+
+    def test_save_reopens_closed_thread(self):
+        """save_email_to_db reopens thread (status -> NEW) when thread was CLOSED."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread
+
+        # Create first email to establish thread
+        email_msg1 = make_email_message(thread_id="thread_reopen_001", message_id="msg_reopen_001")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        # Close the thread
+        thread = Thread.objects.get(gmail_thread_id="thread_reopen_001")
+        thread.status = Thread.Status.CLOSED
+        thread.save(update_fields=["status"])
+
+        # New email arrives on same thread
+        email_msg2 = make_email_message(thread_id="thread_reopen_001", message_id="msg_reopen_002")
+        save_email_to_db(email_msg2, triage)
+
+        thread.refresh_from_db()
+        assert thread.status == Thread.Status.NEW
+
+    def test_save_reopens_acknowledged_thread(self):
+        """save_email_to_db reopens thread when thread was ACKNOWLEDGED."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread
+
+        email_msg1 = make_email_message(thread_id="thread_ack_001", message_id="msg_ack_001")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_ack_001")
+        thread.status = Thread.Status.ACKNOWLEDGED
+        thread.save(update_fields=["status"])
+
+        email_msg2 = make_email_message(thread_id="thread_ack_001", message_id="msg_ack_002")
+        save_email_to_db(email_msg2, triage)
+
+        thread.refresh_from_db()
+        assert thread.status == Thread.Status.NEW
+
+    def test_save_does_not_change_new_status(self):
+        """save_email_to_db does NOT change status when thread is already NEW."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread
+
+        email_msg1 = make_email_message(thread_id="thread_new_status_001", message_id="msg_ns_001")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_new_status_001")
+        assert thread.status == Thread.Status.NEW
+
+        email_msg2 = make_email_message(thread_id="thread_new_status_001", message_id="msg_ns_002")
+        save_email_to_db(email_msg2, triage)
+
+        thread.refresh_from_db()
+        assert thread.status == Thread.Status.NEW
+
+    def test_reopen_creates_reopened_activity_log(self):
+        """Reopen creates ActivityLog with REOPENED action and thread FK."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread, ActivityLog
+
+        email_msg1 = make_email_message(thread_id="thread_log_001", message_id="msg_log_001")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_log_001")
+        thread.status = Thread.Status.CLOSED
+        thread.save(update_fields=["status"])
+
+        email_msg2 = make_email_message(thread_id="thread_log_001", message_id="msg_log_002")
+        save_email_to_db(email_msg2, triage)
+
+        reopen_log = ActivityLog.objects.filter(
+            thread=thread, action=ActivityLog.Action.REOPENED
+        )
+        assert reopen_log.exists()
+        log_entry = reopen_log.first()
+        assert log_entry.old_value == "closed"
+        assert log_entry.new_value == "new"
+
+    def test_new_thread_creates_thread_created_activity(self):
+        """New thread creates ActivityLog with THREAD_CREATED action."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread, ActivityLog
+
+        email_msg = make_email_message(thread_id="thread_created_001", message_id="msg_created_001")
+        triage = make_triage_result()
+        save_email_to_db(email_msg, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_created_001")
+        created_log = ActivityLog.objects.filter(
+            thread=thread, action=ActivityLog.Action.THREAD_CREATED
+        )
+        assert created_log.exists()
+
+    def test_existing_thread_creates_new_email_received_activity(self):
+        """New email on existing thread creates ActivityLog with NEW_EMAIL_RECEIVED action."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread, ActivityLog
+
+        email_msg1 = make_email_message(thread_id="thread_recv_001", message_id="msg_recv_001")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        email_msg2 = make_email_message(thread_id="thread_recv_001", message_id="msg_recv_002")
+        save_email_to_db(email_msg2, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_recv_001")
+        recv_log = ActivityLog.objects.filter(
+            thread=thread, action=ActivityLog.Action.NEW_EMAIL_RECEIVED
+        )
+        assert recv_log.exists()
+
+    def test_reopen_calls_set_sla_deadlines(self):
+        """Reopen sets fresh SLA deadlines on the email (set_sla_deadlines called)."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread
+
+        email_msg1 = make_email_message(thread_id="thread_sla_001", message_id="msg_sla_001")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="thread_sla_001")
+        thread.status = Thread.Status.CLOSED
+        thread.save(update_fields=["status"])
+
+        email_msg2 = make_email_message(thread_id="thread_sla_001", message_id="msg_sla_002")
+
+        with patch("apps.emails.services.pipeline.set_sla_deadlines") as mock_sla:
+            save_email_to_db(email_msg2, triage)
+            # set_sla_deadlines is called for every email, but verify it's called
+            assert mock_sla.called
+
+    def test_thread_created_attr_on_new_thread(self):
+        """save_email_to_db sets _thread_created=True on returned email for new threads."""
+        from apps.emails.services.pipeline import save_email_to_db
+
+        email_msg = make_email_message(thread_id="thread_attr_001", message_id="msg_attr_001")
+        triage = make_triage_result()
+        email_obj = save_email_to_db(email_msg, triage)
+
+        assert getattr(email_obj, "_thread_created", None) is True
+
+    def test_thread_created_attr_on_existing_thread(self):
+        """save_email_to_db sets _thread_created=False on returned email for existing threads."""
+        from apps.emails.services.pipeline import save_email_to_db
+
+        email_msg1 = make_email_message(thread_id="thread_attr_002", message_id="msg_attr_002a")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        email_msg2 = make_email_message(thread_id="thread_attr_002", message_id="msg_attr_002b")
+        email_obj2 = save_email_to_db(email_msg2, triage)
+
+        assert getattr(email_obj2, "_thread_created", None) is False
+
+    def test_process_poll_cycle_new_threads_to_notify_new_emails(self):
+        """process_poll_cycle passes new-thread emails to notify_new_emails."""
+        from apps.emails.services.pipeline import process_poll_cycle
+
+        email_msg = make_email_message(thread_id="thread_poll_new_001", message_id="msg_poll_new_001")
+        mock_poller = MagicMock()
+        mock_poller.poll_all.return_value = [email_msg]
+
+        mock_ai = MagicMock()
+        mock_ai.process.return_value = make_triage_result()
+
+        mock_chat = MagicMock()
+        mock_state = MagicMock()
+        mock_state.consecutive_failures = 0
+
+        with patch("apps.emails.services.pipeline.SystemConfig") as mock_config:
+            mock_config.get.side_effect = lambda key, default=None: {
+                "ai_triage_enabled": True,
+                "chat_notifications_enabled": True,
+                "monitored_inboxes": "info@vidarbhainfotech.com",
+                "max_consecutive_failures": 3,
+                "operating_mode": "production",
+            }.get(key, default)
+
+            process_poll_cycle(mock_poller, mock_ai, mock_chat, mock_state)
+
+        mock_chat.notify_new_emails.assert_called_once()
+        # The new-thread email should be in the list
+        new_emails_arg = mock_chat.notify_new_emails.call_args[0][0]
+        assert len(new_emails_arg) == 1
+
+    def test_process_poll_cycle_thread_updates_to_notify_thread_update(self):
+        """process_poll_cycle passes thread-update emails to notify_thread_update."""
+        from apps.emails.services.pipeline import save_email_to_db, process_poll_cycle
+
+        # Pre-create the thread via first email
+        email_msg1 = make_email_message(thread_id="thread_poll_upd_001", message_id="msg_poll_upd_001")
+        triage = make_triage_result()
+        save_email_to_db(email_msg1, triage)
+
+        # Second email on same thread arrives via poll
+        email_msg2 = make_email_message(thread_id="thread_poll_upd_001", message_id="msg_poll_upd_002")
+        mock_poller = MagicMock()
+        mock_poller.poll_all.return_value = [email_msg2]
+
+        mock_ai = MagicMock()
+        mock_ai.process.return_value = make_triage_result()
+
+        mock_chat = MagicMock()
+        mock_state = MagicMock()
+        mock_state.consecutive_failures = 0
+
+        with patch("apps.emails.services.pipeline.SystemConfig") as mock_config:
+            mock_config.get.side_effect = lambda key, default=None: {
+                "ai_triage_enabled": True,
+                "chat_notifications_enabled": True,
+                "monitored_inboxes": "info@vidarbhainfotech.com",
+                "max_consecutive_failures": 3,
+                "operating_mode": "production",
+            }.get(key, default)
+
+            process_poll_cycle(mock_poller, mock_ai, mock_chat, mock_state)
+
+        # Thread update should go to notify_thread_update, not notify_new_emails
+        mock_chat.notify_thread_update.assert_called_once()
+
+    def test_empty_thread_id_uses_message_id_fallback(self):
+        """If email_msg.thread_id is empty, create thread with gmail_thread_id=message_id."""
+        from apps.emails.services.pipeline import save_email_to_db
+        from apps.emails.models import Thread
+
+        email_msg = make_email_message(thread_id="", message_id="msg_no_thread_001")
+        triage = make_triage_result()
+        email_obj = save_email_to_db(email_msg, triage)
+
+        thread = Thread.objects.get(gmail_thread_id="msg_no_thread_001")
+        assert email_obj.thread == thread

@@ -737,6 +737,207 @@ class TestUrgencyLabelConsistency:
                     found = True
         assert found, f"Personal breach topLabel should match _sla_urgency_label format: {expected_label}"
 
+
+# ===========================================================================
+# Thread Update Notification Tests (NEW -- Plan 02-01)
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestNotifyThreadUpdate:
+    """Test notify_thread_update for thread-update Chat notifications."""
+
+    TRACKER_URL = "https://triage.vidarbhainfotech.com"
+
+    def _config_side_effect(self, key, default=None):
+        mapping = {"tracker_url": self.TRACKER_URL}
+        return mapping.get(key, default)
+
+    def _make_email_with_thread(self, **kwargs):
+        """Create mock Email with attached Thread."""
+        thread_defaults = {
+            "subject": "Test Thread Subject",
+            "assigned_to": None,
+            "gmail_thread_id": "thread_test_001",
+        }
+        thread_overrides = kwargs.pop("thread_kwargs", {})
+        thread_defaults.update(thread_overrides)
+        mock_thread = MagicMock()
+        for k, v in thread_defaults.items():
+            setattr(mock_thread, k, v)
+
+        email_defaults = {
+            "pk": 42,
+            "from_name": "Reply Sender",
+            "from_address": "reply@example.com",
+            "body": "This is a reply to the previous email in this thread.",
+            "to_inbox": "info@vidarbhainfotech.com",
+            "thread": mock_thread,
+        }
+        email_defaults.update(kwargs)
+        mock_email = MagicMock()
+        for k, v in email_defaults.items():
+            setattr(mock_email, k, v)
+        return mock_email
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_sends_thread_updated_card(self, mock_config_cls, mock_post):
+        """notify_thread_update sends a card with 'Thread Updated' title containing thread subject."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        email = self._make_email_with_thread()
+        result = notifier.notify_thread_update(email)
+
+        assert result is True
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        assert "Thread Updated" in card["header"]["title"]
+        assert "Test Thread" in card["header"]["title"]
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_card_includes_sender(self, mock_config_cls, mock_post):
+        """notify_thread_update card includes who replied (sender name/email)."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        email = self._make_email_with_thread(from_name="Alice Dev", from_address="alice@example.com")
+        notifier.notify_thread_update(email)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        # Find From widget
+        found_sender = False
+        for section in card["sections"]:
+            for widget in section.get("widgets", []):
+                dt = widget.get("decoratedText", {})
+                if "Alice Dev" in dt.get("text", "") and "alice@example.com" in dt.get("text", ""):
+                    found_sender = True
+        assert found_sender, "Card should include sender name and email"
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_card_includes_body_preview(self, mock_config_cls, mock_post):
+        """notify_thread_update card includes first ~100 chars of new message body."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        email = self._make_email_with_thread(body="Short reply body")
+        notifier.notify_thread_update(email)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        found_preview = False
+        for section in card["sections"]:
+            for widget in section.get("widgets", []):
+                dt = widget.get("decoratedText", {})
+                if "Short reply body" in dt.get("text", ""):
+                    found_preview = True
+        assert found_preview, "Card should include body preview"
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_card_has_dashboard_button(self, mock_config_cls, mock_post):
+        """notify_thread_update card includes 'Open in Dashboard' button."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        email = self._make_email_with_thread(pk=99)
+        notifier.notify_thread_update(email)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        found_button = False
+        for section in card["sections"]:
+            for widget in section.get("widgets", []):
+                bl = widget.get("buttonList", {})
+                for btn in bl.get("buttons", []):
+                    if "Open in Dashboard" in btn.get("text", ""):
+                        url = btn.get("onClick", {}).get("openLink", {}).get("url", "")
+                        if "selected=99" in url:
+                            found_button = True
+        assert found_button, "Card should have 'Open in Dashboard' button with email pk"
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_respects_quiet_hours(self, mock_config_cls, mock_post):
+        """notify_thread_update respects quiet hours."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        email = self._make_email_with_thread()
+
+        with patch.object(notifier, "_is_quiet_hours", return_value=True):
+            result = notifier.notify_thread_update(email)
+
+        assert result is False
+        mock_post.assert_not_called()
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_card_distinct_from_new_thread(self, mock_config_cls, mock_post):
+        """notify_thread_update card is visually distinct from new-thread triage card."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        email = self._make_email_with_thread()
+        notifier.notify_thread_update(email)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        card_id = payload["cardsV2"][0]["cardId"]
+        # Card ID should identify it as thread-update
+        assert "thread-update" in card_id
+        # Title should say "Thread Updated" not "Poll Summary"
+        assert "Thread Updated" in card["header"]["title"]
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_includes_assignee_if_assigned(self, mock_config_cls, mock_post):
+        """notify_thread_update includes thread assignee name if assigned."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        mock_assignee = MagicMock()
+        mock_assignee.get_full_name.return_value = "Shreyas Uge"
+        mock_assignee.username = "shreyas"
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        email = self._make_email_with_thread(
+            thread_kwargs={"assigned_to": mock_assignee}
+        )
+        notifier.notify_thread_update(email)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        subtitle = card["header"]["subtitle"]
+        assert "Assigned to Shreyas Uge" in subtitle
+
+    @patch("apps.emails.services.chat_notifier.httpx.post")
+    @patch("apps.emails.services.chat_notifier.SystemConfig")
+    def test_reopened_thread_shows_reopened_subtitle(self, mock_config_cls, mock_post):
+        """notify_thread_update for a reopened thread includes 'Reopened' in the subtitle."""
+        mock_config_cls.get.side_effect = self._config_side_effect
+        mock_post.return_value = MagicMock(status_code=200)
+
+        notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
+        email = self._make_email_with_thread(from_name="Bob")
+        notifier.notify_thread_update(email, reopened=True)
+
+        payload = mock_post.call_args.kwargs["json"]
+        card = payload["cardsV2"][0]["card"]
+        subtitle = card["header"]["subtitle"]
+        assert "Reopened" in subtitle
+
+
     @patch("apps.emails.services.chat_notifier.httpx.post")
     @patch("apps.emails.services.chat_notifier.SystemConfig")
     def test_breach_summary_uses_urgency_label_format(self, mock_config_cls, mock_post):

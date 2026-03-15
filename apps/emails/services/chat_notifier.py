@@ -222,6 +222,98 @@ class ChatNotifier:
         payload = {"cardsV2": [{"cardId": f"assign-{email.pk}", "card": card}]}
         return self._post(payload)
 
+    def notify_cross_inbox_duplicate(self, email_obj) -> bool:
+        """Post a lightweight notification when same email arrives on another inbox.
+
+        Per user decision: "Thread [subject] also received on sales@" -- not a full triage card.
+        """
+        if self._is_quiet_hours():
+            return False
+
+        thread = email_obj.thread
+        subject = (thread.subject if thread else email_obj.subject or "")[:50]
+        inbox = email_obj.to_inbox or ""
+        # Short inbox label: "info@" or "sales@"
+        inbox_short = inbox.split("@")[0] + "@" if "@" in inbox else inbox
+
+        card = {
+            "header": self._branded_header(
+                title=f"Also received on {inbox_short}",
+                subtitle=subject,
+            ),
+            "sections": [
+                {"widgets": [
+                    {"textParagraph": {"text": f"Thread <b>{subject}</b> also arrived on <b>{inbox}</b>. No additional triage needed."}}
+                ]},
+                VIPL_FOOTER_SECTION,
+            ],
+        }
+        payload = {"cardsV2": [{"cardId": f"crossinbox-{email_obj.pk}", "card": card}]}
+        return self._post(payload)
+
+    def notify_thread_update(self, email_obj, reopened=False) -> bool:
+        """Post a notification card when a new message arrives on an existing thread.
+
+        Distinct from new-thread triage card: uses "Thread Updated" title,
+        includes sender, body preview, and dashboard link.
+
+        Args:
+            email_obj: Django Email model instance (the new message).
+            reopened: Whether this message reopened a closed/acknowledged thread.
+        """
+        if self._is_quiet_hours():
+            logger.info("Quiet hours -- suppressing thread update for email %s", email_obj.pk)
+            return False
+
+        thread = email_obj.thread
+        if not thread:
+            return False
+
+        subject = (thread.subject or "")[:50]
+        sender = email_obj.from_name or email_obj.from_address
+        body_preview = (email_obj.body or "")[:100]
+        if len(email_obj.body or "") > 100:
+            body_preview += "..."
+
+        assignee_name = ""
+        if thread.assigned_to:
+            assignee_name = thread.assigned_to.get_full_name() or thread.assigned_to.username
+
+        subtitle = f"Reply from {sender}"
+        if reopened:
+            subtitle = f"Reopened by {sender}"
+        if assignee_name:
+            subtitle += f" | Assigned to {assignee_name}"
+
+        dashboard_link = f"{self._tracker_url}/emails/?selected={email_obj.pk}"
+
+        widgets = [
+            {"decoratedText": {"topLabel": "From", "text": f"{email_obj.from_name} <{email_obj.from_address}>"}},
+            {"decoratedText": {"topLabel": "Preview", "text": body_preview or "(empty message)"}},
+        ]
+
+        if email_obj.to_inbox:
+            widgets.append(
+                {"decoratedText": {"topLabel": "Inbox", "text": email_obj.to_inbox}}
+            )
+
+        card = {
+            "header": self._branded_header(
+                title=f"Thread Updated: {subject}",
+                subtitle=subtitle,
+            ),
+            "sections": [
+                {"widgets": widgets},
+                {"widgets": [{"buttonList": {"buttons": [
+                    {"text": "Open in Dashboard", "onClick": {"openLink": {"url": dashboard_link}}}
+                ]}}]},
+                VIPL_FOOTER_SECTION,
+            ],
+        }
+
+        payload = {"cardsV2": [{"cardId": f"thread-update-{email_obj.pk}", "card": card}]}
+        return self._post(payload)
+
     def notify_new_emails(self, emails) -> bool:
         """Post a summary card for newly processed emails.
 
