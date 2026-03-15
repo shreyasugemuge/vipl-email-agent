@@ -34,8 +34,8 @@
 
 ### Dev Inspector
 
-- [ ] **DEV-01**: Poll UX — live timer, force poll fix, history improvements (#23)
-- [ ] **DEV-02**: Poll history table — human-readable times, interval column, empty vs fetched distinction
+- [x] **DEV-01**: Poll UX — live timer, force poll fix, history improvements (#23)
+- [x] **DEV-02**: Poll history table — human-readable times, interval column, empty vs fetched distinction
 
 ## Future Requirements
 
@@ -68,8 +68,8 @@ None — this is a polish milestone.
 | PAGE-02 | Phase 4 | Complete |
 | PAGE-03 | Phase 4 | Complete |
 | PAGE-04 | Phase 4 | Complete |
-| DEV-01 | Phase 5 | Pending |
-| DEV-02 | Phase 5 | Pending |
+| DEV-01 | Phase 5 | Complete |
+| DEV-02 | Phase 5 | Complete |
 
 **Coverage:**
 - v2.5.4 requirements: 17 total

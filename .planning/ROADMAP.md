@@ -45,7 +45,7 @@ Execution Order:
 - [x] **Phase 2: Thread Card & Detail UX** — Polish cards and detail: spacing, pill dropdowns, context menu font, AI draft display (completed 2026-03-15)
 - [x] **Phase 3: Workflow Actions** — Claim button for unassigned threads, undo spam feedback *(after P1)* (completed 2026-03-15)
 - [x] **Phase 4: Page Polish** — Login logo, settings reorganization, activity redesign, sidebar version *(after P1)* (completed 2026-03-15)
-- [ ] **Phase 5: Dev Inspector** — Poll timer, force poll fix, history table improvements *(independent)*
+- [x] **Phase 5: Dev Inspector** — Poll timer, force poll fix, history table improvements *(independent)* (completed 2026-03-15)
 
 ## Phase Details
 
@@ -114,7 +114,7 @@ Plans:
 **Goal**: Dev inspector provides accurate real-time poll status and readable history
 **Depends on**: Nothing (independent — can run anytime, even parallel with P1)
 **Requirements**: DEV-01, DEV-02
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 **Success Criteria** (what must be TRUE):
   1. Poll countdown timer shows live seconds until next poll and resets after each cycle
   2. Force poll button triggers a poll cycle immediately and shows result feedback
@@ -131,4 +131,4 @@ Plans:
 | 2 (M6-P2) | Thread Card & Detail UX | 2/2 | Complete | 2026-03-15 |
 | 3 (M6-P3) | 1/1 | Complete   | 2026-03-15 | - |
 | 4 (M6-P4) | 2/2 | Complete   | 2026-03-15 | - |
-| 5 (M6-P5) | Dev Inspector | 0/1 | Planning complete | - |
+| 5 (M6-P5) | 1/1 | Complete   | 2026-03-15 | - |

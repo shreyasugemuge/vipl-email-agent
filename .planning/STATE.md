@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: completed
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-15T17:29:48.391Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-15T17:31:24.666Z"
 last_activity: 2026-03-15 — Completed 04-02 (settings grouped tabs + activity thread grouping)
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 83
 ---
 
@@ -48,6 +48,7 @@ Progress: [████████▎░] 83%
 | 04 | 01 | 5min | 2 | 6 |
 | 03 | 01 | 4min | 2 | 3 |
 | 04 | 02 | 4min | 2 | 3 |
+| Phase 05 P01 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Progress: [████████▎░] 83%
 - [P4-02] Thread grouping uses OrderedDict preserving queryset order (most recent activity first)
 - [P4-02] System events (no thread) grouped under non-clickable 'System Events' header
 - [P4-02] All 7 settings panels get title+description headers for consistency
+- [Phase 05]: Server-side interval formatting for poll history instead of template math
+- [Phase 05]: PollLog-based JSON for force poll instead of stdout parsing
+- [Phase 05]: Vanilla JS DOMParser for table refresh (no HTMX in inspector)
 
 ### Blockers/Concerns
 
@@ -82,6 +86,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T17:27:16Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-03-15T17:31:24.664Z
+Stopped at: Completed 05-01-PLAN.md
 Next: Phase 5 or `/gsd:execute-phase 5`
