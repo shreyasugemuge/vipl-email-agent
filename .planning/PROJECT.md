@@ -44,21 +44,20 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - ✓ Google Chat card branding (header icon + footer) — v2.2
 - ✓ Inline Open buttons in Chat notification cards — v2.2
 - ✓ Consistent SLA urgency labels across all card types — v2.2
+- ✓ AI suggested assignee XML tag cleanup at ingest + data migration — v2.3.4
+- ✓ Mobile detail panel with history API, scroll lock, back button — v2.3.4
+- ✓ Mobile filter stacking, activity chip wrap, toast positioning — v2.3.4
+- ✓ Email count OOB update on view switch — v2.3.4
+- ✓ Consistent page titles "VIPL Triage | {Page}" — v2.3.4
+- ✓ Welcome banner with role-specific onboarding — v2.3.4
+- ✓ Active filter indicators with count badge and clear-all — v2.3.4
+- ✓ Scroll-snap stat cards for mobile — v2.3.4
+- ✓ Keyboard navigation (Arrow keys + Escape) on email cards — v2.3.4
+- ✓ Loading skeleton for detail panel HTMX fetches — v2.3.4
 
 ### Active
 
-## Current Milestone: v2.2.1 UI/UX Polish & Bug Fixes
-
-**Goal:** Fix UI bugs, improve mobile responsiveness, and polish the dashboard experience based on live QA findings.
-
-**Target features:**
-- Fix AI suggestion XML markup rendering bug in email cards
-- Mobile responsive detail panel (currently invisible on mobile)
-- Mobile-friendly filters, search, and stat counters
-- Activity page filter overflow fix
-- Welcome toast / first-login experience
-- Email count accuracy across view filters
-- Page title consistency
+(No active requirements — planning next milestone)
 
 ### Out of Scope
 
@@ -71,7 +70,7 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ## Context
 
-**Current state (v2.2 shipped):** Production at triage.vidarbhainfotech.com since 2026-03-14. Full pipeline: Gmail polling → spam filter (13 regex + whitelist) → Claude AI triage → auto-assign → SLA tracking → Google Chat notifications (branded cards with deep links). Google OAuth SSO with domain lock. VIPL brand identity across all pages and Chat cards. 18,763 LOC Python, 349 tests passing, Django 4.2 LTS + PostgreSQL 12.3.
+**Current state (v2.3.4 shipped):** Production at triage.vidarbhainfotech.com since 2026-03-14. Full pipeline: Gmail polling → spam filter (13 regex + whitelist) → Claude AI triage → auto-assign → SLA tracking → Google Chat notifications (branded cards with deep links). Google OAuth SSO with domain lock. VIPL brand identity across all pages and Chat cards. UI/UX polish: mobile-responsive detail panel, keyboard navigation, welcome onboarding, filter indicators, loading skeletons. 443 tests passing, Django 4.2 LTS + PostgreSQL 12.3.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
@@ -104,6 +103,10 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | Plum brand palette (#a83362) | Derived from VIPL logo, consistent with corporate identity | ✓ Good — v2.2 |
 | decoratedText.button for inline links | Cards v2 union field constraint, no endIcon conflict | ✓ Good — v2.2 |
 | _sla_urgency_label module-level function | Cross-method reuse, consistent formatting | ✓ Good — v2.2 |
+| XML cleanup at ingest (not display layer) | Clean data at source, simpler templates | ✓ Good — v2.3.4 |
+| OOB swap for email count updates | No page reload, HTMX out-of-band pattern | ✓ Good — v2.3.4 |
+| pushState/popstate for mobile detail panel | Browser back button works naturally | ✓ Good — v2.3.4 |
+| sessionStorage + localStorage for welcome banner | Session dismiss + permanent "don't show again" | ✓ Good — v2.3.4 |
 
 ---
-*Last updated: 2026-03-15 after v2.2.1 milestone started*
+*Last updated: 2026-03-15 after v2.3.4 milestone complete*

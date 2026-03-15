@@ -1,5 +1,25 @@
 # Milestones
 
+## v2.3.4 UI/UX Polish & Bug Fixes (Shipped: 2026-03-15)
+
+**Phases completed:** 3 phases, 6 plans, 14 tasks
+**Timeline:** 1 day (2026-03-15)
+**Stats:** 8 commits ahead of main, 2 code files changed (+28/-11), 443 tests
+
+**Key accomplishments:**
+- AI suggested assignee XML tag cleanup at ingest + data migration for existing records
+- Mobile detail panel with history API back-button, scroll lock, swipe-to-dismiss toasts
+- Welcome banner with role-specific onboarding (admin vs member), session/permanent dismiss
+- Keyboard navigation (Arrow Up/Down between cards, Escape closes detail) with form field guard
+- Loading skeleton (animate-pulse) for detail panel HTMX fetches, scoped to target
+- Full QA verification: 13/13 requirements PASS, 3 inline bug fixes discovered and fixed
+
+**Archives:**
+- `milestones/v2.3.4-ROADMAP.md`
+- `milestones/v2.3.4-REQUIREMENTS.md`
+
+---
+
 ## v2.2 Polish & Hardening (Shipped: 2026-03-14)
 
 **Phases completed:** 4 phases, 6 plans
