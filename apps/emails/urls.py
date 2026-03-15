@@ -16,6 +16,7 @@ urlpatterns = [
     path("threads/<int:pk>/heartbeat/", views.viewer_heartbeat, name="viewer_heartbeat"),
     path("threads/<int:pk>/clear-viewer/", views.clear_viewer, name="clear_viewer"),
     path("threads/<int:pk>/whitelist-sender/", views.whitelist_sender_from_thread, name="whitelist_thread_sender"),
+    path("threads/<int:pk>/mark-unread/", views.mark_thread_unread, name="mark_thread_unread"),
     path("threads/<int:pk>/edit-summary/", views.edit_ai_summary, name="edit_ai_summary"),
     path("threads/<int:pk>/mark-spam/", views.mark_spam, name="mark_spam"),
     path("threads/<int:pk>/mark-not-spam/", views.mark_not_spam, name="mark_not_spam"),

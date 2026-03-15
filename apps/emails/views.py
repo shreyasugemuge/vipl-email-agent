@@ -889,11 +889,48 @@ def thread_detail(request, pk):
         thread_id=pk, user=user,
         defaults={"last_seen": timezone.now()},
     )
+
+    # Mark thread as read for this user
+    ThreadReadState.objects.update_or_create(
+        thread=thread, user=user,
+        defaults={"is_read": True, "read_at": timezone.now()},
+    )
+
     active_viewers = get_active_viewers(pk, exclude_user_id=user.pk)
 
     context = _build_thread_detail_context(thread, request, is_admin, team_members)
     context["active_viewers"] = active_viewers
-    return render(request, "emails/_thread_detail.html", context)
+
+    # Return detail panel + OOB card swap to update read styling
+    detail_response = render(request, "emails/_thread_detail.html", context)
+    card_html = render_to_string(
+        "emails/_thread_card.html",
+        {"thread": thread, "oob": True, "is_unread": False},
+        request=request,
+    )
+    return _HttpResponse(detail_response.content.decode() + card_html)
+
+
+@login_required
+@require_POST
+def mark_thread_unread(request, pk):
+    """Mark a thread as unread for the current user."""
+    thread = get_object_or_404(Thread, pk=pk)
+    ThreadReadState.objects.update_or_create(
+        thread=thread, user=request.user,
+        defaults={"is_read": False, "read_at": None},
+    )
+    # Return empty detail panel placeholder + OOB card swap
+    card_html = render_to_string(
+        "emails/_thread_card.html",
+        {"thread": thread, "oob": True, "is_unread": True},
+        request=request,
+    )
+    close_html = (
+        '<div id="thread-detail-panel" class="flex items-center justify-center h-full">'
+        '<span class="text-sm text-slate-400">Select a thread</span></div>'
+    )
+    return _HttpResponse(close_html + card_html)
 
 
 @login_required
@@ -1007,6 +1044,12 @@ def assign_thread_view(request, pk):
     note = request.POST.get("note", "")
 
     _assign_thread(thread, assignee, user, note=note)
+
+    # Reset read state for assignee so thread appears unread in their inbox
+    ThreadReadState.objects.update_or_create(
+        thread=thread, user=assignee,
+        defaults={"is_read": False, "read_at": None},
+    )
 
     # Reload with select_related
     thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
@@ -1444,6 +1487,12 @@ def settings_view(request):
     # Whitelist entries for Whitelist tab
     whitelist_entries = SpamWhitelist.objects.select_related("added_by").all()
 
+    # Blocked/tracked senders for Whitelist tab
+    from django.db.models import Q as _Q2
+    blocked_senders = SenderReputation.objects.filter(
+        _Q2(spam_count__gt=0) | _Q2(is_blocked=True)
+    ).order_by("-is_blocked", "-spam_count")
+
     context = {
         "active_tab": active_tab,
         "team_members": team_members,
@@ -1456,6 +1505,7 @@ def settings_view(request):
         "config_groups": config_groups,
         "category_webhooks": category_webhooks,
         "whitelist_entries": whitelist_entries,
+        "blocked_senders": blocked_senders,
     }
     return render(request, "emails/settings.html", context)
 
@@ -1703,10 +1753,15 @@ def settings_webhooks_save(request):
 
 
 def _render_whitelist_tab(request, save_success=False, save_message="", save_error=""):
-    """Render the whitelist tab partial with current entries."""
+    """Render the whitelist tab partial with current entries and blocked senders."""
+    from django.db.models import Q as _Q3
     entries = SpamWhitelist.objects.select_related("added_by").all()
+    blocked = SenderReputation.objects.filter(
+        _Q3(spam_count__gt=0) | _Q3(is_blocked=True)
+    ).order_by("-is_blocked", "-spam_count")
     return render(request, "emails/_whitelist_tab.html", {
         "whitelist_entries": entries,
+        "blocked_senders": blocked,
         "save_success": save_success,
         "save_message": save_message,
         "save_error": save_error,
