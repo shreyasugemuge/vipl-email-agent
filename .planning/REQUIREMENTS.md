@@ -39,10 +39,10 @@
 
 ### QA Bug Fixes
 
-- [ ] **QA-01**: Thread count label reflects current view filter (#31)
-- [ ] **QA-02**: Search preserves sidebar view filter in URL (#32)
-- [ ] **QA-03**: Mobile detail drawer opens on thread tap (#35)
-- [ ] **QA-04**: Escape key closes detail panel (#36)
+- [x] **QA-01**: Thread count label reflects current view filter (#31)
+- [x] **QA-02**: Search preserves sidebar view filter in URL (#32)
+- [x] **QA-03**: Mobile detail drawer opens on thread tap (#35)
+- [x] **QA-04**: Escape key closes detail panel (#36)
 
 ### QA Cosmetic & Layout
 
@@ -84,10 +84,10 @@ None — this is a polish milestone.
 | DEV-01 | Phase 5 | Complete |
 | DEV-02 | Phase 5 | Complete |
 
-| QA-01 | Phase 6 | Pending |
-| QA-02 | Phase 6 | Pending |
-| QA-03 | Phase 6 | Pending |
-| QA-04 | Phase 6 | Pending |
+| QA-01 | Phase 6 | Complete |
+| QA-02 | Phase 6 | Complete |
+| QA-03 | Phase 6 | Complete |
+| QA-04 | Phase 6 | Complete |
 | QA-05 | Phase 7 | Pending |
 | QA-06 | Phase 7 | Pending |
 | QA-07 | Phase 7 | Pending |

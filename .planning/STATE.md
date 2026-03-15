@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
-status: completed
-stopped_at: Phase 7 context gathered
-last_updated: "2026-03-15T17:47:35.883Z"
-last_activity: 2026-03-15 — Completed 04-02 (settings grouped tabs + activity thread grouping)
+status: in-progress
+stopped_at: Completed 06-01 (QA bug fixes)
+last_updated: "2026-03-15T17:52:07Z"
+last_activity: 2026-03-15 — Completed 06-01 (thread count OOB, search sync, mobile drawer, Escape close)
 progress:
   total_phases: 7
-  completed_phases: 4
-  total_plans: 7
-  completed_plans: 6
-  percent: 83
+  completed_phases: 5
+  total_plans: 8
+  completed_plans: 7
+  percent: 88
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 
 ## Current Position
 
-Phase: 4 of 5 (Page Polish) — M6-P4, plan 2 of 2 complete
-Plan: 2 of 2 completed
-Status: Phase 4 complete, ready for phase 5
-Last activity: 2026-03-15 — Completed 04-02 (settings grouped tabs + activity thread grouping)
+Phase: 6 of 7 (QA Bug Fixes) — M6-P6, plan 1 of 1 complete
+Plan: 1 of 1 completed
+Status: Phase 6 complete
+Last activity: 2026-03-15 — Completed 06-01 (thread count OOB, search sync, mobile drawer, Escape close)
 
-Progress: [████████▎░] 83%
+Progress: [████████▊░] 88%
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Progress: [████████▎░] 83%
 | 03 | 01 | 4min | 2 | 3 |
 | 04 | 02 | 4min | 2 | 3 |
 | Phase 05 P01 | 5min | 2 tasks | 2 files |
+| 06 | 01 | 2min | 2 | 2 |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Progress: [████████▎░] 83%
 - [Phase 05]: Server-side interval formatting for poll history instead of template math
 - [Phase 05]: PollLog-based JSON for force poll instead of stdout parsing
 - [Phase 05]: Vanilla JS DOMParser for table refresh (no HTMX in inspector)
+- [P6-01] OOB swap span mirrors existing title-updater pattern for thread count
+- [P6-01] Removed hidden parent wrapper entirely rather than toggling via JS
+- [P6-01] closeThreadDetail() handles both mobile (translate-x) and desktop (innerHTML placeholder)
 
 ### Blockers/Concerns
 
@@ -86,6 +90,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T17:47:35.881Z
-Stopped at: Phase 7 context gathered
-Next: Phase 5 or `/gsd:execute-phase 5`
+Last session: 2026-03-15T17:52:07Z
+Stopped at: Completed 06-01 (QA bug fixes)
+Next: Continue with remaining phases or `/gsd:execute-phase 7`

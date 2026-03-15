@@ -46,7 +46,7 @@ Execution Order:
 - [x] **Phase 3: Workflow Actions** — Claim button for unassigned threads, undo spam feedback *(after P1)* (completed 2026-03-15)
 - [x] **Phase 4: Page Polish** — Login logo, settings reorganization, activity redesign, sidebar version *(after P1)* (completed 2026-03-15)
 - [x] **Phase 5: Dev Inspector** — Poll timer, force poll fix, history table improvements *(independent)* (completed 2026-03-15)
-- [ ] **Phase 6: QA Bug Fixes** — Thread count filter, search view reset, mobile drawer, Escape key *(parallel with P7)*
+- [x] **Phase 6: QA Bug Fixes** — Thread count filter, search view reset, mobile drawer, Escape key *(parallel with P7)* (completed 2026-03-15)
 - [ ] **Phase 7: QA Cosmetic & Layout** — Button overflow, reports title, SLA chart empty *(parallel with P6)*
 
 ## Phase Details
@@ -136,8 +136,10 @@ Plans:
   3. Mobile detail drawer opens when tapping a thread card on mobile viewport
   4. Pressing Escape closes the thread detail panel
 
+**Plans:** 1/1 plans complete
+
 Plans:
-- [ ] 06-01-PLAN.md — Fix thread count, search view filter, mobile drawer, Escape key
+- [x] 06-01-PLAN.md — Fix thread count, search view filter, mobile drawer, Escape key
 
 ### Phase 7: QA Cosmetic & Layout (M6-P7)
 **Goal**: Fix cosmetic and layout issues found during QA front-end review
@@ -162,5 +164,5 @@ Plans:
 | 3 (M6-P3) | 1/1 | Complete   | 2026-03-15 | - |
 | 4 (M6-P4) | 2/2 | Complete   | 2026-03-15 | - |
 | 5 (M6-P5) | 1/1 | Complete   | 2026-03-15 | - |
-| 6 (M6-P6) | QA Bug Fixes | 0/TBD | Not started | - |
+| 6 (M6-P6) | QA Bug Fixes | 1/1 | Complete | 2026-03-15 |
 | 7 (M6-P7) | QA Cosmetic & Layout | 1 | Not started | - |
