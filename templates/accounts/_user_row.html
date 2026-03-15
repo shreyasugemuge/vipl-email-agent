@@ -18,16 +18,17 @@
 
     <!-- Role -->
     <td class="px-4 py-2.5 text-center">
-        {% if u.pk != request_user.pk %}
+        {% if request_user.is_admin_only and u.pk != request_user.pk %}
         <select hx-post="/accounts/team/{{ u.pk }}/change-role/"
                 hx-target="#user-{{ u.pk }}" hx-swap="outerHTML"
                 name="role"
                 class="text-[10px] font-semibold border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-600 focus:ring-2 focus:ring-primary-500/15 cursor-pointer">
             <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+            <option value="triage_lead" {% if u.role == 'triage_lead' %}selected{% endif %}>Triage Lead</option>
             <option value="member" {% if u.role == 'member' %}selected{% endif %}>Member</option>
         </select>
         {% else %}
-        <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-primary-50 text-primary-600">{{ u.get_role_display }}</span>
+        {% if u.role == 'admin' %}<span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-primary-50 text-primary-600">Admin</span>{% elif u.role == 'triage_lead' %}<span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-blue-50 text-blue-600">Triage Lead</span>{% else %}<span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-slate-50 text-slate-500">Member</span>{% endif %}
         {% endif %}
     </td>
 
