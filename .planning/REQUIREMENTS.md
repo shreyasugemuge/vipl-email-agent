@@ -7,11 +7,11 @@
 
 ### Threading
 
-- [ ] **THRD-01**: Emails with the same `gmail_thread_id` are grouped into a single conversation/thread
-- [ ] **THRD-02**: Thread has its own status (New/Acknowledged/Closed) independent of individual messages
+- [x] **THRD-01**: Emails with the same `gmail_thread_id` are grouped into a single conversation/thread
+- [x] **THRD-02**: Thread has its own status (New/Acknowledged/Closed) independent of individual messages
 - [ ] **THRD-03**: Thread has a single assignee — assigning the thread assigns ownership of all messages in it
 - [ ] **THRD-04**: New incoming email on an existing thread updates the thread (bumps to top, may reopen)
-- [ ] **THRD-05**: Thread displays message count and latest message preview in the conversation list
+- [x] **THRD-05**: Thread displays message count and latest message preview in the conversation list
 
 ### Conversation UI
 
@@ -64,11 +64,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| THRD-01 | Phase 1 | Pending |
-| THRD-02 | Phase 1 | Pending |
+| THRD-01 | Phase 1 | Complete |
+| THRD-02 | Phase 1 | Complete |
 | THRD-03 | Phase 1 | Pending |
 | THRD-04 | Phase 2 | Pending |
-| THRD-05 | Phase 1 | Pending |
+| THRD-05 | Phase 1 | Complete |
 | UI-01 | Phase 3 | Pending |
 | UI-02 | Phase 3 | Pending |
 | UI-03 | Phase 3 | Pending |
@@ -90,4 +90,4 @@
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after roadmap creation*
+*Last updated: 2026-03-15 after 01-01 execution*

@@ -54,7 +54,7 @@
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Thread model, ActivityLog refactor, migrations, admin
+- [x] 01-01-PLAN.md — Thread model, ActivityLog refactor, migrations, admin
 - [ ] 01-02-PLAN.md — Thread-level assignment, status, and preview logic
 
 ### Phase 2: Pipeline Integration + Inbox Clarity
@@ -110,7 +110,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Thread Model + Data Migration | 0/2 | Not started | - |
+| 1. Thread Model + Data Migration | 1/2 | In progress | - |
 | 2. Pipeline Integration + Inbox Clarity | 0/2 | Not started | - |
 | 3. Conversation UI | 0/3 | Not started | - |
 | 4. Collaboration | 0/2 | Not started | - |
