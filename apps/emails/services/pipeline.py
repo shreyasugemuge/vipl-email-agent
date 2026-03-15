@@ -82,8 +82,8 @@ def _try_inline_auto_assign(thread, triage):
         if triage.is_spam:
             return
 
-        # Check confidence threshold (default "100" = disabled)
-        threshold = SystemConfig.get("auto_assign_confidence_threshold", "100")
+        # Check confidence tier (default "100" = disabled, set to "HIGH" to enable)
+        threshold = SystemConfig.get("auto_assign_confidence_tier", "100")
         if triage.confidence != threshold:
             return
 

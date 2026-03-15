@@ -74,7 +74,7 @@ def rule(db, assignee):
 def enable_auto_assign(db):
     """Set auto-assign threshold to HIGH (enabled)."""
     SystemConfig.objects.update_or_create(
-        key="auto_assign_confidence_threshold",
+        key="auto_assign_confidence_tier",
         defaults={"value": "HIGH", "value_type": "STR"},
     )
 
