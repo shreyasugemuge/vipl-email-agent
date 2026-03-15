@@ -56,10 +56,19 @@ class VIPLSocialAccountAdapter(DefaultSocialAccountAdapter):
                 existing_user = User.objects.get(email=email)
                 sociallogin.connect(request, existing_user)
                 logger.info("Auto-linked Google account to existing user %s", email)
+                # Save avatar using existing_user directly (sociallogin.user
+                # may not be updated after connect())
+                picture = extra_data.get("picture", "")
+                if picture and existing_user.avatar_url != picture:
+                    existing_user.avatar_url = picture
+                    existing_user.save(update_fields=["avatar_url"])
+                first_name = existing_user.first_name or existing_user.username
+                messages.info(request, f"Welcome, {first_name}!")
+                return
             except User.DoesNotExist:
                 return  # New user — will go through save_user()
 
-        # Update avatar for linked users
+        # Update avatar for existing social links (repeat logins)
         user = sociallogin.user
         picture = extra_data.get("picture", "")
         if picture and user.avatar_url != picture:
