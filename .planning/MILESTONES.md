@@ -1,5 +1,27 @@
 # Milestones
 
+## v2.6.0 Gatekeeper Role + Irrelevant Emails (Shipped: 2026-03-16)
+
+**Phases completed:** 4 phases, 9 plans
+**Stats:** 78 commits, 91 files changed, +13,815 lines, 824 tests
+**Timeline:** ~3 hours (2026-03-16)
+
+**Key accomplishments:**
+- Triage Lead (gatekeeper) role with 5 permission properties, team page promote/demote, category-scoped visibility
+- Centralized permission refactor: replaced 28+ scattered is_admin checks with User model properties
+- Assignment enforcement: gatekeepers/admins control routing, members self-claim or reassign with mandatory reason
+- Mark irrelevant: close-with-reason for queue hygiene, amber UI (button + modal + context menu + badge), activity audit trail
+- Rising-edge unassigned alert system: Chat notification on threshold crossing with cooldown, sidebar badge coloring
+- Bulk actions: checkbox selection → floating action bar → bulk assign + bulk mark-irrelevant with 10s undo toast
+- AI corrections digest: collapsible card on triage queue showing 7-day correction patterns
+
+**Archives:**
+- `milestones/v2.6.0-ROADMAP.md`
+- `milestones/v2.6.0-REQUIREMENTS.md`
+- `milestones/v2.6.0-MILESTONE-AUDIT.md`
+
+---
+
 ## v2.5.0 Intelligence + UX (Shipped: 2026-03-15)
 
 **Phases completed:** 7 phases, 14 plans

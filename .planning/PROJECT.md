@@ -64,17 +64,17 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - ✓ Inline editable category/priority/status with override flags preserved on new emails — v2.5.0
 - ✓ Reports module: 4-tab analytics (Overview, Volume, Team, SLA) with Chart.js — v2.5.0
 - ✓ Bug fixes: spam badge annotation, Gmail avatar edge cases, cross-inbox dedup — v2.5.0
+- ✓ Gatekeeper (Triage Lead) role with 5 permission properties, promote/demote, category scoping — v2.6.0
+- ✓ Centralized permission refactor: 28+ is_admin checks → User model properties — v2.6.0
+- ✓ Assignment enforcement: gatekeeper/admin routing control, member self-claim with mandatory reason — v2.6.0
+- ✓ Mark irrelevant: close-with-reason, amber UI, activity audit trail — v2.6.0
+- ✓ Unassigned alert: rising-edge Chat notification with cooldown, sidebar badge coloring — v2.6.0
+- ✓ Bulk actions: checkbox selection, floating bar, bulk assign/mark-irrelevant, undo toast — v2.6.0
+- ✓ AI corrections digest: 7-day correction patterns on triage queue — v2.6.0
 
 ### Active
 
-#### v2.6.0 — Gatekeeper Role + Irrelevant Emails
-
-- [ ] Gatekeeper role: new user role alongside admin/member, multiple users allowed
-- [ ] Exclusive assignment: only gatekeeper/admin can assign; members reassign with mandatory reason
-- [ ] Enhanced triage queue: bulk assign, quick-dismiss, AI feedback summary for gatekeeper
-- [ ] Unassigned count alert: configurable threshold, dashboard badge + Google Chat notification
-- [ ] Mark irrelevant: close-with-reason action for gatekeeper/admin, removes from unassigned count
-- [ ] AI learning: gatekeeper corrections feed existing distillation pipeline
+(No active requirements — run `/gsd:new-milestone` to start next cycle)
 
 ### Out of Scope
 
@@ -87,7 +87,7 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ## Context
 
-**Current state (v2.5.0 deployed):** Production at triage.vidarbhainfotech.com since 2026-03-15 (v2.5.0). Full pipeline running: AI confidence, auto-assign, spam learning, read/unread, inline editing, reports. 626 tests, Django 4.2 LTS + PostgreSQL 12.3.
+**Current state (v2.6.0 ready):** Production at triage.vidarbhainfotech.com. Full pipeline with AI confidence, auto-assign, spam learning, read/unread, inline editing, reports. Gatekeeper role with assignment enforcement, mark-irrelevant, bulk actions, unassigned alerts, corrections digest. 824 tests, Django 4.2 LTS + PostgreSQL 12.3.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
@@ -130,6 +130,11 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | Chart.js CDN only on reports page | No build step, loaded lazily | ✓ Good — v2.5.0 |
 | Override flags on Thread model | Pipeline preserves user-corrected category/priority | ✓ Good — v2.5.0 |
 | Context menu fetched server-side (GET) | Role-aware rendering without duplicating permission logic in JS | ✓ Good — v2.5.0 |
+| Permission @property on User model (not Django perms) | Simple, template-accessible, no migrations for permission changes | ✓ Good — v2.6.0 |
+| Multiple gatekeepers allowed | Shift coverage, no single point of failure | ✓ Good — v2.6.0 |
+| IRRELEVANT as distinct Thread.Status | Not overloading CLOSED, clean queryset filtering | ✓ Good — v2.6.0 |
+| Rising-edge alert (fires once on crossing) | Prevents alert storms, cooldown as safety net | ✓ Good — v2.6.0 |
+| Stateless undo via HX-Trigger serialized state | No server-side undo stack, clean HTMX pattern | ✓ Good — v2.6.0 |
 
 ---
-*Last updated: 2026-03-15 after v2.6.0 milestone started*
+*Last updated: 2026-03-16 after v2.6.0 milestone complete*
