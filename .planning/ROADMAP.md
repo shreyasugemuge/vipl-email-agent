@@ -99,6 +99,7 @@ Plans:
 **Depends on**: Phase 1
 **Parallel with**: Phase 2, Phase 3
 **Requirements**: PAGE-01, PAGE-02, PAGE-03, PAGE-04
+**Plans:** 2 plans
 **Success Criteria** (what must be TRUE):
   1. Login page shows the VIPL logo without a colored background rectangle
   2. Settings page has clear section headers, grouped tabs, and descriptive labels
@@ -106,8 +107,8 @@ Plans:
   4. Sidebar footer shows current version number (e.g., "v2.5.4") instead of "Online"
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md — Version/env badge in sidebar + login page retro-modern retheme
+- [ ] 04-02-PLAN.md — Settings grouped tabs + activity thread-grouped redesign
 
 ### Phase 5: Dev Inspector (M6-P5)
 **Goal**: Dev inspector provides accurate real-time poll status and readable history
@@ -128,5 +129,5 @@ Plans:
 | 1 (M6-P1) | 2/2 | Complete   | 2026-03-15 | - |
 | 2 (M6-P2) | Thread Card & Detail UX | 0/2 | Planning complete | - |
 | 3 (M6-P3) | Workflow Actions | 0/1 | Planning complete | - |
-| 4 (M6-P4) | Page Polish | 0/TBD | Not started | - |
+| 4 (M6-P4) | Page Polish | 0/2 | Planning complete | - |
 | 5 (M6-P5) | Dev Inspector | 0/TBD | Not started | - |
