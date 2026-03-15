@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+{% block title %}Reports - VIPL Triage{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block nav_reports_active %}nav-active{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+    .tab-btn { border-bottom: 2px solid transparent; transition: all 0.15s ease; }
+    .tab-btn:hover { color: #334155; border-color: #cbd5e1; }
+    .tab-btn.active { color: #a83362; border-color: #a83362; font-weight: 600; }
+    .chart-container { position: relative; min-height: 300px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-4 md:p-6 space-y-5">
+
+    {# ---- Header + Date Range / Filters ---- #}
+    <form method="get" action="{% url 'emails:reports' %}" id="reports-form">
+        <div class="flex flex-col lg:flex-row lg:items-end gap-4">
+            {# Date range preset #}
+            <div class="flex-1">
+                <label for="preset" class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Date Range</label>
+                <div class="flex gap-2">
+                    <select name="preset" id="preset" onchange="handlePresetChange(this)"
+                            class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 min-w-[160px]">
+                        <option value="today" {% if preset == "today" %}selected{% endif %}>Today</option>
+                        <option value="this_week" {% if preset == "this_week" %}selected{% endif %}>This Week</option>
+                        <option value="this_month" {% if preset == "this_month" %}selected{% endif %}>This Month</option>
+                        <option value="last_7" {% if preset == "last_7" %}selected{% endif %}>Last 7 Days</option>
+                        <option value="last_30" {% if preset == "last_30" %}selected{% endif %}>Last 30 Days</option>
+                        <option value="last_90" {% if preset == "last_90" %}selected{% endif %}>Last 90 Days</option>
+                        <option value="quarter" {% if preset == "quarter" %}selected{% endif %}>Quarter</option>
+                        <option value="year" {% if preset == "year" %}selected{% endif %}>Year</option>
+                        <option value="custom" {% if preset == "custom" %}selected{% endif %}>Custom</option>
+                    </select>
+                    <div id="custom-dates" class="flex gap-2 {% if preset != 'custom' %}hidden{% endif %}">
+                        <input type="date" name="start" value="{{ custom_start }}"
+                               class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
+                        <span class="self-center text-slate-400 text-sm">to</span>
+                        <input type="date" name="end" value="{{ custom_end }}"
+                               class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700">
+                    </div>
+                </div>
+            </div>
+
+            {# Filters #}
+            <div class="flex flex-wrap gap-3">
+                <div>
+                    <label for="inbox" class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Inbox</label>
+                    <select name="inbox" id="inbox" onchange="this.form.submit()"
+                            class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 min-w-[140px]">
+                        <option value="">All Inboxes</option>
+                        {% for ib in distinct_inboxes %}
+                        <option value="{{ ib }}" {% if inbox_filter == ib %}selected{% endif %}>{{ ib }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="category" class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Category</label>
+                    <select name="category" id="category" onchange="this.form.submit()"
+                            class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 min-w-[140px]">
+                        <option value="">All Categories</option>
+                        {% for cat in distinct_categories %}
+                        <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="member" class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Team Member</label>
+                    <select name="member" id="member" onchange="this.form.submit()"
+                            class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 min-w-[140px]">
+                        <option value="">All Members</option>
+                        {% for u in active_users %}
+                        <option value="{{ u.pk }}" {% if member_filter == u.pk|stringformat:"d" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            {# Apply (for custom date) #}
+            <button type="submit" id="apply-btn"
+                    class="{% if preset != 'custom' %}hidden{% endif %} px-4 py-2 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors shrink-0">
+                Apply
+            </button>
+        </div>
+    </form>
+
+    {# ---- Tab Navigation ---- #}
+    <div class="border-b border-slate-200" role="tablist" aria-label="Report sections">
+        <div class="flex gap-6">
+            <button role="tab" class="tab-btn active px-1 pb-2.5 pt-1 text-sm"
+                    data-tab="overview" aria-selected="true" aria-controls="tab-overview" id="btn-overview">
+                Overview
+            </button>
+            <button role="tab" class="tab-btn px-1 pb-2.5 pt-1 text-sm text-slate-500"
+                    data-tab="volume" aria-selected="false" aria-controls="tab-volume" id="btn-volume">
+                Volume
+            </button>
+            <button role="tab" class="tab-btn px-1 pb-2.5 pt-1 text-sm text-slate-500"
+                    data-tab="team" aria-selected="false" aria-controls="tab-team" id="btn-team">
+                Team
+            </button>
+            <button role="tab" class="tab-btn px-1 pb-2.5 pt-1 text-sm text-slate-500"
+                    data-tab="sla" aria-selected="false" aria-controls="tab-sla" id="btn-sla">
+                SLA
+            </button>
+        </div>
+    </div>
+
+    {# ---- Tab Panels ---- #}
+
+    {# Overview #}
+    <div id="tab-overview" role="tabpanel" aria-labelledby="btn-overview">
+        {# KPI Cards #}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {# Total Emails #}
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 stat-card">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Emails</p>
+                        <p class="text-2xl font-bold text-slate-800">{{ overview_kpis.total_emails }}</p>
+                    </div>
+                </div>
+            </div>
+
+            {# Avg Response Time #}
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 stat-card">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Avg Response</p>
+                        <p class="text-2xl font-bold text-slate-800" id="kpi-avg-response">--</p>
+                    </div>
+                </div>
+            </div>
+
+            {# SLA Compliance #}
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 stat-card">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center
+                                {% if overview_kpis.sla_compliance_pct >= 90 %}bg-emerald-50{% elif overview_kpis.sla_compliance_pct >= 70 %}bg-amber-50{% else %}bg-red-50{% endif %}">
+                        <svg class="w-5 h-5 {% if overview_kpis.sla_compliance_pct >= 90 %}text-emerald-500{% elif overview_kpis.sla_compliance_pct >= 70 %}text-amber-500{% else %}text-red-500{% endif %}"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">SLA Compliance</p>
+                        <p class="text-2xl font-bold {% if overview_kpis.sla_compliance_pct >= 90 %}text-emerald-600{% elif overview_kpis.sla_compliance_pct >= 70 %}text-amber-600{% else %}text-red-600{% endif %}">
+                            {{ overview_kpis.sla_compliance_pct }}%
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {# Open Threads #}
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 stat-card">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Open Threads</p>
+                        <p class="text-2xl font-bold text-slate-800">{{ overview_kpis.open_threads }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Overview Chart #}
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            <h3 class="text-sm font-semibold text-slate-700 mb-4">Email Volume Overview</h3>
+            <div class="chart-container">
+                <canvas id="overviewChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    {# Volume #}
+    <div id="tab-volume" role="tabpanel" aria-labelledby="btn-volume" class="hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            <h3 class="text-sm font-semibold text-slate-700 mb-4">Daily Email Volume by Inbox</h3>
+            <div class="chart-container">
+                <canvas id="volumeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    {# Team #}
+    <div id="tab-team" role="tabpanel" aria-labelledby="btn-team" class="hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <h3 class="text-sm font-semibold text-slate-700 mb-4">Emails Handled per Team Member</h3>
+                <div class="chart-container">
+                    <canvas id="teamHandleChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <h3 class="text-sm font-semibold text-slate-700 mb-4">Avg Response Time (minutes)</h3>
+                <div class="chart-container">
+                    <canvas id="teamResponseChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# SLA #}
+    <div id="tab-sla" role="tabpanel" aria-labelledby="btn-sla" class="hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <h3 class="text-sm font-semibold text-slate-700 mb-4">SLA Compliance</h3>
+                <div class="chart-container" style="max-height: 280px;">
+                    <canvas id="slaDonutChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <h3 class="text-sm font-semibold text-slate-700 mb-4">SLA Compliance Trend</h3>
+                <div class="chart-container">
+                    <canvas id="slaTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        {# SLA Breaches Table #}
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100">
+                <h3 class="text-sm font-semibold text-slate-700">Recent SLA Breaches</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-500">
+                        <tr>
+                            <th class="text-left px-5 py-2.5 font-semibold text-[11px] uppercase tracking-wider">Subject</th>
+                            <th class="text-left px-5 py-2.5 font-semibold text-[11px] uppercase tracking-wider">Priority</th>
+                            <th class="text-left px-5 py-2.5 font-semibold text-[11px] uppercase tracking-wider">Deadline</th>
+                            <th class="text-left px-5 py-2.5 font-semibold text-[11px] uppercase tracking-wider">Acknowledged</th>
+                            <th class="text-left px-5 py-2.5 font-semibold text-[11px] uppercase tracking-wider">Exceeded By</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100" id="sla-breaches-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ volume_data|json_script:"volume-data" }}
+{{ team_data|json_script:"team-data" }}
+{{ sla_data|json_script:"sla-data" }}
+{{ overview_kpis|json_script:"overview-data" }}
+
+<script>
+(function() {
+    'use strict';
+
+    // ---- Chart instance registry (prevent memory leaks) ----
+    var charts = {};
+
+    function createChart(id, config) {
+        if (charts[id]) { charts[id].destroy(); }
+        var canvas = document.getElementById(id);
+        if (!canvas) return null;
+        charts[id] = new Chart(canvas, config);
+        return charts[id];
+    }
+
+    // Destroy all charts on HTMX navigation away
+    document.body.addEventListener('htmx:beforeSwap', function() {
+        Object.keys(charts).forEach(function(k) {
+            if (charts[k]) { charts[k].destroy(); delete charts[k]; }
+        });
+    });
+
+    // ---- Data ----
+    var volumeData = JSON.parse(document.getElementById('volume-data').textContent);
+    var teamData = JSON.parse(document.getElementById('team-data').textContent);
+    var slaData = JSON.parse(document.getElementById('sla-data').textContent);
+    var overviewData = JSON.parse(document.getElementById('overview-data').textContent);
+
+    // ---- Common chart options ----
+    var commonOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 16 } }
+        },
+        scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+        }
+    };
+
+    // ---- Overview Chart (same as volume but simpler) ----
+    createChart('overviewChart', {
+        type: 'bar',
+        data: { labels: volumeData.labels, datasets: volumeData.datasets },
+        options: commonOpts
+    });
+
+    // ---- Volume Chart ----
+    createChart('volumeChart', {
+        type: 'bar',
+        data: { labels: volumeData.labels, datasets: volumeData.datasets },
+        options: Object.assign({}, commonOpts, {
+            plugins: Object.assign({}, commonOpts.plugins, {
+                title: { display: false }
+            })
+        })
+    });
+
+    // ---- Team Handle Count ----
+    createChart('teamHandleChart', {
+        type: 'bar',
+        data: {
+            labels: teamData.labels,
+            datasets: [{
+                label: 'Emails Handled',
+                data: teamData.datasets.handle_count,
+                backgroundColor: '#a83362',
+                borderRadius: 4
+            }]
+        },
+        options: Object.assign({}, commonOpts, {
+            indexAxis: 'y',
+            scales: {
+                x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true },
+                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            }
+        })
+    });
+
+    // ---- Team Response Time ----
+    createChart('teamResponseChart', {
+        type: 'bar',
+        data: {
+            labels: teamData.labels,
+            datasets: [{
+                label: 'Avg Response (min)',
+                data: teamData.datasets.avg_response_minutes,
+                backgroundColor: '#3b82f6',
+                borderRadius: 4
+            }]
+        },
+        options: Object.assign({}, commonOpts, {
+            indexAxis: 'y',
+            scales: {
+                x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true },
+                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            }
+        })
+    });
+
+    // ---- SLA Donut ----
+    createChart('slaDonutChart', {
+        type: 'doughnut',
+        data: {
+            labels: ['Met', 'Breached'],
+            datasets: [{
+                data: [slaData.donut_data.met, slaData.donut_data.breached],
+                backgroundColor: ['#10b981', '#ef4444'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 20 } }
+            }
+        }
+    });
+
+    // ---- SLA Trend ----
+    var trendLabels = slaData.trend.map(function(t) { return t.date; });
+    var trendValues = slaData.trend.map(function(t) { return t.compliance_pct; });
+
+    createChart('slaTrendChart', {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'SLA Compliance %',
+                data: trendValues,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 2,
+                pointHoverRadius: 5
+            }]
+        },
+        options: Object.assign({}, commonOpts, {
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 10 } },
+                y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, min: 0, max: 100 }
+            }
+        })
+    });
+
+    // ---- SLA Breaches Table ----
+    var tbody = document.getElementById('sla-breaches-body');
+    if (tbody && slaData.breaches) {
+        if (slaData.breaches.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-slate-400 text-sm">No SLA breaches in this period</td></tr>';
+        } else {
+            var html = '';
+            slaData.breaches.forEach(function(b) {
+                var priorityClass = 'text-slate-600';
+                if (b.priority === 'CRITICAL') priorityClass = 'text-red-600 font-semibold';
+                else if (b.priority === 'HIGH') priorityClass = 'text-amber-600 font-semibold';
+
+                html += '<tr class="hover:bg-slate-50/50">' +
+                    '<td class="px-5 py-3 text-slate-700 max-w-[250px] truncate">' + (b.subject || '(no subject)') + '</td>' +
+                    '<td class="px-5 py-3 ' + priorityClass + '">' + (b.priority || '-') + '</td>' +
+                    '<td class="px-5 py-3 text-slate-500">' + formatDate(b.deadline) + '</td>' +
+                    '<td class="px-5 py-3 text-slate-500">' + (b.actual === 'Not acknowledged' ? '<span class="text-red-500">Not acknowledged</span>' : formatDate(b.actual)) + '</td>' +
+                    '<td class="px-5 py-3 text-red-500 font-medium">' + (b.exceeded_by || '-') + '</td>' +
+                    '</tr>';
+            });
+            tbody.innerHTML = html;
+        }
+    }
+
+    function formatDate(iso) {
+        if (!iso) return '-';
+        try {
+            var d = new Date(iso);
+            return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) +
+                   ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        } catch (e) { return iso; }
+    }
+
+    // ---- Tab Switching ----
+    var tabBtns = document.querySelectorAll('[role="tab"]');
+    var tabPanels = document.querySelectorAll('[role="tabpanel"]');
+
+    tabBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var target = btn.dataset.tab;
+
+            // Update buttons
+            tabBtns.forEach(function(b) {
+                b.classList.remove('active');
+                b.classList.add('text-slate-500');
+                b.setAttribute('aria-selected', 'false');
+            });
+            btn.classList.add('active');
+            btn.classList.remove('text-slate-500');
+            btn.setAttribute('aria-selected', 'true');
+
+            // Update panels
+            tabPanels.forEach(function(p) {
+                p.classList.add('hidden');
+            });
+            var panel = document.getElementById('tab-' + target);
+            if (panel) panel.classList.remove('hidden');
+        });
+    });
+
+    // ---- Date Range Preset Handler ----
+    window.handlePresetChange = function(select) {
+        var customDates = document.getElementById('custom-dates');
+        var applyBtn = document.getElementById('apply-btn');
+        if (select.value === 'custom') {
+            customDates.classList.remove('hidden');
+            applyBtn.classList.remove('hidden');
+        } else {
+            customDates.classList.add('hidden');
+            applyBtn.classList.add('hidden');
+            select.form.submit();
+        }
+    };
+
+    // ---- Format Avg Response in KPI card ----
+    var avgMin = overviewData.avg_response_minutes;
+    var avgEl = document.getElementById('kpi-avg-response');
+    if (avgEl && avgMin !== null) {
+        if (avgMin >= 60) {
+            var h = Math.floor(avgMin / 60);
+            var m = Math.round(avgMin % 60);
+            avgEl.textContent = h + 'h ' + m + 'm';
+        } else {
+            avgEl.textContent = '< 1h';
+        }
+    }
+
+})();
+</script>
+{% endblock %}
