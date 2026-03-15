@@ -12,6 +12,9 @@
     </div>
     {% endif %}
 
+    <!-- Whitelist section -->
+    <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Whitelisted Senders</h3>
+
     <!-- Add form -->
     <form hx-post="{% url 'emails:whitelist_add' %}"
           hx-target="#whitelist-content" hx-swap="innerHTML"
@@ -29,9 +32,9 @@
         </button>
     </form>
 
-    <!-- Entries table -->
+    <!-- Whitelist entries table -->
     {% if whitelist_entries %}
-    <div class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden mb-8">
         <table class="w-full text-xs">
             <thead>
                 <tr class="border-b border-slate-200/40">
@@ -73,8 +76,61 @@
         </table>
     </div>
     {% else %}
-    <div class="text-sm text-slate-400 italic py-4 text-center">
+    <div class="text-sm text-slate-400 italic py-4 text-center mb-8">
         No whitelisted senders yet. Use "Whitelist Sender" on any email to add one here.
+    </div>
+    {% endif %}
+
+    <!-- Blocked Senders section -->
+    <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Blocked Senders</h3>
+    <p class="text-[11px] text-slate-400 mb-3">Senders auto-blocked when spam ratio exceeds 80% with 3+ emails. Blocked senders are silently skipped by the pipeline.</p>
+
+    {% if blocked_senders %}
+    <div class="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
+        <table class="w-full text-xs">
+            <thead>
+                <tr class="border-b border-slate-200/40">
+                    <th class="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Sender</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Spam Ratio</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Total Emails</th>
+                    <th class="text-left px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Status</th>
+                    <th class="px-3 py-2.5 text-[10px]"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rep in blocked_senders %}
+                <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
+                    <td class="px-4 py-2.5 font-semibold text-slate-700">{{ rep.sender_address }}</td>
+                    <td class="px-3 py-2.5 text-slate-600 tabular-nums">{{ rep.spam_count }}/{{ rep.total_count }}{% if rep.total_count %} ({{ rep.spam_ratio|floatformat:2 }}){% endif %}</td>
+                    <td class="px-3 py-2.5 text-slate-500 tabular-nums">{{ rep.total_count }}</td>
+                    <td class="px-3 py-2.5">
+                        {% if rep.is_blocked %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-red-50 text-red-600 border border-red-200/50">Blocked</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-amber-50 text-amber-600 border border-amber-200/50">Tracked</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-3 py-2.5">
+                        {% if rep.is_blocked %}
+                        <form hx-post="{% url 'emails:unblock_sender' rep.pk %}"
+                              hx-target="#whitelist-content" hx-swap="innerHTML"
+                              class="inline">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="px-2.5 py-1 text-[10px] font-bold text-amber-600 bg-amber-50 rounded-md hover:bg-amber-100 transition-colors border border-amber-200/60">
+                                Unblock
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-sm text-slate-400 italic py-4 text-center">
+        No blocked or tracked senders yet. Senders are tracked automatically when emails are processed.
     </div>
     {% endif %}
 </div>
