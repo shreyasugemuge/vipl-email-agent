@@ -3,7 +3,7 @@
 <div id="thread-card-{{ thread.pk }}"
      {% if oob %}hx-swap-oob="outerHTML"{% endif %}
      class="card-hover border-l-[3px] {{ thread.priority|priority_border }} bg-white mx-2 my-0.5 rounded-lg px-3 py-2.5 cursor-pointer border border-slate-200/40 hover:border-slate-200
-            {% if thread.status == 'new' %}font-semibold{% endif %}"
+            {% if thread.is_unread %}font-semibold{% endif %}"
      hx-get="{% url 'emails:thread_detail' thread.pk %}"
      hx-target="#thread-detail-panel"
      hx-swap="innerHTML"
@@ -14,10 +14,10 @@
     <!-- Line 1: Sender + time + message count + assignee avatar -->
     <div class="flex items-center justify-between gap-1.5 mb-0.5">
         <div class="flex items-center gap-1.5 min-w-0 flex-1">
-            {% if thread.status == 'new' %}
+            {% if thread.is_unread %}
             <span class="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
             {% endif %}
-            <span class="text-[11px] {% if thread.status == 'new' %}font-bold text-slate-900{% else %}font-medium text-slate-700{% endif %} truncate">{{ thread.last_sender|default:thread.last_sender_address|default:"Unknown" }}</span>
+            <span class="text-[11px] {% if thread.is_unread %}font-bold text-slate-900{% else %}font-medium text-slate-700{% endif %} truncate">{{ thread.last_sender|default:thread.last_sender_address|default:"Unknown" }}</span>
             {% if thread.last_sender and thread.last_sender_address %}
             <span class="text-[9px] text-slate-400 truncate hidden sm:inline ml-1">{{ thread.last_sender_address }}</span>
             {% endif %}
@@ -41,7 +41,7 @@
 
     <!-- Line 2: Subject + priority dot + status badge + inbox badges -->
     <div class="flex items-center gap-1.5">
-        <span class="text-[12px] {% if thread.status == 'new' %}font-bold text-slate-900{% else %}font-medium text-slate-600{% endif %} truncate flex-1 min-w-0">{{ thread.subject|default:"(no subject)" }}</span>
+        <span class="text-[12px] {% if thread.is_unread %}font-bold text-slate-900{% else %}font-medium text-slate-600{% endif %} truncate flex-1 min-w-0">{{ thread.subject|default:"(no subject)" }}</span>
         <div class="flex items-center gap-1 shrink-0">
             {% if thread.priority %}
             <span class="w-2 h-2 rounded-full bg-{{ thread.priority|priority_base }}-500 shrink-0" title="{{ thread.priority|priority_tooltip }}"></span>

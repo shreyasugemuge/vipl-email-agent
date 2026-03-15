@@ -903,9 +903,10 @@ def thread_detail(request, pk):
 
     # Return detail panel + OOB card swap to update read styling
     detail_response = render(request, "emails/_thread_detail.html", context)
+    thread.is_unread = False
     card_html = render_to_string(
         "emails/_thread_card.html",
-        {"thread": thread, "oob": True, "is_unread": False},
+        {"thread": thread, "oob": True},
         request=request,
     )
     return _HttpResponse(detail_response.content.decode() + card_html)
@@ -921,9 +922,10 @@ def mark_thread_unread(request, pk):
         defaults={"is_read": False, "read_at": None},
     )
     # Return empty detail panel placeholder + OOB card swap
+    thread.is_unread = True
     card_html = render_to_string(
         "emails/_thread_card.html",
-        {"thread": thread, "oob": True, "is_unread": True},
+        {"thread": thread, "oob": True},
         request=request,
     )
     close_html = (
