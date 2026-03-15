@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: milestone
+milestone: v2.5.0
+milestone_name: Intelligence + UX
 status: completed
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-15T15:25:32.345Z"
-last_activity: 2026-03-15 -- Completed 07-01 (pipeline override guards)
+stopped_at: Milestone v2.5.0 archived
+last_updated: "2026-03-15"
+last_activity: 2026-03-15 -- Milestone v2.5.0 completed and archived
 progress:
   total_phases: 7
   completed_phases: 7
@@ -21,57 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Milestone v2.5.0 -- Intelligence + UX
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 7 of 7 (Pipeline Override Guards)
-Plan: 1 of 1 (07-01 complete)
-Status: Complete
-Last activity: 2026-03-15 -- Completed 07-01 (pipeline override guards)
-
-Progress: [██████████] 100%
+Milestone v2.5.0 complete and archived.
+No active milestone — run `/gsd:new-milestone` to start next.
 
 ## Accumulated Context
 
 ### Decisions
 
-- Override flags (category_overridden, priority_overridden) in Phase 1 models -- pipeline would overwrite user edits without them
-- Auto-assign deploys disabled (threshold=100), enabled after confidence calibration
-- Zero new Python deps, Chart.js 4.x CDN only for reports
-- One migration batch for all new models to avoid migration chain conflicts
-- Discrete confidence tiers (HIGH/MEDIUM/LOW) not float percentages -- Claude's self-reported confidence is uncalibrated
-- Sender reputation (not ML) for spam learning -- volume too low for statistical approaches
-- Confidence defaults to empty string (not None) -- consistent with existing DTO CharField pattern
-- Confidence added to TRIAGE_TOOL required fields -- Claude must always provide it
-- Spam badge annotation correct as-is -- SoftDeleteManager consistently filters in list + detail
-- FIX-01 avatar: works correctly, URL expiry is Google-side signed URL TTL
-- FIX-02 dedup: works correctly with proper window boundary and same-inbox exclusion
-- No ThreadReadState row = treated as read -- avoids wall-of-bold on first deploy
-- Unread detection via Exists subquery: is_read=False OR read_at < last_message_at
-- All users can mark spam (not admin-only) -- SpamFeedback records user identity
-- Pipeline block order: whitelist -> block check -> spam filter -> AI (cheapest path)
-- Auto-block threshold: spam_ratio > 0.8 AND total_count >= 3
-- Inline auto-assign uses optimistic locking (assigned_to__isnull=True filter) -- same pattern as batch
-- Auto-assign threshold default "100" (disabled) -- no confidence tier matches string "100"
-- Correction rules stored as STR in SystemConfig (not JSON) -- plain text for prompt injection
-- Distillation wrapped in double try/except for defense-in-depth -- never crashes pipeline
-- Replaced status=='new' with is_unread for bold/dot -- decouples visual state from thread status
-- Mark as Unread outside admin guard -- all users can mark their own read state
-- [Phase 02]: Suggestion bar shows for both unassigned-with-suggestion AND auto-assigned threads
-- [Phase 02]: Reject clears ai_suggested_assignee on latest email so suggestion bar disappears permanently
-- [Phase 05]: Any logged-in user can edit category/priority (not admin-only) -- quick corrections should be frictionless
-- [Phase 05]: Status edit restricted to admin or assigned user -- same permission model as existing views
-- [Phase 05]: Custom category via __custom__ sentinel with inline text input -- no server round-trip
-- [Phase 06]: Chart.js loaded via CDN only on reports page, not globally
-- [Phase 06]: Replaced violet with slate in KPI card to comply with branding rules
-- [Phase 05]: Context menu fetched server-side (GET) for role-aware rendering -- avoids duplicating permission logic in JS
-- [Phase 07]: Override flags checked inline (if not thread.X_overridden) rather than separate function
-- [Phase 07]: Data migration for config key rename is reversible
-
-### Pending Todos
-
-10 todos captured in `.planning/todos/pending/` -- all scoped into this milestone.
+See `.planning/milestones/v2.5.0-ROADMAP.md` for full decision log.
 
 ### Blockers/Concerns
 
@@ -79,6 +40,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T15:21:37Z
-Stopped at: Completed 07-01-PLAN.md
-Next: Phase 7 complete -- INTEL-11 requirement satisfied
+Last session: 2026-03-15
+Stopped at: Milestone v2.5.0 archived
+Next: Deploy v2.5.0 to VM or start new milestone

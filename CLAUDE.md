@@ -6,17 +6,18 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v2.4.0** (main branch) | **Live** — deployed to VM, all phases complete | Self-hosted VM (Docker Compose) |
+| **v2.5.0** (main branch) | **Complete** — intelligence + UX milestone, not yet deployed | Self-hosted VM (Docker Compose) |
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.4.0
+**GitHub Release**: v2.4.0 (latest deployed)
+**Ready to deploy**: v2.5.0 (90 commits ahead of origin, not yet released)
 
 ## Active Branches
 
 | Branch | Worktree | Purpose | Status |
 |--------|----------|---------|--------|
-| `main` | `.` | Production branch, deployed to VM | Stable, v2.4.0 |
+| `main` | `.` | Production branch, deployed to VM | v2.5.0 in progress (v2.4.0 deployed) |
 | `feature/analytics-dashboard` | `../vipl-email-agent-analytics` | Analytics & reporting dashboard | Not started |
 
 ## Stack
@@ -55,7 +56,7 @@ apps/
   emails/                   # Email + AttachmentMetadata models, services, management commands
     views.py                # Dashboard views + dev inspector (/emails/inspect/)
     urls.py                 # Email app URL routes
-    services/               # gmail_poller, ai_processor, chat_notifier, pipeline, spam_filter, pdf_extractor, dtos, state, fake_data, assignment, eod_reporter, sheets_sync
+    services/               # gmail_poller, ai_processor, chat_notifier, pipeline, spam_filter, pdf_extractor, dtos, state, fake_data, assignment, eod_reporter, sheets_sync, reports, distillation
     management/commands/    # run_scheduler, test_pipeline, set_mode
   core/                     # SoftDeleteModel, TimestampedModel, SystemConfig, health endpoint
 
@@ -122,14 +123,23 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **Phase 12** (Dashboard UX Overhaul — v2.4.0): Single sidebar merge (eliminated 220px inner sidebar), JS-based active state indicators (fixes HTMX partial swap bug), sender email on cards, poll epoch persistence (deploy safety), dev inspector poll countdown, settings UX (webhook masking, tab descriptions, SLA presets, config validation), timezone fix
 - **Phase 13** (Production Hardening — v2.4.1): Inspect endpoint auth, SECRET_KEY crash-if-missing, HSTS/SSL/session headers, nh3 XSS fix, health endpoint auth, SOCIALACCOUNT_LOGIN_ON_GET=False, Gmail retry narrowing, @require_POST on clear_viewer, deploy migration ordering, Docker log rotation + resource limits, Gunicorn worker recycling, HTMX SRI hash, Nginx security headers + rate limiting, DB indexes (8 fields), N+1 query fixes (thread counts, sidebar/dash aggregates, inbox badges, team workload), SystemConfig TTL cache, SoftDeleteQuerySet
 - **Phase 14** (UI/UX v4 — Holistic Overhaul): Expanded thread cards (AI summary, spam badge, AI suggestion on cards), separated AI sections in detail (summary always visible, reasoning/draft collapsible), AI summary inline editing with activity log, Triage Queue / My Inbox sidebar separation, clickable stat cards on all screens (thread list, activity, team), status/priority chip tooltips, PollLog model + pipeline MIS table + poll history in inspector, force poll button, team table JS filtering, stat card active states
+- **v2.5.0 Phase 1** (Models + Migrations): ThreadReadState, SpamFeedback, SenderReputation models; ai_confidence field on Email + Thread; is_auto_assigned on Thread; category_overridden + priority_overridden override flags
+- **v2.5.0 Phase 2** (AI Confidence + Auto-Assign): Three-tier confidence scoring (HIGH/MEDIUM/LOW), auto-assign when confidence >80%, confidence dots on thread cards, accept/reject AI suggestion UI, inline auto-assign in pipeline, feedback distillation into correction rules
+- **v2.5.0 Phase 3** (Spam Learning + Bug Fixes): Mark spam/not-spam buttons, SenderReputation tracking, spam badge on cards, whitelist/blocked sender management, undo spam feedback, force poll fix, avatar dedup fix
+- **v2.5.0 Phase 4** (Read/Unread Tracking): Per-user ThreadReadState, unread badge in sidebar, mark-as-unread button, unread card styling, keyboard shortcut (U), tab title with unread count
+- **v2.5.0 Phase 5** (Editable Attrs + Context Menu): Inline dropdown editing for category/priority/status on thread detail, right-click context menu on thread cards with quick actions
+- **v2.5.0 Phase 6** (Reports Module): Reports page with 4 tabs (Overview, Volume, Team, SLA), Chart.js charts, date range picker, aggregation service
+- **v2.5.0 Phase 7** (Pipeline Override Guards): Override flag enforcement in update_thread_preview, auto_assign_confidence_tier config rename with data migration
 
 ### Email Pipeline Architecture
 ```
 Gmail Inboxes → GmailPoller (domain-wide delegation)
-    → SpamFilter (13 regex patterns, $0 cost)
-    → AIProcessor (Haiku default, Sonnet for CRITICAL, prompt caching)
+    → SpamFilter (13 regex patterns + SenderReputation blocked list, $0 cost)
+    → AIProcessor (Haiku default, Sonnet for CRITICAL, prompt caching, confidence scoring)
+    → Auto-Assign (HIGH confidence >80% → auto-assign by category rules)
     → Pipeline (save to PostgreSQL → label Gmail — label-after-persist safety)
     → ChatNotifier (Google Chat Cards v2, quiet hours via SystemConfig)
+    → Feedback Loop (spam corrections → SenderReputation, AI corrections → distillation)
     → Dead Letter Retry (every 30min, max 3 attempts → exhausted)
     → Circuit Breaker (3 consecutive failures → skip cycles)
 ```
@@ -149,6 +159,8 @@ Gmail Inboxes → GmailPoller (domain-wide delegation)
 | `assignment.py` | Email assignment, status changes, notifications | Yes (ORM) |
 | `eod_reporter.py` | Daily summary email + Chat card | Yes (ORM) |
 | `sheets_sync.py` | Read-only Google Sheets mirror | Yes (ORM) |
+| `reports.py` | Aggregation service for reports dashboard (categories, SLA, performance) | Yes (ORM) |
+| `distillation.py` | Feedback distillation: user corrections → AI prompt correction rules | Yes (ORM) |
 
 ### Management Commands
 | Command | Purpose | External Calls |
@@ -190,7 +202,7 @@ Runtime keys: `last_poll_epoch` (INT, persisted after each poll cycle for deploy
 source .venv/bin/activate
 
 # --- Unit Tests (no API keys needed) ---
-pytest -v                           # All tests (~555)
+pytest -v                           # All tests (~729)
 pytest apps/accounts -v             # Account/auth tests
 pytest apps/emails -v               # Email + dashboard + assignment + EOD tests
 pytest apps/core -v                 # Core model + health + config tests
@@ -235,8 +247,18 @@ gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl >
 /emails/?view=mine    → My inbox (assigned to current user)
 /emails/threads/<pk>/detail/  → Thread detail panel (messages, AI triage, notes)
 /emails/threads/<pk>/edit-summary/  → POST: Edit AI summary (inline correction)
+/emails/threads/<pk>/edit-category/  → POST: Inline edit category (dropdown)
+/emails/threads/<pk>/edit-priority/  → POST: Inline edit priority (dropdown)
+/emails/threads/<pk>/edit-status/  → POST: Inline edit status (dropdown)
 /emails/threads/<pk>/assign/  → POST: Assign/reassign thread (admin only)
 /emails/threads/<pk>/status/  → POST: Change thread status
+/emails/threads/<pk>/accept-suggestion/  → POST: Accept AI suggestion (auto-assign)
+/emails/threads/<pk>/reject-suggestion/  → POST: Reject AI suggestion
+/emails/threads/<pk>/mark-unread/  → POST: Mark thread as unread for current user
+/emails/threads/<pk>/context-menu/  → GET: Right-click context menu partial
+/emails/threads/<pk>/mark-spam/  → POST: Mark thread as spam (updates SenderReputation)
+/emails/threads/<pk>/mark-not-spam/  → POST: Mark thread as not-spam
+/emails/reports/      → Reports dashboard (Overview, Categories, Performance, SLA tabs)
 /emails/activity/     → Activity log (assignments, status changes, AI edits)
 /emails/inspect/      → Dev inspector (poll history, MIS stats, force poll)
 /emails/inspect/force-poll/  → POST: Trigger single poll cycle (dev/off mode only)
@@ -270,6 +292,19 @@ gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl >
 - Status/priority chip tooltips: hover descriptions on all badges across all screens
 - Team table: JS-based filtering by stat card clicks (all/active/pending/admin)
 - Dev inspector: poll countdown, force poll button, PollLog history table, pipeline MIS stats (7-day aggregates)
+- AI confidence dots: visual HIGH/MEDIUM/LOW indicator on thread cards + detail
+- Accept/reject AI suggestion bar: one-click auto-assign or dismiss
+- Inline auto-assign badge: "Auto" badge on auto-assigned threads
+- Spam feedback: mark spam/not-spam buttons in detail panel, undo support
+- SenderReputation: per-sender spam ratio tracking, auto-block at threshold
+- Blocked sender management: unblock button in whitelist/blocked settings tab
+- Read/unread tracking: per-user state, unread badge in sidebar, bold unread cards, mark-as-unread button
+- Unread count in browser tab title
+- Keyboard shortcut: U to mark thread unread
+- Inline editable attributes: category, priority, status dropdowns in detail panel (overrides pipeline)
+- Right-click context menu: quick actions on thread cards (assign, status, priority, spam, unread)
+- Reports module: 4-tab dashboard (Overview, Categories, Performance, SLA) with Chart.js charts, date range picker
+- Feedback distillation: user corrections aggregated into AI prompt correction rules via scheduler
 
 ### Common Tasks
 

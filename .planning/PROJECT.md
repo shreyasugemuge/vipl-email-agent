@@ -55,21 +55,19 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - ✓ Keyboard navigation (Arrow keys + Escape) on email cards — v2.3.6
 - ✓ Loading skeleton for detail panel HTMX fetches — v2.3.6
 
+- ✓ AI confidence scoring (HIGH/MEDIUM/LOW) with visual dots on cards and detail — v2.5.0
+- ✓ Auto-assign pipeline: HIGH confidence + AssignmentRule → auto-assignment with badge — v2.5.0
+- ✓ Accept/reject AI suggestions with feedback distillation into correction rules — v2.5.0
+- ✓ Spam learning: mark spam/not-spam, SenderReputation auto-block, whitelist on unblock — v2.5.0
+- ✓ Per-user read/unread tracking with bold+dot indicators, sidebar badges, mark-as-unread — v2.5.0
+- ✓ Right-click context menu on thread cards with role-aware quick actions — v2.5.0
+- ✓ Inline editable category/priority/status with override flags preserved on new emails — v2.5.0
+- ✓ Reports module: 4-tab analytics (Overview, Volume, Team, SLA) with Chart.js — v2.5.0
+- ✓ Bug fixes: spam badge annotation, Gmail avatar edge cases, cross-inbox dedup — v2.5.0
+
 ### Active
 
-## Current Milestone: v2.5.0 Intelligence + UX
-
-**Goal:** Add AI intelligence layer (confidence scoring, auto-assign, spam learning, feedback loops) and complete UX gaps (read/unread tracking, context menus, editable attributes, reports module, bug fixes).
-
-**Target features:**
-- AI assignment confidence scoring with auto-assign (>80%)
-- Spam feedback learning (mark spam/not-spam, pattern training)
-- Read/unread tracking with mark-as-unread
-- Right-click context menu on cards
-- Editable thread attributes (category, priority)
-- MIS and reports module (analytics dashboard)
-- Activity page redesign
-- Bug fixes (spam label, Gmail avatar, cross-inbox dedup)
+(No active milestone — run `/gsd:new-milestone` to start next)
 
 ### Out of Scope
 
@@ -82,7 +80,7 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ## Context
 
-**Current state (v2.3.6 shipped):** Production at triage.vidarbhainfotech.com since 2026-03-14. Full pipeline: Gmail polling → spam filter (13 regex + whitelist) → Claude AI triage → auto-assign → SLA tracking → Google Chat notifications (branded cards with deep links). Google OAuth SSO with domain lock. VIPL brand identity across all pages and Chat cards. UI/UX polish: mobile-responsive detail panel, keyboard navigation, welcome onboarding, filter indicators, loading skeletons. 443 tests passing, Django 4.2 LTS + PostgreSQL 12.3.
+**Current state (v2.5.0 complete, v2.4.0 deployed):** Production at triage.vidarbhainfotech.com since 2026-03-14 (v2.4.0). v2.5.0 complete but not yet deployed — adds AI confidence scoring, auto-assign, spam learning, read/unread tracking, context menus, inline editing, reports module. 626 tests passing, Django 4.2 LTS + PostgreSQL 12.3. 90 commits ahead of origin.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
@@ -119,6 +117,12 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | OOB swap for email count updates | No page reload, HTMX out-of-band pattern | ✓ Good — v2.3.6 |
 | pushState/popstate for mobile detail panel | Browser back button works naturally | ✓ Good — v2.3.6 |
 | sessionStorage + localStorage for welcome banner | Session dismiss + permanent "don't show again" | ✓ Good — v2.3.6 |
+| Discrete confidence tiers (HIGH/MEDIUM/LOW) | Claude's self-reported confidence is uncalibrated; discrete tiers are honest | ✓ Good — v2.5.0 |
+| SenderReputation (not ML) for spam learning | Volume too low (50-100/day) for statistical approaches | ✓ Good — v2.5.0 |
+| No ThreadReadState row = read | Avoids wall-of-bold on first deploy | ✓ Good — v2.5.0 |
+| Chart.js CDN only on reports page | No build step, loaded lazily | ✓ Good — v2.5.0 |
+| Override flags on Thread model | Pipeline preserves user-corrected category/priority | ✓ Good — v2.5.0 |
+| Context menu fetched server-side (GET) | Role-aware rendering without duplicating permission logic in JS | ✓ Good — v2.5.0 |
 
 ---
-*Last updated: 2026-03-15 after v2.5.0 milestone started*
+*Last updated: 2026-03-15 after v2.5.0 milestone completed*

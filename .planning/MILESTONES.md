@@ -1,5 +1,27 @@
 # Milestones
 
+## v2.5.0 Intelligence + UX (Shipped: 2026-03-15)
+
+**Phases completed:** 7 phases, 14 plans
+**Stats:** 90 commits, 101 files changed, +15,456 lines, 626 tests
+
+**Key accomplishments:**
+- AI confidence scoring (HIGH/MEDIUM/LOW) on every triage with visual dots on cards and detail
+- Auto-assign pipeline: HIGH confidence + matching AssignmentRule → automatic assignment with "(auto)" badge
+- Feedback distillation: user corrections → Haiku-generated rules → injected into AI prompt for learning
+- Spam learning: mark spam/not-spam buttons, SenderReputation auto-block (ratio > 0.8), whitelist on unblock
+- Per-user read/unread tracking: bold + blue dot indicators, sidebar badges, mark-as-unread, keyboard shortcut (U)
+- Right-click context menu on thread cards with role-aware quick actions (mobile long-press support)
+- Inline editable category/priority/status with override flags preserved across new emails
+- Reports module: 4-tab analytics dashboard (Overview, Volume, Team, SLA) with Chart.js charts and date filtering
+
+**Archives:**
+- `milestones/v2.5.0-ROADMAP.md`
+- `milestones/v2.5.0-REQUIREMENTS.md`
+- `milestones/v2.5.0-MILESTONE-AUDIT.md`
+
+---
+
 ## v2.3.6 UI/UX Polish & Bug Fixes (Shipped: 2026-03-15)
 
 **Phases completed:** 3 phases, 6 plans, 14 tasks
