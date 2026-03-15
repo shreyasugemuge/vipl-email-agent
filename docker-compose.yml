@@ -29,6 +29,13 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    mem_limit: 1g
+    cpus: 1.0
 
   scheduler:
     build: .
@@ -47,6 +54,13 @@ services:
     depends_on:
       web:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    mem_limit: 1g
+    cpus: 1.0
 
 networks:
   taiga:

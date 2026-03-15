@@ -24,7 +24,7 @@ class Thread(SoftDeleteModel, TimestampedModel):
     last_sender_address = models.EmailField(blank=True, default="")
 
     # Thread-level status
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW, db_index=True)
 
     # Thread-level assignment
     assigned_to = models.ForeignKey(
@@ -48,8 +48,8 @@ class Thread(SoftDeleteModel, TimestampedModel):
     sla_respond_deadline = models.DateTimeField(null=True, blank=True)
 
     # Latest triage fields (copied from most recent email's triage)
-    category = models.CharField(max_length=100, blank=True, default="")
-    priority = models.CharField(max_length=50, blank=True, default="")
+    category = models.CharField(max_length=100, blank=True, default="", db_index=True)
+    priority = models.CharField(max_length=50, blank=True, default="", db_index=True)
     ai_summary = models.TextField(blank=True, default="")
     ai_draft_reply = models.TextField(blank=True, default="")
 
@@ -103,7 +103,7 @@ class Email(SoftDeleteModel, TimestampedModel):
     # Email content
     from_address = models.EmailField()
     from_name = models.CharField(max_length=500, blank=True, default="")
-    to_inbox = models.EmailField()
+    to_inbox = models.EmailField(db_index=True)
     subject = models.CharField(max_length=500, blank=True, default="")
     body = models.TextField(blank=True, default="")
     headers = models.JSONField(default=dict, blank=True)
@@ -114,13 +114,13 @@ class Email(SoftDeleteModel, TimestampedModel):
 
     # AI triage fields
     category = models.CharField(max_length=100, blank=True, default="")
-    priority = models.CharField(max_length=50, blank=True, default="")
+    priority = models.CharField(max_length=50, blank=True, default="", db_index=True)
     ai_summary = models.TextField(blank=True, default="")
     ai_draft_reply = models.TextField(blank=True, default="")
 
     # AI metadata (Phase 2)
     language = models.CharField(max_length=20, blank=True, default="")
-    is_spam = models.BooleanField(default=False)
+    is_spam = models.BooleanField(default=False, db_index=True)
     spam_score = models.FloatField(default=0.0)
     ai_reasoning = models.TextField(blank=True, default="")
     ai_model_used = models.CharField(max_length=100, blank=True, default="")
@@ -135,6 +135,7 @@ class Email(SoftDeleteModel, TimestampedModel):
         max_length=20,
         choices=ProcessingStatus.choices,
         default=ProcessingStatus.PENDING,
+        db_index=True,
     )
     retry_count = models.PositiveSmallIntegerField(default=0)
     last_error = models.TextField(blank=True, default="")
@@ -144,6 +145,7 @@ class Email(SoftDeleteModel, TimestampedModel):
         max_length=20,
         choices=Status.choices,
         default=Status.NEW,
+        db_index=True,
     )
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -190,6 +192,7 @@ class ActivityLog(TimestampedModel):
         THREAD_CREATED = "thread_created", "Thread Created"
         NOTE_ADDED = "note_added", "Note Added"
         MENTIONED = "mentioned", "Mentioned"
+        AI_SUMMARY_EDITED = "ai_summary_edited", "AI Summary Edited"
 
     thread = models.ForeignKey(
         Thread,
@@ -372,3 +375,22 @@ class CategoryVisibility(TimestampedModel):
 
     def __str__(self):
         return f"{self.user} can see {self.category}"
+
+
+class PollLog(TimestampedModel):
+    """Log of each poll cycle for monitoring and debugging."""
+
+    started_at = models.DateTimeField()
+    status = models.CharField(max_length=20, db_index=True)  # success, skipped, error
+    emails_found = models.IntegerField(default=0)
+    emails_processed = models.IntegerField(default=0)
+    spam_filtered = models.IntegerField(default=0)
+    duration_ms = models.IntegerField(default=0)
+    error_message = models.TextField(blank=True, default="")
+    skipped_reason = models.CharField(max_length=200, blank=True, default="")
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"Poll {self.started_at:%Y-%m-%d %H:%M} — {self.status}"

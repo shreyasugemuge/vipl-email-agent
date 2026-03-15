@@ -17,7 +17,11 @@ HEARTBEAT_STALE_MINUTES = 5
 
 
 def health_check(request):
-    """Health endpoint returning JSON with system status."""
+    """Health endpoint returning JSON with system status.
+
+    Unauthenticated requests get a minimal response.
+    Authenticated admin users get full details.
+    """
     db_ok = False
     try:
         with connection.cursor() as cursor:
@@ -28,6 +32,17 @@ def health_check(request):
 
     overall_status = "healthy" if db_ok else "degraded"
 
+    # For unauthenticated or non-admin users, return minimal status
+    is_admin = (
+        getattr(request, "user", None)
+        and request.user.is_authenticated
+        and (request.user.is_staff or getattr(request.user, "role", None) == "admin")
+    )
+    if not is_admin:
+        status_code = 200 if overall_status == "healthy" else 503
+        return JsonResponse({"status": overall_status}, status=status_code)
+
+    # Full details for authenticated admins only
     # Scheduler heartbeat check
     scheduler_status = "not_started"
     try:

@@ -10,7 +10,12 @@
 
     <!-- MIS Stats dashboard -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-5">
-        <div class="stat-card bg-white rounded-xl border border-slate-200/60 p-3.5">
+        <a href="{% url 'emails:activity_log' %}"
+           hx-get="{% url 'emails:activity_log' %}"
+           hx-target="#activity-feed" hx-push-url="true"
+           data-stat="all"
+           class="stat-card bg-white rounded-xl border border-slate-200/60 p-3.5 cursor-pointer hover:shadow-md hover:border-slate-300 transition-all
+                  {% if not action_filter and not date_filter %}ring-2 ring-primary-500/30{% endif %}">
             <div class="flex items-center justify-between mb-2">
                 <div class="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-200/60">
                     <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -20,9 +25,14 @@
             </div>
             <div class="text-xl font-extrabold text-slate-800 tabular-nums">{{ mis_stats.total }}</div>
             <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Total Events</div>
-        </div>
+        </a>
 
-        <div class="stat-card bg-white rounded-xl border border-primary-200/50 p-3.5">
+        <a href="{% url 'emails:activity_log' %}?date=today"
+           hx-get="{% url 'emails:activity_log' %}?date=today"
+           hx-target="#activity-feed" hx-push-url="true"
+           data-stat="today"
+           class="stat-card bg-white rounded-xl border border-primary-200/50 p-3.5 cursor-pointer hover:shadow-md hover:border-primary-300 transition-all
+                  {% if date_filter == 'today' %}ring-2 ring-primary-500/30{% endif %}">
             <div class="flex items-center justify-between mb-2">
                 <div class="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center border border-primary-200/50">
                     <svg class="w-3.5 h-3.5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,9 +42,14 @@
             </div>
             <div class="text-xl font-extrabold text-primary-700 tabular-nums">{{ mis_stats.today }}</div>
             <div class="text-[9px] font-bold text-primary-400/70 uppercase tracking-wider mt-0.5">Today</div>
-        </div>
+        </a>
 
-        <div class="stat-card bg-white rounded-xl border border-blue-200/50 p-3.5">
+        <a href="{% url 'emails:activity_log' %}?action=assigned"
+           hx-get="{% url 'emails:activity_log' %}?action=assigned"
+           hx-target="#activity-feed" hx-push-url="true"
+           data-stat="assigned"
+           class="stat-card bg-white rounded-xl border border-blue-200/50 p-3.5 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all
+                  {% if action_filter == 'assigned' %}ring-2 ring-primary-500/30{% endif %}">
             <div class="flex items-center justify-between mb-2">
                 <div class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-200/50">
                     <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -44,9 +59,14 @@
             </div>
             <div class="text-xl font-extrabold text-blue-700 tabular-nums">{{ mis_stats.assignments }}</div>
             <div class="text-[9px] font-bold text-blue-400/70 uppercase tracking-wider mt-0.5">Assignments</div>
-        </div>
+        </a>
 
-        <div class="stat-card bg-white rounded-xl border border-emerald-200/50 p-3.5">
+        <a href="{% url 'emails:activity_log' %}?action=acknowledged"
+           hx-get="{% url 'emails:activity_log' %}?action=acknowledged"
+           hx-target="#activity-feed" hx-push-url="true"
+           data-stat="acknowledged"
+           class="stat-card bg-white rounded-xl border border-emerald-200/50 p-3.5 cursor-pointer hover:shadow-md hover:border-emerald-300 transition-all
+                  {% if action_filter == 'acknowledged' %}ring-2 ring-primary-500/30{% endif %}">
             <div class="flex items-center justify-between mb-2">
                 <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center border border-emerald-200/50">
                     <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +76,7 @@
             </div>
             <div class="text-xl font-extrabold text-emerald-700 tabular-nums">{{ mis_stats.status_changes }}</div>
             <div class="text-[9px] font-bold text-emerald-400/70 uppercase tracking-wider mt-0.5">Status Changes</div>
-        </div>
+        </a>
     </div>
 
     <!-- Quick filter chips -->

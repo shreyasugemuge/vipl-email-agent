@@ -120,7 +120,7 @@ ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_SIGNUP_ENABLED = False  # No manual signup — Google SSO only
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = False  # SECURITY: prevent email-matching auto-connect
 SOCIALACCOUNT_AUTO_SIGNUP = True
-SOCIALACCOUNT_LOGIN_ON_GET = True  # Skip "Continue" intermediate page, go straight to Google
+SOCIALACCOUNT_LOGIN_ON_GET = False  # Require POST to prevent login CSRF
 SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.VIPLSocialAccountAdapter"
 SOCIALACCOUNT_PROVIDERS = {
     "google": {

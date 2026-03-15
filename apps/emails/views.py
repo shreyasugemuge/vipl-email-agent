@@ -26,8 +26,8 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.accounts.models import User
 from apps.core.models import SystemConfig
 from apps.emails.models import (
-    ActivityLog, AssignmentRule, CategoryVisibility, Email, InternalNote, SLAConfig,
-    SpamWhitelist, Thread, ThreadViewer,
+    ActivityLog, AssignmentRule, CategoryVisibility, Email, InternalNote, PollLog,
+    SLAConfig, SpamWhitelist, Thread, ThreadViewer,
 )
 from apps.emails.services.assignment import assign_email as _assign_email
 from apps.emails.services.assignment import assign_thread as _assign_thread
@@ -49,7 +49,7 @@ SAFE_TAGS = {
 }
 SAFE_ATTRIBUTES = {
     "a": {"href"},
-    "span": {"style"},
+    "span": set(),
     "td": {"colspan", "rowspan"},
 }
 
@@ -73,8 +73,24 @@ def thread_list(request):
     user = request.user
     is_admin = user.is_staff or user.role == User.Role.ADMIN
 
-    # Base queryset
-    qs = Thread.objects.select_related("assigned_to").order_by("-last_message_at")
+    # Base queryset — annotate email_count to avoid N+1 on thread.message_count
+    # Prefetch emails with only to_inbox + is_spam to avoid N+1 on thread_inbox_badges
+    from django.db.models import Count, Exists, OuterRef, Prefetch, Subquery
+    from django.db.models.fields.json import KeyTextTransform
+    qs = Thread.objects.select_related("assigned_to").prefetch_related(
+        Prefetch("emails", queryset=Email.objects.only("id", "thread_id", "to_inbox", "is_spam"), to_attr="_prefetched_emails"),
+    ).annotate(
+        email_count=Count("emails"),
+        has_spam=Exists(Email.objects.filter(thread=OuterRef("pk"), is_spam=True)),
+        ai_suggested_assignee_name=Subquery(
+            Email.objects.filter(
+                thread=OuterRef("pk"),
+                processing_status=Email.ProcessingStatus.COMPLETED,
+            ).annotate(
+                _suggestion_name=KeyTextTransform("name", "ai_suggested_assignee"),
+            ).exclude(_suggestion_name__isnull=True).exclude(_suggestion_name="").order_by("-received_at").values("_suggestion_name")[:1]
+        ),
+    ).order_by("-last_message_at")
 
     # --- View filtering (sidebar views) ---
     default_view = "all_open" if is_admin else "mine"
@@ -129,23 +145,21 @@ def thread_list(request):
         sort = "-last_message_at"
     qs = qs.order_by(sort)
 
-    # --- Sidebar counts ---
+    # --- Sidebar counts (single aggregate query instead of 4 separate COUNTs) ---
+    from django.db.models import Q
     base_threads = Thread.objects.all()
     if inbox:
         base_threads = base_threads.filter(emails__to_inbox=inbox).distinct()
 
-    sidebar_counts = {
-        "unassigned": base_threads.filter(
-            assigned_to__isnull=True, status__in=["new", "acknowledged"]
-        ).count(),
-        "mine": base_threads.filter(
-            assigned_to=user, status__in=["new", "acknowledged"]
-        ).count(),
-        "all_open": base_threads.filter(
-            status__in=["new", "acknowledged"]
-        ).count(),
-        "closed": base_threads.filter(status="closed").count(),
-    }
+    open_q = Q(status__in=["new", "acknowledged"])
+    sidebar_counts = base_threads.aggregate(
+        unassigned=Count("pk", filter=open_q & Q(assigned_to__isnull=True)),
+        mine=Count("pk", filter=open_q & Q(assigned_to=user)),
+        all_open=Count("pk", filter=open_q),
+        closed=Count("pk", filter=Q(status="closed")),
+        urgent=Count("pk", filter=open_q & Q(priority__in=["CRITICAL", "HIGH"])),
+        new=Count("pk", filter=Q(status="new")),
+    )
 
     # --- Inbox list for filter pills ---
     inboxes = list(
@@ -304,14 +318,15 @@ def email_list(request):
         .order_by("to_inbox")
     )
 
-    # Dashboard quick stats
-    dash_stats = {
-        "total": completed_qs.count(),
-        "unassigned": completed_qs.filter(assigned_to__isnull=True).count(),
-        "critical": completed_qs.filter(priority="CRITICAL").count(),
-        "high": completed_qs.filter(priority="HIGH").count(),
-        "pending": completed_qs.filter(status="new").count(),
-    }
+    # Dashboard quick stats (single aggregate query instead of 5 separate COUNTs)
+    from django.db.models import Count, Q
+    dash_stats = completed_qs.aggregate(
+        total=Count("pk"),
+        unassigned=Count("pk", filter=Q(assigned_to__isnull=True)),
+        critical=Count("pk", filter=Q(priority="CRITICAL")),
+        high=Count("pk", filter=Q(priority="HIGH")),
+        pending=Count("pk", filter=Q(status="new")),
+    )
 
     # --- Pagination ---
     paginator = Paginator(qs, PER_PAGE)
@@ -765,6 +780,9 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
         for u in all_active_users
     ])
 
+    # Check if any email in the thread is spam
+    has_spam = any(e.is_spam for e in emails)
+
     return {
         "thread": thread,
         "timeline_items": timeline_items,
@@ -774,6 +792,7 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
         "can_claim": can_claim,
         "ai_suggested_assignee": ai_suggested_assignee,
         "ai_reasoning": ai_reasoning,
+        "has_spam": has_spam,
     }
 
 
@@ -804,6 +823,7 @@ def viewer_heartbeat(request, pk):
 
 
 @login_required
+@require_POST
 def clear_viewer(request, pk):
     """Remove the current user's viewer record for a thread."""
     ThreadViewer.objects.filter(thread_id=pk, user=request.user).delete()
@@ -834,6 +854,38 @@ def thread_detail(request, pk):
 
     context = _build_thread_detail_context(thread, request, is_admin, team_members)
     context["active_viewers"] = active_viewers
+    return render(request, "emails/_thread_detail.html", context)
+
+
+@login_required
+@require_POST
+def edit_ai_summary(request, pk):
+    """Edit the AI summary for a thread. Admin only."""
+    user = request.user
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    if not is_admin:
+        return HttpResponseForbidden("Only admins can edit AI summaries.")
+
+    thread = get_object_or_404(Thread, pk=pk)
+    new_summary = (request.POST.get("ai_summary") or "").strip()
+    if new_summary:
+        old_summary = thread.ai_summary
+        thread.ai_summary = new_summary
+        thread.save(update_fields=["ai_summary"])
+
+        ActivityLog.objects.create(
+            thread=thread,
+            user=user,
+            action=ActivityLog.Action.AI_SUMMARY_EDITED,
+            old_value=old_summary[:200],
+            new_value=new_summary[:200],
+            detail=f"AI summary edited by {user.get_full_name() or user.username}",
+        )
+
+    # Re-render the detail panel
+    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+    context = _build_thread_detail_context(thread, request, is_admin, team_members)
     return render(request, "emails/_thread_detail.html", context)
 
 
@@ -1563,6 +1615,11 @@ def activity_log(request):
     if action_filter and action_filter in dict(ActivityLog.Action.choices):
         qs = qs.filter(action=action_filter)
 
+    # Filter by date
+    date_filter = request.GET.get("date", "")
+    if date_filter == "today":
+        qs = qs.filter(created_at__date=timezone.localdate())
+
     paginator = Paginator(qs, ACTIVITY_PER_PAGE)
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
@@ -1598,6 +1655,7 @@ def activity_log(request):
         "total_count": paginator.count,
         "mis_stats": mis_stats,
         "action_filter": action_filter,
+        "date_filter": date_filter,
         "action_choices": ActivityLog.Action.choices,
         "today": today,
         "yesterday": yesterday,
@@ -1627,10 +1685,16 @@ PRIORITY_COLOR = {
 }
 
 
+@login_required
 @require_GET
 def inspect(request):
     """Render the dev inspector page with recent emails and simulated outputs."""
-    count = int(request.GET.get("count", 20))
+    if not (request.user.is_staff or request.user.role == User.Role.ADMIN):
+        return HttpResponseForbidden("Admin access required.")
+    try:
+        count = int(request.GET.get("count", 20))
+    except (ValueError, TypeError):
+        count = 20
     emails = list(
         Email.objects.order_by("-created_at")[:count]
     )
@@ -1659,6 +1723,20 @@ def inspect(request):
     last_poll_epoch = SystemConfig.get("last_poll_epoch", "")
     poll_interval = SystemConfig.get("poll_interval_minutes", "5")
 
+    # Poll history
+    poll_logs = PollLog.objects.all()[:50]
+
+    # Pipeline MIS stats (last 7 days)
+    from django.db.models import Sum, Avg, Count
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    pipeline_stats = PollLog.objects.filter(started_at__gte=seven_days_ago).aggregate(
+        total_polls=Count("pk"),
+        total_found=Sum("emails_found"),
+        total_processed=Sum("emails_processed"),
+        total_spam=Sum("spam_filtered"),
+        avg_duration=Avg("duration_ms"),
+    )
+
     return render(request, "emails/inspect.html", {
         "emails": emails,
         "stats": stats,
@@ -1666,7 +1744,36 @@ def inspect(request):
         "current_mode": current_mode,
         "last_poll_epoch": last_poll_epoch,
         "poll_interval_minutes": poll_interval,
+        "poll_logs": poll_logs,
+        "pipeline_stats": pipeline_stats,
     })
+
+
+@login_required
+@require_POST
+def force_poll(request):
+    """Trigger a single poll cycle. Only in dev/off mode."""
+    if not (request.user.is_staff or request.user.role == User.Role.ADMIN):
+        return HttpResponseForbidden("Admin access required.")
+
+    mode = SystemConfig.get("operating_mode", "off")
+    if mode == "production":
+        return JsonResponse({"error": "Cannot force poll in production mode"}, status=403)
+
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["python", "manage.py", "run_scheduler", "--once"],
+            capture_output=True, text=True, timeout=120,
+            cwd="/Users/uge/code/vipl-email-agent",
+        )
+        return JsonResponse({
+            "status": "ok",
+            "output": result.stdout[-500:],
+            "errors": result.stderr[-500:],
+        })
+    except subprocess.TimeoutExpired:
+        return JsonResponse({"error": "Poll timed out after 120s"}, status=504)
 
 
 def _build_chat_card(email):

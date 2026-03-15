@@ -17,10 +17,10 @@
     <div class="px-5 py-3.5 bg-white border-b border-slate-200/60 shrink-0">
         <!-- Badges row -->
         <div class="flex items-center gap-1.5 mb-2">
-            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-{{ email.priority|priority_base }}-50 text-{{ email.priority|priority_base }}-700 border border-{{ email.priority|priority_base }}-200/50">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-{{ email.priority|priority_base }}-50 text-{{ email.priority|priority_base }}-700 border border-{{ email.priority|priority_base }}-200/50" title="{{ email.priority|priority_tooltip }}">
                 {{ email.priority|default:"--" }}
             </span>
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-semibold bg-{{ email.status|status_base }}-50 text-{{ email.status|status_base }}-600 border border-{{ email.status|status_base }}-200/50">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-semibold bg-{{ email.status|status_base }}-50 text-{{ email.status|status_base }}-600 border border-{{ email.status|status_base }}-200/50" title="{{ email.status|status_tooltip }}">
                 <span class="w-1 h-1 rounded-full bg-{{ email.status|status_base }}-500"></span>
                 {{ email.get_status_display }}
             </span>
@@ -31,7 +31,7 @@
             <span class="px-2 py-0.5 rounded-md text-[9px] font-medium bg-slate-50 text-slate-400">{{ email.to_inbox }}</span>
             {% endif %}
             {% if email.is_spam %}
-            <span class="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-red-100 text-red-700">Spam</span>
+            <span class="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-red-100 text-red-700" title="Flagged by spam filter — review and whitelist if legitimate">Spam</span>
             {% endif %}
         </div>
 

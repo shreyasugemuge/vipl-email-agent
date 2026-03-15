@@ -27,16 +27,19 @@
             <!-- Badges row -->
             <div class="flex items-center flex-wrap gap-1.5 mb-2.5">
                 {% if thread.priority %}
-                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-{{ thread.priority|priority_base }}-50 text-{{ thread.priority|priority_base }}-700 border border-{{ thread.priority|priority_base }}-200/50">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-{{ thread.priority|priority_base }}-50 text-{{ thread.priority|priority_base }}-700 border border-{{ thread.priority|priority_base }}-200/50" title="{{ thread.priority|priority_tooltip }}">
                     {{ thread.priority }}
                 </span>
                 {% endif %}
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-semibold bg-{{ thread.status|status_base }}-50 text-{{ thread.status|status_base }}-600 border border-{{ thread.status|status_base }}-200/50">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-semibold bg-{{ thread.status|status_base }}-50 text-{{ thread.status|status_base }}-600 border border-{{ thread.status|status_base }}-200/50" title="{{ thread.status|status_tooltip }}">
                     <span class="w-1 h-1 rounded-full bg-{{ thread.status|status_base }}-500"></span>
                     {{ thread.get_status_display }}
                 </span>
                 {% if thread.category %}
                 <span class="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-slate-100 text-slate-500">{{ thread.category }}</span>
+                {% endif %}
+                {% if has_spam %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-red-100 text-red-700 border border-red-200/50" title="Flagged by spam filter — review and whitelist if legitimate">Spam</span>
                 {% endif %}
                 {% thread_inbox_badges thread %}
             </div>
@@ -59,6 +62,22 @@
                     <span class="text-slate-400 font-medium">Respond</span>
                     <span class="text-{{ thread.sla_respond_deadline|sla_color }}-700 font-bold tabular-nums">{{ thread.sla_respond_deadline|sla_countdown }}</span>
                 </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- AI suggested assignee (prominent, above action bar) -->
+        {% if ai_suggested_assignee and not thread.assigned_to %}
+        <div class="px-5 py-2 border-t border-blue-200/60 bg-blue-50/50">
+            <div class="flex items-center gap-2 text-[11px]">
+                <svg class="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                <span class="font-semibold text-blue-700">AI suggests assigning to</span>
+                <span class="font-bold text-blue-900">{{ ai_suggested_assignee.name }}</span>
+                {% if ai_suggested_assignee.reason %}
+                <span class="text-blue-500 italic truncate">&mdash; {{ ai_suggested_assignee.reason }}</span>
                 {% endif %}
             </div>
         </div>
@@ -168,43 +187,77 @@
         </div>
     </div>
 
-    <!-- Collapsible AI triage card -->
+    <!-- AI Summary (always visible) -->
     {% if thread.ai_summary %}
+    <div class="shrink-0 border-b border-slate-200/60 px-5 py-2.5">
+        <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2 text-[11px] font-semibold text-slate-600">
+                <svg class="w-3.5 h-3.5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                AI Summary
+            </div>
+            <button type="button" id="ai-summary-edit-btn" class="text-slate-400 hover:text-slate-600 transition-colors" title="Edit summary">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+            </button>
+        </div>
+        <p id="ai-summary-text" class="text-[12px] text-slate-600 leading-relaxed">{{ thread.ai_summary }}</p>
+        <!-- Hidden edit form -->
+        <form id="ai-summary-edit-form" class="hidden mt-2"
+              hx-post="{% url 'emails:edit_ai_summary' thread.pk %}"
+              hx-target="#thread-detail-panel"
+              hx-swap="innerHTML">
+            {% csrf_token %}
+            <textarea name="ai_summary" rows="3" class="w-full text-[12px] border border-slate-200 rounded-md px-3 py-2 bg-slate-50 text-slate-700 resize-none focus:ring-2 focus:ring-primary-500/15 focus:border-primary-300">{{ thread.ai_summary }}</textarea>
+            <div class="flex justify-end gap-2 mt-1.5">
+                <button type="button" onclick="document.getElementById('ai-summary-text').classList.remove('hidden');this.closest('form').classList.add('hidden')" class="px-3 py-1 text-[10px] font-bold text-slate-500 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors">Cancel</button>
+                <button type="submit" hx-disabled-elt="this" class="px-3 py-1 text-[10px] font-bold text-white bg-primary-600 rounded-md hover:bg-primary-700 transition-colors">Save</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- AI Reasoning (collapsible) -->
+    {% if ai_reasoning %}
     <div class="shrink-0 border-b border-slate-200/60">
         <details class="group">
-            <summary class="flex items-center justify-between px-5 py-2.5 cursor-pointer hover:bg-slate-50/50 transition-colors select-none">
-                <div class="flex items-center gap-2 text-[11px] font-semibold text-slate-600">
-                    <svg class="w-3.5 h-3.5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            <summary class="flex items-center justify-between px-5 py-2 cursor-pointer hover:bg-slate-50/50 transition-colors select-none">
+                <div class="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                     </svg>
-                    AI Triage
+                    AI Reasoning
                 </div>
                 <svg class="w-3.5 h-3.5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </summary>
-            <div class="px-5 pb-3 space-y-2.5">
-                <!-- Summary -->
-                <div>
-                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-0.5">Summary</div>
-                    <p class="text-[12px] text-slate-600 leading-relaxed">{{ thread.ai_summary }}</p>
-                </div>
+            <div class="px-5 pb-3">
+                <p class="text-[11px] text-slate-500 leading-relaxed">{{ ai_reasoning }}</p>
+            </div>
+        </details>
+    </div>
+    {% endif %}
 
-                {% if ai_reasoning %}
-                <!-- Reasoning -->
-                <div>
-                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-0.5">Reasoning</div>
-                    <p class="text-[11px] text-slate-500 leading-relaxed">{{ ai_reasoning }}</p>
+    <!-- Draft Reply (collapsible) -->
+    {% if thread.ai_draft_reply %}
+    <div class="shrink-0 border-b border-slate-200/60">
+        <details class="group">
+            <summary class="flex items-center justify-between px-5 py-2 cursor-pointer hover:bg-slate-50/50 transition-colors select-none">
+                <div class="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                    </svg>
+                    Draft Reply
                 </div>
-                {% endif %}
-
-                {% if thread.ai_draft_reply %}
-                <!-- Draft Reply -->
-                <div>
-                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-0.5">Draft Reply</div>
-                    <div class="bg-slate-50 border border-slate-200/60 rounded-md p-3 text-[11px] text-slate-600 leading-relaxed font-mono whitespace-pre-wrap">{{ thread.ai_draft_reply }}</div>
-                </div>
-                {% endif %}
+                <svg class="w-3.5 h-3.5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </summary>
+            <div class="px-5 pb-3">
+                <div class="bg-slate-50 border border-slate-200/60 rounded-md p-3 text-[11px] text-slate-600 leading-relaxed font-mono whitespace-pre-wrap">{{ thread.ai_draft_reply }}</div>
             </div>
         </details>
     </div>
@@ -420,5 +473,18 @@
     textarea.addEventListener('blur', function() {
         setTimeout(function() { dropdown.classList.add('hidden'); }, 200);
     });
+})();
+
+// AI Summary inline edit toggle
+(function() {
+    var editBtn = document.getElementById('ai-summary-edit-btn');
+    var editForm = document.getElementById('ai-summary-edit-form');
+    var summaryText = document.getElementById('ai-summary-text');
+    if (editBtn && editForm) {
+        editBtn.addEventListener('click', function() {
+            summaryText.classList.toggle('hidden');
+            editForm.classList.toggle('hidden');
+        });
+    }
 })();
 </script>

@@ -168,3 +168,33 @@ def in_set(value, the_set):
     if the_set is None:
         return False
     return value in the_set
+
+
+# ---------------------------------------------------------------------------
+# Tooltip filters
+# ---------------------------------------------------------------------------
+
+STATUS_TOOLTIPS = {
+    "new": "Awaiting acknowledgment",
+    "acknowledged": "Team member has seen this",
+    "closed": "Resolved and archived",
+}
+
+PRIORITY_TOOLTIPS = {
+    "CRITICAL": "Immediate attention required",
+    "HIGH": "Urgent, respond within business hours",
+    "MEDIUM": "Standard priority",
+    "LOW": "Non-urgent, handle when available",
+}
+
+
+@register.filter
+def status_tooltip(status):
+    """Return tooltip text for a status value."""
+    return STATUS_TOOLTIPS.get(status, "")
+
+
+@register.filter
+def priority_tooltip(priority):
+    """Return tooltip text for a priority value."""
+    return PRIORITY_TOOLTIPS.get(priority, "")

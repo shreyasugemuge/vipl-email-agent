@@ -16,6 +16,7 @@ urlpatterns = [
     path("threads/<int:pk>/heartbeat/", views.viewer_heartbeat, name="viewer_heartbeat"),
     path("threads/<int:pk>/clear-viewer/", views.clear_viewer, name="clear_viewer"),
     path("threads/<int:pk>/whitelist-sender/", views.whitelist_sender_from_thread, name="whitelist_thread_sender"),
+    path("threads/<int:pk>/edit-summary/", views.edit_ai_summary, name="edit_ai_summary"),
     path("<int:pk>/detail/", views.email_detail, name="email_detail"),
     path("<int:pk>/assign/", views.assign_email_view, name="assign_email"),
     path("<int:pk>/status/", views.change_status_view, name="change_status"),
@@ -34,4 +35,5 @@ urlpatterns = [
     path("<int:pk>/whitelist-sender/", views.whitelist_sender, name="whitelist_sender"),
     path("activity/", views.activity_log, name="activity_log"),
     path("inspect/", views.inspect, name="inspect"),
+    path("inspect/force-poll/", views.force_poll, name="force_poll"),
 ]

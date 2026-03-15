@@ -10,7 +10,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"
+            integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz"
+            crossorigin="anonymous"></script>
     <style>
         /* Premium transitions */
         .card-hover { transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -273,6 +275,24 @@
             var isActive = el.dataset.inbox === inbox;
             el.classList.toggle('inbox-pill-active', isActive);
             el.classList.toggle('inbox-pill-inactive', !isActive);
+        });
+
+        // Stat card active states
+        var action = params.get('action') || '';
+        var status = params.get('status') || '';
+        var priority = params.get('priority') || '';
+        var dateParam = params.get('date') || '';
+        document.querySelectorAll('[data-stat]').forEach(function(el) {
+            var statFilter = el.dataset.stat;
+            var isActive = false;
+            if (statFilter === 'all' && !action && !status && !priority && !dateParam) isActive = true;
+            else if (statFilter === 'today' && dateParam === 'today') isActive = true;
+            else if (statFilter === 'unassigned' && view === 'unassigned' && !status && !priority) isActive = true;
+            else if (statFilter === 'urgent' && priority === 'HIGH') isActive = true;
+            else if (statFilter === 'new' && status === 'new') isActive = true;
+            else if (statFilter === action) isActive = true;
+            el.classList.toggle('ring-2', isActive);
+            el.classList.toggle('ring-primary-500/30', isActive);
         });
     }
 

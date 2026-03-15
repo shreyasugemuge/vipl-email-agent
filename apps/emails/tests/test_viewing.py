@@ -172,13 +172,13 @@ def test_heartbeat_cleans_stale_records(db):
 
 @pytest.mark.django_db
 def test_clear_viewer_deletes_record(db):
-    """DELETE to clear-viewer removes the user's viewer record."""
+    """POST to clear-viewer removes the user's viewer record."""
     user = _create_user(db, username="leo")
     thread = create_thread()
     ThreadViewer.objects.create(thread=thread, user=user)
 
     factory = RequestFactory()
-    request = factory.delete(f"/emails/threads/{thread.pk}/clear-viewer/")
+    request = factory.post(f"/emails/threads/{thread.pk}/clear-viewer/")
     request.user = user
     response = clear_viewer(request, thread.pk)
 
@@ -188,12 +188,12 @@ def test_clear_viewer_deletes_record(db):
 
 @pytest.mark.django_db
 def test_clear_viewer_noop_if_not_viewing(db):
-    """DELETE when not viewing returns 204 without error."""
+    """POST when not viewing returns 204 without error."""
     user = _create_user(db, username="mia")
     thread = create_thread()
 
     factory = RequestFactory()
-    request = factory.delete(f"/emails/threads/{thread.pk}/clear-viewer/")
+    request = factory.post(f"/emails/threads/{thread.pk}/clear-viewer/")
     request.user = user
     response = clear_viewer(request, thread.pk)
 

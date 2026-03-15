@@ -51,7 +51,7 @@ class GmailPoller:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=30),
-        retry=retry_if_exception_type(Exception),
+        retry=retry_if_exception_type((ConnectionError, TimeoutError)),
         reraise=True,
     )
     def _get_service(self, inbox_email: str):
@@ -275,7 +275,7 @@ class GmailPoller:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=30),
-        retry=retry_if_exception_type(Exception),
+        retry=retry_if_exception_type((ConnectionError, TimeoutError)),
         reraise=True,
     )
     def poll(self, inbox_email: str) -> list[EmailMessage]:

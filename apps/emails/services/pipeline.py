@@ -18,7 +18,7 @@ from django.db import close_old_connections
 from django.db import models as db_models
 
 from apps.core.models import SystemConfig
-from apps.emails.models import ActivityLog, AttachmentMetadata, Email, Thread
+from apps.emails.models import ActivityLog, AttachmentMetadata, Email, PollLog, Thread
 from apps.emails.services.ai_processor import AIProcessor
 from apps.emails.services.assignment import update_thread_preview
 from apps.emails.services.dtos import EmailMessage, TriageResult
@@ -326,11 +326,21 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
     inboxes_str = SystemConfig.get("monitored_inboxes", "")
     max_failures = SystemConfig.get("max_consecutive_failures", 3)
 
+    from django.utils import timezone as tz
+    poll_started_at = tz.now()
+    poll_start_time = time.time()
+
     # Circuit breaker check
     if state_manager.consecutive_failures >= max_failures:
         logger.critical(
             f"Circuit breaker OPEN: {state_manager.consecutive_failures} consecutive failures "
             f"(threshold: {max_failures}). Skipping poll cycle."
+        )
+        _create_poll_log(
+            started_at=poll_started_at,
+            status="skipped",
+            duration_ms=int((time.time() - poll_start_time) * 1000),
+            skipped_reason=f"Circuit breaker open ({state_manager.consecutive_failures} failures)",
         )
         return
 
@@ -343,9 +353,15 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
         if not new_emails:
             logger.debug("No new emails found")
             state_manager.reset_failures()
+            _create_poll_log(
+                started_at=poll_started_at,
+                status="success",
+                duration_ms=int((time.time() - poll_start_time) * 1000),
+            )
             return
 
         processed_items = []
+        spam_count = 0
         for email_msg in new_emails:
             # Dedup: skip if already in DB
             if Email.objects.filter(message_id=email_msg.message_id).exists():
@@ -362,6 +378,8 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
             )
             if email_obj:
                 processed_items.append(email_obj)
+                if email_obj.is_spam:
+                    spam_count += 1
 
         # Send Chat notifications -- route new threads vs thread updates vs cross-inbox dups
         if chat_enabled and processed_items and chat_notifier:
@@ -406,11 +424,46 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
         except Exception as cfg_err:
             logger.warning(f"Failed to persist last_poll_epoch: {cfg_err}")
 
+        duration_ms = int((time.time() - poll_start_time) * 1000)
+        _create_poll_log(
+            started_at=poll_started_at,
+            status="success",
+            emails_found=len(new_emails),
+            emails_processed=len(processed_items),
+            spam_filtered=spam_count,
+            duration_ms=duration_ms,
+        )
+
         logger.info(f"Poll cycle complete: {len(processed_items)} email(s) processed")
 
     except Exception as e:
         state_manager.record_failure()
+        duration_ms = int((time.time() - poll_start_time) * 1000)
+        _create_poll_log(
+            started_at=poll_started_at,
+            status="error",
+            duration_ms=duration_ms,
+            error_message=str(e)[:1000],
+        )
         logger.error(f"Poll cycle failed: {e}")
+
+
+def _create_poll_log(*, started_at, status, emails_found=0, emails_processed=0,
+                     spam_filtered=0, duration_ms=0, error_message="", skipped_reason=""):
+    """Create a PollLog entry. Non-critical — failures are logged and swallowed."""
+    try:
+        PollLog.objects.create(
+            started_at=started_at,
+            status=status,
+            emails_found=emails_found,
+            emails_processed=emails_processed,
+            spam_filtered=spam_filtered,
+            duration_ms=duration_ms,
+            error_message=error_message,
+            skipped_reason=skipped_reason,
+        )
+    except Exception as log_err:
+        logger.warning(f"Failed to create PollLog: {log_err}")
 
 
 def retry_failed_emails(ai_processor, gmail_poller):

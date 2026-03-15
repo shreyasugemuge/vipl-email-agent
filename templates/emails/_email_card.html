@@ -44,15 +44,15 @@
     <!-- Row 4: status badges + SLA + assignee -->
     <div class="flex items-center justify-between pl-[30px]">
         <div class="flex items-center gap-1">
-            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-{{ email.priority|priority_base }}-50 text-{{ email.priority|priority_base }}-700">
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-{{ email.priority|priority_base }}-50 text-{{ email.priority|priority_base }}-700" title="{{ email.priority|priority_tooltip }}">
                 {{ email.priority|default:"--" }}
             </span>
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-semibold bg-{{ email.status|status_base }}-50 text-{{ email.status|status_base }}-600">
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-semibold bg-{{ email.status|status_base }}-50 text-{{ email.status|status_base }}-600" title="{{ email.status|status_tooltip }}">
                 <span class="w-1 h-1 rounded-full bg-{{ email.status|status_base }}-500"></span>
                 {{ email.get_status_display }}
             </span>
             {% if email.is_spam %}
-            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-red-100 text-red-700">Spam</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-red-100 text-red-700" title="Flagged by spam filter — review and whitelist if legitimate">Spam</span>
             {% endif %}
             {% if email.sla_respond_deadline %}
             <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold text-{{ email.sla_respond_deadline|sla_color }}-700 bg-{{ email.sla_respond_deadline|sla_color }}-50">

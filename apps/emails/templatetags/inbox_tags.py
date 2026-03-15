@@ -55,12 +55,16 @@ def thread_inbox_badges(thread) -> str:
     if not thread:
         return ""
 
-    inboxes = (
-        thread.emails
-        .values_list("to_inbox", flat=True)
-        .distinct()
-        .order_by("to_inbox")
-    )
+    # Use prefetched emails if available (avoids N+1 query per thread card)
+    if hasattr(thread, "_prefetched_emails"):
+        inboxes = sorted(set(e.to_inbox for e in thread._prefetched_emails if e.to_inbox))
+    else:
+        inboxes = (
+            thread.emails
+            .values_list("to_inbox", flat=True)
+            .distinct()
+            .order_by("to_inbox")
+        )
 
     badges = []
     for inbox in inboxes:

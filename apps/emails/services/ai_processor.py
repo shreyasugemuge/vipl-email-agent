@@ -111,20 +111,23 @@ def _get_team_workload() -> list:
     Wrapped in try/except so it never crashes the AI processor.
     """
     try:
-        from apps.accounts.models import User
-        from apps.emails.models import Email
+        from django.db.models import Count, Q
 
+        from apps.accounts.models import User
+
+        users = User.objects.filter(is_active=True).annotate(
+            open_count=Count(
+                "assigned_emails",
+                filter=Q(assigned_emails__status__in=["new", "acknowledged"]),
+            )
+        )
         result = []
-        for user in User.objects.filter(is_active=True):
-            open_count = Email.objects.filter(
-                assigned_to=user,
-                status__in=["new", "acknowledged"],
-            ).count()
+        for user in users:
             name = user.get_full_name() or user.email
             result.append({
                 "name": name,
                 "email": user.email,
-                "open_count": open_count,
+                "open_count": user.open_count,
             })
         return result
     except Exception:

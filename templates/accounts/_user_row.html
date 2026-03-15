@@ -1,4 +1,5 @@
-<tr id="user-{{ u.pk }}" class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors {% if not u.is_active %}opacity-50{% endif %}">
+<tr id="user-{{ u.pk }}" class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors {% if not u.is_active %}opacity-50{% endif %}"
+    data-filter="{% if u.is_active %}active{% else %}pending{% endif %}" data-role="{{ u.role }}">
     <!-- User info -->
     <td class="px-4 py-2.5">
         <div class="flex items-center gap-2.5">

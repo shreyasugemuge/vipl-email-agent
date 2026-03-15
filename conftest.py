@@ -5,6 +5,15 @@ from datetime import datetime, timezone
 from django.test import Client
 
 
+@pytest.fixture(autouse=True)
+def _clear_system_config_cache():
+    """Clear SystemConfig in-process cache between tests to prevent cross-test leaks."""
+    from apps.core.models import SystemConfig
+    SystemConfig.invalidate_cache()
+    yield
+    SystemConfig.invalidate_cache()
+
+
 @pytest.fixture
 def admin_user(db):
     """Create an admin user (role=admin, is_staff=True)."""

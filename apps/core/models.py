@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 
 from django.db import models
 from django.utils import timezone
@@ -9,11 +10,23 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
+class SoftDeleteQuerySet(models.QuerySet):
+    """QuerySet that soft-deletes instead of hard-deleting."""
+
+    def delete(self):
+        """Soft-delete all records in the queryset."""
+        return self.update(deleted_at=timezone.now())
+
+    def hard_delete(self):
+        """Actually delete all records in the queryset."""
+        return super().delete()
+
+
 class SoftDeleteManager(models.Manager):
     """Default manager that excludes soft-deleted records."""
 
     def get_queryset(self):
-        return super().get_queryset().filter(deleted_at__isnull=True)
+        return SoftDeleteQuerySet(self.model, using=self._db).filter(deleted_at__isnull=True)
 
 
 class SoftDeleteModel(models.Model):
@@ -77,6 +90,16 @@ class SystemConfig(TimestampedModel):
     def __str__(self):
         return f"{self.category}/{self.key} = {self.value}"
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Invalidate cache for this key on save so readers get fresh values
+        self.__class__.invalidate_cache(self.key)
+
+    def delete(self, *args, **kwargs):
+        key = self.key
+        super().delete(*args, **kwargs)
+        self.__class__.invalidate_cache(key)
+
     @property
     def typed_value(self):
         """Return value cast to the declared type. Returns raw string on error."""
@@ -95,14 +118,40 @@ class SystemConfig(TimestampedModel):
             logger.warning(f"SystemConfig: failed to cast '{self.key}' as {self.value_type}")
             return self.value
 
+    # In-process TTL cache: {key: (value, expiry_timestamp)}
+    _cache = {}
+    _CACHE_TTL = 60  # seconds
+
     @classmethod
     def get(cls, key, default=None):
-        """Get a typed config value by key. Returns default if not found."""
+        """Get a typed config value by key. Returns default if not found.
+
+        Uses an in-process TTL cache (60s) to avoid repeated DB hits for
+        the same key within a short window (e.g., per-request config reads).
+        """
+        now = time.monotonic()
+        cached = cls._cache.get(key)
+        if cached is not None:
+            value, expiry = cached
+            if now < expiry:
+                return value
+
         try:
             config = cls.objects.get(key=key)
-            return config.typed_value
+            result = config.typed_value
+            # Only cache keys that exist in the DB
+            cls._cache[key] = (result, now + cls._CACHE_TTL)
+            return result
         except cls.DoesNotExist:
             return default
+
+    @classmethod
+    def invalidate_cache(cls, key=None):
+        """Clear the in-process config cache. Pass key to clear one entry, or None for all."""
+        if key is None:
+            cls._cache.clear()
+        else:
+            cls._cache.pop(key, None)
 
     @classmethod
     def get_all_by_category(cls, category):

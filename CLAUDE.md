@@ -120,6 +120,8 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **Phase 10** (Email Threads — PR #8): Thread model + data migration, cross-inbox dedup, pipeline thread integration, conversation UI with thread list/detail, internal notes, viewer tracking, thread assignment + collaboration
 - **Phase 11** (UI/UX v3 — PR #9): QA verification (13/13 pass), inline bug fixes, milestone v2.3.6 archive
 - **Phase 12** (Dashboard UX Overhaul — v2.4.0): Single sidebar merge (eliminated 220px inner sidebar), JS-based active state indicators (fixes HTMX partial swap bug), sender email on cards, poll epoch persistence (deploy safety), dev inspector poll countdown, settings UX (webhook masking, tab descriptions, SLA presets, config validation), timezone fix
+- **Phase 13** (Production Hardening — v2.4.1): Inspect endpoint auth, SECRET_KEY crash-if-missing, HSTS/SSL/session headers, nh3 XSS fix, health endpoint auth, SOCIALACCOUNT_LOGIN_ON_GET=False, Gmail retry narrowing, @require_POST on clear_viewer, deploy migration ordering, Docker log rotation + resource limits, Gunicorn worker recycling, HTMX SRI hash, Nginx security headers + rate limiting, DB indexes (8 fields), N+1 query fixes (thread counts, sidebar/dash aggregates, inbox badges, team workload), SystemConfig TTL cache, SoftDeleteQuerySet
+- **Phase 14** (UI/UX v4 — Holistic Overhaul): Expanded thread cards (AI summary, spam badge, AI suggestion on cards), separated AI sections in detail (summary always visible, reasoning/draft collapsible), AI summary inline editing with activity log, Triage Queue / My Inbox sidebar separation, clickable stat cards on all screens (thread list, activity, team), status/priority chip tooltips, PollLog model + pipeline MIS table + poll history in inspector, force poll button, team table JS filtering, stat card active states
 
 ### Email Pipeline Architecture
 ```
@@ -228,13 +230,16 @@ gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl >
 ### Dashboard
 
 ```
-/emails/              → Email card list (filters, sorting, pagination, HTMX)
-/emails/?view=unassigned  → Default manager view (unassigned queue)
-/emails/?view=mine    → Team member's assigned emails
-/emails/<pk>/detail/  → Slide-out detail panel (email body, draft reply, activity)
-/emails/<pk>/assign/  → POST: Assign/reassign email (admin only)
-/emails/<pk>/status/  → POST: Change status (Acknowledge/Close)
-/emails/activity/     → Activity log (assignments, status changes)
+/emails/              → Thread list dashboard (Triage Queue / My Inbox / Views)
+/emails/?view=unassigned  → Triage queue (unassigned threads)
+/emails/?view=mine    → My inbox (assigned to current user)
+/emails/threads/<pk>/detail/  → Thread detail panel (messages, AI triage, notes)
+/emails/threads/<pk>/edit-summary/  → POST: Edit AI summary (inline correction)
+/emails/threads/<pk>/assign/  → POST: Assign/reassign thread (admin only)
+/emails/threads/<pk>/status/  → POST: Change thread status
+/emails/activity/     → Activity log (assignments, status changes, AI edits)
+/emails/inspect/      → Dev inspector (poll history, MIS stats, force poll)
+/emails/inspect/force-poll/  → POST: Trigger single poll cycle (dev/off mode only)
 ```
 
 **Dashboard stack**: Django templates + HTMX 2.0 (CDN) + Tailwind CSS v4 (pre-built CSS)
@@ -252,14 +257,19 @@ gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl >
 - Accessibility: skip-to-content, aria-labels, keyboard nav on cards, focus-visible rings, aria-current
 - Mobile responsive: detail panel as slide-over drawer with history API, scrollable settings tabs, responsive team table
 - Toast notifications: stacked, auto-dismiss with stagger, close buttons, swipe-to-dismiss on mobile
-- Clickable stat cards: Total→all, Unassigned→queue, Urgent→HIGH, Pending→new (with scroll-snap on mobile)
+- Clickable stat cards on all screens: thread list (Total/Unassigned/Urgent/New), activity log (Total/Today/Assignments/Status), team (Total/Active/Pending/Admins)
 - Collapsible filter panel with badge count, search icon, "Clear all" link
-- Underline-style view tabs (All / Unassigned / My Emails)
+- Sidebar: Triage Queue (Unassigned) / My Inbox (Mine) / Views (All Open, Closed) — clear inbox separation
 - Welcome banner with role-specific guidance (dismissible, persistent via localStorage)
 - Keyboard navigation: arrow keys between cards, Escape closes detail
 - Loading skeleton in detail panel during HTMX fetch
 - Settings UX: webhook URL masking with reveal toggle, tab descriptions, SLA presets (Standard/Aggressive/Relaxed), inline config validation
-- Dev inspector: poll countdown timer (reads `last_poll_epoch` + `poll_interval_minutes` from SystemConfig)
+- Thread cards: expanded 3-line cards with AI summary, spam badge, AI suggested assignee
+- Thread detail: AI summary (always visible, inline-editable), AI reasoning + draft reply (collapsible), AI suggestion bar, spam badge
+- AI summary inline editing: pencil icon → textarea → save/cancel, creates ActivityLog entry
+- Status/priority chip tooltips: hover descriptions on all badges across all screens
+- Team table: JS-based filtering by stat card clicks (all/active/pending/admin)
+- Dev inspector: poll countdown, force poll button, PollLog history table, pipeline MIS stats (7-day aggregates)
 
 ### Common Tasks
 
