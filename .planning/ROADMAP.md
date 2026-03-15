@@ -51,11 +51,11 @@
   2. Each thread has its own status (New/Acknowledged/Closed) that is independent of individual message statuses
   3. Assigning a thread sets ownership of all messages within it — there is one assignee per thread
   4. Thread displays a message count and the latest message preview (subject, sender, timestamp)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Thread model, relationships, and data migration
-- [ ] 01-02: Thread-level assignment and status logic
+- [ ] 01-01-PLAN.md — Thread model, ActivityLog refactor, migrations, admin
+- [ ] 01-02-PLAN.md — Thread-level assignment, status, and preview logic
 
 ### Phase 2: Pipeline Integration + Inbox Clarity
 **Goal**: New emails automatically land in the correct thread, and multi-inbox emails are deduplicated
