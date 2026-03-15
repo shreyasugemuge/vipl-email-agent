@@ -25,7 +25,7 @@
 - [ ] **Phase 1: Models + Migrations** - All new models and fields in one migration batch
 - [ ] **Phase 2: AI Confidence + Auto-Assign** - Confidence tiers, auto-assignment, and feedback loop
 - [x] **Phase 3: Spam Learning + Bug Fixes** - Spam feedback, sender reputation, and pipeline fixes (completed 2026-03-15)
-- [ ] **Phase 4: Read/Unread Tracking** - Per-user read state with visual indicators
+- [x] **Phase 4: Read/Unread Tracking** - Per-user read state with visual indicators (completed 2026-03-15)
 - [ ] **Phase 5: Editable Attributes + Context Menu** - Inline edit and right-click quick actions
 - [ ] **Phase 6: Reports Module** - Analytics dashboard with Chart.js charts
 
@@ -86,7 +86,7 @@ Plans:
   2. Opening a thread detail panel automatically marks it as read for the current user
   3. User can mark a thread as unread from the detail panel
   4. Sidebar "My Inbox" view shows an unread count badge that updates in real time
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 04-01-PLAN.md -- Backend: read state views, queryset annotation, mark-unread endpoint, assignment reset, tests
 - [ ] 04-02-PLAN.md -- Frontend: card unread styling, sidebar badges, mark-unread button, tab title
@@ -130,6 +130,6 @@ Plans:
 | 1. Models + Migrations | 0/1 | Planning complete | - |
 | 2. AI Confidence + Auto-Assign | 3/4 | In Progress|  |
 | 3. Spam Learning + Bug Fixes | 2/2 | Complete    | 2026-03-15 |
-| 4. Read/Unread Tracking | 1/2 | In Progress|  |
+| 4. Read/Unread Tracking | 2/2 | Complete   | 2026-03-15 |
 | 5. Editable Attributes + Context Menu | 0/2 | Planning complete | - |
 | 6. Reports Module | 0/2 | Planning complete | - |
