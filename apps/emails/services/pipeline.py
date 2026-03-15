@@ -18,7 +18,16 @@ from django.db import close_old_connections
 from django.db import models as db_models
 
 from apps.core.models import SystemConfig
-from apps.emails.models import ActivityLog, AttachmentMetadata, Email, PollLog, SenderReputation, Thread
+from apps.emails.models import (
+    ActivityLog,
+    AssignmentFeedback,
+    AssignmentRule,
+    AttachmentMetadata,
+    Email,
+    PollLog,
+    SenderReputation,
+    Thread,
+)
 from apps.emails.services.ai_processor import AIProcessor
 from apps.emails.services.assignment import update_thread_preview
 from apps.emails.services.dtos import EmailMessage, TriageResult
@@ -60,6 +69,73 @@ def _map_suggested_assignee(triage: TriageResult) -> dict:
             pass  # Non-critical -- user_id is a convenience field
 
     return detail
+
+
+def _try_inline_auto_assign(thread, triage):
+    """Attempt inline auto-assign for HIGH confidence threads.
+
+    Uses optimistic locking to prevent race conditions with batch auto-assign.
+    Non-critical -- failures are logged and swallowed.
+    """
+    try:
+        # Check spam
+        if triage.is_spam:
+            return
+
+        # Check confidence threshold (default "100" = disabled)
+        threshold = SystemConfig.get("auto_assign_confidence_threshold", "100")
+        if triage.confidence != threshold:
+            return
+
+        # Find matching rule
+        rule = (
+            AssignmentRule.objects.filter(
+                category=triage.category,
+                is_active=True,
+                assignee__is_active=True,
+            )
+            .order_by("priority_order")
+            .first()
+        )
+        if not rule:
+            return
+
+        # Optimistic locking: only assign if still unassigned
+        from django.utils import timezone as tz
+
+        updated = Thread.objects.filter(
+            pk=thread.pk,
+            assigned_to__isnull=True,
+        ).update(
+            assigned_to=rule.assignee,
+            assigned_by=None,
+            assigned_at=tz.now(),
+            is_auto_assigned=True,
+        )
+
+        if updated:
+            # Record auto-assign feedback
+            AssignmentFeedback.objects.create(
+                thread=thread,
+                suggested_user=rule.assignee,
+                actual_user=rule.assignee,
+                action=AssignmentFeedback.FeedbackAction.AUTO_ASSIGNED,
+                confidence_at_time=triage.confidence,
+                user_who_acted=None,
+            )
+
+            assignee_name = rule.assignee.get_full_name() or rule.assignee.username
+            ActivityLog.objects.create(
+                thread=thread,
+                action=ActivityLog.Action.AUTO_ASSIGNED,
+                detail=f"Auto-assigned (HIGH confidence, rule: {triage.category})",
+                new_value=assignee_name,
+            )
+
+            logger.info("Inline auto-assigned thread %s to %s", thread.pk, rule.assignee)
+
+    except Exception:
+        logger.exception("Inline auto-assign failed for thread %s", thread.pk)
 
 
 def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
@@ -333,6 +409,15 @@ def process_single_email(
             logger.exception("Failed to track sender reputation for %s", email_msg.sender_email)
 
         email_obj._is_cross_inbox_duplicate = False
+
+        # Step 3.5: Inline auto-assign for HIGH confidence threads
+        if (
+            not triage.is_spam
+            and triage.confidence
+            and email_obj.thread
+            and email_obj.thread.assigned_to is None
+        ):
+            _try_inline_auto_assign(email_obj.thread, triage)
 
         # Step 4: Label Gmail (AFTER successful DB persist -- label-after-persist)
         gmail_poller.mark_processed(email_msg)

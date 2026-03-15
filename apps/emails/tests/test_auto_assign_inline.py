@@ -10,6 +10,7 @@ import pytest
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.core.models import SystemConfig
 from apps.emails.models import (
     ActivityLog,
     AssignmentFeedback,
@@ -69,6 +70,15 @@ def rule(db, assignee):
     )
 
 
+@pytest.fixture
+def enable_auto_assign(db):
+    """Set auto-assign threshold to HIGH (enabled)."""
+    SystemConfig.objects.update_or_create(
+        key="auto_assign_confidence_threshold",
+        defaults={"value": "HIGH", "value_type": "STR"},
+    )
+
+
 def _make_triage(confidence="HIGH", category="billing", is_spam=False):
     return TriageResult(
         category=category,
@@ -83,7 +93,7 @@ def _make_triage(confidence="HIGH", category="billing", is_spam=False):
 class TestTryInlineAutoAssign:
     """Test _try_inline_auto_assign function."""
 
-    def test_high_confidence_matching_rule_auto_assigns(self, thread, rule, assignee):
+    def test_high_confidence_matching_rule_auto_assigns(self, thread, rule, assignee, enable_auto_assign):
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
         triage = _make_triage(confidence="HIGH", category="billing")
@@ -94,7 +104,7 @@ class TestTryInlineAutoAssign:
         assert thread.is_auto_assigned is True
         assert thread.assigned_at is not None
 
-    def test_medium_confidence_no_auto_assign(self, thread, rule):
+    def test_medium_confidence_no_auto_assign(self, thread, rule, enable_auto_assign):
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
         triage = _make_triage(confidence="MEDIUM", category="billing")
@@ -104,7 +114,7 @@ class TestTryInlineAutoAssign:
         assert thread.assigned_to is None
         assert thread.is_auto_assigned is False
 
-    def test_low_confidence_no_auto_assign(self, thread, rule):
+    def test_low_confidence_no_auto_assign(self, thread, rule, enable_auto_assign):
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
         triage = _make_triage(confidence="LOW", category="billing")
@@ -114,7 +124,7 @@ class TestTryInlineAutoAssign:
         assert thread.assigned_to is None
         assert thread.is_auto_assigned is False
 
-    def test_high_confidence_no_matching_rule(self, thread):
+    def test_high_confidence_no_matching_rule(self, thread, enable_auto_assign):
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
         # No rule for "billing" category
@@ -124,7 +134,7 @@ class TestTryInlineAutoAssign:
         thread.refresh_from_db()
         assert thread.assigned_to is None
 
-    def test_already_assigned_thread_not_overwritten(self, thread, rule, assignee):
+    def test_already_assigned_thread_not_overwritten(self, thread, rule, assignee, enable_auto_assign):
         """Optimistic locking: thread already assigned should not be overwritten."""
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
@@ -141,18 +151,17 @@ class TestTryInlineAutoAssign:
         assert thread.assigned_to == other_user  # Not overwritten
 
     def test_threshold_disabled_no_auto_assign(self, thread, rule):
-        """When threshold is 100 (disabled), no auto-assign happens."""
+        """When threshold is 100 (disabled, the default), no auto-assign happens."""
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
-        with patch("apps.emails.services.pipeline.SystemConfig.get") as mock_get:
-            mock_get.return_value = "100"
-            triage = _make_triage(confidence="HIGH", category="billing")
-            _try_inline_auto_assign(thread, triage)
+        # Default threshold is "100" -- no need to set SystemConfig
+        triage = _make_triage(confidence="HIGH", category="billing")
+        _try_inline_auto_assign(thread, triage)
 
         thread.refresh_from_db()
         assert thread.assigned_to is None
 
-    def test_creates_assignment_feedback(self, thread, rule, assignee):
+    def test_creates_assignment_feedback(self, thread, rule, assignee, enable_auto_assign):
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
         triage = _make_triage(confidence="HIGH", category="billing")
@@ -166,7 +175,7 @@ class TestTryInlineAutoAssign:
         assert feedback.confidence_at_time == "HIGH"
         assert feedback.user_who_acted is None
 
-    def test_creates_activity_log(self, thread, rule, assignee):
+    def test_creates_activity_log(self, thread, rule, assignee, enable_auto_assign):
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
         triage = _make_triage(confidence="HIGH", category="billing")
@@ -179,7 +188,7 @@ class TestTryInlineAutoAssign:
         assert "billing" in log.detail
         assert assignee.get_full_name() in log.new_value or assignee.username in log.new_value
 
-    def test_sets_is_auto_assigned_true(self, thread, rule, assignee):
+    def test_sets_is_auto_assigned_true(self, thread, rule, assignee, enable_auto_assign):
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
         triage = _make_triage(confidence="HIGH", category="billing")
@@ -188,7 +197,7 @@ class TestTryInlineAutoAssign:
         thread.refresh_from_db()
         assert thread.is_auto_assigned is True
 
-    def test_failure_does_not_crash_pipeline(self, thread, rule):
+    def test_failure_does_not_crash_pipeline(self, thread, rule, enable_auto_assign):
         """Auto-assign errors should be swallowed, not crash the pipeline."""
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
@@ -201,7 +210,7 @@ class TestTryInlineAutoAssign:
         thread.refresh_from_db()
         assert thread.assigned_to is None  # Not assigned due to error
 
-    def test_spam_email_not_auto_assigned(self, thread, rule):
+    def test_spam_email_not_auto_assigned(self, thread, rule, enable_auto_assign):
         """Spam triage results should never trigger auto-assign."""
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
@@ -211,7 +220,7 @@ class TestTryInlineAutoAssign:
         thread.refresh_from_db()
         assert thread.assigned_to is None
 
-    def test_inactive_assignee_rule_skipped(self, thread, assignee):
+    def test_inactive_assignee_rule_skipped(self, thread, assignee, enable_auto_assign):
         """Rule with inactive assignee should not match."""
         from apps.emails.services.pipeline import _try_inline_auto_assign
 
