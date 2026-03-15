@@ -37,7 +37,7 @@
     </button>
     {% endif %}
 
-    {% if can_claim %}
+    {% if can_claim and not user.can_assign %}
     <button role="menuitem" tabindex="-1"
             class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-[12px] hover:bg-slate-700/60 transition-colors"
             hx-post="{% url 'emails:claim_thread' thread.pk %}"
@@ -50,6 +50,24 @@
             Claim
         </span>
         <kbd class="text-slate-500 text-[10px] font-mono ml-4">C</kbd>
+    </button>
+    {% endif %}
+
+    {# Member on own thread: Reassign option #}
+    {% if not user.can_assign and thread.assigned_to == request.user %}
+    <button role="menuitem" tabindex="-1"
+            class="ctx-item flex items-center justify-between w-full px-3 py-2 text-[12px] font-medium hover:bg-slate-700/60 transition-colors"
+            data-action="reassign"
+            hx-get="{% url 'emails:thread_detail' thread.pk %}"
+            hx-target="#thread-detail-panel" hx-swap="innerHTML"
+            onclick="closeContextMenu()">
+        <span class="flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
+            </svg>
+            Reassign...
+        </span>
+        <kbd class="text-slate-500 text-[10px] font-bold ml-4">R</kbd>
     </button>
     {% endif %}
 
@@ -89,6 +107,24 @@
             Close
         </span>
         <kbd class="text-slate-500 text-[10px] font-mono ml-4">X</kbd>
+    </button>
+    {% endif %}
+
+    {# Mark Irrelevant (gatekeeper/admin only, in Status group) #}
+    {% if request.user.can_triage and thread.status != "irrelevant" %}
+    <button role="menuitem" tabindex="-1"
+            class="ctx-item flex items-center justify-between w-full px-3 py-1.5 text-[12px] hover:bg-slate-700/60 transition-colors"
+            hx-get="{% url 'emails:thread_detail' thread.pk %}?open_modal=irrelevant"
+            hx-target="#thread-detail-panel"
+            onclick="closeContextMenu()">
+        <span class="flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+            </svg>
+            Mark Irrelevant
+        </span>
+        <kbd class="text-slate-500 text-[10px] font-mono ml-4">I</kbd>
     </button>
     {% endif %}
 

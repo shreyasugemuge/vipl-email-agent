@@ -82,6 +82,9 @@
             {% if thread.has_spam %}
             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-red-100 text-red-700" title="Flagged by spam filter — review and whitelist if legitimate">Spam</span>
             {% endif %}
+            {% if thread.status == "irrelevant" %}
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700" title="Marked as irrelevant">Irrelevant</span>
+            {% endif %}
             {% if thread.ai_suggested_assignee_name and not thread.assigned_to %}
             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-semibold bg-blue-50 text-blue-600">
                 AI: {{ thread.ai_suggested_assignee_name }}
