@@ -100,6 +100,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Role + Permission Foundation | 2/2 | Complete   | 2026-03-15 |
-| 2. Assignment Enforcement | 0/2 | Planned | - |
+| 2. Assignment Enforcement | 1/2 | In Progress|  |
 | 3. Mark Irrelevant | 1/2 | In Progress|  |
 | 4. Alerts + Bulk Actions | 0/3 | Planned | - |

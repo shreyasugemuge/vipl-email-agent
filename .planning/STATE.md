@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md (Mark Irrelevant Backend)
-last_updated: "2026-03-15T19:33:49Z"
-last_activity: 2026-03-16 -- Completed 03-01 (Mark Irrelevant Backend)
+stopped_at: Completed 02-01-PLAN.md (Assignment Enforcement)
+last_updated: "2026-03-15T19:35:19Z"
+last_activity: 2026-03-16 -- Completed 02-01 (Assignment Enforcement)
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
-  percent: 50
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -21,29 +21,30 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** v2.6.0 Phase 3 -- Mark Irrelevant
+**Current focus:** v2.6.0 Phase 2 -- Assignment Enforcement
 
 ## Current Position
 
-Phase: 3 of 4 (Mark Irrelevant)
-Plan: 1 of 1 in current phase
+Phase: 2 of 4 (Assignment Enforcement)
+Plan: 2 of 2 in current phase
 Status: Executing
-Last activity: 2026-03-16 -- Completed 03-01 (Mark Irrelevant Backend)
+Last activity: 2026-03-16 -- Completed 02-01 (Assignment Enforcement)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 5 min
-- Total execution time: 0.27 hours
+- Total plans completed: 4
+- Average duration: 6 min
+- Total execution time: 0.38 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 01 | 01 | 4 min | 2 | 8 |
 | 01 | 02 | 6 min | 3 | 13 |
 | 03 | 01 | 6 min | 2 | 5 |
+| 02 | 01 | 7 min | 1 | 5 |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Progress: [█████░░░░░] 50%
 - Force poll admin-only; inspector view accessible to can_triage users
 - Explicit ?status= query param overrides view-level status filtering for irrelevant threads
 - Revert irrelevant clears all assignment fields to fully reset thread
+- Separate /reassign/ endpoint for member self-reassignment (not overloading /assign/)
+- REASSIGNED_BY_MEMBER distinct from REASSIGNED for filtering/reporting
 
 ### Blockers/Concerns
 
@@ -73,6 +76,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T19:33:49Z
-Stopped at: Completed 03-01-PLAN.md (Mark Irrelevant Backend)
-Next: Execute next plan in phase
+Last session: 2026-03-15T19:35:19Z
+Stopped at: Completed 02-01-PLAN.md (Assignment Enforcement)
+Next: Execute 02-02-PLAN.md (UI Gating)

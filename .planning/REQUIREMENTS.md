@@ -9,9 +9,9 @@
 
 - [x] **ROLE-01**: Admin can promote/demote user to gatekeeper role from team page
 - [x] **ROLE-02**: Gatekeeper sees all threads in their assigned categories (category-scoped visibility)
-- [ ] **ROLE-03**: Only gatekeeper and admin can assign threads to other users
-- [ ] **ROLE-04**: Members can self-claim unassigned threads in their category
-- [ ] **ROLE-05**: Members can reassign threads only with a mandatory reason (logged in ActivityLog)
+- [x] **ROLE-03**: Only gatekeeper and admin can assign threads to other users
+- [x] **ROLE-04**: Members can self-claim unassigned threads in their category
+- [x] **ROLE-05**: Members can reassign threads only with a mandatory reason (logged in ActivityLog)
 - [x] **ROLE-06**: Permission checks centralized into `can_assign`/`is_admin_only` helpers replacing 25+ scattered `is_admin` checks
 
 ### Triage Actions
@@ -51,9 +51,9 @@ None deferred — all scoped features included in this milestone.
 |-------------|-------|--------|
 | ROLE-01 | Phase 1 | Complete |
 | ROLE-02 | Phase 1 | Complete |
-| ROLE-03 | Phase 2 | Pending |
-| ROLE-04 | Phase 2 | Pending |
-| ROLE-05 | Phase 2 | Pending |
+| ROLE-03 | Phase 2 | Complete |
+| ROLE-04 | Phase 2 | Complete |
+| ROLE-05 | Phase 2 | Complete |
 | ROLE-06 | Phase 1 | Complete |
 | TRIAGE-01 | Phase 3 | Complete |
 | TRIAGE-02 | Phase 3 | Complete |
