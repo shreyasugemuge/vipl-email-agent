@@ -43,6 +43,7 @@ urlpatterns = [
     path("settings/whitelist/add/", views.whitelist_add, name="whitelist_add"),
     path("settings/whitelist/<int:pk>/delete/", views.whitelist_delete, name="whitelist_delete"),
     path("<int:pk>/whitelist-sender/", views.whitelist_sender, name="whitelist_sender"),
+    path("reports/", views.reports_view, name="reports"),
     path("activity/", views.activity_log, name="activity_log"),
     path("inspect/", views.inspect, name="inspect"),
     path("inspect/force-poll/", views.force_poll, name="force_poll"),

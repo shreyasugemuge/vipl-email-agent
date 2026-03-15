@@ -970,6 +970,9 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
         "can_claim": can_claim,
         "ai_suggested_assignee": ai_suggested_assignee,
         "ai_reasoning": ai_reasoning,
+        "categories": VALID_CATEGORIES,
+        "priorities": VALID_PRIORITIES,
+        "statuses": Thread.Status.choices,
         "has_spam": has_spam,
         "show_suggestion_bar": show_suggestion_bar,
         "suggested_assignee_name": suggested_assignee_name,
@@ -2136,6 +2139,110 @@ def whitelist_sender(request, pk):
         )
 
     return _HttpResponse(detail_html + oob_cards)
+
+
+# ---------------------------------------------------------------------------
+# Reports
+# ---------------------------------------------------------------------------
+
+PRESET_RANGES = {
+    "today": lambda: (timezone.now().replace(hour=0, minute=0, second=0, microsecond=0), timezone.now()),
+    "this_week": lambda: (
+        timezone.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=timezone.now().weekday()),
+        timezone.now(),
+    ),
+    "this_month": lambda: (
+        timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0),
+        timezone.now(),
+    ),
+    "last_7": lambda: (timezone.now() - timedelta(days=7), timezone.now()),
+    "last_30": lambda: (timezone.now() - timedelta(days=30), timezone.now()),
+    "last_90": lambda: (timezone.now() - timedelta(days=90), timezone.now()),
+    "quarter": lambda: (timezone.now() - timedelta(days=90), timezone.now()),
+    "year": lambda: (timezone.now() - timedelta(days=365), timezone.now()),
+}
+
+
+@login_required
+def reports_view(request):
+    """Reports dashboard with aggregated metrics. Admin only."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    from datetime import datetime as _dt
+
+    # Parse date range
+    preset = request.GET.get("preset", "last_30")
+    custom_start = request.GET.get("start")
+    custom_end = request.GET.get("end")
+
+    if preset == "custom" and custom_start and custom_end:
+        try:
+            start = timezone.make_aware(_dt.strptime(custom_start, "%Y-%m-%d"))
+            end = timezone.make_aware(_dt.strptime(custom_end, "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59
+            ))
+        except (ValueError, TypeError):
+            start, end = PRESET_RANGES["last_30"]()
+    elif preset in PRESET_RANGES:
+        start, end = PRESET_RANGES[preset]()
+    else:
+        start, end = PRESET_RANGES["last_30"]()
+
+    # Parse optional filters
+    filters = {}
+    inbox_filter = request.GET.get("inbox", "")
+    category_filter = request.GET.get("category", "")
+    member_filter = request.GET.get("member", "")
+    if inbox_filter:
+        filters["inbox"] = inbox_filter
+    if category_filter:
+        filters["category"] = category_filter
+    if member_filter:
+        try:
+            filters["assigned_to"] = int(member_filter)
+        except (ValueError, TypeError):
+            pass
+
+    # Get all report data
+    overview_kpis = get_overview_kpis(start, end, **filters)
+    volume_data = get_volume_data(start, end, **filters)
+    team_data = get_team_data(start, end, **filters)
+    sla_data = get_sla_data(start, end, **filters)
+
+    # Filter dropdown options
+    distinct_inboxes = list(
+        Email.objects.filter(is_deleted=False)
+        .values_list("to_inbox", flat=True)
+        .distinct()
+        .order_by("to_inbox")
+    )
+    distinct_categories = list(
+        Thread.objects.filter(is_deleted=False)
+        .exclude(category="")
+        .values_list("category", flat=True)
+        .distinct()
+        .order_by("category")
+    )
+    active_users = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    context = {
+        "overview_kpis": overview_kpis,
+        "volume_data": volume_data,
+        "team_data": team_data,
+        "sla_data": sla_data,
+        "preset": preset,
+        "custom_start": custom_start or "",
+        "custom_end": custom_end or "",
+        "inbox_filter": inbox_filter,
+        "category_filter": category_filter,
+        "member_filter": member_filter,
+        "distinct_inboxes": distinct_inboxes,
+        "distinct_categories": distinct_categories,
+        "active_users": active_users,
+    }
+
+    return render(request, "emails/reports.html", context)
 
 
 # ---------------------------------------------------------------------------
