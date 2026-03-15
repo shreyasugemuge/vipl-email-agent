@@ -174,7 +174,7 @@ Badge shape: `inline-flex items-center justify-center px-2 py-0.5 rounded-full t
 | Property | Value |
 |----------|-------|
 | Wrapper | `mx-3 mb-2 rounded-xl border border-blue-200 bg-blue-50 overflow-hidden` |
-| Header | `flex items-center justify-between px-4 py-2.5 cursor-pointer` |
+| Header | `flex items-center justify-between px-4 py-2 cursor-pointer` |
 | Header icon | Lightbulb SVG, `w-4 h-4 text-blue-500` |
 | Header title | `text-[11px] font-semibold text-blue-700` -- "AI Corrections (7 days)" |
 | Header total | `text-[11px] font-semibold text-blue-500` -- e.g., "12 corrections" |
