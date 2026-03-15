@@ -86,7 +86,7 @@ Plans:
   2. Opening a thread detail panel automatically marks it as read for the current user
   3. User can mark a thread as unread from the detail panel
   4. Sidebar "My Inbox" view shows an unread count badge that updates in real time
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 04-01-PLAN.md -- Backend: read state views, queryset annotation, mark-unread endpoint, assignment reset, tests
 - [ ] 04-02-PLAN.md -- Frontend: card unread styling, sidebar badges, mark-unread button, tab title
@@ -127,6 +127,6 @@ Plans:
 | 1. Models + Migrations | 0/1 | Planning complete | - |
 | 2. AI Confidence + Auto-Assign | 1/4 | In Progress|  |
 | 3. Spam Learning + Bug Fixes | 1/2 | In Progress|  |
-| 4. Read/Unread Tracking | 0/2 | Planning complete | - |
+| 4. Read/Unread Tracking | 1/2 | In Progress|  |
 | 5. Editable Attributes + Context Menu | 0/2 | Planning complete | - |
 | 6. Reports Module | 0/TBD | Not started | - |

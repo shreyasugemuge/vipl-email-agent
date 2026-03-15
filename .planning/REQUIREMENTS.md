@@ -32,10 +32,10 @@ Requirements for v2.5.0 Intelligence + UX release. Each maps to roadmap phases.
 
 ### Read/Unread
 
-- [ ] **READ-01**: Per-user read state is tracked for each thread (ThreadReadState model)
-- [ ] **READ-02**: Opening a thread detail panel marks it as read for the current user
+- [x] **READ-01**: Per-user read state is tracked for each thread (ThreadReadState model)
+- [x] **READ-02**: Opening a thread detail panel marks it as read for the current user
 - [ ] **READ-03**: Unread threads display with bold text and blue indicator dot (visual distinction)
-- [ ] **READ-04**: User can mark a thread as unread from the detail panel or context menu
+- [x] **READ-04**: User can mark a thread as unread from the detail panel or context menu
 - [ ] **READ-05**: Sidebar shows unread count badge next to "My Inbox" view
 
 ### Context Menu
@@ -105,10 +105,10 @@ Deferred beyond v2.5.0.
 | SPAM-04 | Phase 3 | Pending |
 | SPAM-05 | Phase 3 | Pending |
 | SPAM-06 | Phase 3 | Complete |
-| READ-01 | Phase 4 | Pending |
-| READ-02 | Phase 4 | Pending |
+| READ-01 | Phase 4 | Complete |
+| READ-02 | Phase 4 | Complete |
 | READ-03 | Phase 4 | Pending |
-| READ-04 | Phase 4 | Pending |
+| READ-04 | Phase 4 | Complete |
 | READ-05 | Phase 4 | Pending |
 | MENU-01 | Phase 5 | Pending |
 | MENU-02 | Phase 5 | Pending |

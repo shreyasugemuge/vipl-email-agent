@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-15T13:48:44.000Z"
-last_activity: 2026-03-15 -- Completed 03-02 (bug fixes - force poll, spam badge, avatar, dedup)
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-15T13:51:03.000Z"
+last_activity: 2026-03-15 -- Completed 04-01 (read/unread tracking backend)
 progress:
   total_phases: 6
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 15
+  completed_phases: 3
+  total_plans: 4
+  completed_plans: 4
+  percent: 20
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 
 ## Current Position
 
-Phase: 3 of 6 (Spam Learning + Bug Fixes)
-Plan: 2 of 2 (03-02 complete)
+Phase: 4 of 6 (Read/Unread Tracking)
+Plan: 1 of 2 (04-01 complete)
 Status: Executing
-Last activity: 2026-03-15 -- Completed 03-02 (bug fixes - force poll, spam badge, avatar, dedup)
+Last activity: 2026-03-15 -- Completed 04-01 (read/unread tracking backend)
 
-Progress: [██░░░░░░░░] 15%
+Progress: [██░░░░░░░░] 20%
 
 ## Accumulated Context
 
@@ -47,6 +47,8 @@ Progress: [██░░░░░░░░] 15%
 - Spam badge annotation correct as-is -- SoftDeleteManager consistently filters in list + detail
 - FIX-01 avatar: works correctly, URL expiry is Google-side signed URL TTL
 - FIX-02 dedup: works correctly with proper window boundary and same-inbox exclusion
+- No ThreadReadState row = treated as read -- avoids wall-of-bold on first deploy
+- Unread detection via Exists subquery: is_read=False OR read_at < last_message_at
 
 ### Pending Todos
 
@@ -58,6 +60,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T13:48:44.000Z
-Stopped at: Completed 03-02-PLAN.md
-Next: Phase 3 complete, proceed to Phase 4
+Last session: 2026-03-15T13:51:03.000Z
+Stopped at: Completed 04-01-PLAN.md
+Next: Execute 04-02 (templates/UI for read/unread tracking)
