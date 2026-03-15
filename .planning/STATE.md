@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
-status: in_progress
+status: executing
 stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-03-15T06:55:42Z"
-last_activity: 2026-03-15 — Phase 2 Plan 2 complete (Inbox tracking + dedup + badges)
+last_updated: "2026-03-15T07:00:51.618Z"
+last_activity: 2026-03-15 — Phase 2 complete (Pipeline integration + inbox clarity)
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 9
+  total_plans: 6
   completed_plans: 4
   percent: 44
 ---
