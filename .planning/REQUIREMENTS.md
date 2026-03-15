@@ -25,9 +25,9 @@
 
 ### Alerts & Monitoring
 
-- [ ] **ALERT-01**: Dashboard badge shows unassigned thread count, visible to gatekeeper and admin
-- [ ] **ALERT-02**: Google Chat alert fires when unassigned count exceeds configurable threshold (SystemConfig)
-- [ ] **ALERT-03**: Chat alerts have cooldown period (configurable) to prevent alert storms
+- [x] **ALERT-01**: Dashboard badge shows unassigned thread count, visible to gatekeeper and admin
+- [x] **ALERT-02**: Google Chat alert fires when unassigned count exceeds configurable threshold (SystemConfig)
+- [x] **ALERT-03**: Chat alerts have cooldown period (configurable) to prevent alert storms
 - [x] **ALERT-04**: Gatekeeper sees AI feedback summary (recent corrections digest) on triage queue
 
 ## Future Requirements
@@ -61,9 +61,9 @@ None deferred — all scoped features included in this milestone.
 | TRIAGE-04 | Phase 4 | Pending |
 | TRIAGE-05 | Phase 4 | Pending |
 | TRIAGE-06 | Phase 3 | Complete |
-| ALERT-01 | Phase 4 | Pending |
-| ALERT-02 | Phase 4 | Pending |
-| ALERT-03 | Phase 4 | Pending |
+| ALERT-01 | Phase 4 | Complete |
+| ALERT-02 | Phase 4 | Complete |
+| ALERT-03 | Phase 4 | Complete |
 | ALERT-04 | Phase 4 | Complete |
 
 **Coverage:**
