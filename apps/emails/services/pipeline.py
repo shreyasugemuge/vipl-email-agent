@@ -16,8 +16,9 @@ from django.db import close_old_connections
 from django.db import models as db_models
 
 from apps.core.models import SystemConfig
-from apps.emails.models import AttachmentMetadata, Email
+from apps.emails.models import ActivityLog, AttachmentMetadata, Email, Thread
 from apps.emails.services.ai_processor import AIProcessor
+from apps.emails.services.assignment import update_thread_preview
 from apps.emails.services.dtos import EmailMessage, TriageResult
 from apps.emails.services.sla import set_sla_deadlines
 from apps.emails.services.spam_filter import is_spam as spam_filter_fn_default
@@ -113,6 +114,60 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
         set_sla_deadlines(email_obj)
     except Exception:
         logger.exception("Failed to set SLA deadlines for email %s", email_obj.pk)
+
+    # Thread create/update (THRD-04)
+    try:
+        thread_id = email_msg.thread_id or email_msg.message_id
+        thread, thread_created = Thread.objects.get_or_create(
+            gmail_thread_id=thread_id,
+            defaults={"subject": email_msg.subject},
+        )
+        email_obj.thread = thread
+        email_obj.save(update_fields=["thread"])
+
+        # Activity log
+        if thread_created:
+            ActivityLog.objects.create(
+                thread=thread,
+                email=email_obj,
+                action=ActivityLog.Action.THREAD_CREATED,
+                detail=f"Thread created from {email_msg.inbox}",
+            )
+        else:
+            ActivityLog.objects.create(
+                thread=thread,
+                email=email_obj,
+                action=ActivityLog.Action.NEW_EMAIL_RECEIVED,
+                detail=f"New message from {email_msg.sender_email}",
+            )
+
+        # Reopen logic: any non-NEW thread reopens on new message
+        is_reopen = False
+        if not thread_created and thread.status != Thread.Status.NEW:
+            old_status = thread.status
+            thread.status = Thread.Status.NEW
+            thread.save(update_fields=["status"])
+            is_reopen = True
+            ActivityLog.objects.create(
+                thread=thread,
+                email=email_obj,
+                action=ActivityLog.Action.REOPENED,
+                detail=f"Reopened by new message from {email_msg.sender_email}",
+                old_value=old_status,
+                new_value=Thread.Status.NEW,
+            )
+
+        # Update denormalized preview fields
+        update_thread_preview(thread)
+
+        # Attach metadata for notification routing
+        email_obj._thread_created = thread_created
+        email_obj._thread_reopened = is_reopen
+
+    except Exception:
+        logger.exception("Failed to handle thread for email %s", email_obj.pk)
+        email_obj._thread_created = True  # Default: treat as new thread
+        email_obj._thread_reopened = False
 
     action = "Created" if created else "Updated"
     logger.info(f"{action} email {email_msg.message_id}: {triage.category}/{triage.priority}")
@@ -252,12 +307,23 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
             if email_obj:
                 processed_items.append(email_obj)
 
-        # Send Chat notifications for newly processed emails
+        # Send Chat notifications -- route new threads vs thread updates
         if chat_enabled and processed_items and chat_notifier:
-            try:
-                chat_notifier.notify_new_emails(processed_items)
-            except Exception as e:
-                logger.error(f"Chat notification failed: {e}")
+            new_thread_emails = [e for e in processed_items if getattr(e, "_thread_created", True)]
+            thread_update_emails = [e for e in processed_items if not getattr(e, "_thread_created", True)]
+
+            if new_thread_emails:
+                try:
+                    chat_notifier.notify_new_emails(new_thread_emails)
+                except Exception as e:
+                    logger.error(f"Chat notification (new threads) failed: {e}")
+
+            for e in thread_update_emails:
+                try:
+                    reopened = getattr(e, "_thread_reopened", False)
+                    chat_notifier.notify_thread_update(e, reopened=reopened)
+                except Exception as e_err:
+                    logger.error(f"Chat notification (thread update) failed: {e_err}")
 
         state_manager.reset_failures()
         logger.info(f"Poll cycle complete: {len(processed_items)} email(s) processed")
