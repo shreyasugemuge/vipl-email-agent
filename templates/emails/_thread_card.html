@@ -24,7 +24,7 @@
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
             <span class="text-[10px] text-slate-400 tabular-nums font-medium">{{ thread.last_message_at|time_ago }}</span>
-            <span class="text-[9px] font-bold text-slate-400 bg-slate-100 px-1 py-0.5 rounded tabular-nums">[{{ thread.message_count }}]</span>
+            <span class="text-[9px] font-bold text-slate-400 bg-slate-100 px-1 py-0.5 rounded tabular-nums">[{{ thread.email_count|default:thread.message_count }}]</span>
             {% if thread.assigned_to %}
             <div class="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-500 flex items-center justify-center text-white text-[8px] font-bold shrink-0" title="{{ thread.assigned_to.get_full_name|default:thread.assigned_to.username }}">
                 {{ thread.assigned_to.first_name.0|default:thread.assigned_to.username.0|upper }}

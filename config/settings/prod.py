@@ -11,6 +11,8 @@ from .base import *  # noqa: F401, F403
 
 DEBUG = False
 
+SECRET_KEY = os.environ["SECRET_KEY"]
+
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
 
 # Database from DATABASE_URL (required in production)
@@ -19,11 +21,18 @@ DATABASES = {
 }
 
 # Security settings
-SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_SSL_REDIRECT = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 28800  # 8 hours
+SESSION_SAVE_EVERY_REQUEST = True
 CSRF_TRUSTED_ORIGINS = [
     f"https://{host.strip()}"
     for host in ALLOWED_HOSTS

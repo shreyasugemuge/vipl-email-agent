@@ -24,6 +24,13 @@ services:
       - taiga
     volumes:
       - ./secrets:/app/secrets:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    mem_limit: 1g
+    cpus: 1.0
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
       interval: 30s
@@ -43,6 +50,13 @@ services:
       - taiga
     volumes:
       - ./secrets:/app/secrets:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    mem_limit: 1g
+    cpus: 1.0
     command: python manage.py run_scheduler
     depends_on:
       web:

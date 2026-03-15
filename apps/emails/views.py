@@ -16,6 +16,7 @@ from datetime import timedelta
 import nh3
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponseForbidden, JsonResponse
 from django.http import HttpResponse as _HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -49,7 +50,7 @@ SAFE_TAGS = {
 }
 SAFE_ATTRIBUTES = {
     "a": {"href"},
-    "span": {"style"},
+    "span": set(),
     "td": {"colspan", "rowspan"},
 }
 
@@ -73,8 +74,20 @@ def thread_list(request):
     user = request.user
     is_admin = user.is_staff or user.role == User.Role.ADMIN
 
-    # Base queryset
-    qs = Thread.objects.select_related("assigned_to").order_by("-last_message_at")
+    # Base queryset — annotate email_count to avoid N+1 on message_count property,
+    # and prefetch emails for inbox badges.
+    qs = (
+        Thread.objects
+        .select_related("assigned_to")
+        .annotate(email_count=Count("emails"))
+        .prefetch_related(
+            Prefetch(
+                "emails",
+                queryset=Email.objects.only("to_inbox", "thread_id").order_by(),
+            )
+        )
+        .order_by("-last_message_at")
+    )
 
     # --- View filtering (sidebar views) ---
     default_view = "all_open" if is_admin else "mine"
@@ -129,23 +142,18 @@ def thread_list(request):
         sort = "-last_message_at"
     qs = qs.order_by(sort)
 
-    # --- Sidebar counts ---
+    # --- Sidebar counts (single aggregate query instead of 4 separate COUNTs) ---
     base_threads = Thread.objects.all()
     if inbox:
         base_threads = base_threads.filter(emails__to_inbox=inbox).distinct()
 
-    sidebar_counts = {
-        "unassigned": base_threads.filter(
-            assigned_to__isnull=True, status__in=["new", "acknowledged"]
-        ).count(),
-        "mine": base_threads.filter(
-            assigned_to=user, status__in=["new", "acknowledged"]
-        ).count(),
-        "all_open": base_threads.filter(
-            status__in=["new", "acknowledged"]
-        ).count(),
-        "closed": base_threads.filter(status="closed").count(),
-    }
+    open_q = Q(status__in=["new", "acknowledged"])
+    sidebar_counts = base_threads.aggregate(
+        unassigned=Count("pk", filter=open_q & Q(assigned_to__isnull=True)),
+        mine=Count("pk", filter=open_q & Q(assigned_to=user)),
+        all_open=Count("pk", filter=open_q),
+        closed=Count("pk", filter=Q(status="closed")),
+    )
 
     # --- Inbox list for filter pills ---
     inboxes = list(
@@ -304,14 +312,14 @@ def email_list(request):
         .order_by("to_inbox")
     )
 
-    # Dashboard quick stats
-    dash_stats = {
-        "total": completed_qs.count(),
-        "unassigned": completed_qs.filter(assigned_to__isnull=True).count(),
-        "critical": completed_qs.filter(priority="CRITICAL").count(),
-        "high": completed_qs.filter(priority="HIGH").count(),
-        "pending": completed_qs.filter(status="new").count(),
-    }
+    # Dashboard quick stats (single aggregate query instead of 5 separate COUNTs)
+    dash_stats = completed_qs.aggregate(
+        total=Count("pk"),
+        unassigned=Count("pk", filter=Q(assigned_to__isnull=True)),
+        critical=Count("pk", filter=Q(priority="CRITICAL")),
+        high=Count("pk", filter=Q(priority="HIGH")),
+        pending=Count("pk", filter=Q(status="new")),
+    )
 
     # --- Pagination ---
     paginator = Paginator(qs, PER_PAGE)
@@ -804,6 +812,7 @@ def viewer_heartbeat(request, pk):
 
 
 @login_required
+@require_POST
 def clear_viewer(request, pk):
     """Remove the current user's viewer record for a thread."""
     ThreadViewer.objects.filter(thread_id=pk, user=request.user).delete()
@@ -1627,10 +1636,16 @@ PRIORITY_COLOR = {
 }
 
 
+@login_required
 @require_GET
 def inspect(request):
     """Render the dev inspector page with recent emails and simulated outputs."""
-    count = int(request.GET.get("count", 20))
+    if not request.user.is_staff:
+        return HttpResponseForbidden("Admin only")
+    try:
+        count = int(request.GET.get("count", 20))
+    except (ValueError, TypeError):
+        count = 20
     emails = list(
         Email.objects.order_by("-created_at")[:count]
     )

@@ -108,9 +108,8 @@ class TestPageTitleConsistency:
         resp = auth_client.get("/accounts/team/")
         assert "VIPL Triage | Team" in resp.content.decode()
 
-    def test_inspect_title(self):
-        client = Client()
-        resp = client.get("/emails/inspect/")
+    def test_inspect_title(self, auth_client):
+        resp = auth_client.get("/emails/inspect/")
         assert "VIPL Triage | Dev Inspector" in resp.content.decode()
 
     def test_login_title(self):

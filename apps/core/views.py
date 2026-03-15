@@ -63,6 +63,12 @@ def health_check(request):
     except Exception:
         operating_mode = "unknown"
 
+    # Unauthenticated requests get minimal info only
+    if not (request.user.is_authenticated and request.user.is_staff):
+        minimal = {"status": overall_status}
+        status_code = 200 if overall_status == "healthy" else 503
+        return JsonResponse(minimal, status=status_code)
+
     status = {
         "status": overall_status,
         "version": VERSION,
