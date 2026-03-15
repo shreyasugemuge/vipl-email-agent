@@ -182,8 +182,10 @@ class TestIrrelevantFiltering:
         thread = create_thread(status=Thread.Status.IRRELEVANT, subject="Irrelevant Thread ABC")
         client.force_login(admin_user)
 
+        # Use ?view=closed to get past the open-only view filter,
+        # then status=irrelevant overrides to show irrelevant threads
         response = client.get(
-            reverse("emails:thread_list") + "?view=all_open&status=irrelevant"
+            reverse("emails:thread_list") + "?status=irrelevant"
         )
         assert response.status_code == 200
         assert b"Irrelevant Thread ABC" in response.content

@@ -37,6 +37,7 @@ from apps.emails.services.assignment import change_status as _change_status
 from apps.emails.services.assignment import change_thread_status as _change_thread_status
 from apps.emails.services.assignment import claim_email as _claim_email
 from apps.emails.services.assignment import claim_thread as _claim_thread
+from apps.emails.services.assignment import reassign_thread as _reassign_thread
 from apps.emails.services.assignment import notify_mention as _notify_mention
 from apps.emails.services.assignment import parse_mentions
 from apps.emails.services.dtos import VALID_CATEGORIES, VALID_PRIORITIES
@@ -139,14 +140,22 @@ def thread_list(request):
     default_view = "all_open" if can_assign else "mine"
     view = request.GET.get("view", default_view)
 
+    # If an explicit status filter is set, skip view-level status constraints
+    # (e.g., ?status=irrelevant should show irrelevant threads regardless of view)
+    has_explicit_status = bool(request.GET.get("status", ""))
+
     if view == "unassigned":
-        qs = qs.filter(assigned_to__isnull=True, status__in=["new", "acknowledged"])
+        qs = qs.filter(assigned_to__isnull=True)
+        if not has_explicit_status:
+            qs = qs.filter(status__in=["new", "acknowledged"])
     elif view == "mine":
         qs = qs.filter(assigned_to=user)
     elif view == "all_open":
-        qs = qs.filter(status__in=["new", "acknowledged"])
+        if not has_explicit_status:
+            qs = qs.filter(status__in=["new", "acknowledged"])
     elif view == "closed":
-        qs = qs.filter(status="closed")
+        if not has_explicit_status:
+            qs = qs.filter(status="closed")
     elif view.isdigit():
         # Admin/triage_lead: view specific team member's threads
         if can_assign:
@@ -208,6 +217,7 @@ def thread_list(request):
         closed=Count("pk", filter=Q(status="closed")),
         urgent=Count("pk", filter=open_q & Q(priority__in=["CRITICAL", "HIGH"])),
         new=Count("pk", filter=Q(status="new")),
+        irrelevant=Count("pk", filter=Q(status="irrelevant")),
     )
 
     # --- Unread counts for sidebar badges ---
@@ -1137,9 +1147,15 @@ def _render_thread_detail_with_oob_card(thread, request, user):
 @login_required
 @require_POST
 def edit_category(request, pk):
-    """Inline edit: change thread category. Any logged-in user."""
+    """Inline edit: change thread category. Admin/gatekeeper or assigned user."""
     user = request.user
-    thread = get_object_or_404(Thread, pk=pk)
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to"),
+        pk=pk,
+    )
+
+    if not user.can_assign and thread.assigned_to != user:
+        return HttpResponseForbidden("You can only edit threads assigned to you.")
 
     category = (request.POST.get("category") or "").strip()
     if category == "__custom__":
@@ -1169,9 +1185,15 @@ def edit_category(request, pk):
 @login_required
 @require_POST
 def edit_priority(request, pk):
-    """Inline edit: change thread priority. Any logged-in user."""
+    """Inline edit: change thread priority. Admin/gatekeeper or assigned user."""
     user = request.user
-    thread = get_object_or_404(Thread, pk=pk)
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to"),
+        pk=pk,
+    )
+
+    if not user.can_assign and thread.assigned_to != user:
+        return HttpResponseForbidden("You can only edit threads assigned to you.")
 
     new_priority = (request.POST.get("priority") or "").strip()
     if new_priority not in VALID_PRIORITIES:
@@ -1312,7 +1334,7 @@ def assign_thread_view(request, pk):
     user = request.user
 
     if not user.can_assign:
-        return HttpResponseForbidden("You do not have permission to assign threads.")
+        return HttpResponseForbidden("Only gatekeepers and admins can assign threads to other users.")
 
     thread = get_object_or_404(Thread, pk=pk)
     assignee_id = request.POST.get("assignee_id")
@@ -1429,6 +1451,52 @@ def claim_thread_view(request, pk):
         request=request,
     )
 
+    return _HttpResponse(detail_html + card_html)
+
+
+@login_required
+@require_POST
+def reassign_thread_view(request, pk):
+    """Member self-reassignment with mandatory reason."""
+    user = request.user
+    thread = get_object_or_404(Thread, pk=pk)
+
+    # Only members use this endpoint -- admin/gatekeeper use assign endpoint
+    if user.can_assign:
+        return HttpResponseForbidden("Use the standard assign endpoint instead.")
+
+    if thread.assigned_to != user:
+        return HttpResponseForbidden("You can only reassign threads assigned to you.")
+
+    reason = request.POST.get("reason", "").strip()
+    if not reason:
+        return HttpResponseForbidden("A reason is required when reassigning.")
+
+    assignee_id = request.POST.get("assignee_id")
+    if not assignee_id:
+        return HttpResponseForbidden("Missing assignee.")
+
+    assignee = get_object_or_404(User, pk=assignee_id, is_active=True)
+
+    try:
+        _reassign_thread(thread, assignee, user, reason)
+    except (ValueError, PermissionError) as exc:
+        return HttpResponseForbidden(str(exc))
+
+    # Reset read state for new assignee
+    ThreadReadState.objects.update_or_create(
+        thread=thread, user=assignee,
+        defaults={"is_read": False, "read_at": None},
+    )
+
+    # Reload and return detail + OOB card (standard pattern)
+    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
+    team_members = []  # Member doesn't get team_members list
+    detail_context = _build_thread_detail_context(thread, request, False, team_members)
+    detail_html = render_to_string("emails/_thread_detail.html", detail_context, request=request)
+    card_html = render_to_string(
+        "emails/_thread_card.html", {"thread": thread, "oob": True}, request=request,
+    )
     return _HttpResponse(detail_html + card_html)
 
 
@@ -1628,6 +1696,86 @@ def mark_not_spam(request, pk):
     detail_context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     detail_context["toast_msg"] = toast_msg
 
+    return render(request, "emails/_thread_detail.html", detail_context)
+
+
+@login_required
+@require_POST
+def mark_irrelevant(request, pk):
+    """Mark a thread as irrelevant. Gatekeeper/admin only."""
+    from django.db import transaction
+
+    user = request.user
+    if not user.can_triage:
+        return HttpResponseForbidden("Permission denied.")
+
+    reason = request.POST.get("reason", "").strip()
+    if not reason:
+        return HttpResponseForbidden("Reason is required.")
+
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to", "assigned_by"), pk=pk
+    )
+
+    with transaction.atomic():
+        old_status = thread.status
+        thread.status = Thread.Status.IRRELEVANT
+        thread.save(update_fields=["status", "updated_at"])
+
+        ActivityLog.objects.create(
+            thread=thread,
+            user=user,
+            action=ActivityLog.Action.MARKED_IRRELEVANT,
+            detail=reason,
+            old_value=old_status,
+            new_value=Thread.Status.IRRELEVANT,
+        )
+
+    # Re-render detail panel
+    can_assign = user.can_assign
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if can_assign else []
+    detail_context = _build_thread_detail_context(thread, request, can_assign, team_members)
+    detail_context["toast_msg"] = "Thread marked as irrelevant"
+    return render(request, "emails/_thread_detail.html", detail_context)
+
+
+@login_required
+@require_POST
+def revert_irrelevant(request, pk):
+    """Revert an irrelevant thread to New status. Gatekeeper/admin only."""
+    from django.db import transaction
+
+    user = request.user
+    if not user.can_triage:
+        return HttpResponseForbidden("Permission denied.")
+
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to", "assigned_by"), pk=pk
+    )
+
+    if thread.status != Thread.Status.IRRELEVANT:
+        return HttpResponseForbidden("Thread is not marked irrelevant.")
+
+    with transaction.atomic():
+        thread.status = Thread.Status.NEW
+        thread.assigned_to = None
+        thread.assigned_by = None
+        thread.assigned_at = None
+        thread.save(update_fields=["status", "assigned_to", "assigned_by", "assigned_at", "updated_at"])
+
+        ActivityLog.objects.create(
+            thread=thread,
+            user=user,
+            action=ActivityLog.Action.REVERTED_IRRELEVANT,
+            detail=f"Reverted from irrelevant to new by {user.get_full_name() or user.username}",
+            old_value=Thread.Status.IRRELEVANT,
+            new_value=Thread.Status.NEW,
+        )
+
+    can_assign = user.can_assign
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if can_assign else []
+    detail_context = _build_thread_detail_context(thread, request, can_assign, team_members)
+    detail_context["toast_msg"] = "Thread reverted to New"
     return render(request, "emails/_thread_detail.html", detail_context)
 
 
