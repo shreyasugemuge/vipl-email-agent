@@ -1,6 +1,11 @@
 {% load email_tags %}
 
 <div class="h-full flex flex-col overflow-hidden">
+    <!-- Mobile back button -->
+    <button onclick="closeDetail()" class="md:hidden flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors border-b border-slate-200/60 shrink-0" aria-label="Back to email list">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back
+    </button>
     {% if whitelist_msg %}
     <div class="px-5 py-2 bg-emerald-50 border-b border-emerald-200/60 text-xs font-medium text-emerald-700"
          style="animation: fadeOut 1s ease-out 3s forwards;">

@@ -13,7 +13,7 @@
     </td>
 
     <!-- Email -->
-    <td class="px-4 py-2.5 text-[11px] text-slate-500">{{ u.email|default:"--" }}</td>
+    <td class="hidden md:table-cell px-4 py-2.5 text-[11px] text-slate-500">{{ u.email|default:"--" }}</td>
 
     <!-- Role -->
     <td class="px-4 py-2.5 text-center">
@@ -44,7 +44,7 @@
     </td>
 
     <!-- See All -->
-    <td class="px-4 py-2.5 text-center">
+    <td class="hidden md:table-cell px-4 py-2.5 text-center">
         <button hx-post="/accounts/team/{{ u.pk }}/toggle-visibility/"
                 hx-target="#user-{{ u.pk }}" hx-swap="outerHTML"
                 hx-disabled-elt="this"
@@ -58,7 +58,7 @@
     </td>
 
     <!-- Categories -->
-    <td class="px-4 py-2.5">
+    <td class="hidden md:table-cell px-4 py-2.5">
         <form hx-post="/accounts/team/{{ u.pk }}/categories/"
               hx-target="#user-{{ u.pk }}" hx-swap="outerHTML"
               hx-trigger="change"
