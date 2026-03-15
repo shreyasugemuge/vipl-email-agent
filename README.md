@@ -4,32 +4,31 @@
 
 ### AI-Powered Email Monitoring & Triage System
 
-[![AI](https://img.shields.io/badge/Powered%20by-Claude%20AI-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://anthropic.com)
-[![Django](https://img.shields.io/badge/Django-4.2%20LTS-092E20?style=for-the-badge&logo=django&logoColor=white)](https://djangoproject.com)
-[![License](https://img.shields.io/badge/License-Private-red?style=for-the-badge)](LICENSE)
+[![Version](https://img.shields.io/badge/v2.6.1-latest-e06a97?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/releases/tag/v2.6.1)
+[![Tests](https://img.shields.io/badge/Tests-753_passing-4ECDC4?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/actions)
+[![AI](https://img.shields.io/badge/Claude_AI-Haiku_%2B_Sonnet-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://anthropic.com)
+
+[![Django](https://img.shields.io/badge/Django-4.2_LTS-092E20?style=flat-square&logo=django&logoColor=white)](https://djangoproject.com)
+[![HTMX](https://img.shields.io/badge/HTMX-2.0-3366CC?style=flat-square)](https://htmx.org)
+[![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-12.3-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Docker](https://img.shields.io/badge/Docker_Compose-blue?style=flat-square&logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![License](https://img.shields.io/badge/License-Private-555?style=flat-square)](LICENSE)
 
 **Autonomous email classification, SLA tracking, and team alerting**
 **for [Vidarbha Infotech Pvt. Ltd.](https://vidarbhainfotech.com)**
+
+[Live Dashboard](https://triage.vidarbhainfotech.com) &middot; [Wiki](https://github.com/shreyasugemuge/vipl-email-agent/wiki) &middot; [Changelog](CHANGELOG.md) &middot; [Releases](https://github.com/shreyasugemuge/vipl-email-agent/releases)
 
 </div>
 
 ---
 
-## Overview
+## What It Does
 
-VIPL Email Agent monitors Gmail shared inboxes 24/7, triages every email with Claude AI, tracks SLA compliance, and alerts the team via Google Chat and a web dashboard.
+VIPL Email Agent watches your team's shared inboxes (`info@`, `sales@`) 24/7, classifies every email with Claude AI, assigns them to the right person, tracks SLA deadlines, and alerts the team — all from a retro-themed real-time dashboard with dark/light mode.
 
-**Live at**: `triage.vidarbhainfotech.com`
-
-| Layer | Technology |
-|-------|-----------|
-| **Backend** | Django 4.2 LTS + PostgreSQL 12.3 |
-| **Frontend** | Django templates + HTMX 2.0 + Tailwind CSS v4 + hand-crafted theme system |
-| **AI** | Claude Haiku (default) + Sonnet (CRITICAL escalation) |
-| **Email** | Gmail API with domain-wide delegation |
-| **Notifications** | Google Chat Cards v2 webhooks |
-| **Deployment** | Docker Compose on self-hosted GCP VM |
-| **CI/CD** | GitHub Actions: release → test → deploy |
+Every email gets a category, priority, SLA deadline, summary, draft reply, and suggested assignee — in under 3 seconds, for ~$0.001 per email.
 
 ---
 
@@ -37,179 +36,147 @@ VIPL Email Agent monitors Gmail shared inboxes 24/7, triages every email with Cl
 
 > *"We kept missing government tender emails buried under vendor spam. By the time someone noticed, the deadline had passed."*
 
-Vidarbha Infotech receives 30-80 emails daily across shared inboxes. Before this system:
+**Before**: 30-80 emails/day across shared inboxes. Missed tenders, inconsistent triage, no SLA tracking, zero visibility into communication state.
 
-- **Missed emails** — High-priority tenders and complaints buried under noise
-- **Inconsistent triage** — Same email categorized differently depending on who saw it
-- **No SLA tracking** — A 4-hour tender deadline treated the same as a routine vendor email
-- **Zero visibility** — No daily summary, no dashboard, no way to know the state of customer communications
+**After**: Zero missed emails. AI classifies everything. SLA breaches caught automatically. Team sees one dashboard.
 
 ---
 
-## How It Works
+## Pipeline
 
 ```
-Gmail Inboxes → GmailPoller (domain-wide delegation)
-    → SpamFilter (13 regex patterns + blocked senders, $0 cost)
-    → AIProcessor (Haiku default, Sonnet for CRITICAL, confidence scoring)
-    → Auto-Assign (HIGH confidence → assign by category rules)
-    → Pipeline (save to PostgreSQL → label Gmail)
-    → ChatNotifier (Google Chat Cards v2, quiet hours)
+Gmail Inboxes (info@, sales@)
+    → SpamFilter (13 regex + blocked senders — $0)
+    → AIProcessor (Haiku ~$0.001/ea, Sonnet for CRITICAL ~$0.01/ea)
+    → Auto-Assign (HIGH confidence >80% → assign by category rules)
+    → Pipeline (save PostgreSQL → label Gmail → notify Chat)
     → Feedback Loop (spam corrections → SenderReputation, AI corrections → distillation)
-    → Dead Letter Retry (every 30min, max 3 attempts)
-    → Circuit Breaker (3 consecutive failures → skip cycles)
+    → Dead Letter Retry (30min intervals, max 3 attempts)
+    → Circuit Breaker (3 failures → pause polling)
 ```
 
-Every email is classified into 8 categories with priority, SLA deadline, summary, and suggested assignee — in under 3 seconds.
+> Deep dive: **[Email Pipeline](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Email-Pipeline)** &middot; **[AI Triage](https://github.com/shreyasugemuge/vipl-email-agent/wiki/AI-Triage)**
 
 ---
 
 ## Features
 
-### Core Intelligence
+### AI Intelligence
 
-| Feature | Description |
-|---------|-------------|
-| **AI Email Triage** | Every email classified with category, priority, SLA deadline, summary, and draft reply |
-| **Two-Tier AI** | Haiku for routine emails (~$0.001/ea), Sonnet only for CRITICAL (~$0.01/ea) |
-| **Confidence Scoring** | AI returns HIGH/MEDIUM/LOW confidence; visual dots on cards |
-| **Auto-Assign** | HIGH confidence (>80%) triggers automatic assignment by category rules |
-| **Spam Pre-Filter** | 13 regex patterns + blocked sender list skip Claude entirely ($0 cost) |
-| **Spam Learning** | Mark spam/not-spam feedback updates SenderReputation; auto-blocks repeat offenders |
-| **Feedback Distillation** | User corrections aggregated into AI prompt rules via nightly scheduler |
-| **Multi-Language** | Detects Hindi, Marathi, Mixed emails; summaries in English; replies in original language |
-| **PDF Analysis** | Extracts text from PDF attachments (first 3 pages) for context-aware triage |
+| Feature | Detail |
+|---------|--------|
+| **Two-Tier AI** | Haiku for routine, Sonnet for CRITICAL — prompt caching saves ~90% |
+| **Confidence Scoring** | HIGH/MEDIUM/LOW with visual dots; HIGH triggers auto-assign |
+| **Spam Learning** | Feedback loop: mark spam → SenderReputation → auto-block repeat offenders |
+| **Feedback Distillation** | User corrections aggregated into AI prompt rules nightly |
+| **Multi-Language** | Hindi, Marathi, Mixed — summaries in English, replies in original language |
+| **PDF Analysis** | Extracts first 3 pages of PDF attachments for context-aware triage |
 
 ### Dashboard
 
-| Feature | Description |
-|---------|-------------|
-| **Thread Card List** | Filterable, sortable queue with AI summary, confidence dots, spam badges, avatar assignee badges |
-| **Assignment Workflow** | Admins assign emails to team members; accept/reject AI suggestions; Google avatar on badges |
-| **Detail Panel** | Slide-out panel with email body, inline-editable attributes, and activity timeline |
-| **Dark/Light Mode** | Theme toggle (sun/moon) in sidebar; dark = retro CRT/scanlines/glow, light = clean modern; persisted in localStorage |
-| **Inline Editing** | Category, priority, status editable via dropdowns directly in detail panel |
-| **Right-Click Menu** | Context menu on thread cards for quick actions (assign, status, priority, spam) |
-| **Read/Unread Tracking** | Per-user read state, unread badges, mark-as-unread, bold styling |
-| **Reports Dashboard** | 4-tab analytics (Overview, Categories, Performance, SLA) with Chart.js charts |
-| **Activity Log** | Full audit trail of assignments, status changes, spam feedback, and notes |
-| **SLA Tracking** | Visual SLA indicators with breach detection and deadline monitoring |
-| **Email Threads** | Conversation view grouping related emails, cross-inbox dedup |
-| **Internal Notes** | Team-only notes on threads for internal collaboration |
-| **Viewer Tracking** | See who's currently viewing a thread |
+| Feature | Detail |
+|---------|--------|
+| **Dark/Light Mode** | Retro CRT aesthetic (dark) or clean modern (light) — toggle persists |
+| **Thread Cards** | Filterable queue with avatar badges, status dots, AI summary, confidence |
+| **Detail Panel** | Slide-out with inline editing (category, priority, status, AI summary) |
+| **Assignee Badges** | Google avatar images, solid rose initials, gold "Unassigned" state |
+| **Context Menu** | Right-click cards for quick assign, status, priority, spam actions |
+| **Reports** | 4-tab analytics with Chart.js (theme-aware, re-renders on toggle) |
+| **Activity Log** | Full audit trail: assignments, status changes, notes, AI edits |
+| **Keyboard Nav** | Arrow keys, Enter, Escape, U (mark unread) |
 
-### Monitoring & Alerts
+> Full walkthrough: **[Dashboard Guide](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Dashboard-Guide)**
 
-| Feature | Description |
-|---------|-------------|
-| **Real-Time Chat Alerts** | Google Chat cards for HIGH and CRITICAL emails |
-| **SLA Breach Summary** | 3x daily consolidated alert (9 AM, 1 PM, 5 PM IST) |
-| **Quiet Hours** | Chat alerts suppressed 8 PM – 8 AM IST |
-| **EOD Reports** | HTML email + Chat card at 7 PM IST with day's stats |
-| **Sheets Sync Mirror** | Read-only Google Sheets mirror for reporting continuity |
+### Monitoring
 
-### Operations
-
-| Feature | Description |
-|---------|-------------|
-| **Operating Modes** | `off` / `dev` / `production` — dev-safe defaults on fresh install |
-| **Hot-Reload Config** | SystemConfig model — change settings without redeploying |
-| **Retry with Backoff** | 3x exponential backoff on transient Claude API errors |
-| **Dead Letter Queue** | Failed triages auto-retried, then marked Exhausted with Chat alert |
-| **Health Endpoint** | `/health/` returns JSON with uptime, mode, AI stats, failure count |
+| Feature | Detail |
+|---------|--------|
+| **Chat Alerts** | Google Chat Cards v2 for HIGH/CRITICAL emails |
+| **SLA Alerts** | 3x daily breach summary (9 AM, 1 PM, 5 PM IST) |
+| **Quiet Hours** | Alerts suppressed 8 PM – 8 AM IST |
+| **EOD Report** | Daily summary email + Chat card at 7 PM IST |
+| **Health** | `/health/` JSON endpoint for Docker healthcheck |
 
 ---
 
-## Development
+## Tech Stack
 
-### Prerequisites
+```
+Frontend    Django Templates + HTMX 2.0 + Tailwind CSS v4
+            + Hand-crafted retro theme system (no external design library)
+Backend     Django 4.2 LTS + PostgreSQL 12.3
+AI          Claude Haiku (default) + Sonnet (escalation) via Anthropic API
+Email       Gmail API with Domain-Wide Delegation
+Notify      Google Chat Cards v2 Webhooks
+Auth        Google OAuth SSO (django-allauth, domain-locked)
+Deploy      Docker Compose + Nginx + Let's Encrypt
+CI/CD       GitHub Actions: release-triggered deploy
+```
 
-- Python 3.11+
-- Django 4.2
+> Architecture details: **[Architecture](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Architecture)**
 
-### Local Setup
+---
+
+## Design System
+
+The UI is a **100% hand-crafted CSS design system** — no PxlKit, no external framework. Retro effects (scanlines, CRT vignette, pixel corners, glow) are pure CSS in `templates/base.html`.
+
+| | Dark Mode | Light Mode |
+|-|-----------|------------|
+| **Background** | Deep dark `#0a0a0f` | Slate-50 `#f8fafc` |
+| **Body Font** | JetBrains Mono | Plus Jakarta Sans |
+| **Effects** | CRT scanlines, vignette, neon glow | Subtle dot grid, soft shadows |
+| **Accent** | Rose `#e06a97` | Rose `#a83262` |
+| **Headings** | Press Start 2P (pixel font) | Press Start 2P (pixel font) |
+
+Color tokens: `--vipl-primary` (rose), `--vipl-cyan` (info), `--vipl-gold` (warning), `--vipl-red` (error), `--vipl-purple` (AI).
+
+> Complete guide: **[Design System](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Design-System)**
+
+---
+
+## Quick Start
 
 ```bash
-# Clone and install
 git clone https://github.com/shreyasugemuge/vipl-email-agent.git
 cd vipl-email-agent
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-
-# Configure
-cp .env.example .env   # Edit with your values (or leave defaults for safe dev mode)
-
-# Run
+cp .env.example .env
 python manage.py migrate
 python manage.py runserver 8000
 ```
 
-Fresh installs default to **off** mode — no external API calls, no Gmail polling, no Chat notifications.
-
-### Testing
+Fresh installs default to **off** mode — zero external API calls.
 
 ```bash
-pytest -v                              # All 753 tests (no API keys needed)
-python manage.py test_pipeline         # Smoke test with fake data (no external calls)
-python manage.py test_pipeline --with-ai   # Real Claude triage (~$0.001/email)
+pytest -v                                        # 753 tests (no API keys)
+python manage.py test_pipeline                   # Smoke test with fake data
 python manage.py run_scheduler --once --dry-run  # Simulated poll cycle
 ```
 
-### Dev Inspector
-
-```bash
-python manage.py runserver 8000
-# Visit http://localhost:8000/emails/inspect/
-# Read-only view of simulated Chat/reply output — no login required
-```
+> Full setup: **[Getting Started](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Getting-Started)** &middot; **[Configuration](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Configuration)**
 
 ---
 
 ## Deployment
 
-### CI/CD
-
-Two workflows keep CI and CD separate:
-
-- **`ci.yml`** — Runs tests on every push to `main` and on pull requests
-- **`deploy.yml`** — Deploys to VM when a GitHub Release is published
-
-**To deploy:**
 ```bash
-gh release create v2.5.4 --title "v2.5.4" --generate-notes
-# Creates tag + release → triggers deploy automatically
+gh release create v2.6.1 --title "v2.6.1" --generate-notes
+# → CI tests → SSH deploy to VM → done
 ```
 
-This ensures every deploy is intentional, documented, and reversible. Pushing to `main` runs tests only — never deploys.
+Push to `main` runs tests only. Deploy only on GitHub Release — intentional, documented, reversible.
 
-### Manual Deploy
-
-```bash
-ssh user@vm
-cd /opt/vipl-email-agent
-git fetch --tags && git checkout v2.5.4
-sudo docker compose build --no-cache
-sudo docker compose up -d
-sleep 5
-sudo docker compose exec -T web python manage.py migrate --noinput
-```
-
-### Operating Modes
-
-```bash
-# On VM (inside container)
-sudo docker compose exec web python manage.py set_mode off          # Safe: nothing runs
-sudo docker compose exec web python manage.py set_mode dev          # AI only, info@ inbox
-sudo docker compose exec web python manage.py set_mode production   # Full pipeline
-```
+> Full guide: **[Deployment](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Deployment)** &middot; **[Security](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Security)**
 
 ---
 
 ## Cost
 
-| Component | Monthly Cost |
-|-----------|:---:|
-| GCP VM (shared with Taiga) | ~$0 incremental |
+| Component | Monthly |
+|-----------|:------:|
+| GCP VM (shared with Taiga) | ~$0 |
 | Claude AI (Haiku + Sonnet) | ~$5-15 |
 | Google APIs (Gmail, Sheets) | Free |
 | **Total** | **< $20/mo** |
@@ -218,41 +185,30 @@ sudo docker compose exec web python manage.py set_mode production   # Full pipel
 
 ## Version History
 
-| Version | Date | Highlights |
-|:---:|:---:|------------|
-| **v2.6.1** | Mar 2026 | Prominent assignee & status badges: avatar image support, solid colored initials, gold "Unassigned" state, bolder status with reopened color, editable badge bump. 753 tests. |
-| **v2.6.0** | Mar 2026 | Full UI revamp: dark/light theme toggle, VIPL brand rose palette, hand-crafted CSS design system (no external framework), all pages themed, v2 design as default, Chart.js theme-aware. 753 tests. |
-| **v2.5.4** | Mar 2026 | UI/UX polish: 24 fixes — expanded cards, pill dropdowns, claim button, retro login, grouped settings, thread-grouped activity, dev inspector overhaul, QA bug fixes. 734 tests. |
-| **v2.5.0** | Mar 2026 | Intelligence + UX: AI confidence scoring, auto-assign, spam learning, read/unread tracking, inline editing, context menu, reports module. 729 tests. |
-| **v2.4.0** | Mar 2026 | Dashboard UX overhaul: single sidebar, settings validation, poll persistence, test consolidation. 555 tests. |
-| **v2.3.6** | Mar 2026 | Email threads & conversation UI, UI/UX v3 QA, OAuth hardening. 556 tests. |
-| **v2.3.4** | Mar 2026 | OAuth avatar fix, UI/UX v2 merge (stat cards, keyboard nav, welcome banner). 443 tests. |
-| **v2.0.0** | Mar 2026 | Full-stack rebuild: Django + PostgreSQL + HTMX dashboard. 7 phases. Deployed to VM. |
-| **v1.1.3** | Mar 2026 | Final v1: circuit breaker, email-loss prevention, 123 tests. Cloud Run decommissioned. |
-| **v1.0.0** | Feb 2026 | Initial production: Gmail polling, Claude triage, Google Sheets, Chat alerts |
+| Version | Highlights |
+|:-------:|------------|
+| **v2.6.1** | Prominent assignee/status badges, Google avatar support, gold "Unassigned" state |
+| **v2.6.0** | Full UI revamp: dark/light theme, VIPL brand rose palette, hand-crafted design system |
+| **v2.5.4** | 24 UI/UX fixes: expanded cards, pill dropdowns, retro login, dev inspector overhaul |
+| **v2.5.0** | AI confidence scoring, auto-assign, spam learning, read/unread, reports module |
+| **v2.4.0** | Dashboard UX overhaul: single sidebar, settings validation, poll persistence |
+| **v2.0.0** | Full-stack rebuild: Django + PostgreSQL + HTMX. Deployed to VM |
+| **v1.0.0** | Initial: Gmail polling, Claude triage, Google Sheets, Chat alerts |
+
+> Full changelog: **[CHANGELOG.md](CHANGELOG.md)** &middot; **[Releases](https://github.com/shreyasugemuge/vipl-email-agent/releases)**
 
 ---
 
-## Design System
-
-The UI uses a **hand-crafted CSS design system** — no external framework. The retro aesthetic (scanlines, CRT vignette, pixel corners, glow effects) is pure CSS in `templates/base.html`.
-
-| Aspect | Details |
-|--------|---------|
-| **Theme** | Dark/light mode via `data-theme` attribute + CSS variables |
-| **Color Tokens** | `--vipl-primary` (rose), `--vipl-cyan`, `--vipl-gold`, `--vipl-red`, `--vipl-purple` |
-| **Dark Mode** | Deep dark bg, retro scanlines/CRT glow, JetBrains Mono body font |
-| **Light Mode** | Clean white/slate, subtle dot grid, Plus Jakarta Sans body font |
-| **Pixel Font** | Press Start 2P for headings and labels (both themes) |
-| **Components** | `.vipl-card`, `.vipl-nav-active`, `.vipl-select`, `.vipl-pill-*`, `.vipl-stat-active` |
-| **Toggle** | Sun/moon icon in sidebar footer, persisted in `localStorage('vipl-theme')` |
-| **Dependencies** | Tailwind CSS v4 (utilities only) — zero external design libraries |
-
 ## Documentation
 
-| Document | Description |
+| Resource | Description |
 |----------|-------------|
-| [`CLAUDE.md`](CLAUDE.md) | Architecture reference and development guide |
+| **[Wiki](https://github.com/shreyasugemuge/vipl-email-agent/wiki)** | Complete documentation — architecture, guides, API, operations |
+| **[CLAUDE.md](CLAUDE.md)** | Architecture reference for AI-assisted development |
+| **[CHANGELOG.md](CHANGELOG.md)** | Detailed version history |
+| **[API Endpoints](https://github.com/shreyasugemuge/vipl-email-agent/wiki/API-Endpoints)** | All URL routes and HTMX endpoints |
+| **[Testing](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Testing)** | Test suite, dev pipeline, QA |
+| **[Troubleshooting](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Troubleshooting)** | Common issues and solutions |
 
 ---
 
