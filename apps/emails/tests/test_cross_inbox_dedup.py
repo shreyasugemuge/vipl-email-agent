@@ -384,8 +384,15 @@ class TestNotifyCrossInboxDuplicate:
         mock_email.to_inbox = "sales@vidarbhainfotech.com"
         mock_email.pk = 42
 
-        with patch.object(notifier, "_post") as mock_post:
-            result = notifier.notify_cross_inbox_duplicate(mock_email)
+        # Pin IST time to 12:00 so it's always within 00:00-23:59 quiet hours
+        from datetime import datetime as _dt
+        import pytz
+        fixed_noon = _dt(2026, 3, 15, 12, 0, 0, tzinfo=pytz.timezone("Asia/Kolkata"))
+        with patch("apps.emails.services.chat_notifier.datetime") as mock_datetime:
+            mock_datetime.now.return_value = fixed_noon
+            mock_datetime.strptime = _dt.strptime
+            with patch.object(notifier, "_post") as mock_post:
+                result = notifier.notify_cross_inbox_duplicate(mock_email)
 
         assert result is False
         mock_post.assert_not_called()
