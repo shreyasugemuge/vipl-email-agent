@@ -137,7 +137,7 @@ Plans:
   4. Pressing Escape closes the thread detail panel
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md — Fix thread count, search view filter, mobile drawer, Escape key
 
 ### Phase 7: QA Cosmetic & Layout (M6-P7)
 **Goal**: Fix cosmetic and layout issues found during QA front-end review
