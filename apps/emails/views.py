@@ -27,7 +27,7 @@ from apps.accounts.models import User
 from apps.core.models import SystemConfig
 from apps.emails.models import (
     ActivityLog, AssignmentRule, CategoryVisibility, Email, InternalNote, PollLog,
-    SLAConfig, SpamWhitelist, Thread, ThreadViewer,
+    SenderReputation, SLAConfig, SpamFeedback, SpamWhitelist, Thread, ThreadViewer,
 )
 from apps.emails.services.assignment import assign_email as _assign_email
 from apps.emails.services.assignment import assign_thread as _assign_thread
@@ -1115,6 +1115,221 @@ def whitelist_sender_from_thread(request, pk):
 
 
 # ---------------------------------------------------------------------------
+# Spam feedback: mark spam / not-spam / undo
+# ---------------------------------------------------------------------------
+
+
+def _update_sender_reputation(sender_address, increment_spam=False, decrement_spam=False):
+    """Update SenderReputation for a sender. Returns the updated object.
+
+    Uses F() expressions for atomic updates, then refresh_from_db before
+    checking auto-block threshold (Pitfall 1 from research).
+    """
+    from django.db.models import F
+    from django.db.models.functions import Greatest
+
+    rep, created = SenderReputation.objects.get_or_create(
+        sender_address=sender_address.lower(),
+        defaults={"total_count": 0, "spam_count": 0},
+    )
+
+    update_fields = {}
+    if increment_spam:
+        update_fields["spam_count"] = F("spam_count") + 1
+    if decrement_spam:
+        update_fields["spam_count"] = Greatest(F("spam_count") - 1, 0)
+
+    if update_fields:
+        SenderReputation.objects.filter(pk=rep.pk).update(**update_fields)
+        rep.refresh_from_db()
+
+    # Auto-block threshold: ratio > 0.8 AND total >= 3
+    if rep.total_count >= 3 and rep.spam_ratio > 0.8:
+        if not rep.is_blocked:
+            rep.is_blocked = True
+            rep.save(update_fields=["is_blocked"])
+    else:
+        if rep.is_blocked:
+            # Re-check: maybe undo brought ratio back down
+            rep.is_blocked = False
+            rep.save(update_fields=["is_blocked"])
+
+    return rep
+
+
+@login_required
+@require_POST
+def mark_spam(request, pk):
+    """Mark a thread as spam. All users can do this (no admin restriction)."""
+    from django.db import transaction
+
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to", "assigned_by"),
+        pk=pk,
+    )
+    sender = (thread.last_sender_address or "").strip().lower()
+
+    with transaction.atomic():
+        # Determine original verdict
+        original_verdict = any(e.is_spam for e in thread.emails.all())
+
+        # Create feedback
+        SpamFeedback.objects.create(
+            user=request.user,
+            thread=thread,
+            original_verdict=original_verdict,
+            user_verdict=True,
+        )
+
+        # Update all thread emails
+        thread.emails.update(is_spam=True)
+
+        # Update sender reputation
+        if sender:
+            _update_sender_reputation(sender, increment_spam=True)
+
+        # Activity log
+        ActivityLog.objects.create(
+            thread=thread,
+            user=request.user,
+            action=ActivityLog.Action.SPAM_MARKED,
+            detail=f"Marked as spam by {request.user.get_full_name() or request.user.username}",
+        )
+
+    # Re-render detail panel
+    is_admin = request.user.is_staff or request.user.role == User.Role.ADMIN
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if is_admin else []
+    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_context["toast_msg"] = "Marked as spam"
+
+    return render(request, "emails/_thread_detail.html", detail_context)
+
+
+@login_required
+@require_POST
+def mark_not_spam(request, pk):
+    """Mark a thread as not spam. All users can do this."""
+    from django.db import transaction
+
+    thread = get_object_or_404(
+        Thread.objects.select_related("assigned_to", "assigned_by"),
+        pk=pk,
+    )
+    sender = (thread.last_sender_address or "").strip().lower()
+
+    toast_msg = "Marked as not spam"
+
+    with transaction.atomic():
+        original_verdict = any(e.is_spam for e in thread.emails.all())
+
+        SpamFeedback.objects.create(
+            user=request.user,
+            thread=thread,
+            original_verdict=original_verdict,
+            user_verdict=False,
+        )
+
+        thread.emails.update(is_spam=False)
+
+        if sender:
+            # Check if sender was blocked before we decrement
+            was_blocked = SenderReputation.objects.filter(
+                sender_address__iexact=sender, is_blocked=True
+            ).exists()
+
+            _update_sender_reputation(sender, decrement_spam=True)
+
+            # Auto-whitelist if sender was blocked (SPAM-05)
+            if was_blocked:
+                from django.db import IntegrityError
+                try:
+                    SpamWhitelist.objects.create(
+                        entry=sender,
+                        entry_type="email",
+                        added_by=request.user,
+                        reason="Auto-whitelisted: user marked not-spam on blocked sender",
+                    )
+                except IntegrityError:
+                    pass  # Already whitelisted
+
+                SenderReputation.objects.filter(sender_address__iexact=sender).update(is_blocked=False)
+                toast_msg = "Marked as not spam and sender unblocked"
+
+        ActivityLog.objects.create(
+            thread=thread,
+            user=request.user,
+            action=ActivityLog.Action.SPAM_UNMARKED,
+            detail=f"Marked as not spam by {request.user.get_full_name() or request.user.username}",
+        )
+
+    is_admin = request.user.is_staff or request.user.role == User.Role.ADMIN
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if is_admin else []
+    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_context["toast_msg"] = toast_msg
+
+    return render(request, "emails/_thread_detail.html", detail_context)
+
+
+@login_required
+@require_POST
+def undo_spam_feedback(request, pk):
+    """Undo a spam feedback action. Reverses reputation change and email spam flag."""
+    from django.db import transaction
+
+    fb = get_object_or_404(SpamFeedback, pk=pk)
+    thread = fb.thread
+
+    with transaction.atomic():
+        sender = ""
+        if thread:
+            sender = (thread.last_sender_address or "").strip().lower()
+
+        # Reverse reputation change
+        if sender:
+            if fb.user_verdict:
+                # Was marked spam -- undo means decrement spam_count
+                _update_sender_reputation(sender, decrement_spam=True)
+            else:
+                # Was marked not-spam -- undo means increment spam_count
+                _update_sender_reputation(sender, increment_spam=True)
+
+        # Reverse email is_spam to original verdict
+        if thread:
+            thread.emails.update(is_spam=fb.original_verdict)
+
+        # Soft-delete the feedback
+        fb.delete()
+
+    # Re-render detail panel
+    if thread:
+        thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=thread.pk)
+        is_admin = request.user.is_staff or request.user.role == User.Role.ADMIN
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if is_admin else []
+        detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+        detail_context["toast_msg"] = "Spam feedback undone"
+        return render(request, "emails/_thread_detail.html", detail_context)
+
+    return _HttpResponse(status=204)
+
+
+@login_required
+@require_POST
+def unblock_sender(request, pk):
+    """Unblock a sender (set is_blocked=False). Admin only. Re-renders whitelist tab."""
+    if not _require_admin(request.user):
+        return HttpResponseForbidden("Admin access required.")
+
+    rep = get_object_or_404(SenderReputation, pk=pk)
+    rep.is_blocked = False
+    rep.save(update_fields=["is_blocked"])
+
+    return _render_whitelist_tab(
+        request, save_success=True,
+        save_message=f"{rep.sender_address} unblocked.",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Admin settings page
 # ---------------------------------------------------------------------------
 
@@ -1752,20 +1967,17 @@ def inspect(request):
 @login_required
 @require_POST
 def force_poll(request):
-    """Trigger a single poll cycle. Only in dev/off mode."""
+    """Trigger a single poll cycle. Admin only."""
     if not (request.user.is_staff or request.user.role == User.Role.ADMIN):
         return HttpResponseForbidden("Admin access required.")
 
-    mode = SystemConfig.get("operating_mode", "off")
-    if mode == "production":
-        return JsonResponse({"error": "Cannot force poll in production mode"}, status=403)
-
     import subprocess
+    from django.conf import settings
     try:
         result = subprocess.run(
             ["python", "manage.py", "run_scheduler", "--once"],
             capture_output=True, text=True, timeout=120,
-            cwd="/Users/uge/code/vipl-email-agent",
+            cwd=str(settings.BASE_DIR),
         )
         return JsonResponse({
             "status": "ok",
