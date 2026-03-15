@@ -255,3 +255,52 @@ class TestEmailListHTMX:
         )
         content = response.content.decode()
         assert "VIPL Triage" not in content  # No sidebar in partial
+
+
+class TestEmailCountOOBUpdate:
+    """Test that HTMX responses include OOB email count update."""
+
+    def test_htmx_unassigned_view_has_oob_count(self, admin_client, db):
+        """HTMX request to unassigned view includes OOB count span."""
+        _create_email(db, message_id="msg_oob_1")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "unassigned"},
+            HTTP_HX_REQUEST="true",
+        )
+        content = response.content.decode()
+        assert 'id="email-count"' in content
+        assert 'hx-swap-oob' in content
+
+    def test_htmx_mine_view_has_oob_count(self, admin_client, admin_user, db):
+        """HTMX request to mine view includes OOB count span."""
+        _create_email(db, message_id="msg_oob_2", assigned_to=admin_user)
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "mine"},
+            HTTP_HX_REQUEST="true",
+        )
+        content = response.content.decode()
+        assert 'id="email-count"' in content
+        assert 'hx-swap-oob' in content
+
+    def test_non_htmx_has_no_oob(self, admin_client, db):
+        """Non-HTMX full page render does NOT have hx-swap-oob on count."""
+        _create_email(db, message_id="msg_oob_3")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all"},
+        )
+        content = response.content.decode()
+        assert 'hx-swap-oob' not in content
+
+    def test_oob_count_has_correct_pluralization(self, admin_client, db):
+        """OOB count shows correct plural form."""
+        _create_email(db, message_id="msg_oob_single")
+        response = admin_client.get(
+            reverse("emails:email_list"),
+            {"view": "all"},
+            HTTP_HX_REQUEST="true",
+        )
+        content = response.content.decode()
+        assert "1 email" in content
