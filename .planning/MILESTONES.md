@@ -17,6 +17,8 @@
 **Archives:**
 - `milestones/v2.2-ROADMAP.md`
 - `milestones/v2.2-MILESTONE-AUDIT.md`
+- `milestones/v2.2-RETROSPECTIVE.md`
+- `milestones/v2.2-research/`
 
 ---
 
