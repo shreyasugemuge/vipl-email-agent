@@ -5,7 +5,7 @@ milestone_name: null
 status: idle
 stopped_at: null
 last_updated: "2026-03-16"
-last_activity: 2026-03-16 -- Completed v2.6.0 milestone (Gatekeeper Role + Irrelevant Emails)
+last_activity: 2026-03-16 -- Completed v2.7.0 milestone (Gatekeeper Role + Irrelevant Emails)
 progress:
   total_phases: 0
   completed_phases: 0
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 
 ## Current Position
 
-No active milestone. v2.6.0 shipped 2026-03-16.
+No active milestone. v2.7.0 shipped 2026-03-16.
 
 ## Accumulated Context
 

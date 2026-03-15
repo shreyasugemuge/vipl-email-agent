@@ -1,13 +1,13 @@
 # Project Research Summary
 
-**Project:** VIPL Email Agent v2.6.0 — Gatekeeper Role + Irrelevant Emails
+**Project:** VIPL Email Agent v2.7.0 — Gatekeeper Role + Irrelevant Emails
 **Domain:** RBAC expansion + queue management for Django shared inbox triage system
 **Researched:** 2026-03-15
 **Confidence:** HIGH
 
 ## Executive Summary
 
-v2.6.0 adds a third role (Gatekeeper) to a 4-5 person email triage system that already has Admin and Member. The Gatekeeper is a dispatcher/supervisor who can assign threads and dismiss irrelevant ones, but cannot manage users or system settings. Every feature required for this milestone is implementable using the existing stack with zero new dependencies — no new Python packages, no new JS libraries, no new Django apps. The entire feature set maps directly onto existing primitives: `User.Role` TextChoices, `Thread.Status`, `ActivityLog`, `SystemConfig`, and the APScheduler heartbeat job.
+v2.7.0 adds a third role (Gatekeeper) to a 4-5 person email triage system that already has Admin and Member. The Gatekeeper is a dispatcher/supervisor who can assign threads and dismiss irrelevant ones, but cannot manage users or system settings. Every feature required for this milestone is implementable using the existing stack with zero new dependencies — no new Python packages, no new JS libraries, no new Django apps. The entire feature set maps directly onto existing primitives: `User.Role` TextChoices, `Thread.Status`, `ActivityLog`, `SystemConfig`, and the APScheduler heartbeat job.
 
 The recommended approach is a strict four-phase build ordered by dependency: (1) role + permission helpers, (2) assignment permission enforcement, (3) mark-irrelevant action, (4) unassigned count alerts and bulk actions. This ordering is non-negotiable — phases 2-4 all require the gatekeeper role to exist first, and phase 4 benefits from phase 3 excluding irrelevant threads from the unassigned count. The architecture analysis catalogued every one of the 25+ scattered `is_admin` checks in `views.py` and classified each into either "gatekeeper can do this" or "admin-only" — this audit is the backbone of the implementation.
 
@@ -17,7 +17,7 @@ The primary risk is the scattered permission pattern. The codebase has no centra
 
 ### Recommended Stack
 
-**Zero new dependencies.** Every v2.6.0 feature is implementable with the existing stack. The codebase already has all required primitives. Adding libraries would be over-engineering for a 4-5 user app. Requirements.txt does not change. No new CDN scripts. No new JS libraries (~20 lines vanilla JS for modal show/hide and client-side validation hints).
+**Zero new dependencies.** Every v2.7.0 feature is implementable with the existing stack. The codebase already has all required primitives. Adding libraries would be over-engineering for a 4-5 user app. Requirements.txt does not change. No new CDN scripts. No new JS libraries (~20 lines vanilla JS for modal show/hide and client-side validation hints).
 
 **Core technologies (existing, unchanged):**
 - `User.Role` TextChoices — role storage; add `GATEKEEPER = "gatekeeper"` (exactly 10 chars — widen `max_length` to 20 in the same migration as a matter of hygiene)
@@ -43,7 +43,7 @@ Django's built-in permissions framework (groups/permissions), django-guardian, d
 - Unassigned count alert via Google Chat — proactive notification when queue grows beyond threshold
 - Member reassign-with-mandatory-reason — audit trail; members must explain when bouncing work
 
-**Defer (post-v2.6.0):**
+**Defer (post-v2.7.0):**
 - AI feedback summary for gatekeeper — no workflow is blocked without it; add in a polish phase
 - Gatekeeper-specific triage queue view — optimize after usage patterns emerge
 - Reassignment notification to original assignee — existing Chat notifications partially cover this

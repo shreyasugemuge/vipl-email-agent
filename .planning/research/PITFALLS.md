@@ -1,4 +1,4 @@
-# Domain Pitfalls: v2.6.0 Gatekeeper Role + Irrelevant Emails
+# Domain Pitfalls: v2.7.0 Gatekeeper Role + Irrelevant Emails
 
 **Domain:** RBAC expansion + close-with-reason for existing Django email triage app
 **Researched:** 2026-03-15
@@ -223,6 +223,6 @@
 
 - Direct codebase audit: `apps/accounts/models.py`, `apps/emails/views.py` (25+ `is_admin` checks), `apps/emails/services/assignment.py`, `apps/accounts/views.py`
 - Template audit: 8 template files with `is_admin` references, `_user_row.html` with hardcoded role options
-- `PROJECT.md` v2.6.0 requirements (gatekeeper role, mark irrelevant, unassigned alerts)
+- `PROJECT.md` v2.7.0 requirements (gatekeeper role, mark irrelevant, unassigned alerts)
 - Django RBAC patterns (HIGH confidence -- standard Django practice)
 - Alert fatigue literature (MEDIUM confidence -- well-established operations pattern)

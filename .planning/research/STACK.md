@@ -1,4 +1,4 @@
-# Technology Stack: v2.6.0 Gatekeeper Role + Irrelevant Emails
+# Technology Stack: v2.7.0 Gatekeeper Role + Irrelevant Emails
 
 **Project:** VIPL Email Agent
 **Researched:** 2026-03-15
@@ -6,7 +6,7 @@
 
 ## Key Finding: Zero New Dependencies
 
-Every v2.6.0 feature is implementable with the existing stack. The codebase already has all the primitives: `User.Role` TextChoices for roles, `ActivityLog` for audit, `ChatNotifier` for alerts, `SystemConfig` for thresholds, APScheduler for periodic checks. Adding libraries would be over-engineering for a 4-5 user app.
+Every v2.7.0 feature is implementable with the existing stack. The codebase already has all the primitives: `User.Role` TextChoices for roles, `ActivityLog` for audit, `ChatNotifier` for alerts, `SystemConfig` for thresholds, APScheduler for periodic checks. Adding libraries would be over-engineering for a 4-5 user app.
 
 **requirements.txt: NO CHANGES.**
 
@@ -236,7 +236,7 @@ def mark_irrelevant(thread, reason, closed_by):
 ### requirements.txt: NO CHANGES
 
 ```bash
-# Nothing to install. Existing dependencies cover all v2.6.0 features.
+# Nothing to install. Existing dependencies cover all v2.7.0 features.
 # Only Django migrations needed:
 python manage.py makemigrations accounts emails
 python manage.py migrate
@@ -257,7 +257,7 @@ No new CDN scripts. HTMX + Tailwind + existing vanilla JS patterns handle everyt
 
 ## Integration Points with Existing Stack
 
-| Existing Component | How v2.6.0 Features Integrate |
+| Existing Component | How v2.7.0 Features Integrate |
 |-------------------|-------------------------------|
 | `User.Role` TextChoices | Add `GATEKEEPER` choice |
 | `User` model properties | Add `can_assign`, `can_mark_irrelevant`, `can_manage_users` |
@@ -291,5 +291,5 @@ No new CDN scripts. HTMX + Tailwind + existing vanilla JS patterns handle everyt
 
 - Direct codebase analysis: `apps/accounts/models.py` (User.Role TextChoices), `apps/emails/models.py` (Thread, ActivityLog), `apps/emails/views.py` (25+ `is_admin` checks), `apps/emails/services/assignment.py` (assign/reassign functions)
 - `requirements.txt` -- current dependency list (no changes needed)
-- `.planning/PROJECT.md` -- v2.6.0 feature requirements
+- `.planning/PROJECT.md` -- v2.7.0 feature requirements
 - `apps/core/models.py` -- SystemConfig key-value store pattern

@@ -140,7 +140,7 @@
 
 ---
 
-## Milestone: v2.6.0 — Gatekeeper Role + Irrelevant Emails
+## Milestone: v2.7.0 — Gatekeeper Role + Irrelevant Emails
 
 **Shipped:** 2026-03-16
 **Phases:** 4 | **Plans:** 9
@@ -162,7 +162,7 @@
 - Phase 1 permission refactor as foundation made all subsequent phases clean (can_triage, can_assign everywhere)
 
 ### What Was Inefficient
-- Phase 4 planned in `.planning/milestones/v2.6.0-phases/` instead of `.planning/phases/` — confused gsd-tools CLI (phase-plan-index returned "Phase not found")
+- Phase 4 planned in `.planning/milestones/v2.7.0-phases/` instead of `.planning/phases/` — confused gsd-tools CLI (phase-plan-index returned "Phase not found")
 - ROADMAP.md checkboxes for phases 3+4 not auto-updated by execute-phase (showed `[ ]` despite completion)
 - SUMMARY.md one_liner field empty for all plans (summary-extract returned None) — same issue as v2.2
 - `milestone complete` CLI only counted 3 phases (didn't see phase 4 in milestones dir)
@@ -189,7 +189,7 @@
 
 ## Cross-Milestone Trends
 
-| Metric | v2.1 | v2.2 | v2.3.6 | v2.5.0 | v2.6.0 |
+| Metric | v2.1 | v2.2 | v2.3.6 | v2.5.0 | v2.7.0 |
 |--------|------|------|--------|--------|--------|
 | Phases | 7 | 4 | 3 | 7 | 4 |
 | Plans | 18 | 6 | 6 | 14 | 9 |
@@ -199,4 +199,4 @@
 | Gaps found in audit | 11 (all closed) | 0 | 2 (accepted) | 0 | 1 (fixed) |
 
 ---
-*Updated: 2026-03-16 after v2.6.0 milestone*
+*Updated: 2026-03-16 after v2.7.0 milestone*

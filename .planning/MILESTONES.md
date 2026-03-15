@@ -1,6 +1,6 @@
 # Milestones
 
-## v2.6.0 Gatekeeper Role + Irrelevant Emails (Shipped: 2026-03-16)
+## v2.7.0 Gatekeeper Role + Irrelevant Emails (Shipped: 2026-03-16)
 
 **Phases completed:** 4 phases, 9 plans
 **Stats:** 78 commits, 91 files changed, +13,815 lines, 824 tests
@@ -16,9 +16,9 @@
 - AI corrections digest: collapsible card on triage queue showing 7-day correction patterns
 
 **Archives:**
-- `milestones/v2.6.0-ROADMAP.md`
-- `milestones/v2.6.0-REQUIREMENTS.md`
-- `milestones/v2.6.0-MILESTONE-AUDIT.md`
+- `milestones/v2.7.0-ROADMAP.md`
+- `milestones/v2.7.0-REQUIREMENTS.md`
+- `milestones/v2.7.0-MILESTONE-AUDIT.md`
 
 ---
 
