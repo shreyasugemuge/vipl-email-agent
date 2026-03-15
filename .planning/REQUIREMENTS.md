@@ -11,9 +11,9 @@ Requirements for v2.5.0 Intelligence + UX release. Each maps to roadmap phases.
 
 - [x] **INTEL-01**: AI triage returns confidence tier (HIGH/MEDIUM/LOW) alongside category, priority, and summary
 - [x] **INTEL-02**: Confidence tier is displayed on thread cards and detail panels as a visual indicator
-- [ ] **INTEL-03**: Threads with HIGH confidence are auto-assigned when a matching AssignmentRule exists
-- [ ] **INTEL-04**: Auto-assign threshold is configurable via SystemConfig (default: HIGH only)
-- [ ] **INTEL-05**: Auto-assigned threads show "(auto)" badge and can be rejected by the assignee
+- [x] **INTEL-03**: Threads with HIGH confidence are auto-assigned when a matching AssignmentRule exists
+- [x] **INTEL-04**: Auto-assign threshold is configurable via SystemConfig (default: HIGH only)
+- [x] **INTEL-05**: Auto-assigned threads show "(auto)" badge and can be rejected by the assignee
 - [ ] **INTEL-06**: User can accept or reject AI assignment suggestion with one click
 - [ ] **INTEL-07**: Assignment feedback (accept/reject/reassign/auto-assign) is recorded in AssignmentFeedback model
 - [x] **INTEL-08**: Recent correction history is injected into AI prompt to improve future triages
@@ -90,9 +90,9 @@ Deferred beyond v2.5.0.
 |-------------|-------|--------|
 | INTEL-01 | Phase 2 | Complete |
 | INTEL-02 | Phase 2 | Complete |
-| INTEL-03 | Phase 2 | Pending |
-| INTEL-04 | Phase 2 | Pending |
-| INTEL-05 | Phase 2 | Pending |
+| INTEL-03 | Phase 2 | Complete |
+| INTEL-04 | Phase 2 | Complete |
+| INTEL-05 | Phase 2 | Complete |
 | INTEL-06 | Phase 2 | Pending |
 | INTEL-07 | Phase 2 | Pending |
 | INTEL-08 | Phase 2 | Complete |
