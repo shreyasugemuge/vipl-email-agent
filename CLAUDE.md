@@ -6,17 +6,17 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v2.3.6** (main branch) | **Live** — deployed to VM, all phases complete | Self-hosted VM (Docker Compose) |
+| **v2.4.0** (main branch) | **Live** — deployed to VM, all phases complete | Self-hosted VM (Docker Compose) |
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.3.6
+**GitHub Release**: v2.4.0
 
 ## Active Branches
 
 | Branch | Worktree | Purpose | Status |
 |--------|----------|---------|--------|
-| `main` | `.` | Production branch, deployed to VM | Stable, v2.3.6 |
+| `main` | `.` | Production branch, deployed to VM | Stable, v2.4.0 |
 | `feature/analytics-dashboard` | `../vipl-email-agent-analytics` | Analytics & reporting dashboard | Not started |
 
 ## Stack
@@ -119,6 +119,7 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **Phase 9** (UI/UX v2 — PR #6): XML assignee cleanup, mobile detail panel with history API, clickable stat cards, welcome banner, collapsible filter panel with badge, keyboard nav (arrow keys), loading skeleton, scroll-snap, underline tabs, search icon
 - **Phase 10** (Email Threads — PR #8): Thread model + data migration, cross-inbox dedup, pipeline thread integration, conversation UI with thread list/detail, internal notes, viewer tracking, thread assignment + collaboration
 - **Phase 11** (UI/UX v3 — PR #9): QA verification (13/13 pass), inline bug fixes, milestone v2.3.6 archive
+- **Phase 12** (Dashboard UX Overhaul — v2.4.0): Single sidebar merge (eliminated 220px inner sidebar), JS-based active state indicators (fixes HTMX partial swap bug), sender email on cards, poll epoch persistence (deploy safety), dev inspector poll countdown, settings UX (webhook masking, tab descriptions, SLA presets, config validation), timezone fix
 
 ### Email Pipeline Architecture
 ```
@@ -138,10 +139,10 @@ Gmail Inboxes → GmailPoller (domain-wide delegation)
 | `spam_filter.py` | 13 regex patterns, returns TriageResult | No |
 | `pdf_extractor.py` | pypdf, 3 pages, 1000 chars, 5MB limit | No |
 | `state.py` | Circuit breaker + EOD dedup | No |
-| `gmail_poller.py` | Gmail API, domain-wide delegation, labels | No |
+| `gmail_poller.py` | Gmail API, domain-wide delegation, labels, UTC-aware epochs | No |
 | `ai_processor.py` | Two-tier Claude (Haiku/Sonnet), tenacity retry | No |
 | `chat_notifier.py` | Google Chat Cards v2, quiet hours | Yes (SystemConfig) |
-| `pipeline.py` | Orchestrator: poll→filter→triage→save→label | Yes (ORM) |
+| `pipeline.py` | Orchestrator: poll→filter→triage→save→label→persist epoch | Yes (ORM) |
 | `fake_data.py` | 11 sample emails (EN/HI/MR) + matched triages for dev/test | No |
 | `assignment.py` | Email assignment, status changes, notifications | Yes (ORM) |
 | `eod_reporter.py` | Daily summary email + Chat card | Yes (ORM) |
@@ -177,6 +178,7 @@ Fresh installs default to **off** mode (seeded via migration). Mode is visible i
 ### SystemConfig (Runtime Config)
 Replaces v1's Google Sheets config tab. Key-value store with typed casting (str/int/bool/float/json).
 Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled` (false), `eod_email_enabled`, `poll_interval_minutes`, `quiet_hours_start/end`, `business_hours_start/end`, `max_consecutive_failures`, `monitored_inboxes` (empty).
+Runtime keys: `last_poll_epoch` (INT, persisted after each poll cycle for deploy safety — prevents re-triaging emails on restart).
 
 **Dev-safe defaults**: `monitored_inboxes` is empty and `chat_notifications_enabled` is false in the seed migration. A fresh `migrate` on dev will not poll real inboxes or post to Chat. Production values are set via SystemConfig admin or environment variables.
 
@@ -186,7 +188,7 @@ Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled` (false), `eod
 source .venv/bin/activate
 
 # --- Unit Tests (no API keys needed) ---
-pytest -v                           # All 556 tests
+pytest -v                           # All tests (~555)
 pytest apps/accounts -v             # Account/auth tests
 pytest apps/emails -v               # Email + dashboard + assignment + EOD tests
 pytest apps/core -v                 # Core model + health + config tests
@@ -235,10 +237,13 @@ gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl >
 /emails/activity/     → Activity log (assignments, status changes)
 ```
 
-**Dashboard stack**: Django templates + HTMX 2.0 (CDN) + Tailwind CSS v4 (CDN play script)
+**Dashboard stack**: Django templates + HTMX 2.0 (CDN) + Tailwind CSS v4 (pre-built CSS)
 - `django-htmx` middleware for `request.htmx` detection (partials vs full pages)
 - `nh3` for HTML sanitization of email body content (XSS protection)
+- **Single sidebar layout**: Views, inbox pills, and filters in main dark sidebar via `{% block sidebar_extra %}`; email content gets full remaining width
+- **JS-based active state**: `updateActiveStates()` in base.html handles `data-view`/`data-inbox` attributes on HTMX navigation and browser back/forward (`htmx:pushedIntoHistory` + `popstate`)
 - Card-based layout (Linear/Trello style) with slide-out detail panel
+- Email/thread cards show sender name + email address
 - URL-based filter state (bookmarkable: `/emails/?status=new&priority=HIGH`)
 - ActivityLog model tracks all assignment and status change events
 - Assignment notifications via Google Chat + Django email
@@ -253,7 +258,8 @@ gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl >
 - Welcome banner with role-specific guidance (dismissible, persistent via localStorage)
 - Keyboard navigation: arrow keys between cards, Escape closes detail
 - Loading skeleton in detail panel during HTMX fetch
-- OOB email count update on view switch
+- Settings UX: webhook URL masking with reveal toggle, tab descriptions, SLA presets (Standard/Aggressive/Relaxed), inline config validation
+- Dev inspector: poll countdown timer (reads `last_poll_epoch` + `poll_interval_minutes` from SystemConfig)
 
 ### Common Tasks
 

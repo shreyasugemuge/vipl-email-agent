@@ -16,6 +16,21 @@
             <input type="hidden" name="bulk" value="true">
         </form>
     </div>
+    <div class="px-4 py-2 bg-white border-b border-slate-200/40 flex items-center gap-2 flex-wrap">
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Presets:</span>
+        <button type="button" onclick="applySLAPreset('standard')"
+                class="px-2.5 py-1 text-[10px] font-semibold text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors">
+            Standard
+        </button>
+        <button type="button" onclick="applySLAPreset('aggressive')"
+                class="px-2.5 py-1 text-[10px] font-semibold text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors">
+            Aggressive
+        </button>
+        <button type="button" onclick="applySLAPreset('relaxed')"
+                class="px-2.5 py-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">
+            Relaxed
+        </button>
+    </div>
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead>
@@ -62,3 +77,27 @@
         </table>
     </div>
 </div>
+
+<script>
+function applySLAPreset(preset) {
+    var presets = {
+        standard: {CRITICAL: {ack: 1, respond: 4}, HIGH: {ack: 2, respond: 8}, MEDIUM: {ack: 4, respond: 24}, LOW: {ack: 8, respond: 48}},
+        aggressive: {CRITICAL: {ack: 0.5, respond: 2}, HIGH: {ack: 1, respond: 4}, MEDIUM: {ack: 2, respond: 12}, LOW: {ack: 4, respond: 24}},
+        relaxed: {CRITICAL: {ack: 2, respond: 8}, HIGH: {ack: 4, respond: 16}, MEDIUM: {ack: 8, respond: 48}, LOW: {ack: 16, respond: 72}}
+    };
+    var values = presets[preset];
+    if (!values) return;
+
+    document.querySelectorAll('#sla-matrix table tbody tr').forEach(function(row) {
+        var priorityInput = row.querySelector('input[name="priority"]');
+        if (!priorityInput) return;
+        var priority = priorityInput.value;
+        if (values[priority]) {
+            var ackInput = row.querySelector('input[name="ack_hours"]');
+            var respondInput = row.querySelector('input[name="respond_hours"]');
+            if (ackInput) ackInput.value = values[priority].ack;
+            if (respondInput) respondInput.value = values[priority].respond;
+        }
+    });
+}
+</script>

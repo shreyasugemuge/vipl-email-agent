@@ -9,26 +9,7 @@ from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.emails.models import Email, ActivityLog
-
-
-def _create_email(db, **overrides):
-    """Helper to create a completed Email record with sensible defaults."""
-    defaults = {
-        "message_id": f"msg_{id(overrides)}_{overrides.get('subject', 'test')}",
-        "from_address": "sender@example.com",
-        "from_name": "Test Sender",
-        "to_inbox": "info@vidarbhainfotech.com",
-        "subject": "Test Subject",
-        "body": "Test body",
-        "received_at": datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc),
-        "category": "General Inquiry",
-        "priority": "MEDIUM",
-        "ai_summary": "This is a test email summary.",
-        "processing_status": Email.ProcessingStatus.COMPLETED,
-        "status": Email.Status.NEW,
-    }
-    defaults.update(overrides)
-    return Email.objects.create(**defaults)
+from conftest import create_email
 
 
 # ===========================================================================
@@ -44,7 +25,7 @@ class TestAssignEmail:
         """Test 1: assign_email sets assigned_to, assigned_by, assigned_at."""
         from apps.emails.services.assignment import assign_email
 
-        email = _create_email(None, message_id="msg_assign_1")
+        email = create_email(message_id="msg_assign_1")
         result = assign_email(email, member_user, admin_user)
 
         result.refresh_from_db()
@@ -56,7 +37,7 @@ class TestAssignEmail:
         """Test 2: assign_email creates ActivityLog with action=ASSIGNED."""
         from apps.emails.services.assignment import assign_email
 
-        email = _create_email(None, message_id="msg_assign_2")
+        email = create_email(message_id="msg_assign_2")
         assign_email(email, member_user, admin_user)
 
         log = ActivityLog.objects.filter(email=email).first()
@@ -73,7 +54,7 @@ class TestAssignEmail:
             email="other@vidarbhainfotech.com",
             first_name="Other", last_name="User",
         )
-        email = _create_email(None, message_id="msg_assign_3", assigned_to=other_user)
+        email = create_email(message_id="msg_assign_3", assigned_to=other_user)
         assign_email(email, member_user, admin_user)
 
         log = ActivityLog.objects.filter(email=email, action=ActivityLog.Action.REASSIGNED).first()
@@ -85,7 +66,7 @@ class TestAssignEmail:
         """Test 4: assign_email with note stores note in ActivityLog.detail."""
         from apps.emails.services.assignment import assign_email
 
-        email = _create_email(None, message_id="msg_assign_4")
+        email = create_email(message_id="msg_assign_4")
         assign_email(email, member_user, admin_user, note="Please handle urgently")
 
         log = ActivityLog.objects.filter(email=email).first()
@@ -97,7 +78,7 @@ class TestAssignEmail:
         """Test 5: assign_email calls _send_assignment_chat."""
         from apps.emails.services.assignment import assign_email
 
-        email = _create_email(None, message_id="msg_assign_5")
+        email = create_email(message_id="msg_assign_5")
         assign_email(email, member_user, admin_user)
 
         mock_send_chat.assert_called_once_with(email, member_user)
@@ -114,7 +95,7 @@ class TestAssignEmail:
             defaults={"value": "true", "value_type": "bool"},
         )
 
-        email = _create_email(None, message_id="msg_assign_6")
+        email = create_email(message_id="msg_assign_6")
         assign_email(email, member_user, admin_user)
 
         mock_notify_email.assert_called_once()
@@ -128,7 +109,7 @@ class TestChangeStatus:
         """Test 7: change_status updates Email.status and creates ActivityLog."""
         from apps.emails.services.assignment import change_status
 
-        email = _create_email(None, message_id="msg_status_7", assigned_to=member_user)
+        email = create_email(message_id="msg_status_7", assigned_to=member_user)
         change_status(email, "acknowledged", member_user)
 
         email.refresh_from_db()
@@ -141,7 +122,7 @@ class TestChangeStatus:
         """Test 8: change_status with ACKNOWLEDGED sets correct status."""
         from apps.emails.services.assignment import change_status
 
-        email = _create_email(None, message_id="msg_status_8", assigned_to=member_user)
+        email = create_email(message_id="msg_status_8", assigned_to=member_user)
         change_status(email, "acknowledged", member_user)
 
         email.refresh_from_db()
@@ -151,8 +132,8 @@ class TestChangeStatus:
         """Test 9: change_status with CLOSED sets correct status."""
         from apps.emails.services.assignment import change_status
 
-        email = _create_email(
-            None, message_id="msg_status_9",
+        email = create_email(
+            message_id="msg_status_9",
             assigned_to=member_user,
             status=Email.Status.ACKNOWLEDGED,
         )
@@ -174,7 +155,7 @@ class TestChatNotifierAssignment:
 
         notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
 
-        email = _create_email(None, message_id="msg_chat_10", subject="Test assignment chat")
+        email = create_email(message_id="msg_chat_10", subject="Test assignment chat")
 
         with patch.object(notifier, "_is_quiet_hours", return_value=False):
             with patch.object(notifier, "_post", return_value=True) as mock_post:
@@ -193,7 +174,7 @@ class TestChatNotifierAssignment:
 
         notifier = ChatNotifier(webhook_url="https://chat.googleapis.com/test")
 
-        email = _create_email(None, message_id="msg_chat_11")
+        email = create_email(message_id="msg_chat_11")
 
         with patch.object(notifier, "_is_quiet_hours", return_value=True):
             with patch.object(notifier, "_post") as mock_post:
@@ -212,8 +193,8 @@ class TestNotifyAssignmentEmail:
         """Test 12: notify_assignment_email sends email with correct details."""
         from apps.emails.services.assignment import notify_assignment_email
 
-        email = _create_email(
-            None, message_id="msg_email_12",
+        email = create_email(
+            message_id="msg_email_12",
             subject="Important inquiry",
             ai_summary="Customer asking about pricing",
         )
@@ -256,7 +237,7 @@ class TestAssignEmailView:
 
     def test_non_admin_returns_403(self, member_client, member_user, admin_user):
         """View Test 1: Non-admin POST to assign returns 403."""
-        email = _create_email(None, message_id="msg_v_assign_1")
+        email = create_email(message_id="msg_v_assign_1")
         response = member_client.post(
             reverse("emails:assign_email", args=[email.pk]),
             {"assignee_id": admin_user.pk},
@@ -265,7 +246,7 @@ class TestAssignEmailView:
 
     def test_admin_assigns_successfully(self, admin_client, admin_user, member_user):
         """View Test 2: Admin POST to assign returns 200 and updates assignee."""
-        email = _create_email(None, message_id="msg_v_assign_2")
+        email = create_email(message_id="msg_v_assign_2")
         response = admin_client.post(
             reverse("emails:assign_email", args=[email.pk]),
             {"assignee_id": member_user.pk},
@@ -281,7 +262,7 @@ class TestChangeStatusView:
 
     def test_member_cannot_change_others_email(self, member_client, member_user, admin_user):
         """View Test 3: Member cannot change status on email not assigned to them."""
-        email = _create_email(None, message_id="msg_v_status_3", assigned_to=admin_user)
+        email = create_email(message_id="msg_v_status_3", assigned_to=admin_user)
         response = member_client.post(
             reverse("emails:change_status", args=[email.pk]),
             {"new_status": "acknowledged"},
@@ -290,7 +271,7 @@ class TestChangeStatusView:
 
     def test_member_acknowledges_own_email(self, member_client, member_user):
         """View Test 4: Member can acknowledge their own assigned email."""
-        email = _create_email(None, message_id="msg_v_status_4", assigned_to=member_user)
+        email = create_email(message_id="msg_v_status_4", assigned_to=member_user)
         response = member_client.post(
             reverse("emails:change_status", args=[email.pk]),
             {"new_status": "acknowledged"},
@@ -301,8 +282,8 @@ class TestChangeStatusView:
 
     def test_member_closes_own_email(self, member_client, member_user):
         """View Test 5: Member can close their own assigned email."""
-        email = _create_email(
-            None, message_id="msg_v_status_5",
+        email = create_email(
+            message_id="msg_v_status_5",
             assigned_to=member_user,
             status=Email.Status.ACKNOWLEDGED,
         )
@@ -316,7 +297,7 @@ class TestChangeStatusView:
 
     def test_admin_changes_any_email_status(self, admin_client, admin_user, member_user):
         """View Test 6: Admin can change status on any email."""
-        email = _create_email(None, message_id="msg_v_status_6", assigned_to=member_user)
+        email = create_email(message_id="msg_v_status_6", assigned_to=member_user)
         response = admin_client.post(
             reverse("emails:change_status", args=[email.pk]),
             {"new_status": "acknowledged"},
@@ -332,8 +313,8 @@ class TestEmailDetailView:
 
     def test_sanitizes_body_html(self, admin_client, admin_user):
         """View Test 7: body_html with script tags is sanitized."""
-        email = _create_email(
-            None, message_id="msg_v_detail_7",
+        email = create_email(
+            message_id="msg_v_detail_7",
             body_html="<p>Hello</p><script>alert('xss')</script><strong>safe</strong>",
         )
         response = admin_client.get(
@@ -347,8 +328,8 @@ class TestEmailDetailView:
 
     def test_returns_detail_with_activity_log(self, admin_client, admin_user, member_user):
         """View Test 8: email_detail returns email body, attachments, activity log."""
-        email = _create_email(
-            None, message_id="msg_v_detail_8",
+        email = create_email(
+            message_id="msg_v_detail_8",
             body="Detailed test body",
             subject="Detail test subject",
         )

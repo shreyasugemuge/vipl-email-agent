@@ -6,17 +6,7 @@ from unittest.mock import patch
 
 from apps.accounts.models import User
 from apps.emails.models import ActivityLog, CategoryVisibility, Email, Thread
-
-
-def _create_thread(db, **overrides):
-    """Helper to create a Thread record with sensible defaults."""
-    defaults = {
-        "gmail_thread_id": f"thread_{id(overrides)}",
-        "subject": "Test Thread Subject",
-        "status": Thread.Status.NEW,
-    }
-    defaults.update(overrides)
-    return Thread.objects.create(**defaults)
+from conftest import create_thread
 
 
 def _create_email_on_thread(thread, **overrides):
@@ -55,7 +45,7 @@ class TestAssignThread:
         """assign_thread sets assigned_to, assigned_by, assigned_at."""
         from apps.emails.services.assignment import assign_thread
 
-        thread = _create_thread(None, gmail_thread_id="t_assign_1")
+        thread = create_thread(gmail_thread_id="t_assign_1")
         result = assign_thread(thread, member_user, admin_user)
 
         result.refresh_from_db()
@@ -67,7 +57,7 @@ class TestAssignThread:
         """assign_thread creates ActivityLog with thread FK and ASSIGNED action."""
         from apps.emails.services.assignment import assign_thread
 
-        thread = _create_thread(None, gmail_thread_id="t_assign_2")
+        thread = create_thread(gmail_thread_id="t_assign_2")
         assign_thread(thread, member_user, admin_user)
 
         log = ActivityLog.objects.filter(thread=thread, action=ActivityLog.Action.ASSIGNED).first()
@@ -84,7 +74,7 @@ class TestAssignThread:
             email="other_t@vidarbhainfotech.com",
             first_name="Other", last_name="User",
         )
-        thread = _create_thread(None, gmail_thread_id="t_assign_3", assigned_to=other_user)
+        thread = create_thread(gmail_thread_id="t_assign_3", assigned_to=other_user)
         assign_thread(thread, member_user, admin_user)
 
         log = ActivityLog.objects.filter(thread=thread, action=ActivityLog.Action.REASSIGNED).first()
@@ -96,7 +86,7 @@ class TestAssignThread:
         """assign_thread fires Chat notification (mocked)."""
         from apps.emails.services.assignment import assign_thread
 
-        thread = _create_thread(None, gmail_thread_id="t_assign_4")
+        thread = create_thread(gmail_thread_id="t_assign_4")
         assign_thread(thread, member_user, admin_user)
 
         mock_send_chat.assert_called_once_with(thread, member_user)
@@ -112,7 +102,7 @@ class TestAssignThread:
             defaults={"value": "true", "value_type": "bool"},
         )
 
-        thread = _create_thread(None, gmail_thread_id="t_assign_5")
+        thread = create_thread(gmail_thread_id="t_assign_5")
         assign_thread(thread, member_user, admin_user)
 
         mock_notify_email.assert_called_once()
@@ -131,7 +121,7 @@ class TestChangeThreadStatus:
         """change_thread_status updates thread.status and creates ActivityLog."""
         from apps.emails.services.assignment import change_thread_status
 
-        thread = _create_thread(None, gmail_thread_id="t_status_1")
+        thread = create_thread(gmail_thread_id="t_status_1")
         change_thread_status(thread, "acknowledged", member_user)
 
         thread.refresh_from_db()
@@ -141,7 +131,7 @@ class TestChangeThreadStatus:
         """change_thread_status with 'acknowledged' creates ACKNOWLEDGED activity."""
         from apps.emails.services.assignment import change_thread_status
 
-        thread = _create_thread(None, gmail_thread_id="t_status_2")
+        thread = create_thread(gmail_thread_id="t_status_2")
         change_thread_status(thread, "acknowledged", member_user)
 
         log = ActivityLog.objects.filter(thread=thread, action=ActivityLog.Action.ACKNOWLEDGED).first()
@@ -151,7 +141,7 @@ class TestChangeThreadStatus:
         """change_thread_status with 'closed' creates CLOSED activity."""
         from apps.emails.services.assignment import change_thread_status
 
-        thread = _create_thread(None, gmail_thread_id="t_status_3", status=Thread.Status.ACKNOWLEDGED)
+        thread = create_thread(gmail_thread_id="t_status_3", status=Thread.Status.ACKNOWLEDGED)
         change_thread_status(thread, "closed", member_user)
 
         thread.refresh_from_db()
@@ -163,7 +153,7 @@ class TestChangeThreadStatus:
         """change_thread_status raises ValueError for invalid status."""
         from apps.emails.services.assignment import change_thread_status
 
-        thread = _create_thread(None, gmail_thread_id="t_status_4")
+        thread = create_thread(gmail_thread_id="t_status_4")
 
         with pytest.raises(ValueError, match="Invalid status"):
             change_thread_status(thread, "bogus_status", member_user)
@@ -182,7 +172,7 @@ class TestClaimThread:
         """claim_thread raises ValueError if thread already assigned."""
         from apps.emails.services.assignment import claim_thread
 
-        thread = _create_thread(None, gmail_thread_id="t_claim_1", assigned_to=admin_user)
+        thread = create_thread(gmail_thread_id="t_claim_1", assigned_to=admin_user)
 
         with pytest.raises(ValueError, match="already assigned"):
             claim_thread(thread, member_user)
@@ -191,7 +181,7 @@ class TestClaimThread:
         """claim_thread raises PermissionError if member lacks CategoryVisibility."""
         from apps.emails.services.assignment import claim_thread
 
-        thread = _create_thread(None, gmail_thread_id="t_claim_2", category="Sales Lead")
+        thread = create_thread(gmail_thread_id="t_claim_2", category="Sales Lead")
 
         with pytest.raises(PermissionError, match="visibility"):
             claim_thread(thread, member_user)
@@ -200,7 +190,7 @@ class TestClaimThread:
         """Admin can claim without CategoryVisibility."""
         from apps.emails.services.assignment import claim_thread
 
-        thread = _create_thread(None, gmail_thread_id="t_claim_3", category="Sales Lead")
+        thread = create_thread(gmail_thread_id="t_claim_3", category="Sales Lead")
 
         result = claim_thread(thread, admin_user)
         result.refresh_from_db()
@@ -211,7 +201,7 @@ class TestClaimThread:
         from apps.emails.services.assignment import claim_thread
 
         CategoryVisibility.objects.create(user=member_user, category="Sales Lead")
-        thread = _create_thread(None, gmail_thread_id="t_claim_4", category="Sales Lead")
+        thread = create_thread(gmail_thread_id="t_claim_4", category="Sales Lead")
 
         claim_thread(thread, member_user)
 
@@ -232,7 +222,7 @@ class TestUpdateThreadPreview:
         """update_thread_preview sets last_message_at, last_sender, last_sender_address from latest email."""
         from apps.emails.services.assignment import update_thread_preview
 
-        thread = _create_thread(None, gmail_thread_id="t_preview_1")
+        thread = create_thread(gmail_thread_id="t_preview_1")
         _create_email_on_thread(
             thread,
             message_id="msg_preview_1a",
@@ -259,7 +249,7 @@ class TestUpdateThreadPreview:
         """update_thread_preview sets subject from earliest email in thread."""
         from apps.emails.services.assignment import update_thread_preview
 
-        thread = _create_thread(None, gmail_thread_id="t_preview_2", subject="")
+        thread = create_thread(gmail_thread_id="t_preview_2", subject="")
         _create_email_on_thread(
             thread,
             message_id="msg_preview_2a",
@@ -282,7 +272,7 @@ class TestUpdateThreadPreview:
         """update_thread_preview updates category/priority/ai_summary/ai_draft_reply from latest triaged email."""
         from apps.emails.services.assignment import update_thread_preview
 
-        thread = _create_thread(None, gmail_thread_id="t_preview_3")
+        thread = create_thread(gmail_thread_id="t_preview_3")
         _create_email_on_thread(
             thread,
             message_id="msg_preview_3a",
@@ -316,7 +306,7 @@ class TestUpdateThreadPreview:
         """update_thread_preview handles thread with no emails gracefully (no-op)."""
         from apps.emails.services.assignment import update_thread_preview
 
-        thread = _create_thread(None, gmail_thread_id="t_preview_4")
+        thread = create_thread(gmail_thread_id="t_preview_4")
 
         result = update_thread_preview(thread)
         assert result is None

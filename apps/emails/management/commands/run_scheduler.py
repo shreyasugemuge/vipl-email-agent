@@ -167,6 +167,21 @@ class Command(BaseCommand):
         chat_notifier = ChatNotifier(webhook_url=webhook_url)
         state_manager = StateManager()
 
+        # Restore last_poll_epoch from SystemConfig for deploy safety.
+        # Without this, a restart would re-fetch the last 5 emails (first-poll
+        # behavior) and re-triage them, wasting Claude API calls.
+        saved_epoch = SystemConfig.get("last_poll_epoch", None)
+        if saved_epoch is not None:
+            try:
+                gmail_poller._start_epoch = int(saved_epoch)
+                gmail_poller._first_poll_done = True
+                logger.info(
+                    f"Restored last_poll_epoch={saved_epoch} from SystemConfig "
+                    f"— skipping first-poll catch-up"
+                )
+            except (ValueError, TypeError):
+                logger.warning("Invalid last_poll_epoch in SystemConfig, ignoring")
+
         # --once: run a single poll cycle and exit
         if run_once:
             from apps.emails.services.pipeline import process_poll_cycle

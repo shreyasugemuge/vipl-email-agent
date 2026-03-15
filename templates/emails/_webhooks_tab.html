@@ -18,15 +18,36 @@
         {% for item in category_webhooks %}
         <div class="flex items-center gap-3 px-3 py-2.5 bg-white rounded-lg border border-slate-200/60">
             <span class="text-[11px] font-bold text-slate-600 uppercase tracking-wide w-32 shrink-0">{{ item.category }}</span>
-            <input type="url" name="webhook_{{ item.category|lower }}"
-                   value="{{ item.webhook_url }}"
-                   placeholder="https://chat.googleapis.com/v1/spaces/..."
-                   class="flex-1 text-[11px] font-medium border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-primary-500/15 focus:border-primary-300 transition-all placeholder:text-slate-300">
-            {% if item.webhook_url %}
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="Configured"></span>
-            {% else %}
-            <span class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" title="Using global fallback"></span>
-            {% endif %}
+            <div class="flex-1 min-w-0">
+                <!-- Masked display (shown by default) -->
+                <div class="webhook-masked flex items-center gap-2" id="masked-{{ item.category|lower }}">
+                    <input type="hidden" name="webhook_{{ item.category|lower }}" value="{{ item.webhook_url }}">
+                    {% if item.webhook_url %}
+                    <span class="text-[11px] font-mono text-slate-500 truncate">{{ item.webhook_url|truncatechars:25 }}****{{ item.webhook_url|slice:"-4:" }}</span>
+                    <svg class="w-3.5 h-3.5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    {% else %}
+                    <span class="text-[11px] text-slate-400 italic">Not configured</span>
+                    <svg class="w-3.5 h-3.5 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                    {% endif %}
+                    <button type="button" onclick="toggleWebhookReveal('{{ item.category|lower }}')"
+                            class="text-[10px] font-semibold text-primary-500 hover:text-primary-700 transition-colors">
+                        Reveal
+                    </button>
+                </div>
+                <!-- Actual input (hidden by default) -->
+                <div class="webhook-input hidden" id="input-{{ item.category|lower }}">
+                    <div class="flex items-center gap-2">
+                        <input type="url" name="webhook_{{ item.category|lower }}"
+                               value="{{ item.webhook_url }}" disabled
+                               placeholder="https://chat.googleapis.com/v1/spaces/..."
+                               class="flex-1 text-[11px] font-medium border border-slate-200 rounded-md px-2.5 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-primary-500/15 focus:border-primary-300 transition-all placeholder:text-slate-300">
+                        <button type="button" onclick="toggleWebhookReveal('{{ item.category|lower }}')"
+                                class="text-[10px] font-semibold text-slate-400 hover:text-slate-600 transition-colors">
+                            Hide
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
         {% endfor %}
 
@@ -37,3 +58,26 @@
         </div>
     </form>
 </div>
+
+<script>
+function toggleWebhookReveal(category) {
+    var masked = document.getElementById('masked-' + category);
+    var input = document.getElementById('input-' + category);
+    var hiddenInput = masked.querySelector('input[type="hidden"]');
+    var visibleInput = input.querySelector('input[type="url"]');
+
+    if (input.classList.contains('hidden')) {
+        // Revealing: disable hidden input so only the visible one submits
+        if (hiddenInput) hiddenInput.disabled = true;
+        if (visibleInput) visibleInput.disabled = false;
+    } else {
+        // Hiding: sync value back and re-enable hidden input
+        if (hiddenInput && visibleInput) hiddenInput.value = visibleInput.value;
+        if (hiddenInput) hiddenInput.disabled = false;
+        if (visibleInput) visibleInput.disabled = true;
+    }
+
+    masked.classList.toggle('hidden');
+    input.classList.toggle('hidden');
+}
+</script>

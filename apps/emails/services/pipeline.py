@@ -9,6 +9,7 @@ Safety: label-after-persist (Gmail label only applied after DB write succeeds)
 """
 
 import logging
+import time
 from datetime import timedelta
 from typing import Optional
 
@@ -389,6 +390,22 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
                     logger.error(f"Cross-inbox dup notification failed: {e_err}")
 
         state_manager.reset_failures()
+
+        # Persist last_poll_epoch so restarts skip first-poll catch-up
+        try:
+            now_epoch = str(int(time.time()))
+            SystemConfig.objects.update_or_create(
+                key="last_poll_epoch",
+                defaults={
+                    "value": now_epoch,
+                    "value_type": SystemConfig.ValueType.INT,
+                    "description": "Epoch timestamp of last successful poll cycle (deploy safety)",
+                    "category": "scheduler",
+                },
+            )
+        except Exception as cfg_err:
+            logger.warning(f"Failed to persist last_poll_epoch: {cfg_err}")
+
         logger.info(f"Poll cycle complete: {len(processed_items)} email(s) processed")
 
     except Exception as e:

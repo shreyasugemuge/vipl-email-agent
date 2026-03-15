@@ -43,20 +43,32 @@
                         <span class="text-xs text-slate-600">{% if cfg.typed_value %}Enabled{% else %}Disabled{% endif %}</span>
                     </label>
                     {% elif cfg.value_type == "json" %}
-                    <textarea name="config_{{ cfg.key }}" id="config_{{ cfg.key }}" rows="3"
-                              class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none w-full font-mono">{{ cfg.value }}</textarea>
+                    <div class="flex items-start gap-1 w-full">
+                        <textarea name="config_{{ cfg.key }}" id="config_{{ cfg.key }}" rows="3"
+                                  class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none w-full font-mono">{{ cfg.value }}</textarea>
+                        <span class="config-validation text-xs ml-1 text-transparent select-none" aria-hidden="true">-</span>
+                    </div>
                     {% elif cfg.value_type == "int" %}
-                    <input type="number" name="config_{{ cfg.key }}" value="{{ cfg.value }}" step="1"
-                           id="config_{{ cfg.key }}"
-                           class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none max-w-xs">
+                    <div class="flex items-center gap-1">
+                        <input type="number" name="config_{{ cfg.key }}" value="{{ cfg.value }}" step="1"
+                               id="config_{{ cfg.key }}"
+                               class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none max-w-xs">
+                        <span class="config-validation text-xs ml-1 text-transparent select-none" aria-hidden="true">-</span>
+                    </div>
                     {% elif cfg.value_type == "float" %}
-                    <input type="number" name="config_{{ cfg.key }}" value="{{ cfg.value }}" step="0.1"
-                           id="config_{{ cfg.key }}"
-                           class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none max-w-xs">
+                    <div class="flex items-center gap-1">
+                        <input type="number" name="config_{{ cfg.key }}" value="{{ cfg.value }}" step="0.1"
+                               id="config_{{ cfg.key }}"
+                               class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none max-w-xs">
+                        <span class="config-validation text-xs ml-1 text-transparent select-none" aria-hidden="true">-</span>
+                    </div>
                     {% else %}
-                    <input type="text" name="config_{{ cfg.key }}" value="{{ cfg.value }}"
-                           id="config_{{ cfg.key }}"
-                           class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none w-full">
+                    <div class="flex items-center gap-1 w-full">
+                        <input type="text" name="config_{{ cfg.key }}" value="{{ cfg.value }}"
+                               id="config_{{ cfg.key }}"
+                               class="text-sm border border-slate-200/80 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-300 outline-none w-full">
+                        <span class="config-validation text-xs ml-1 text-transparent select-none" aria-hidden="true">-</span>
+                    </div>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -77,3 +89,28 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('input', function(e) {
+    var input = e.target;
+    if (!input.closest('#config-editor')) return;
+    var indicator = input.parentElement.querySelector('.config-validation');
+    if (!indicator) return;
+
+    var type = input.type;
+    var valid = true;
+
+    if (type === 'number') {
+        valid = input.value !== '' && !isNaN(Number(input.value));
+    } else if (type === 'url') {
+        try { new URL(input.value); valid = true; } catch(ex) { valid = input.value === ''; }
+    } else if (input.tagName === 'TEXTAREA') {
+        try { if (input.value.trim()) JSON.parse(input.value); valid = true; } catch(ex) { valid = false; }
+    } else {
+        valid = input.value.trim() !== '';
+    }
+
+    indicator.textContent = valid ? '\u2713' : '\u2717';
+    indicator.className = 'config-validation text-xs ml-1 select-none ' + (valid ? 'text-emerald-500' : 'text-red-400');
+});
+</script>

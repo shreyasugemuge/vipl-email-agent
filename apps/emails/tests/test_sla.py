@@ -7,30 +7,10 @@ from zoneinfo import ZoneInfo
 
 from apps.accounts.models import User
 from apps.emails.models import Email, SLAConfig, ActivityLog
+from conftest import create_email
 
 
 IST = ZoneInfo("Asia/Kolkata")
-
-
-def _create_email(db, **overrides):
-    """Helper to create an Email record."""
-    from datetime import timezone
-
-    defaults = {
-        "message_id": f"msg_sla_{id(overrides)}",
-        "from_address": "sender@example.com",
-        "from_name": "Test Sender",
-        "to_inbox": "info@vidarbhainfotech.com",
-        "subject": "Test Subject",
-        "body": "Test body",
-        "received_at": datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc),
-        "category": "General Inquiry",
-        "priority": "MEDIUM",
-        "processing_status": Email.ProcessingStatus.COMPLETED,
-        "status": Email.Status.NEW,
-    }
-    defaults.update(overrides)
-    return Email.objects.create(**defaults)
 
 
 # ===========================================================================
@@ -198,8 +178,7 @@ class TestSetSLADeadlines:
             priority="MEDIUM", category="General Inquiry",
             ack_hours=0.5, respond_hours=4.0,
         )
-        email = _create_email(
-            None,
+        email = create_email(
             message_id="msg_sla_config_1",
             received_at=datetime(2026, 3, 11, 10, 0, 0, tzinfo=IST),
         )
@@ -212,8 +191,7 @@ class TestSetSLADeadlines:
         """Uses fallback defaults when no SLAConfig found."""
         from apps.emails.services.sla import set_sla_deadlines
 
-        email = _create_email(
-            None,
+        email = create_email(
             message_id="msg_sla_fallback_1",
             priority="HIGH",
             category="Sales Lead",
@@ -228,8 +206,7 @@ class TestSetSLADeadlines:
         """Does not set deadlines for spam emails."""
         from apps.emails.services.sla import set_sla_deadlines
 
-        email = _create_email(
-            None,
+        email = create_email(
             message_id="msg_sla_spam_1",
             is_spam=True,
             received_at=datetime(2026, 3, 11, 10, 0, 0, tzinfo=IST),
@@ -255,8 +232,7 @@ class TestBreachDetection:
         from django.utils import timezone as tz
 
         past = tz.now() - timedelta(hours=2)
-        email = _create_email(
-            None,
+        email = create_email(
             message_id="msg_breach_1",
             sla_respond_deadline=past,
         )
@@ -269,8 +245,7 @@ class TestBreachDetection:
         from django.utils import timezone as tz
 
         past = tz.now() - timedelta(hours=2)
-        email = _create_email(
-            None,
+        email = create_email(
             message_id="msg_breach_2",
             sla_respond_deadline=past,
             status=Email.Status.CLOSED,
@@ -284,8 +259,7 @@ class TestBreachDetection:
         from django.utils import timezone as tz
 
         past = tz.now() - timedelta(hours=2)
-        email = _create_email(
-            None,
+        email = create_email(
             message_id="msg_breach_3",
             sla_respond_deadline=past,
             is_spam=True,
@@ -299,8 +273,7 @@ class TestBreachDetection:
         from django.utils import timezone as tz
 
         past = tz.now() - timedelta(hours=2)
-        email = _create_email(
-            None,
+        email = create_email(
             message_id="msg_breach_4",
             sla_ack_deadline=past,
         )
@@ -327,8 +300,7 @@ class TestBreachSummary:
             first_name="Alice", last_name="Dev",
         )
         past = tz.now() - timedelta(hours=3)
-        e1 = _create_email(
-            None, message_id="msg_summary_1",
+        e1 = create_email( message_id="msg_summary_1",
             sla_respond_deadline=past, assigned_to=user, priority="HIGH",
         )
 
@@ -356,8 +328,7 @@ class TestBreachSummary:
         # Create 4 breached emails with different overdue amounts
         emails = []
         for i, hours_overdue in enumerate([1, 5, 2, 10]):
-            e = _create_email(
-                None,
+            e = create_email(
                 message_id=f"msg_top_{i}",
                 sla_respond_deadline=now - timedelta(hours=hours_overdue),
                 assigned_to=user,
@@ -384,8 +355,7 @@ class TestBreachSummary:
             first_name="Pk", last_name="One",
         )
         past = tz.now() - timedelta(hours=2)
-        e1 = _create_email(
-            None, message_id="msg_pk_entry_1",
+        e1 = create_email( message_id="msg_pk_entry_1",
             sla_respond_deadline=past, assigned_to=user, priority="HIGH",
         )
 
@@ -406,8 +376,7 @@ class TestBreachSummary:
             username="member_pk2", password="pass", email="pk2@vidarbhainfotech.com",
         )
         past = tz.now() - timedelta(hours=3)
-        e1 = _create_email(
-            None, message_id="msg_pk_top_1",
+        e1 = create_email( message_id="msg_pk_top_1",
             sla_respond_deadline=past, assigned_to=user, priority="HIGH",
         )
 
@@ -431,9 +400,9 @@ class TestBreachSummary:
             username="bob_g", password="pass", first_name="Bob", last_name="G",
         )
         past = tz.now() - timedelta(hours=2)
-        _create_email(None, message_id="msg_grp_1", sla_respond_deadline=past, assigned_to=u1)
-        _create_email(None, message_id="msg_grp_2", sla_respond_deadline=past, assigned_to=u1)
-        _create_email(None, message_id="msg_grp_3", sla_respond_deadline=past, assigned_to=u2)
+        create_email(message_id="msg_grp_1", sla_respond_deadline=past, assigned_to=u1)
+        create_email(message_id="msg_grp_2", sla_respond_deadline=past, assigned_to=u1)
+        create_email(message_id="msg_grp_3", sla_respond_deadline=past, assigned_to=u2)
 
         respond_qs = Email.objects.filter(message_id__startswith="msg_grp_")
         summary = build_breach_summary(respond_qs, Email.objects.none())
@@ -459,8 +428,7 @@ class TestCheckAndEscalate:
         from django.utils import timezone as tz
 
         past = tz.now() - timedelta(hours=2)
-        email = _create_email(
-            None, message_id="msg_esc_1",
+        email = create_email( message_id="msg_esc_1",
             sla_respond_deadline=past, priority="MEDIUM",
         )
 
@@ -475,8 +443,7 @@ class TestCheckAndEscalate:
         from django.utils import timezone as tz
 
         past = tz.now() - timedelta(hours=2)
-        email = _create_email(
-            None, message_id="msg_esc_2",
+        email = create_email( message_id="msg_esc_2",
             sla_respond_deadline=past, priority="CRITICAL",
         )
 
@@ -491,8 +458,7 @@ class TestCheckAndEscalate:
         from django.utils import timezone as tz
 
         past = tz.now() - timedelta(hours=2)
-        email = _create_email(
-            None, message_id="msg_esc_3",
+        email = create_email( message_id="msg_esc_3",
             sla_respond_deadline=past, priority="MEDIUM",
         )
 
@@ -515,8 +481,7 @@ class TestCheckAndEscalate:
         from django.utils import timezone as tz
 
         past = tz.now() - timedelta(hours=2)
-        email = _create_email(
-            None, message_id="msg_esc_4",
+        email = create_email( message_id="msg_esc_4",
             sla_respond_deadline=past, priority="LOW",
         )
 
@@ -674,8 +639,8 @@ class TestBreachNotificationFlow:
         )
 
         past = tz.now() - timedelta(hours=2)
-        _create_email(None, message_id="msg_flow_1", sla_respond_deadline=past, assigned_to=u1, priority="MEDIUM")
-        _create_email(None, message_id="msg_flow_2", sla_respond_deadline=past, assigned_to=u2, priority="MEDIUM")
+        create_email(message_id="msg_flow_1", sla_respond_deadline=past, assigned_to=u1, priority="MEDIUM")
+        create_email(message_id="msg_flow_2", sla_respond_deadline=past, assigned_to=u2, priority="MEDIUM")
 
         mock_notifier = MagicMock()
         mock_notifier.notify_breach_summary.return_value = True

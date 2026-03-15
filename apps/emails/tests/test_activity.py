@@ -7,26 +7,7 @@ from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.emails.models import Email, ActivityLog
-
-
-def _create_email(db, **overrides):
-    """Helper to create a completed Email record with sensible defaults."""
-    defaults = {
-        "message_id": f"msg_{id(overrides)}_{overrides.get('subject', 'test')}",
-        "from_address": "sender@example.com",
-        "from_name": "Test Sender",
-        "to_inbox": "info@vidarbhainfotech.com",
-        "subject": "Test Subject",
-        "body": "Test body",
-        "received_at": datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc),
-        "category": "General Inquiry",
-        "priority": "MEDIUM",
-        "ai_summary": "This is a test email summary.",
-        "processing_status": Email.ProcessingStatus.COMPLETED,
-        "status": Email.Status.NEW,
-    }
-    defaults.update(overrides)
-    return Email.objects.create(**defaults)
+from conftest import create_email
 
 
 @pytest.fixture
@@ -57,7 +38,7 @@ class TestActivityLogView:
 
     def test_shows_activity_entries(self, admin_client, admin_user):
         """Test 2: activity_log shows entries with user, action, email subject, timestamp."""
-        email = _create_email(None, message_id="msg_act_1", subject="Important RFQ")
+        email = create_email(message_id="msg_act_1", subject="Important RFQ")
         ActivityLog.objects.create(
             email=email,
             user=admin_user,
@@ -76,7 +57,7 @@ class TestActivityLogView:
 
     def test_paginates_at_50_entries(self, admin_client, admin_user):
         """Test 3: activity_log paginates at 50 entries per page."""
-        email = _create_email(None, message_id="msg_act_pag")
+        email = create_email(message_id="msg_act_pag")
         for i in range(55):
             ActivityLog.objects.create(
                 email=email,
@@ -111,7 +92,7 @@ class TestActivityLogView:
 
     def test_entries_ordered_newest_first(self, admin_client, admin_user):
         """Test 6: entries ordered by -created_at (newest first)."""
-        email = _create_email(None, message_id="msg_act_ord")
+        email = create_email(message_id="msg_act_ord")
         log1 = ActivityLog.objects.create(
             email=email,
             user=admin_user,

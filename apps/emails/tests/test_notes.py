@@ -7,17 +7,7 @@ from unittest.mock import patch, MagicMock
 from apps.accounts.models import User
 from apps.emails.models import ActivityLog, Email, Thread, InternalNote
 from apps.emails.services.assignment import parse_mentions, notify_mention
-
-
-def _create_thread(db, **overrides):
-    """Helper to create a Thread record with sensible defaults."""
-    defaults = {
-        "gmail_thread_id": f"thread_{id(overrides)}",
-        "subject": "Test Thread Subject",
-        "status": Thread.Status.NEW,
-    }
-    defaults.update(overrides)
-    return Thread.objects.create(**defaults)
+from conftest import create_thread
 
 
 def _create_user(db, username="testuser", **overrides):
@@ -42,7 +32,7 @@ class TestInternalNoteModel:
     """Test InternalNote creation, FK integrity, and soft delete."""
 
     def test_create_note(self):
-        thread = _create_thread(True, gmail_thread_id="t1")
+        thread = create_thread(gmail_thread_id="t1")
         author = _create_user(True, username="alice")
         note = InternalNote.objects.create(
             thread=thread,
@@ -55,7 +45,7 @@ class TestInternalNoteModel:
         assert note.body == "This is an internal note."
 
     def test_note_ordering_by_created_at(self):
-        thread = _create_thread(True, gmail_thread_id="t2")
+        thread = create_thread(gmail_thread_id="t2")
         author = _create_user(True, username="bob")
         note1 = InternalNote.objects.create(thread=thread, author=author, body="First")
         note2 = InternalNote.objects.create(thread=thread, author=author, body="Second")
@@ -64,13 +54,13 @@ class TestInternalNoteModel:
         assert notes[1].pk == note2.pk
 
     def test_note_reverse_relation(self):
-        thread = _create_thread(True, gmail_thread_id="t3")
+        thread = create_thread(gmail_thread_id="t3")
         author = _create_user(True, username="carol")
         InternalNote.objects.create(thread=thread, author=author, body="A note")
         assert thread.notes.count() == 1
 
     def test_note_mentioned_users_m2m(self):
-        thread = _create_thread(True, gmail_thread_id="t4")
+        thread = create_thread(gmail_thread_id="t4")
         author = _create_user(True, username="dave")
         mentioned = _create_user(True, username="eve")
         note = InternalNote.objects.create(thread=thread, author=author, body="@eve check this")
@@ -78,7 +68,7 @@ class TestInternalNoteModel:
         assert mentioned in note.mentioned_users.all()
 
     def test_note_soft_delete(self):
-        thread = _create_thread(True, gmail_thread_id="t5")
+        thread = create_thread(gmail_thread_id="t5")
         author = _create_user(True, username="frank")
         note = InternalNote.objects.create(thread=thread, author=author, body="To be deleted")
         note.delete()
@@ -86,7 +76,7 @@ class TestInternalNoteModel:
         assert InternalNote.all_objects.count() == 1
 
     def test_note_str(self):
-        thread = _create_thread(True, gmail_thread_id="t6")
+        thread = create_thread(gmail_thread_id="t6")
         author = _create_user(True, username="grace")
         note = InternalNote.objects.create(thread=thread, author=author, body="Test")
         assert "grace" in str(note).lower() or "Grace" in str(note)
@@ -161,7 +151,7 @@ class TestNotifyMention:
     @patch("apps.emails.services.assignment.ChatNotifier")
     @patch("apps.emails.services.assignment.send_mail")
     def test_notify_mention_sends_chat(self, mock_send_mail, mock_chat_cls):
-        thread = _create_thread(True, gmail_thread_id="t_notify1")
+        thread = create_thread(gmail_thread_id="t_notify1")
         author = _create_user(True, username="alice")
         mentioned = _create_user(True, username="bob")
 
@@ -177,7 +167,7 @@ class TestNotifyMention:
     @patch("apps.emails.services.assignment.ChatNotifier")
     @patch("apps.emails.services.assignment.send_mail")
     def test_notify_mention_sends_email(self, mock_send_mail, mock_chat_cls):
-        thread = _create_thread(True, gmail_thread_id="t_notify2")
+        thread = create_thread(gmail_thread_id="t_notify2")
         author = _create_user(True, username="charlie")
         mentioned = _create_user(True, username="diana", email="diana@vidarbhainfotech.com")
 
@@ -196,7 +186,7 @@ class TestNotifyMention:
         mock_chat_cls.side_effect = Exception("Chat down")
         mock_send_mail.side_effect = Exception("Email down")
 
-        thread = _create_thread(True, gmail_thread_id="t_notify3")
+        thread = create_thread(gmail_thread_id="t_notify3")
         author = _create_user(True, username="eric")
         mentioned = _create_user(True, username="fiona")
 

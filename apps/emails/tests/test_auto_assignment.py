@@ -9,25 +9,7 @@ from django.db import IntegrityError
 
 from apps.accounts.models import User
 from apps.emails.models import ActivityLog, AssignmentRule, CategoryVisibility, Email, SLAConfig
-
-
-def _create_email(db, **overrides):
-    """Helper to create an Email record."""
-    defaults = {
-        "message_id": f"msg_auto_{id(overrides)}",
-        "from_address": "sender@example.com",
-        "from_name": "Test Sender",
-        "to_inbox": "info@vidarbhainfotech.com",
-        "subject": "Test Subject",
-        "body": "Test body",
-        "received_at": datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc),
-        "category": "Sales Lead",
-        "priority": "MEDIUM",
-        "processing_status": Email.ProcessingStatus.COMPLETED,
-        "status": Email.Status.NEW,
-    }
-    defaults.update(overrides)
-    return Email.objects.create(**defaults)
+from conftest import create_email
 
 
 # ===========================================================================
@@ -154,7 +136,7 @@ class TestAutoAssignBatch:
         AssignmentRule.objects.create(
             category="Sales Lead", assignee=member_user, priority_order=1,
         )
-        email = _create_email(None, message_id="msg_batch_1")
+        email = create_email(category="Sales Lead", message_id="msg_batch_1")
 
         count = auto_assign_batch()
 
@@ -166,7 +148,7 @@ class TestAutoAssignBatch:
         """Skips emails with no matching assignment rule."""
         from apps.emails.services.assignment import auto_assign_batch
 
-        email = _create_email(None, message_id="msg_batch_2", category="Vendor")
+        email = create_email(message_id="msg_batch_2", category="Vendor")
 
         count = auto_assign_batch()
 
@@ -181,7 +163,7 @@ class TestAutoAssignBatch:
         AssignmentRule.objects.create(
             category="Sales Lead", assignee=member_user, priority_order=1,
         )
-        email = _create_email(None, message_id="msg_batch_3", assigned_to=admin_user)
+        email = create_email(category="Sales Lead", message_id="msg_batch_3", assigned_to=admin_user)
 
         count = auto_assign_batch()
 
@@ -203,7 +185,7 @@ class TestAutoAssignBatch:
         AssignmentRule.objects.create(
             category="Sales Lead", assignee=member_user, priority_order=1,
         )
-        email = _create_email(None, message_id="msg_batch_4")
+        email = create_email(category="Sales Lead", message_id="msg_batch_4")
 
         auto_assign_batch()
 
@@ -219,7 +201,7 @@ class TestAutoAssignBatch:
         AssignmentRule.objects.create(
             category="Sales Lead", assignee=member_user, priority_order=1,
         )
-        email = _create_email(None, message_id="msg_batch_5")
+        email = create_email(category="Sales Lead", message_id="msg_batch_5")
 
         count = auto_assign_batch()
 
@@ -235,7 +217,7 @@ class TestAutoAssignBatch:
             category="Sales Lead", assignee=member_user,
             priority_order=1, is_active=False,
         )
-        email = _create_email(None, message_id="msg_batch_6")
+        email = create_email(category="Sales Lead", message_id="msg_batch_6")
 
         count = auto_assign_batch()
 
@@ -250,7 +232,7 @@ class TestAutoAssignBatch:
         AssignmentRule.objects.create(
             category="Sales Lead", assignee=member_user, priority_order=1,
         )
-        email = _create_email(None, message_id="msg_batch_7")
+        email = create_email(category="Sales Lead", message_id="msg_batch_7")
 
         auto_assign_batch()
 

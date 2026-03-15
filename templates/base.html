@@ -159,6 +159,8 @@
             {% endif %}
         </nav>
 
+        {% block sidebar_extra %}{% endblock %}
+
         <!-- User section at bottom -->
         <div class="px-2.5 py-2.5 border-t border-white/[0.06]">
             {% if user.is_authenticated %}
@@ -249,6 +251,34 @@
             setTimeout(function() { bar.className = ''; }, 500);
         });
     })();
+
+    /* Universal active state manager — fixes HTMX partial swap not updating sidebar */
+    function updateActiveStates() {
+        var params = new URLSearchParams(window.location.search);
+
+        // View links
+        var view = params.get('view') || '';
+        document.querySelectorAll('[data-view]').forEach(function(el) {
+            var isActive = el.dataset.view === view;
+            el.classList.toggle('view-active', isActive);
+            // Remove default inactive state when active
+            if (isActive) {
+                el.classList.remove('text-slate-400');
+            }
+        });
+
+        // Inbox pills
+        var inbox = params.get('inbox') || '';
+        document.querySelectorAll('[data-inbox]').forEach(function(el) {
+            var isActive = el.dataset.inbox === inbox;
+            el.classList.toggle('inbox-pill-active', isActive);
+            el.classList.toggle('inbox-pill-inactive', !isActive);
+        });
+    }
+
+    // Run on HTMX navigation and browser back/forward
+    document.addEventListener('htmx:pushedIntoHistory', updateActiveStates);
+    window.addEventListener('popstate', updateActiveStates);
     </script>
     {% block extra_js %}{% endblock %}
 

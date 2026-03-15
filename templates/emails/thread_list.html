@@ -7,17 +7,25 @@
 
 {% block extra_head %}
 <style>
-    /* Inner sidebar view links */
-    .view-link { transition: all 0.15s ease; }
-    .view-link:hover { background: #f1f5f9; }
-    .view-active { background: #fdf2f8; color: #8b2852; border-left: 2px solid #c94476; font-weight: 700; }
-    .view-active:hover { background: #fce7f1; }
+    /* Dark sidebar view links */
+    .sidebar-view-link { transition: all 0.15s ease; border-radius: 0.5rem; }
+    .sidebar-view-link:hover { background: rgba(255,255,255,0.06); }
+    .view-active { background: rgba(168,51,98,0.15) !important; color: white !important; }
+    .view-active .view-count { background: rgba(168,51,98,0.3); color: #f9a8d4; }
 
-    /* Inbox pill toggles */
+    /* Dark sidebar inbox pills */
     .inbox-pill { transition: all 0.15s ease; }
-    .inbox-pill-active { background: #fce7f1; color: #8b2852; }
-    .inbox-pill-inactive { background: #f1f5f9; color: #64748b; }
-    .inbox-pill-inactive:hover { background: #e2e8f0; color: #475569; }
+    .inbox-pill-active { background: rgba(168,51,98,0.2); color: #f9a8d4; }
+    .inbox-pill-inactive { background: rgba(255,255,255,0.06); color: #94a3b8; }
+    .inbox-pill-inactive:hover { background: rgba(255,255,255,0.1); color: #cbd5e1; }
+
+    /* Dark sidebar filter selects */
+    .dark-select {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: #cbd5e1;
+    }
+    .dark-select:focus { border-color: rgba(168,51,98,0.4); outline: none; }
 
     /* Filters section */
     .filter-section-toggle { cursor: pointer; user-select: none; }
@@ -26,200 +34,156 @@
 
     /* Thread list panel scroll */
     #thread-list-panel { scrollbar-width: thin; scrollbar-color: #e2e8f0 transparent; }
-
-    /* Inner sidebar toggle button (mobile) */
-    .inner-sidebar-toggle { display: none; }
-    @media (max-width: 1023px) {
-        .inner-sidebar-toggle { display: flex; }
-        .inner-sidebar { display: none; }
-        .inner-sidebar.sidebar-open { display: flex; position: fixed; top: 0; left: 0; bottom: 0; z-index: 60; width: 240px; }
-    }
 </style>
+{% endblock %}
+
+{% block sidebar_extra %}
+<!-- Divider -->
+<div class="mx-3 mt-2 border-t border-white/[0.06]"></div>
+
+<!-- Views -->
+<div class="px-2.5 pt-3 pb-1">
+    <p class="px-3 mb-2 text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em]">Views</p>
+    <nav class="space-y-0.5">
+        <a href="{% url 'emails:thread_list' %}?view=unassigned{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
+           hx-get="{% url 'emails:thread_list' %}?view=unassigned{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
+           hx-target="#thread-list-body" hx-push-url="true"
+           data-view="unassigned"
+           class="sidebar-view-link flex items-center justify-between px-3 py-1.5 text-[12px] font-medium text-slate-400
+                  {% if current_view == 'unassigned' %}view-active{% endif %}">
+            <span class="flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+                Unassigned
+            </span>
+            <span class="view-count text-[10px] font-bold text-slate-500 bg-white/[0.06] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.unassigned }}</span>
+        </a>
+        <a href="{% url 'emails:thread_list' %}?view=mine{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
+           hx-get="{% url 'emails:thread_list' %}?view=mine{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
+           hx-target="#thread-list-body" hx-push-url="true"
+           data-view="mine"
+           class="sidebar-view-link flex items-center justify-between px-3 py-1.5 text-[12px] font-medium text-slate-400
+                  {% if current_view == 'mine' %}view-active{% endif %}">
+            <span class="flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                Mine
+            </span>
+            <span class="view-count text-[10px] font-bold text-slate-500 bg-white/[0.06] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.mine }}</span>
+        </a>
+        <a href="{% url 'emails:thread_list' %}?view=all_open{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
+           hx-get="{% url 'emails:thread_list' %}?view=all_open{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
+           hx-target="#thread-list-body" hx-push-url="true"
+           data-view="all_open"
+           class="sidebar-view-link flex items-center justify-between px-3 py-1.5 text-[12px] font-medium text-slate-400
+                  {% if current_view == 'all_open' %}view-active{% endif %}">
+            <span class="flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                All Open
+            </span>
+            <span class="view-count text-[10px] font-bold text-slate-500 bg-white/[0.06] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.all_open }}</span>
+        </a>
+        <a href="{% url 'emails:thread_list' %}?view=closed{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
+           hx-get="{% url 'emails:thread_list' %}?view=closed{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
+           hx-target="#thread-list-body" hx-push-url="true"
+           data-view="closed"
+           class="sidebar-view-link flex items-center justify-between px-3 py-1.5 text-[12px] font-medium text-slate-400
+                  {% if current_view == 'closed' %}view-active{% endif %}">
+            <span class="flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Closed
+            </span>
+            <span class="view-count text-[10px] font-bold text-slate-500 bg-white/[0.06] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.closed }}</span>
+        </a>
+    </nav>
+</div>
+
+<!-- Inbox pills -->
+{% if inboxes %}
+<div class="px-2.5 py-2">
+    <p class="px-3 mb-2 text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em]">Inbox</p>
+    <div class="flex flex-wrap gap-1.5 px-2">
+        <a href="{% url 'emails:thread_list' %}?view={{ current_view }}"
+           hx-get="{% url 'emails:thread_list' %}?view={{ current_view }}"
+           hx-target="#thread-list-body" hx-push-url="true"
+           data-inbox=""
+           class="inbox-pill px-2.5 py-1 rounded-full text-[10px] font-semibold cursor-pointer
+                  {% if not current_inbox %}inbox-pill-active{% else %}inbox-pill-inactive{% endif %}">
+            All
+        </a>
+        {% for ib in inboxes %}
+        <a href="{% url 'emails:thread_list' %}?view={{ current_view }}&inbox={{ ib }}"
+           hx-get="{% url 'emails:thread_list' %}?view={{ current_view }}&inbox={{ ib }}"
+           hx-target="#thread-list-body" hx-push-url="true"
+           data-inbox="{{ ib }}"
+           class="inbox-pill px-2.5 py-1 rounded-full text-[10px] font-semibold cursor-pointer
+                  {% if current_inbox == ib %}inbox-pill-active{% else %}inbox-pill-inactive{% endif %}">
+            {{ ib|truncatechars:20 }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Collapsible Filters -->
+<div class="px-2.5 py-2">
+    <button onclick="toggleFilterSection()" class="filter-section-toggle flex items-center justify-between w-full px-3 py-1.5 text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em]" id="filter-toggle">
+        <span>Filters</span>
+        <svg class="chevron w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+    </button>
+    <div id="filter-section" class="hidden space-y-2 pt-1 px-1">
+        <select name="priority"
+                hx-get="{% url 'emails:thread_list' %}" hx-target="#thread-list-body" hx-push-url="true"
+                hx-include="[name='view-hidden'],[name='inbox-hidden'],[name='status'],[name='category'],[name='q'],[name='sort']"
+                class="dark-select w-full text-[11px] font-medium rounded-lg px-2.5 py-1.5 transition-all">
+            <option value="">Priority</option>
+            {% for p in priorities %}
+            <option value="{{ p }}" {% if current_priority == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+        </select>
+        <select name="category"
+                hx-get="{% url 'emails:thread_list' %}" hx-target="#thread-list-body" hx-push-url="true"
+                hx-include="[name='view-hidden'],[name='inbox-hidden'],[name='priority'],[name='status'],[name='q'],[name='sort']"
+                class="dark-select w-full text-[11px] font-medium rounded-lg px-2.5 py-1.5 transition-all">
+            <option value="">Category</option>
+            {% for cat in categories %}
+            <option value="{{ cat }}" {% if current_category == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+        </select>
+        <select name="status"
+                hx-get="{% url 'emails:thread_list' %}" hx-target="#thread-list-body" hx-push-url="true"
+                hx-include="[name='view-hidden'],[name='inbox-hidden'],[name='priority'],[name='category'],[name='q'],[name='sort']"
+                class="dark-select w-full text-[11px] font-medium rounded-lg px-2.5 py-1.5 transition-all">
+            <option value="">Status</option>
+            {% for value, label in statuses %}
+            <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<!-- Hidden inputs for HTMX includes -->
+<input type="hidden" name="view-hidden" value="{{ current_view }}">
+<input type="hidden" name="inbox-hidden" value="{{ current_inbox }}">
+<input type="hidden" name="sort" value="{{ current_sort }}">
 {% endblock %}
 
 {% block content %}
 <div class="flex h-full overflow-hidden">
 
-    <!-- Inner sidebar overlay (mobile/tablet) -->
-    <div id="inner-sidebar-overlay"
-         class="fixed inset-0 bg-slate-900/40 z-55 hidden lg:hidden"
-         onclick="toggleInnerSidebar()"></div>
-
-    <!-- Inner sidebar: views + inbox filter + collapsible filters -->
-    <aside id="inner-sidebar"
-           class="inner-sidebar w-[220px] bg-white border-r border-slate-200/60 flex flex-col shrink-0 overflow-y-auto lg:flex">
-
-        <!-- Views section -->
-        <div class="px-3 pt-4 pb-2">
-            <p class="px-2 mb-2 text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em]">Views</p>
-            <nav class="space-y-0.5">
-                <a href="{% url 'emails:thread_list' %}?view=unassigned{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
-                   hx-get="{% url 'emails:thread_list' %}?view=unassigned{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
-                   hx-target="#thread-list-body" hx-push-url="true"
-                   class="view-link flex items-center justify-between px-2.5 py-2 rounded-lg text-[12px] font-medium text-slate-600
-                          {% if current_view == 'unassigned' %}view-active{% endif %}">
-                    <span class="flex items-center gap-2">
-                        <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                        </svg>
-                        Unassigned
-                    </span>
-                    <span class="text-[10px] font-bold text-slate-400 tabular-nums bg-slate-100 px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.unassigned }}</span>
-                </a>
-                <a href="{% url 'emails:thread_list' %}?view=mine{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
-                   hx-get="{% url 'emails:thread_list' %}?view=mine{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
-                   hx-target="#thread-list-body" hx-push-url="true"
-                   class="view-link flex items-center justify-between px-2.5 py-2 rounded-lg text-[12px] font-medium text-slate-600
-                          {% if current_view == 'mine' %}view-active{% endif %}">
-                    <span class="flex items-center gap-2">
-                        <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                        </svg>
-                        Mine
-                    </span>
-                    <span class="text-[10px] font-bold text-slate-400 tabular-nums bg-slate-100 px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.mine }}</span>
-                </a>
-                <a href="{% url 'emails:thread_list' %}?view=all_open{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
-                   hx-get="{% url 'emails:thread_list' %}?view=all_open{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
-                   hx-target="#thread-list-body" hx-push-url="true"
-                   class="view-link flex items-center justify-between px-2.5 py-2 rounded-lg text-[12px] font-medium text-slate-600
-                          {% if current_view == 'all_open' %}view-active{% endif %}">
-                    <span class="flex items-center gap-2">
-                        <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                        </svg>
-                        All Open
-                    </span>
-                    <span class="text-[10px] font-bold text-slate-400 tabular-nums bg-slate-100 px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.all_open }}</span>
-                </a>
-                <a href="{% url 'emails:thread_list' %}?view=closed{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
-                   hx-get="{% url 'emails:thread_list' %}?view=closed{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
-                   hx-target="#thread-list-body" hx-push-url="true"
-                   class="view-link flex items-center justify-between px-2.5 py-2 rounded-lg text-[12px] font-medium text-slate-600
-                          {% if current_view == 'closed' %}view-active{% endif %}">
-                    <span class="flex items-center gap-2">
-                        <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Closed
-                    </span>
-                    <span class="text-[10px] font-bold text-slate-400 tabular-nums bg-slate-100 px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{{ sidebar_counts.closed }}</span>
-                </a>
-            </nav>
-        </div>
-
-        <!-- Inbox filter pills -->
-        {% if inboxes %}
-        <div class="px-3 py-2 border-t border-slate-100">
-            <p class="px-2 mb-2 text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em]">Inbox</p>
-            <div class="flex flex-wrap gap-1.5 px-1">
-                <a href="{% url 'emails:thread_list' %}?view={{ current_view }}"
-                   hx-get="{% url 'emails:thread_list' %}?view={{ current_view }}"
-                   hx-target="#thread-list-body" hx-push-url="true"
-                   class="inbox-pill px-2.5 py-1 rounded-full text-[10px] font-semibold
-                          {% if not current_inbox %}inbox-pill-active{% else %}inbox-pill-inactive{% endif %}">
-                    All
-                </a>
-                {% for ib in inboxes %}
-                <a href="{% url 'emails:thread_list' %}?view={{ current_view }}&inbox={{ ib }}"
-                   hx-get="{% url 'emails:thread_list' %}?view={{ current_view }}&inbox={{ ib }}"
-                   hx-target="#thread-list-body" hx-push-url="true"
-                   class="inbox-pill px-2.5 py-1 rounded-full text-[10px] font-semibold
-                          {% if current_inbox == ib %}inbox-pill-active{% else %}inbox-pill-inactive{% endif %}">
-                    {{ ib|truncatechars:20 }}
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Collapsible Filters section -->
-        <div class="px-3 py-2 border-t border-slate-100">
-            <button onclick="toggleFilterSection()" class="filter-section-toggle flex items-center justify-between w-full px-2 py-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em]" id="filter-toggle">
-                <span>Filters</span>
-                <svg class="chevron w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
-            </button>
-            <div id="filter-section" class="hidden space-y-2 pt-1 px-1">
-                <select name="priority"
-                        hx-get="{% url 'emails:thread_list' %}" hx-target="#thread-list-body" hx-push-url="true"
-                        hx-include="[name='view-hidden'],[name='inbox-hidden'],[name='status'],[name='category'],[name='q'],[name='sort']"
-                        class="w-full text-[11px] font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-primary-500/15 focus:border-primary-300 transition-all">
-                    <option value="">Priority</option>
-                    {% for p in priorities %}
-                    <option value="{{ p }}" {% if current_priority == p %}selected{% endif %}>{{ p }}</option>
-                    {% endfor %}
-                </select>
-                <select name="category"
-                        hx-get="{% url 'emails:thread_list' %}" hx-target="#thread-list-body" hx-push-url="true"
-                        hx-include="[name='view-hidden'],[name='inbox-hidden'],[name='priority'],[name='status'],[name='q'],[name='sort']"
-                        class="w-full text-[11px] font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-primary-500/15 focus:border-primary-300 transition-all">
-                    <option value="">Category</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat }}" {% if current_category == cat %}selected{% endif %}>{{ cat }}</option>
-                    {% endfor %}
-                </select>
-                <select name="status"
-                        hx-get="{% url 'emails:thread_list' %}" hx-target="#thread-list-body" hx-push-url="true"
-                        hx-include="[name='view-hidden'],[name='inbox-hidden'],[name='priority'],[name='category'],[name='q'],[name='sort']"
-                        class="w-full text-[11px] font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-600 focus:ring-2 focus:ring-primary-500/15 focus:border-primary-300 transition-all">
-                    <option value="">Status</option>
-                    {% for value, label in statuses %}
-                    <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-
-        <!-- Hidden inputs for HTMX includes -->
-        <input type="hidden" name="view-hidden" value="{{ current_view }}">
-        <input type="hidden" name="inbox-hidden" value="{{ current_inbox }}">
-        <input type="hidden" name="sort" value="{{ current_sort }}">
-
-        <!-- Spacer -->
-        <div class="flex-1"></div>
-
-        <!-- Bottom nav links -->
-        <div class="px-3 py-3 border-t border-slate-100 space-y-0.5">
-            <a href="{% url 'emails:activity_log' %}"
-               class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all">
-                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                </svg>
-                Activity
-            </a>
-            {% if is_admin %}
-            <a href="{% url 'emails:settings' %}"
-               class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all">
-                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-                Settings
-            </a>
-            <a href="/accounts/team/"
-               class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all">
-                <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-                Team
-            </a>
-            {% endif %}
-        </div>
-    </aside>
-
     <!-- Center panel: thread list -->
-    <div class="flex-1 flex flex-col min-w-0 lg:max-w-[35%] border-r border-slate-200/60 bg-slate-50/30">
+    <div class="flex-1 flex flex-col min-w-0 md:w-[35%] md:max-w-[35%] border-r border-slate-200/60 bg-slate-50/30">
         <!-- Search bar + count -->
         <div class="px-3 py-2.5 bg-white border-b border-slate-200/60 shrink-0">
             <div class="flex items-center gap-2">
-                <!-- Mobile inner sidebar toggle -->
-                <button onclick="toggleInnerSidebar()" class="inner-sidebar-toggle items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all shrink-0" aria-label="Toggle views sidebar">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"/>
-                    </svg>
-                </button>
                 <div class="relative flex-1">
                     <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -286,19 +250,6 @@
 
 {% block extra_js %}
 <script>
-/* Inner sidebar toggle (mobile/tablet) */
-function toggleInnerSidebar() {
-    var sidebar = document.getElementById('inner-sidebar');
-    var overlay = document.getElementById('inner-sidebar-overlay');
-    if (sidebar.classList.contains('sidebar-open')) {
-        sidebar.classList.remove('sidebar-open');
-        overlay.classList.add('hidden');
-    } else {
-        sidebar.classList.add('sidebar-open');
-        overlay.classList.remove('hidden');
-    }
-}
-
 /* Collapsible filter section */
 function toggleFilterSection() {
     var section = document.getElementById('filter-section');
@@ -322,6 +273,11 @@ function closeThreadDetail() {
     document.getElementById('thread-detail-panel').classList.add('translate-x-full');
     var overlay = document.getElementById('thread-detail-overlay');
     if (overlay) overlay.classList.add('hidden');
+}
+
+/* Run active state manager on initial page load */
+if (typeof updateActiveStates === 'function') {
+    updateActiveStates();
 }
 </script>
 {% endblock %}

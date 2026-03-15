@@ -45,7 +45,7 @@ class GmailPoller:
         self._label_ids = {}  # Cache per-inbox label IDs
         self._first_poll_done = False
         # Record start time -- subsequent polls only look at emails after this
-        self._start_epoch = int(datetime.now().timestamp())
+        self._start_epoch = int(datetime.now(tz=pytz.UTC).timestamp())
         logger.info("Gmail poller initialized (first poll will fetch latest 5 per inbox)")
 
     @retry(

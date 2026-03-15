@@ -38,6 +38,58 @@ def client():
     return Client()
 
 
+_email_counter = 0
+
+
+def create_email(**overrides):
+    """Factory for Email ORM records with sensible defaults.
+
+    Shared across all test files to avoid duplicating the same helper.
+    Each call generates a unique message_id via a counter.
+    """
+    global _email_counter
+    _email_counter += 1
+
+    from apps.emails.models import Email
+
+    defaults = {
+        "message_id": f"msg_test_{_email_counter}",
+        "from_address": "sender@example.com",
+        "from_name": "Test Sender",
+        "to_inbox": "info@vidarbhainfotech.com",
+        "subject": "Test Subject",
+        "body": "Test body",
+        "received_at": datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc),
+        "category": "General Inquiry",
+        "priority": "MEDIUM",
+        "ai_summary": "This is a test email summary.",
+        "processing_status": Email.ProcessingStatus.COMPLETED,
+        "status": Email.Status.NEW,
+    }
+    defaults.update(overrides)
+    return Email.objects.create(**defaults)
+
+
+def create_thread(**overrides):
+    """Factory for Thread ORM records with sensible defaults."""
+    global _email_counter
+    _email_counter += 1
+
+    from apps.emails.models import Thread
+
+    defaults = {
+        "gmail_thread_id": f"thread_test_{_email_counter}",
+        "subject": "Test Thread Subject",
+        "last_sender": "Test Sender",
+        "last_sender_address": "sender@example.com",
+        "category": "General Inquiry",
+        "priority": "MEDIUM",
+        "status": Thread.Status.NEW,
+    }
+    defaults.update(overrides)
+    return Thread.objects.create(**defaults)
+
+
 def make_email_message(**overrides):
     """Factory for EmailMessage DTOs with sensible defaults."""
     from apps.emails.services.dtos import EmailMessage

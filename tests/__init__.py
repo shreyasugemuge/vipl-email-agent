@@ -1,1 +1,0 @@
-# VIPL Email Agent — Tests

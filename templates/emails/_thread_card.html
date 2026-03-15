@@ -18,6 +18,9 @@
             <span class="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
             {% endif %}
             <span class="text-[11px] {% if thread.status == 'new' %}font-bold text-slate-900{% else %}font-medium text-slate-700{% endif %} truncate">{{ thread.last_sender|default:thread.last_sender_address|default:"Unknown" }}</span>
+            {% if thread.last_sender and thread.last_sender_address %}
+            <span class="text-[9px] text-slate-400 truncate hidden sm:inline ml-1">{{ thread.last_sender_address }}</span>
+            {% endif %}
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
             <span class="text-[10px] text-slate-400 tabular-nums font-medium">{{ thread.last_message_at|time_ago }}</span>

@@ -11,26 +11,7 @@ from apps.core.models import SystemConfig
 from apps.emails.models import (
     AssignmentRule, CategoryVisibility, Email, SLAConfig, SpamWhitelist,
 )
-
-
-def _create_email(db, **overrides):
-    """Helper to create a completed Email record."""
-    defaults = {
-        "message_id": f"msg_{id(overrides)}_{overrides.get('subject', 'test')}",
-        "from_address": "sender@example.com",
-        "from_name": "Test Sender",
-        "to_inbox": "info@vidarbhainfotech.com",
-        "subject": "Test Subject",
-        "body": "Test body",
-        "received_at": datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc),
-        "category": "General Inquiry",
-        "priority": "MEDIUM",
-        "ai_summary": "Test summary.",
-        "processing_status": Email.ProcessingStatus.COMPLETED,
-        "status": Email.Status.NEW,
-    }
-    defaults.update(overrides)
-    return Email.objects.create(**defaults)
+from conftest import create_email
 
 
 @pytest.fixture
@@ -232,7 +213,7 @@ class TestSLAConfigView:
 
 class TestClaimEndpoint:
     def test_claim_succeeds(self, member_client, member_user, db):
-        email = _create_email(db)
+        email = create_email()
         CategoryVisibility.objects.create(user=member_user, category="General Inquiry")
         response = member_client.post(reverse("emails:claim_email", args=[email.pk]))
         assert response.status_code == 200
@@ -240,19 +221,19 @@ class TestClaimEndpoint:
         assert email.assigned_to == member_user
 
     def test_claim_on_assigned_email_fails(self, member_client, member_user, admin_user, db):
-        email = _create_email(db, assigned_to=admin_user)
+        email = create_email(assigned_to=admin_user)
         CategoryVisibility.objects.create(user=member_user, category="General Inquiry")
         response = member_client.post(reverse("emails:claim_email", args=[email.pk]))
         assert response.status_code == 403
 
     def test_claim_without_visibility_fails(self, member_client, member_user, db):
-        email = _create_email(db)
+        email = create_email()
         # No CategoryVisibility for member_user
         response = member_client.post(reverse("emails:claim_email", args=[email.pk]))
         assert response.status_code == 403
 
     def test_admin_can_claim_any_category(self, admin_client, admin_user, db):
-        email = _create_email(db, category="Complaint")
+        email = create_email(category="Complaint")
         response = admin_client.post(reverse("emails:claim_email", args=[email.pk]))
         assert response.status_code == 200
         email.refresh_from_db()
@@ -266,7 +247,7 @@ class TestClaimEndpoint:
 
 class TestAISuggestionEndpoints:
     def test_accept_assigns_email(self, admin_client, admin_user, second_member, db):
-        email = _create_email(db, ai_suggested_assignee={
+        email = create_email(ai_suggested_assignee={
             "name": second_member.get_full_name() or second_member.username,
             "user_id": second_member.pk,
             "reason": "Workload balanced",
@@ -277,7 +258,7 @@ class TestAISuggestionEndpoints:
         assert email.assigned_to == second_member
 
     def test_reject_clears_suggestion(self, admin_client, admin_user, db):
-        email = _create_email(db, ai_suggested_assignee={
+        email = create_email(ai_suggested_assignee={
             "name": "Someone",
             "user_id": 999,
             "reason": "test",
@@ -288,17 +269,17 @@ class TestAISuggestionEndpoints:
         assert email.ai_suggested_assignee == {}
 
     def test_non_admin_cannot_accept(self, member_client, db):
-        email = _create_email(db)
+        email = create_email()
         response = member_client.post(reverse("emails:accept_ai_suggestion", args=[email.pk]))
         assert response.status_code == 403
 
     def test_non_admin_cannot_reject(self, member_client, db):
-        email = _create_email(db)
+        email = create_email()
         response = member_client.post(reverse("emails:reject_ai_suggestion", args=[email.pk]))
         assert response.status_code == 403
 
     def test_accept_with_no_suggestion_fails(self, admin_client, admin_user, db):
-        email = _create_email(db, ai_suggested_assignee={})
+        email = create_email(ai_suggested_assignee={})
         response = admin_client.post(reverse("emails:accept_ai_suggestion", args=[email.pk]))
         assert response.status_code == 403
 
@@ -602,7 +583,7 @@ class TestWhitelistViews:
 
 class TestWhitelistSender:
     def test_whitelist_sender_creates_entry(self, admin_client, admin_user, db):
-        email = _create_email(db, from_address="spammer@example.com")
+        email = create_email(from_address="spammer@example.com")
         response = admin_client.post(
             reverse("emails:whitelist_sender", args=[email.pk]),
         )
@@ -610,13 +591,13 @@ class TestWhitelistSender:
         assert SpamWhitelist.objects.filter(entry="spammer@example.com", entry_type="email").exists()
 
     def test_whitelist_sender_unspams_existing_emails(self, admin_client, admin_user, db):
-        email = _create_email(db, from_address="spammer@example.com", is_spam=True)
+        email = create_email(from_address="spammer@example.com", is_spam=True)
         admin_client.post(reverse("emails:whitelist_sender", args=[email.pk]))
         email.refresh_from_db()
         assert email.is_spam is False
 
     def test_whitelist_sender_returns_detail_panel(self, admin_client, admin_user, db):
-        email = _create_email(db, from_address="spammer@example.com")
+        email = create_email(from_address="spammer@example.com")
         response = admin_client.post(
             reverse("emails:whitelist_sender", args=[email.pk]),
         )
@@ -625,14 +606,14 @@ class TestWhitelistSender:
         assert email.subject in content
 
     def test_whitelist_sender_rejects_non_admin(self, member_client, member_user, db):
-        email = _create_email(db)
+        email = create_email()
         response = member_client.post(
             reverse("emails:whitelist_sender", args=[email.pk]),
         )
         assert response.status_code == 403
 
     def test_whitelist_sender_handles_already_whitelisted(self, admin_client, admin_user, db):
-        email = _create_email(db, from_address="known@example.com")
+        email = create_email(from_address="known@example.com")
         SpamWhitelist.objects.create(
             entry="known@example.com", entry_type="email", added_by=admin_user,
         )

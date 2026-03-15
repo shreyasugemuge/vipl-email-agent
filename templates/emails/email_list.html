@@ -101,19 +101,22 @@
                 <a href="{% url 'emails:email_list' %}?view=all{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
                    hx-get="{% url 'emails:email_list' %}?view=all{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
                    hx-target="#email-list" hx-push-url="true"
-                   class="px-3 py-2.5 text-xs font-semibold whitespace-nowrap transition-all duration-150 border-b-2 no-underline {% if current_view == 'all' %}text-slate-800 border-primary-500{% else %}text-slate-400 border-transparent hover:text-slate-700{% endif %}">
+                   data-email-view="all"
+                   class="email-view-tab px-3 py-2.5 text-xs font-semibold whitespace-nowrap transition-all duration-150 border-b-2 no-underline {% if current_view == 'all' %}text-slate-800 border-primary-500{% else %}text-slate-400 border-transparent hover:text-slate-700{% endif %}">
                     All
                 </a>
                 <a href="{% url 'emails:email_list' %}?view=unassigned{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
                    hx-get="{% url 'emails:email_list' %}?view=unassigned{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
                    hx-target="#email-list" hx-push-url="true"
-                   class="px-3 py-2.5 text-xs font-semibold whitespace-nowrap transition-all duration-150 border-b-2 no-underline {% if current_view == 'unassigned' %}text-slate-800 border-primary-500{% else %}text-slate-400 border-transparent hover:text-slate-700{% endif %}">
+                   data-email-view="unassigned"
+                   class="email-view-tab px-3 py-2.5 text-xs font-semibold whitespace-nowrap transition-all duration-150 border-b-2 no-underline {% if current_view == 'unassigned' %}text-slate-800 border-primary-500{% else %}text-slate-400 border-transparent hover:text-slate-700{% endif %}">
                     Unassigned
                 </a>
                 <a href="{% url 'emails:email_list' %}?view=mine{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
                    hx-get="{% url 'emails:email_list' %}?view=mine{% if current_status %}&status={{ current_status }}{% endif %}{% if current_priority %}&priority={{ current_priority }}{% endif %}"
                    hx-target="#email-list" hx-push-url="true"
-                   class="px-3 py-2.5 text-xs font-semibold whitespace-nowrap transition-all duration-150 border-b-2 no-underline {% if current_view == 'mine' %}text-slate-800 border-primary-500{% else %}text-slate-400 border-transparent hover:text-slate-700{% endif %}">
+                   data-email-view="mine"
+                   class="email-view-tab px-3 py-2.5 text-xs font-semibold whitespace-nowrap transition-all duration-150 border-b-2 no-underline {% if current_view == 'mine' %}text-slate-800 border-primary-500{% else %}text-slate-400 border-transparent hover:text-slate-700{% endif %}">
                     My Emails
                 </a>
                 {% if is_admin and team_members %}
@@ -425,5 +428,20 @@ function updateFilterBadge() {
 /* Init badge count on page load */
 document.addEventListener('DOMContentLoaded', updateFilterBadge);
 document.addEventListener('htmx:afterSettle', updateFilterBadge);
+
+/* Email view tab active state — updates on HTMX navigation */
+function updateEmailViewTabs() {
+    var params = new URLSearchParams(window.location.search);
+    var view = params.get('view') || 'unassigned';
+    document.querySelectorAll('.email-view-tab').forEach(function(tab) {
+        var isActive = tab.dataset.emailView === view;
+        tab.classList.toggle('text-slate-800', isActive);
+        tab.classList.toggle('border-primary-500', isActive);
+        tab.classList.toggle('text-slate-400', !isActive);
+        tab.classList.toggle('border-transparent', !isActive);
+    });
+}
+document.addEventListener('htmx:pushedIntoHistory', updateEmailViewTabs);
+window.addEventListener('popstate', updateEmailViewTabs);
 </script>
 {% endblock %}

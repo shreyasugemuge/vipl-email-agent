@@ -16,7 +16,12 @@
             <div class="w-5.5 h-5.5 rounded-full bg-gradient-to-br from-{{ email.priority|priority_base }}-400 to-{{ email.priority|priority_base }}-500 flex items-center justify-center text-white text-[8px] font-bold shrink-0" style="width:22px;height:22px;">
                 {{ email.from_name.0|default:"?" }}
             </div>
-            <span class="text-[12px] font-semibold text-slate-800 truncate">{{ email.from_name|default:email.from_address }}</span>
+            <div class="min-w-0 truncate">
+                <span class="text-[12px] font-semibold text-slate-800 truncate block">{{ email.from_name|default:email.from_address }}</span>
+                {% if email.from_name and email.from_address %}
+                <span class="text-[10px] text-slate-400 truncate block">{{ email.from_address }}</span>
+                {% endif %}
+            </div>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
             {% if email.category %}

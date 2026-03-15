@@ -1656,12 +1656,16 @@ def inspect(request):
         stats["by_inbox"][e.to_inbox] = stats["by_inbox"].get(e.to_inbox, 0) + 1
 
     current_mode = SystemConfig.get("operating_mode", "unknown")
+    last_poll_epoch = SystemConfig.get("last_poll_epoch", "")
+    poll_interval = SystemConfig.get("poll_interval_minutes", "5")
 
     return render(request, "emails/inspect.html", {
         "emails": emails,
         "stats": stats,
         "priority_order": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
         "current_mode": current_mode,
+        "last_poll_epoch": last_poll_epoch,
+        "poll_interval_minutes": poll_interval,
     })
 
 

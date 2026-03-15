@@ -7,25 +7,7 @@ from unittest.mock import patch, MagicMock
 from apps.accounts.models import User
 from apps.emails.models import Email
 from apps.emails.services.dtos import TriageResult
-
-
-def _create_email(db, **overrides):
-    """Helper to create an Email record."""
-    defaults = {
-        "message_id": f"msg_ai_{id(overrides)}",
-        "from_address": "sender@example.com",
-        "from_name": "Test Sender",
-        "to_inbox": "info@vidarbhainfotech.com",
-        "subject": "Test Subject",
-        "body": "Test body",
-        "received_at": datetime(2026, 3, 10, 12, 0, 0, tzinfo=timezone.utc),
-        "category": "Sales Lead",
-        "priority": "MEDIUM",
-        "processing_status": Email.ProcessingStatus.COMPLETED,
-        "status": Email.Status.NEW,
-    }
-    defaults.update(overrides)
-    return Email.objects.create(**defaults)
+from conftest import create_email
 
 
 # ===========================================================================
@@ -42,10 +24,10 @@ class TestGetTeamWorkload:
         from apps.emails.services.ai_processor import _get_team_workload
 
         # Assign 2 open emails to member
-        _create_email(None, message_id="msg_wl_1", assigned_to=member_user, status="new")
-        _create_email(None, message_id="msg_wl_2", assigned_to=member_user, status="acknowledged")
+        create_email(message_id="msg_wl_1", assigned_to=member_user, status="new", category="Sales Lead")
+        create_email(message_id="msg_wl_2", assigned_to=member_user, status="acknowledged", category="Sales Lead")
         # Closed email should not count
-        _create_email(None, message_id="msg_wl_3", assigned_to=member_user, status="closed")
+        create_email(message_id="msg_wl_3", assigned_to=member_user, status="closed", category="Sales Lead")
 
         workload = _get_team_workload()
         member_entry = next((w for w in workload if w["email"] == member_user.email), None)
@@ -85,7 +67,7 @@ class TestBuildUserMessage:
         from apps.emails.services.ai_processor import AIProcessor
         from apps.emails.services.dtos import EmailMessage
 
-        _create_email(None, message_id="msg_bum_1", assigned_to=member_user, status="new")
+        create_email(message_id="msg_bum_1", assigned_to=member_user, status="new", category="Sales Lead")
 
         processor = AIProcessor.__new__(AIProcessor)
         email_msg = EmailMessage(

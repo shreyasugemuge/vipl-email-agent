@@ -83,6 +83,62 @@
   <h1>VIPL Email Agent — Dev Inspector<span class="mode-badge mode-{{ current_mode|default:'unknown' }}">{{ current_mode|default:"unknown" }}</span></h1>
   <p class="subtitle">Read-only view of triaged emails. Simulated Chat & draft reply output. No external calls.</p>
 
+  <!-- Poll countdown timer -->
+  {% if last_poll_epoch %}
+  <div class="stat-card" style="display:inline-flex; align-items:center; gap:12px; margin-bottom:24px;">
+    <div>
+      <div class="label">Next Poll In</div>
+      <div class="value" id="poll-countdown" style="font-variant-numeric:tabular-nums;">--:--</div>
+      <div class="breakdown" id="poll-last">Last poll: calculating...</div>
+    </div>
+    <div style="width:1px;height:36px;background:#334155;"></div>
+    <div>
+      <div class="label">Interval</div>
+      <div class="value" style="font-size:1rem;">{{ poll_interval_minutes }}m</div>
+    </div>
+  </div>
+  <script>
+  (function() {
+    var lastEpoch = {{ last_poll_epoch }};
+    var intervalMin = {{ poll_interval_minutes }};
+    var intervalSec = intervalMin * 60;
+    var countdownEl = document.getElementById('poll-countdown');
+    var lastEl = document.getElementById('poll-last');
+
+    function update() {
+      var now = Math.floor(Date.now() / 1000);
+      var elapsed = now - lastEpoch;
+      var remaining = intervalSec - elapsed;
+
+      if (remaining <= 0) {
+        countdownEl.textContent = 'Due now';
+        countdownEl.style.color = '#f59e0b';
+      } else {
+        var m = Math.floor(remaining / 60);
+        var s = remaining % 60;
+        countdownEl.textContent = m + 'm ' + (s < 10 ? '0' : '') + s + 's';
+        countdownEl.style.color = remaining < 60 ? '#f59e0b' : '#e2e8f0';
+      }
+
+      // Format last poll time
+      var lastDate = new Date(lastEpoch * 1000);
+      var agoMin = Math.floor(elapsed / 60);
+      if (agoMin < 1) lastEl.textContent = 'Last poll: just now';
+      else if (agoMin < 60) lastEl.textContent = 'Last poll: ' + agoMin + 'm ago';
+      else lastEl.textContent = 'Last poll: ' + lastDate.toLocaleTimeString();
+    }
+
+    update();
+    setInterval(update, 1000);
+  })();
+  </script>
+  {% else %}
+  <div class="stat-card" style="display:inline-flex; align-items:center; gap:8px; margin-bottom:24px;">
+    <div class="label">Poll Timer</div>
+    <div class="value" style="font-size:0.875rem; color:#64748b;">No poll data yet</div>
+  </div>
+  {% endif %}
+
   <!-- Stats -->
   <div class="stats">
     <div class="stat-card">
