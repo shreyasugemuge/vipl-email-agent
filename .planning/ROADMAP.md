@@ -114,13 +114,14 @@ Plans:
 **Goal**: Dev inspector provides accurate real-time poll status and readable history
 **Depends on**: Nothing (independent — can run anytime, even parallel with P1)
 **Requirements**: DEV-01, DEV-02
+**Plans:** 1 plan
 **Success Criteria** (what must be TRUE):
   1. Poll countdown timer shows live seconds until next poll and resets after each cycle
   2. Force poll button triggers a poll cycle immediately and shows result feedback
   3. Poll history table shows human-readable timestamps, interval between polls, and distinguishes empty polls from polls that fetched emails
 
 Plans:
-- [ ] 05-01: TBD
+- [ ] 05-01-PLAN.md — Force poll inline results + poll history table enhancements
 
 ## Progress
 
@@ -130,4 +131,4 @@ Plans:
 | 2 (M6-P2) | Thread Card & Detail UX | 0/2 | Planning complete | - |
 | 3 (M6-P3) | Workflow Actions | 0/1 | Planning complete | - |
 | 4 (M6-P4) | Page Polish | 0/2 | Planning complete | - |
-| 5 (M6-P5) | Dev Inspector | 0/TBD | Not started | - |
+| 5 (M6-P5) | Dev Inspector | 0/1 | Planning complete | - |
