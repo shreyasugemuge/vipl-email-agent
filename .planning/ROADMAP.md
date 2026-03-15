@@ -70,11 +70,11 @@ Plans:
   3. Irrelevant threads disappear from the triage queue and do not count toward unassigned totals
   4. The irrelevant reason and who marked it appear in the thread detail activity timeline
   5. Members cannot see or use the mark-irrelevant action
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — Backend: model migration, views, URLs, queryset filtering, 11 tests
+- [ ] 03-02-PLAN.md — Frontend: detail panel modal, context menu, badge, stat card, activity timeline, visual checkpoint
 
 ### Phase 4: Alerts + Bulk Actions
 **Goal**: Proactive unassigned count monitoring and batch operations for efficient queue management
@@ -101,5 +101,5 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Role + Permission Foundation | 0/2 | Planned | - |
 | 2. Assignment Enforcement | 0/2 | Planned | - |
-| 3. Mark Irrelevant | 0/TBD | Not started | - |
+| 3. Mark Irrelevant | 0/2 | Planned | - |
 | 4. Alerts + Bulk Actions | 0/TBD | Not started | - |
