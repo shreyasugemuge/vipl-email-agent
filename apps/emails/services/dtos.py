@@ -67,3 +67,4 @@ class TriageResult:
     output_tokens: int = 0
     is_spam: bool = False
     spam_score: float = 0.0
+    confidence: str = ""

@@ -543,11 +543,12 @@ def update_thread_preview(thread):
         thread.priority = latest_triaged.priority
         thread.ai_summary = latest_triaged.ai_summary
         thread.ai_draft_reply = latest_triaged.ai_draft_reply
+        thread.ai_confidence = latest_triaged.ai_confidence
 
     thread.save(update_fields=[
         "last_message_at", "last_sender", "last_sender_address",
         "subject", "category", "priority", "ai_summary", "ai_draft_reply",
-        "updated_at",
+        "ai_confidence", "updated_at",
     ])
 
     return thread

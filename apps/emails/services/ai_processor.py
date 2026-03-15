@@ -98,8 +98,13 @@ TRIAGE_TOOL = {
                 "enum": ["English", "Hindi", "Marathi", "Mixed"],
                 "description": "Primary language of the email.",
             },
+            "confidence": {
+                "type": "string",
+                "enum": ["HIGH", "MEDIUM", "LOW"],
+                "description": "Your confidence in the category and assignee suggestion. HIGH = very clear match to a known pattern. MEDIUM = reasonable guess but ambiguous. LOW = uncertain, multiple categories could apply.",
+            },
         },
-        "required": ["category", "priority", "summary", "reasoning", "tags", "language"],
+        "required": ["category", "priority", "summary", "reasoning", "tags", "language", "confidence"],
     },
 }
 
@@ -355,6 +360,7 @@ class AIProcessor:
                     model_used=model,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
+                    confidence=data.get("confidence", ""),
                 )
 
         logger.warning("Claude response did not contain expected tool_use block")

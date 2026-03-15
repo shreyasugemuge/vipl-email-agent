@@ -187,6 +187,34 @@ PRIORITY_TOOLTIPS = {
     "LOW": "Non-urgent, handle when available",
 }
 
+# ---------------------------------------------------------------------------
+# Confidence filters
+# ---------------------------------------------------------------------------
+
+CONFIDENCE_BASE = {
+    "HIGH": "emerald",
+    "MEDIUM": "amber",
+    "LOW": "red",
+}
+
+CONFIDENCE_TOOLTIPS = {
+    "HIGH": "AI is highly confident in this categorization",
+    "MEDIUM": "AI has moderate confidence — review recommended",
+    "LOW": "AI is uncertain — manual review needed",
+}
+
+
+@register.filter
+def confidence_base(value):
+    """Return base color family for confidence tier."""
+    return CONFIDENCE_BASE.get(value, "slate")
+
+
+@register.filter
+def confidence_tooltip(value):
+    """Return tooltip text for confidence tier."""
+    return CONFIDENCE_TOOLTIPS.get(value, "")
+
 
 @register.filter
 def status_tooltip(status):

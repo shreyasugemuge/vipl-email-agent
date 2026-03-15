@@ -18,7 +18,7 @@ from django.db import close_old_connections
 from django.db import models as db_models
 
 from apps.core.models import SystemConfig
-from apps.emails.models import ActivityLog, AttachmentMetadata, Email, PollLog, Thread
+from apps.emails.models import ActivityLog, AttachmentMetadata, Email, PollLog, SenderReputation, Thread
 from apps.emails.services.ai_processor import AIProcessor
 from apps.emails.services.assignment import update_thread_preview
 from apps.emails.services.dtos import EmailMessage, TriageResult
@@ -94,6 +94,7 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
             "language": triage.language,
             "is_spam": triage.is_spam,
             "spam_score": triage.spam_score,
+            "ai_confidence": triage.confidence,
             "processing_status": Email.ProcessingStatus.COMPLETED,
         },
     )
@@ -190,6 +191,46 @@ def _is_whitelisted(sender_email: str) -> bool:
     ).exists()
 
 
+def _is_blocked(sender_email: str) -> bool:
+    """Check if sender is blocked via SenderReputation.
+
+    Case-insensitive matching on sender address.
+    """
+    return SenderReputation.objects.filter(
+        sender_address__iexact=sender_email,
+        is_blocked=True,
+    ).exists()
+
+
+def _track_sender_reputation(sender_email: str, is_spam: bool) -> None:
+    """Increment SenderReputation counters after saving an email.
+
+    Uses F() expressions for atomic updates, then checks auto-block threshold.
+    """
+    from django.db.models import F
+
+    sender = sender_email.strip().lower()
+    if not sender:
+        return
+
+    rep, created = SenderReputation.objects.get_or_create(
+        sender_address=sender,
+        defaults={"total_count": 0, "spam_count": 0},
+    )
+
+    update_kwargs = {"total_count": F("total_count") + 1}
+    if is_spam:
+        update_kwargs["spam_count"] = F("spam_count") + 1
+
+    SenderReputation.objects.filter(pk=rep.pk).update(**update_kwargs)
+    rep.refresh_from_db()
+
+    # Auto-block threshold: ratio > 0.8 AND total >= 3
+    if rep.total_count >= 3 and rep.spam_ratio > 0.8 and not rep.is_blocked:
+        rep.is_blocked = True
+        rep.save(update_fields=["is_blocked"])
+
+
 CROSS_INBOX_DEDUP_WINDOW_MINUTES = 5
 
 
@@ -254,7 +295,12 @@ def process_single_email(
             gmail_poller.mark_processed(email_msg)
             return email_obj
 
-        # Step 1: Spam filter (skip if sender is whitelisted)
+        # Step 1a: Block check (whitelisted senders bypass block)
+        if not _is_whitelisted(email_msg.sender_email) and _is_blocked(email_msg.sender_email):
+            logger.info(f"Sender blocked, skipping: {email_msg.sender_email}")
+            return None
+
+        # Step 1b: Spam filter (skip if sender is whitelisted)
         if _is_whitelisted(email_msg.sender_email):
             logger.info(f"Sender whitelisted, skipping spam filter: {email_msg.sender_email}")
             spam_result = None
@@ -275,6 +321,12 @@ def process_single_email(
 
         # Step 3: Save to DB (BEFORE labeling Gmail)
         email_obj = save_email_to_db(email_msg, triage)
+
+        # Step 3b: Track sender reputation
+        try:
+            _track_sender_reputation(email_msg.sender_email, is_spam=triage.is_spam)
+        except Exception:
+            logger.exception("Failed to track sender reputation for %s", email_msg.sender_email)
 
         email_obj._is_cross_inbox_duplicate = False
 
