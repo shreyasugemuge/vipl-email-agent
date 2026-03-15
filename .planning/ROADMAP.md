@@ -51,7 +51,10 @@
   5. Email count label accurately reflects the current view and updates when switching between All/Unassigned/My Emails
   6. Every page title follows the pattern "VIPL Triage | {Page Name}"
   7. Toast notifications appear below the header on mobile with touch-friendly close buttons
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — AI XML cleanup + data migration, email count OOB update, page title consistency
+- [ ] 01-02-PLAN.md — Mobile detail panel + history API, filter stacking, activity chips, toast positioning + swipe
 
 ### Phase 2: Polish & UX
 **Goal**: Dashboard feels polished with guided onboarding, visible filter state, and responsive interactions
@@ -83,6 +86,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data & Bug Fixes | 0/? | Not started | - |
+| 1. Data & Bug Fixes | 0/2 | Planned | - |
 | 2. Polish & UX | 0/2 | Planned | - |
 | 3. QA & Verification | 0/? | Not started | - |
