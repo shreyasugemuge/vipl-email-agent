@@ -8,10 +8,30 @@
 {% block content %}
 <div class="flex flex-col h-full">
 
+    <!-- Welcome banner (UX-01) -->
+    <div id="welcome-banner" class="hidden bg-gradient-to-r from-primary-50 to-primary-100 border-b border-primary-200/60 px-4 md:px-5 py-3 shrink-0">
+        <div class="flex items-center justify-between gap-3">
+            <div class="flex-1 min-w-0">
+                <p class="text-[13px] font-bold text-primary-800 mb-0.5">Welcome, {{ user.first_name|default:user.username }}!</p>
+                {% if is_admin %}
+                <p class="text-[11px] text-primary-600 leading-snug">You can assign emails to team members, manage the queue, and track response times from here.</p>
+                {% else %}
+                <p class="text-[11px] text-primary-600 leading-snug">Check <strong>My Emails</strong> for your assigned items, or browse unassigned emails to claim.</p>
+                {% endif %}
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button onclick="dismissWelcome(false)" class="text-primary-400 hover:text-primary-600 transition-colors" aria-label="Dismiss banner" title="Dismiss for this session">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+        <button onclick="dismissWelcome(true)" class="text-[10px] text-primary-500 hover:text-primary-700 underline mt-1">Don't show again</button>
+    </div>
+
     <!-- Dashboard stats bar -->
     <div class="bg-white border-b border-slate-200/60 px-4 md:px-5 py-2.5 shrink-0">
-        <div class="flex items-center gap-2.5 overflow-x-auto">
-            <div class="stat-card flex items-center gap-2.5 px-3.5 py-2 bg-slate-50 rounded-lg border border-slate-200/60 min-w-[120px]">
+        <div class="flex items-center gap-2.5 overflow-x-auto snap-x snap-mandatory">
+            <div class="stat-card snap-start shrink-0 flex items-center gap-2.5 px-3.5 py-2 bg-slate-50 rounded-lg border border-slate-200/60 min-w-[120px]">
                 <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-slate-200/60">
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
@@ -23,7 +43,7 @@
                 </div>
             </div>
 
-            <div class="stat-card flex items-center gap-2.5 px-3.5 py-2 bg-amber-50/60 rounded-lg border border-amber-200/50 min-w-[120px]">
+            <div class="stat-card snap-start shrink-0 flex items-center gap-2.5 px-3.5 py-2 bg-amber-50/60 rounded-lg border border-amber-200/50 min-w-[120px]">
                 <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-amber-200/50">
                     <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
@@ -35,7 +55,7 @@
                 </div>
             </div>
 
-            <div class="stat-card flex items-center gap-2.5 px-3.5 py-2 bg-red-50/60 rounded-lg border border-red-200/50 min-w-[120px]">
+            <div class="stat-card snap-start shrink-0 flex items-center gap-2.5 px-3.5 py-2 bg-red-50/60 rounded-lg border border-red-200/50 min-w-[120px]">
                 <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-red-200/50">
                     <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -47,7 +67,7 @@
                 </div>
             </div>
 
-            <div class="stat-card flex items-center gap-2.5 px-3.5 py-2 bg-blue-50/60 rounded-lg border border-blue-200/50 min-w-[120px]">
+            <div class="stat-card snap-start shrink-0 flex items-center gap-2.5 px-3.5 py-2 bg-blue-50/60 rounded-lg border border-blue-200/50 min-w-[120px]">
                 <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-blue-200/50">
                     <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -157,6 +177,20 @@
         </div>
     </div>
 
+    <!-- Active filter indicator (UX-02) -->
+    {% if active_filter_count %}
+    <div class="flex items-center gap-2 px-4 md:px-5 py-1.5 bg-amber-50/60 border-b border-amber-200/40 shrink-0">
+        <span class="text-[10px] font-bold text-amber-700">
+            {{ active_filter_count }} filter{{ active_filter_count|pluralize }} active
+        </span>
+        <span class="text-[10px] text-slate-300">|</span>
+        <a href="{% url 'emails:email_list' %}?view={{ current_view }}"
+           class="text-[10px] font-bold text-amber-600 hover:text-amber-800 underline">
+            Clear all
+        </a>
+    </div>
+    {% endif %}
+
     <!-- Main content: list + detail split -->
     <div class="flex flex-1 overflow-hidden">
         <!-- Email list -->
@@ -192,6 +226,36 @@
 
 {% block extra_js %}
 <script>
+/* Welcome banner (UX-01) */
+(function() {
+    var banner = document.getElementById('welcome-banner');
+    if (!banner) return;
+    var dismissed = sessionStorage.getItem('vipl_welcome_dismissed');
+    var permanent = localStorage.getItem('vipl_welcome_permanent');
+    if (!dismissed && !permanent) {
+        banner.classList.remove('hidden');
+        // Auto-fade after 8 seconds
+        var autoTimer = setTimeout(function() {
+            banner.style.animation = 'toast-out 0.3s ease forwards';
+            setTimeout(function() { banner.classList.add('hidden'); }, 300);
+        }, 8000);
+        banner._autoTimer = autoTimer;
+    }
+})();
+
+function dismissWelcome(permanent) {
+    var banner = document.getElementById('welcome-banner');
+    if (!banner) return;
+    clearTimeout(banner._autoTimer);
+    if (permanent) {
+        localStorage.setItem('vipl_welcome_permanent', '1');
+    } else {
+        sessionStorage.setItem('vipl_welcome_dismissed', '1');
+    }
+    banner.style.animation = 'toast-out 0.3s ease forwards';
+    setTimeout(function() { banner.classList.add('hidden'); }, 300);
+}
+
 /* Mobile detail panel with history API and scroll lock */
 document.addEventListener('htmx:afterSwap', function(e) {
     if (e.detail.target.id === 'detail-panel') {
