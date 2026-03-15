@@ -23,12 +23,11 @@ This branch (`qa`) is dedicated to comprehensive visual, functional, and UX test
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v2.5.0** (main branch) | **Complete** — intelligence + UX milestone, not yet deployed | Self-hosted VM (Docker Compose) |
+| **v2.5.0** (main branch) | **Deployed** — intelligence + UX milestone | Self-hosted VM (Docker Compose) |
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.4.0 (latest deployed)
-**Ready to deploy**: v2.5.0 (90 commits ahead of origin, not yet released)
+**GitHub Release**: v2.5.0 (latest deployed, 2026-03-15)
 
 ## Active Branches
 
