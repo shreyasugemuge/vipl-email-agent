@@ -27,7 +27,8 @@ from apps.accounts.models import User
 from apps.core.models import SystemConfig
 from apps.emails.models import (
     ActivityLog, AssignmentRule, CategoryVisibility, Email, InternalNote, PollLog,
-    SenderReputation, SLAConfig, SpamFeedback, SpamWhitelist, Thread, ThreadViewer,
+    SenderReputation, SLAConfig, SpamFeedback, SpamWhitelist, Thread, ThreadReadState,
+    ThreadViewer,
 )
 from apps.emails.services.assignment import assign_email as _assign_email
 from apps.emails.services.assignment import assign_thread as _assign_thread
@@ -52,6 +53,25 @@ SAFE_ATTRIBUTES = {
     "span": set(),
     "td": {"colspan", "rowspan"},
 }
+
+
+# ---------------------------------------------------------------------------
+# Unread annotation helper
+# ---------------------------------------------------------------------------
+
+
+def annotate_unread(qs, user):
+    """Annotate thread queryset with is_unread boolean for the given user.
+
+    No ThreadReadState row = treated as read (avoids wall-of-bold on first deploy).
+    Unread when: is_read=False OR read_at < last_message_at (new message since read).
+    """
+    from django.db.models import Exists, OuterRef, Q
+
+    unread_sq = ThreadReadState.objects.filter(
+        thread=OuterRef("pk"), user=user,
+    ).filter(Q(is_read=False) | Q(read_at__lt=OuterRef("last_message_at")))
+    return qs.annotate(is_unread=Exists(unread_sq))
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +111,9 @@ def thread_list(request):
             ).exclude(_suggestion_name__isnull=True).exclude(_suggestion_name="").order_by("-received_at").values("_suggestion_name")[:1]
         ),
     ).order_by("-last_message_at")
+
+    # Annotate per-user unread state
+    qs = annotate_unread(qs, user)
 
     # --- View filtering (sidebar views) ---
     default_view = "all_open" if is_admin else "mine"
@@ -160,6 +183,22 @@ def thread_list(request):
         urgent=Count("pk", filter=open_q & Q(priority__in=["CRITICAL", "HIGH"])),
         new=Count("pk", filter=Q(status="new")),
     )
+
+    # --- Unread counts for sidebar badges ---
+    unread_sq = ThreadReadState.objects.filter(
+        thread=OuterRef("pk"), user=user,
+    ).filter(Q(is_read=False) | Q(read_at__lt=OuterRef("last_message_at")))
+    unread_base = base_threads.filter(Exists(unread_sq))
+    if inbox:
+        unread_base = unread_base.filter(emails__to_inbox=inbox).distinct()
+    sidebar_counts["unread_mine"] = unread_base.filter(assigned_to=user).count()
+    sidebar_counts["unread_unassigned"] = unread_base.filter(
+        assigned_to__isnull=True, status__in=["new", "acknowledged"]
+    ).count()
+    sidebar_counts["unread_open"] = unread_base.filter(
+        status__in=["new", "acknowledged"]
+    ).count()
+    sidebar_counts["unread_closed"] = unread_base.filter(status="closed").count()
 
     # --- Inbox list for filter pills ---
     inboxes = list(

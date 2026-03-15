@@ -309,6 +309,10 @@ def process_single_email(
         if spam_result:
             logger.info(f"Spam detected: {email_msg.subject[:50]}")
             email_obj = save_email_to_db(email_msg, spam_result)
+            try:
+                _track_sender_reputation(email_msg.sender_email, is_spam=True)
+            except Exception:
+                logger.exception("Failed to track sender reputation for %s", email_msg.sender_email)
             email_obj._is_cross_inbox_duplicate = False
             gmail_poller.mark_processed(email_msg)
             return email_obj

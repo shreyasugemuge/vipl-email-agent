@@ -236,25 +236,41 @@ def test_pipeline_skips_blocked_sender():
 
 @pytest.mark.django_db
 def test_pipeline_increments_reputation():
-    """After save_email_to_db, SenderReputation.total_count increments."""
-    from apps.emails.services.pipeline import save_email_to_db
+    """After processing an email, SenderReputation.total_count increments."""
+    from unittest.mock import MagicMock
+    from apps.emails.services.pipeline import process_single_email
+    from apps.emails.services.spam_filter import is_spam as spam_filter_fn
+
+    mock_poller = MagicMock()
+    mock_ai = MagicMock()
+    mock_ai.process.return_value = make_triage_result(is_spam=False)
 
     email_msg = make_email_message(sender_email="tracked@example.com")
-    triage = make_triage_result(is_spam=False)
-
-    save_email_to_db(email_msg, triage)
+    process_single_email(
+        email_msg=email_msg,
+        ai_processor=mock_ai,
+        gmail_poller=mock_poller,
+        spam_filter_fn=spam_filter_fn,
+    )
 
     rep = SenderReputation.objects.get(sender_address="tracked@example.com")
     assert rep.total_count == 1
     assert rep.spam_count == 0
 
-    # Save a spam email
+    # Process a spam email (via AI returning is_spam=True)
+    mock_ai2 = MagicMock()
+    mock_ai2.process.return_value = make_triage_result(is_spam=True)
     email_msg2 = make_email_message(
         message_id="msg_spam_1",
+        thread_id="thread_spam_1",
         sender_email="tracked@example.com",
     )
-    triage2 = make_triage_result(is_spam=True)
-    save_email_to_db(email_msg2, triage2)
+    process_single_email(
+        email_msg=email_msg2,
+        ai_processor=mock_ai2,
+        gmail_poller=mock_poller,
+        spam_filter_fn=spam_filter_fn,
+    )
 
     rep.refresh_from_db()
     assert rep.total_count == 2
