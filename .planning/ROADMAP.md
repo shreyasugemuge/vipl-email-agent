@@ -47,7 +47,7 @@ Execution Order:
 - [x] **Phase 4: Page Polish** — Login logo, settings reorganization, activity redesign, sidebar version *(after P1)* (completed 2026-03-15)
 - [x] **Phase 5: Dev Inspector** — Poll timer, force poll fix, history table improvements *(independent)* (completed 2026-03-15)
 - [x] **Phase 6: QA Bug Fixes** — Thread count filter, search view reset, mobile drawer, Escape key *(parallel with P7)* (completed 2026-03-15)
-- [ ] **Phase 7: QA Cosmetic & Layout** — Button overflow, reports title, SLA chart empty *(parallel with P6)*
+- [x] **Phase 7: QA Cosmetic & Layout** — Button overflow, reports title, SLA chart empty *(parallel with P6)* (completed 2026-03-15)
 
 ## Phase Details
 
@@ -146,7 +146,7 @@ Plans:
 **Depends on**: Nothing (independent of P6)
 **Parallel with**: Phase 6
 **Requirements**: QA-05, QA-06, QA-07
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 **Success Criteria** (what must be TRUE):
   1. Detail panel action buttons don't overflow or clip at right edge at 1440px
   2. Reports page title follows "VIPL Triage | Reports" format
@@ -165,4 +165,4 @@ Plans:
 | 4 (M6-P4) | 2/2 | Complete   | 2026-03-15 | - |
 | 5 (M6-P5) | 1/1 | Complete   | 2026-03-15 | - |
 | 6 (M6-P6) | QA Bug Fixes | 1/1 | Complete | 2026-03-15 |
-| 7 (M6-P7) | QA Cosmetic & Layout | 1 | Not started | - |
+| 7 (M6-P7) | 1/1 | Complete   | 2026-03-15 | - |

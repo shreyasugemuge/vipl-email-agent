@@ -46,9 +46,9 @@
 
 ### QA Cosmetic & Layout
 
-- [ ] **QA-05**: Detail panel action buttons don't overflow at 1440px (#33)
-- [ ] **QA-06**: Reports page title follows "VIPL Triage | Reports" format (#37)
-- [ ] **QA-07**: SLA Compliance bar chart renders at 100% data (#38)
+- [x] **QA-05**: Detail panel action buttons don't overflow at 1440px (#33)
+- [x] **QA-06**: Reports page title follows "VIPL Triage | Reports" format (#37)
+- [x] **QA-07**: SLA Compliance bar chart renders at 100% data (#38)
 
 ## Future Requirements
 
@@ -88,9 +88,9 @@ None — this is a polish milestone.
 | QA-02 | Phase 6 | Complete |
 | QA-03 | Phase 6 | Complete |
 | QA-04 | Phase 6 | Complete |
-| QA-05 | Phase 7 | Pending |
-| QA-06 | Phase 7 | Pending |
-| QA-07 | Phase 7 | Pending |
+| QA-05 | Phase 7 | Complete |
+| QA-06 | Phase 7 | Complete |
+| QA-07 | Phase 7 | Complete |
 
 **Coverage:**
 - v2.5.4 requirements: 24 total
