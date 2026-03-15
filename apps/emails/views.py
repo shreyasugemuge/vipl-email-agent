@@ -733,11 +733,8 @@ def accept_thread_suggestion(request, pk):
         detail=f"Accepted AI suggestion — assigned to {assignee.get_full_name() or assignee.username}",
     )
 
-    # Re-render detail panel
-    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
-    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-    context = _build_thread_detail_context(thread, request, is_admin, team_members)
-    return render(request, "emails/_thread_detail.html", context)
+    # Re-render detail panel + OOB card swap
+    return _render_thread_detail_with_oob_card(thread, request, user)
 
 
 @login_required
@@ -788,11 +785,8 @@ def reject_thread_suggestion(request, pk):
         latest_email.ai_suggested_assignee = {}
         latest_email.save(update_fields=["ai_suggested_assignee", "updated_at"])
 
-    # Re-render detail panel
-    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
-    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-    context = _build_thread_detail_context(thread, request, is_admin, team_members)
-    return render(request, "emails/_thread_detail.html", context)
+    # Re-render detail panel + OOB card swap
+    return _render_thread_detail_with_oob_card(thread, request, user)
 
 
 # ---------------------------------------------------------------------------

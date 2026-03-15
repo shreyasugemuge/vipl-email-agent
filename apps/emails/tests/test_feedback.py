@@ -250,7 +250,7 @@ class AcceptSuggestionOOBSwapTest(ThreadSuggestionViewTestBase):
         # Detail panel content
         self.assertIn("Test thread", content)
         # OOB card should reference the thread id
-        self.assertIn(f"thread-{self.thread.pk}", content)
+        self.assertIn(f"thread-card-{self.thread.pk}", content)
 
 
 class RejectSuggestionOOBSwapTest(ThreadSuggestionViewTestBase):
@@ -274,4 +274,4 @@ class RejectSuggestionOOBSwapTest(ThreadSuggestionViewTestBase):
 
         content = response.content.decode()
         self.assertIn("Test thread", content)
-        self.assertIn(f"thread-{self.thread.pk}", content)
+        self.assertIn(f"thread-card-{self.thread.pk}", content)
