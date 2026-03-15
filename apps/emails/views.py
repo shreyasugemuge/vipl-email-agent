@@ -1950,9 +1950,9 @@ def bulk_assign(request):
 @login_required
 @require_POST
 def bulk_mark_irrelevant(request):
-    """Bulk mark multiple threads as irrelevant. Requires can_assign permission."""
+    """Bulk mark multiple threads as irrelevant. Requires can_triage permission."""
     user = request.user
-    if not user.can_assign:
+    if not user.can_triage:
         return HttpResponseForbidden("Permission denied.")
 
     thread_ids = request.POST.getlist("thread_ids")
@@ -1980,7 +1980,7 @@ def bulk_mark_irrelevant(request):
             thread=thread,
             email=thread.emails.order_by("-received_at").first(),
             user=user,
-            action=ActivityLog.Action.CLOSED,
+            action=ActivityLog.Action.MARKED_IRRELEVANT,
             detail=f"Bulk marked irrelevant: {reason}",
         )
         marked_pks.append(thread.pk)

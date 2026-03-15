@@ -154,7 +154,7 @@ def test_bulk_mark_irrelevant_sets_status(client, admin_user, three_threads):
         t.refresh_from_db()
         assert t.status == "irrelevant"
 
-    logs = ActivityLog.objects.filter(action=ActivityLog.Action.CLOSED)
+    logs = ActivityLog.objects.filter(action=ActivityLog.Action.MARKED_IRRELEVANT)
     assert logs.count() == 3
     for log in logs:
         assert "Bulk marked irrelevant" in log.detail
