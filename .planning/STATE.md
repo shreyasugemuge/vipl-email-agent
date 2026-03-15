@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 
 ## Current Position
 
-Phase: M6-P1 of M6-P5 (Bug Fixes) — first phase of v2.5.4
+Phase: 1 of 5 (Bug Fixes) — M6-P1
 Plan: —
-Status: Ready to plan
-Last activity: 2026-03-15 — Roadmap created
+Status: Ready to discuss/plan
+Last activity: 2026-03-15 — Roadmap renumbered (phases 1-5)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -56,5 +56,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Roadmap created for M6 v2.5.4
-Next: `/gsd:plan-phase M6-P1` to plan bug fixes
+Stopped at: Roadmap renumbered for M6 v2.5.4
+Next: `/gsd:discuss-phase 1` or `/gsd:plan-phase 1`

@@ -53,23 +53,23 @@ None — this is a polish milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | M6-P1 | Pending |
-| BUG-02 | M6-P1 | Pending |
-| BUG-03 | M6-P1 | Pending |
-| BUG-04 | M6-P1 | Pending |
-| BUG-05 | M6-P1 | Pending |
-| CARD-01 | M6-P2 | Pending |
-| CARD-02 | M6-P2 | Pending |
-| CARD-03 | M6-P2 | Pending |
-| CARD-04 | M6-P2 | Pending |
-| FLOW-01 | M6-P3 | Pending |
-| FLOW-02 | M6-P3 | Pending |
-| PAGE-01 | M6-P4 | Pending |
-| PAGE-02 | M6-P4 | Pending |
-| PAGE-03 | M6-P4 | Pending |
-| PAGE-04 | M6-P4 | Pending |
-| DEV-01 | M6-P5 | Pending |
-| DEV-02 | M6-P5 | Pending |
+| BUG-01 | Phase 1 | Pending |
+| BUG-02 | Phase 1 | Pending |
+| BUG-03 | Phase 1 | Pending |
+| BUG-04 | Phase 1 | Pending |
+| BUG-05 | Phase 1 | Pending |
+| CARD-01 | Phase 2 | Pending |
+| CARD-02 | Phase 2 | Pending |
+| CARD-03 | Phase 2 | Pending |
+| CARD-04 | Phase 2 | Pending |
+| FLOW-01 | Phase 3 | Pending |
+| FLOW-02 | Phase 3 | Pending |
+| PAGE-01 | Phase 4 | Pending |
+| PAGE-02 | Phase 4 | Pending |
+| PAGE-03 | Phase 4 | Pending |
+| PAGE-04 | Phase 4 | Pending |
+| DEV-01 | Phase 5 | Pending |
+| DEV-02 | Phase 5 | Pending |
 
 **Coverage:**
 - v2.5.4 requirements: 17 total

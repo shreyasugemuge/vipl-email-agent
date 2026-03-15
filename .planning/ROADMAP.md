@@ -7,7 +7,7 @@
 - M3 v2.3.6 UI/UX Polish & Bug Fixes -- Phases 11-13 (shipped 2026-03-15) -- [archive](milestones/v2.3.6-ROADMAP.md)
 - M4 v2.4.x Dashboard + Threads -- Phase 14 (shipped 2026-03-15)
 - M5 v2.5.0 Intelligence + UX -- Phases 1-7 (shipped 2026-03-15) -- [archive](milestones/v2.5.0-ROADMAP.md)
-- **M6 v2.5.4 UI/UX Polish & Bug Fixes -- Phases M6-P1 to M6-P5 (in progress)**
+- **M6 v2.5.4 UI/UX Polish & Bug Fixes -- Phases 1-5 (in progress)**
 
 ## Phases
 
@@ -20,6 +20,8 @@
 - [x] M4 Phase 14: v2.4.x Dashboard UX + Threads (shipped 2026-03-15)
 - [x] M5 Phases 1-7: v2.5.0 Intelligence + UX (shipped 2026-03-15)
 
+Old phase dirs archived to `.planning/phases/_archived-m5/`
+
 </details>
 
 ### M6 v2.5.4 UI/UX Polish & Bug Fixes
@@ -27,24 +29,27 @@
 ```
 Execution Order:
 
-  M6-P1 (Bug Fixes)
+  P1 (Bug Fixes)
       │
-      ├──→ M6-P2 (Thread Card & Detail UX)  ─┐
-      ├──→ M6-P3 (Workflow Actions)          ─┼──→ Done
-      ├──→ M6-P4 (Page Polish)              ─┘
+      ├──→ P2 (Thread Card & Detail UX)  ─┐
+      ├──→ P3 (Workflow Actions)          ─┼──→ Done
+      ├──→ P4 (Page Polish)              ─┘
       │
-      └──→ M6-P5 (Dev Inspector) ← independent, can run anytime
+      └──→ P5 (Dev Inspector) ← independent, can run anytime
 ```
 
-- [ ] **M6-P1: Bug Fixes** — Fix 5 known bugs: welcome double-show, read/unread markers, reopened status, avatar sync, AI assign
-- [ ] **M6-P2: Thread Card & Detail UX** — Polish cards and detail: spacing, pill dropdowns, context menu font, AI draft display *(parallel after P1)*
-- [ ] **M6-P3: Workflow Actions** — Claim button for unassigned threads, undo spam feedback *(parallel after P1)*
-- [ ] **M6-P4: Page Polish** — Login logo, settings reorganization, activity redesign, sidebar version *(parallel after P1)*
-- [ ] **M6-P5: Dev Inspector** — Poll timer, force poll fix, history table improvements *(independent — no deps)*
+**Wave 1 (parallel):** P1 + P5 (no dependencies between them)
+**Wave 2 (parallel after P1):** P2 + P3 + P4
+
+- [ ] **Phase 1: Bug Fixes** — Fix 5 known bugs: welcome double-show, read/unread markers, reopened status, avatar sync, AI assign
+- [ ] **Phase 2: Thread Card & Detail UX** — Polish cards and detail: spacing, pill dropdowns, context menu font, AI draft display *(after P1)*
+- [ ] **Phase 3: Workflow Actions** — Claim button for unassigned threads, undo spam feedback *(after P1)*
+- [ ] **Phase 4: Page Polish** — Login logo, settings reorganization, activity redesign, sidebar version *(after P1)*
+- [ ] **Phase 5: Dev Inspector** — Poll timer, force poll fix, history table improvements *(independent)*
 
 ## Phase Details
 
-### M6-P1: Bug Fixes
+### Phase 1: Bug Fixes (M6-P1)
 **Goal**: All known bugs from v2.5.0 are resolved — users no longer encounter broken behaviors
 **Depends on**: Nothing (first phase, all others wait on this)
 **Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05
@@ -56,13 +61,13 @@ Execution Order:
   5. AI Assign button in thread detail triggers assignment and updates the card without errors
 
 Plans:
-- [ ] M6-P1-01: TBD
-- [ ] M6-P1-02: TBD
+- [ ] 01-01: TBD
+- [ ] 01-02: TBD
 
-### M6-P2: Thread Card & Detail UX
+### Phase 2: Thread Card & Detail UX (M6-P2)
 **Goal**: Thread cards and detail panel feel polished and information-dense without clutter
-**Depends on**: M6-P1
-**Parallel with**: M6-P3, M6-P4
+**Depends on**: Phase 1
+**Parallel with**: Phase 3, Phase 4
 **Requirements**: CARD-01, CARD-02, CARD-03, CARD-04
 **Success Criteria** (what must be TRUE):
   1. Thread cards have comfortable spacing with more vertical height for content
@@ -71,25 +76,25 @@ Plans:
   4. AI draft reply is visible in the thread detail panel when available
 
 Plans:
-- [ ] M6-P2-01: TBD
-- [ ] M6-P2-02: TBD
+- [ ] 02-01: TBD
+- [ ] 02-02: TBD
 
-### M6-P3: Workflow Actions
+### Phase 3: Workflow Actions (M6-P3)
 **Goal**: Users can self-serve on common actions — claim threads and undo spam mistakes
-**Depends on**: M6-P1
-**Parallel with**: M6-P2, M6-P4
+**Depends on**: Phase 1
+**Parallel with**: Phase 2, Phase 4
 **Requirements**: FLOW-01, FLOW-02
 **Success Criteria** (what must be TRUE):
   1. Any team member can click "Claim" on an unassigned thread to assign it to themselves
   2. User who marked a thread as spam can undo that action from the same UI location
 
 Plans:
-- [ ] M6-P3-01: TBD
+- [ ] 03-01: TBD
 
-### M6-P4: Page Polish
+### Phase 4: Page Polish (M6-P4)
 **Goal**: Login, settings, activity, and sidebar pages feel cohesive and well-organized
-**Depends on**: M6-P1
-**Parallel with**: M6-P2, M6-P3
+**Depends on**: Phase 1
+**Parallel with**: Phase 2, Phase 3
 **Requirements**: PAGE-01, PAGE-02, PAGE-03, PAGE-04
 **Success Criteria** (what must be TRUE):
   1. Login page shows the VIPL logo without a colored background rectangle
@@ -98,10 +103,10 @@ Plans:
   4. Sidebar footer shows current version number (e.g., "v2.5.4") instead of "Online"
 
 Plans:
-- [ ] M6-P4-01: TBD
-- [ ] M6-P4-02: TBD
+- [ ] 04-01: TBD
+- [ ] 04-02: TBD
 
-### M6-P5: Dev Inspector
+### Phase 5: Dev Inspector (M6-P5)
 **Goal**: Dev inspector provides accurate real-time poll status and readable history
 **Depends on**: Nothing (independent — can run anytime, even parallel with P1)
 **Requirements**: DEV-01, DEV-02
@@ -111,14 +116,14 @@ Plans:
   3. Poll history table shows human-readable timestamps, interval between polls, and distinguishes empty polls from polls that fetched emails
 
 Plans:
-- [ ] M6-P5-01: TBD
+- [ ] 05-01: TBD
 
 ## Progress
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| M6-P1 | Bug Fixes | 0/TBD | Not started | - |
-| M6-P2 | Thread Card & Detail UX | 0/TBD | Not started | - |
-| M6-P3 | Workflow Actions | 0/TBD | Not started | - |
-| M6-P4 | Page Polish | 0/TBD | Not started | - |
-| M6-P5 | Dev Inspector | 0/TBD | Not started | - |
+| 1 (M6-P1) | Bug Fixes | 0/TBD | Not started | - |
+| 2 (M6-P2) | Thread Card & Detail UX | 0/TBD | Not started | - |
+| 3 (M6-P3) | Workflow Actions | 0/TBD | Not started | - |
+| 4 (M6-P4) | Page Polish | 0/TBD | Not started | - |
+| 5 (M6-P5) | Dev Inspector | 0/TBD | Not started | - |
