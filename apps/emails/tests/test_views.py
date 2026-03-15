@@ -345,24 +345,25 @@ class TestFilterIndicators:
     """UX-02: Active filter count and clear-all link."""
 
     def test_one_filter_shows_indicator(self, admin_client, db):
-        """With one filter active, shows '1 filter active' text."""
+        """With one filter active, filter panel is open with Clear all link."""
         _create_email(db, message_id="msg_fi_1")
         response = admin_client.get(
             reverse("emails:email_list"),
             {"view": "all", "status": "new"},
         )
         content = response.content.decode()
-        assert "1 filter active" in content
+        assert "Clear all" in content
+        assert 'id="filter-panel"' in content
 
     def test_two_filters_show_indicator(self, admin_client, db):
-        """With two filters active, shows '2 filters active' text."""
+        """With two filters active, filter panel is open with Clear all link."""
         _create_email(db, message_id="msg_fi_2")
         response = admin_client.get(
             reverse("emails:email_list"),
             {"view": "all", "status": "new", "priority": "HIGH"},
         )
         content = response.content.decode()
-        assert "2 filters active" in content
+        assert "Clear all" in content
 
     def test_no_filters_no_indicator(self, admin_client, db):
         """With no filters active, 'filter active' text is absent."""

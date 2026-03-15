@@ -48,6 +48,9 @@ to_delete/
 .swarm/
 .mcp.json
 
+# QA media (screenshots, GIFs — ephemeral)
+.planning/qa/
+
 # OS
 .DS_Store
 Thumbs.db
