@@ -1213,11 +1213,15 @@ def thread_context_menu(request, pk):
         pk=pk,
     )
 
-    can_claim = (
-        not is_admin
-        and thread.assigned_to != user
-        and thread.status != Thread.Status.CLOSED
-    )
+    can_claim = False
+    if thread.assigned_to is None and thread.status != Thread.Status.CLOSED:
+        if is_admin:
+            can_claim = True
+        else:
+            can_claim = CategoryVisibility.objects.filter(
+                user=request.user,
+                category=thread.category,
+            ).exists()
     can_acknowledge = thread.status not in (Thread.Status.ACKNOWLEDGED, Thread.Status.CLOSED)
     can_close = thread.status != Thread.Status.CLOSED
 
@@ -1404,6 +1408,7 @@ def claim_thread_view(request, pk):
 
     # Primary: updated detail panel
     detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_context["toast_msg"] = "Thread claimed"
     detail_html = render_to_string(
         "emails/_thread_detail.html", detail_context, request=request,
     )
