@@ -288,13 +288,13 @@ document.addEventListener('htmx:afterSwap', function(e) {
         var overlay = document.getElementById('detail-overlay');
         var backBtn = document.getElementById('detail-back-btn');
         if (window.innerWidth < 768) {
-            panel.classList.remove('translate-x-full');
-            overlay.classList.remove('hidden');
+            if (panel) panel.classList.remove('translate-x-full');
+            if (overlay) overlay.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
-            backBtn.style.display = '';
+            if (backBtn) backBtn.style.display = '';
             history.pushState({ detailOpen: true }, '');
         } else {
-            backBtn.style.display = 'none';
+            if (backBtn) backBtn.style.display = 'none';
         }
     }
 });
@@ -303,10 +303,10 @@ function closeDetailNoHistory() {
     var panel = document.getElementById('detail-panel');
     var overlay = document.getElementById('detail-overlay');
     var backBtn = document.getElementById('detail-back-btn');
-    panel.classList.add('translate-x-full');
-    overlay.classList.add('hidden');
+    if (panel) panel.classList.add('translate-x-full');
+    if (overlay) overlay.classList.add('hidden');
     document.body.style.overflow = '';
-    backBtn.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
 }
 
 function closeDetail() {
@@ -319,7 +319,7 @@ function closeDetail() {
 
 window.addEventListener('popstate', function(e) {
     var panel = document.getElementById('detail-panel');
-    if (!panel.classList.contains('translate-x-full')) {
+    if (panel && !panel.classList.contains('translate-x-full')) {
         closeDetailNoHistory();
     }
 });
