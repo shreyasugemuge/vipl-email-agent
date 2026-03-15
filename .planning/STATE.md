@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
-status: in_progress
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-15T07:28:00Z"
-last_activity: 2026-03-15 — Internal notes with @mentions and inline timeline display
+status: complete
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-15T07:35:35Z"
+last_activity: 2026-03-15 — Viewing presence with heartbeat polling and collision detection
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 ## Current Position
 
 Phase: 4 of 4 (Collaboration)
-Plan: 1 of 2 in current phase
-Status: Plan 04-01 complete
-Last activity: 2026-03-15 — Internal notes with @mentions and inline timeline display
+Plan: 2 of 2 in current phase
+Status: Plan 04-02 complete
+Last activity: 2026-03-15 — Viewing presence with heartbeat polling and collision detection
 
-Progress: [########..] 88%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 5min
-- Total execution time: 33min
+- Total execution time: 38min
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -48,6 +48,7 @@ Progress: [########..] 88%
 | 03 | 01 | 4min | 2 | 6 |
 | 03 | 02 | 4min | 2 | 5 |
 | 04 | 01 | 5min | 2 | 8 |
+| 04 | 02 | 5min | 2 | 7 |
 
 ## Accumulated Context
 
@@ -79,6 +80,10 @@ Progress: [########..] 88%
 - Mention autocomplete is vanilla JS (no external library) -- zero added dependencies
 - Notes inline in timeline (not separate tab) -- consistent with existing messages + activity pattern
 - notify_mention uses simple Chat text message (not Cards v2) -- lightweight for mentions
+- ThreadViewer is ephemeral (plain Model, not SoftDeleteModel) -- viewer records are transient presence data
+- DB-backed polling (not WebSocket/Redis) -- 3-person team, 15s interval is more than adequate
+- Idle detection at 25s stops heartbeats before 30s server-side stale cutoff
+- navigator.sendBeacon for cleanup on page unload -- reliable even during navigation
 
 ### Pending Todos
 
@@ -90,6 +95,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T07:28:00Z
-Stopped at: Completed 04-01-PLAN.md
-Next: `/gsd:execute-phase 04-02`
+Last session: 2026-03-15T07:35:35Z
+Stopped at: Completed 04-02-PLAN.md (all plans complete)
+Next: Milestone v2.1 complete -- ready for integration testing and deployment

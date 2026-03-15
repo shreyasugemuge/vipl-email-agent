@@ -26,7 +26,7 @@
 - [x] **COLLAB-01**: User can add internal notes on a thread (visible only to team, never to customer)
 - [x] **COLLAB-02**: Notes support @mentions that notify the mentioned team member
 - [x] **COLLAB-03**: Notes appear inline in the thread detail, visually distinct from email messages
-- [ ] **COLLAB-04**: Collision detection shows "X is viewing this thread" when another user has it open
+- [x] **COLLAB-04**: Collision detection shows "X is viewing this thread" when another user has it open
 
 ### Inbox Clarity
 
@@ -77,7 +77,7 @@
 | COLLAB-01 | Phase 4 | Complete |
 | COLLAB-02 | Phase 4 | Complete |
 | COLLAB-03 | Phase 4 | Complete |
-| COLLAB-04 | Phase 4 | Pending |
+| COLLAB-04 | Phase 4 | Complete |
 | INBOX-01 | Phase 2 | Complete |
 | INBOX-02 | Phase 2 | Complete |
 | INBOX-03 | Phase 2 | Complete |
