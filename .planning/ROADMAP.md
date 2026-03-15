@@ -144,13 +144,14 @@ Plans:
 **Depends on**: Nothing (independent of P6)
 **Parallel with**: Phase 6
 **Requirements**: QA-05, QA-06, QA-07
+**Plans:** 1 plan
 **Success Criteria** (what must be TRUE):
   1. Detail panel action buttons don't overflow or clip at right edge at 1440px
   2. Reports page title follows "VIPL Triage | Reports" format
   3. SLA Compliance bar chart renders correctly when data is 100% met / 0% breached
 
 Plans:
-- [ ] 07-01: TBD
+- [ ] 07-01-PLAN.md — Action bar flex-wrap + reports title fix + SLA donut zero-value handling
 
 ## Progress
 
@@ -162,4 +163,4 @@ Plans:
 | 4 (M6-P4) | 2/2 | Complete   | 2026-03-15 | - |
 | 5 (M6-P5) | 1/1 | Complete   | 2026-03-15 | - |
 | 6 (M6-P6) | QA Bug Fixes | 0/TBD | Not started | - |
-| 7 (M6-P7) | QA Cosmetic & Layout | 0/TBD | Not started | - |
+| 7 (M6-P7) | QA Cosmetic & Layout | 1 | Not started | - |
