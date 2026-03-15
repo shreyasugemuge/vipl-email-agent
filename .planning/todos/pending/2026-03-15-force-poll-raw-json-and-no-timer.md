@@ -11,8 +11,12 @@ files:
 
 1. Force poll button navigates to `/emails/inspect/force-poll/` and shows raw JSON response (`{"status": "ok", "output": "Running single poll cycle...\nSingle poll cycle complete.\n", "errors": ""}`) instead of staying on the inspector page with a nice result display.
 2. Poll countdown timer says "Due now" / "Last poll: 8m ago" but doesn't count down live — should show a ticking countdown to next poll.
+3. "Last poll" timestamp doesn't update after a force poll — force poll should update `last_poll_epoch` in SystemConfig so the timer resets.
+4. Both the countdown and "last poll" display should reflect force polls, not just scheduler polls.
 
 ## Solution
 
 1. Force poll should be an HTMX POST that updates a result area on the inspector page, not a page navigation to raw JSON
 2. Add JS countdown timer that ticks every second based on `last_poll_epoch + poll_interval`
+3. Force poll endpoint must update `last_poll_epoch` SystemConfig after successful poll — same as scheduler does
+4. After force poll completes, refresh the timer widget via HTMX OOB swap
