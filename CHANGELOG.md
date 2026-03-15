@@ -2,6 +2,46 @@
 
 All notable changes to the VIPL Email Agent are documented here.
 
+## [2.6.1] — Mar 2026
+
+### Changed
+- **Prominent assignee badges** — Avatar images from Google OAuth shown on thread cards (w-5) and detail panel (w-6); solid rose-colored initial fallback with white text; `is_auto_assigned` badge shown inline
+- **Gold "Unassigned" state** — Unassigned threads show amber/gold badge with "Unassigned" text and circular person icon instead of invisible grey "---"
+- **Bolder status badges** — Background opacity increased from `/8` to `/15`, font bumped to `font-bold uppercase tracking-wider`, `reopened` status gets distinct gold color
+- **Editable status badge bump** — Tailwind shades from `-50`/`-600` to `-100`/`-700`, larger dot indicator, increased padding
+- **Editable priority badge bump** — Background `-50` to `-100`, text `-700` to `-800` for consistency
+
+### Documentation
+- CLAUDE.md: Added "Design System" section documenting hand-crafted CSS, theme tokens, class conventions
+- README.md: Added "Design System" section, version history entries for v2.6.0 and v2.6.1, dark/light mode feature
+- CHANGELOG.md: Added v2.6.0 and v2.6.1 entries
+- Memory: Updated project state and design system origin
+
+## [2.6.0] — Mar 2026
+
+Full UI revamp — the retro v2 design becomes the default for all pages with dark/light theme support.
+
+### Added
+- **Dark/light theme toggle** — `data-theme` attribute on `<html>`, CSS variables scoped per theme, sun/moon toggle in sidebar footer, persisted in `localStorage('vipl-theme')`
+- **Anti-FOUC script** — Inline `<script>` in `<head>` sets theme before render
+- **Chart.js theme awareness** — `getChartThemeColors()` helper reads CSS variables; charts destroy and recreate on theme toggle via `window.onThemeChange` hook
+- **VIPL logo** — Brand logo image in sidebar replaces text "V"
+
+### Changed
+- **All `--pxl-*` vars renamed to `--vipl-*`** — Brand rose palette (#e06a97 dark / #a83262 light) replaces green neon (#00FF88)
+- **All `.pxl-*` classes renamed to `.vipl-*`** — `.vipl-card`, `.vipl-nav-active`, `.vipl-select`, etc.
+- **v2 design becomes default** — v2 templates renamed to primary names (dropped `_v2` suffix)
+- **All pages themed** — Activity log, reports (Chart.js), settings + 7 tab partials, team, login, dev inspector, shared partials
+- **CRT/scanline effects** scoped to dark mode only
+- **Grid background** — Dark = line grid; Light = subtle dot grid
+- **Body font** — Dark = JetBrains Mono; Light = Plus Jakarta Sans
+
+### Removed
+- `thread_list_v2()` and `thread_detail_v2()` view functions
+- `_V2_TEMPLATE_MAP`, `_is_v2()`, `_tpl()` helpers
+- `/emails/v2/` URL routes (replaced with redirect to `/emails/`)
+- v1 templates moved to `to_delete/`
+
 ## [1.1.3] — Mar 2026
 
 Full code review and production hardening release. 22 issues identified and fixed across all severity levels.

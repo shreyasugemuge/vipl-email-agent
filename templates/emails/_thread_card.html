@@ -68,10 +68,10 @@
 
         <div class="flex items-center gap-1.5 shrink-0">
             <!-- Status -->
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold font-mono
-                {% if thread.status == 'new' %}text-[var(--vipl-primary)] bg-[var(--vipl-primary)]/8 border border-[var(--vipl-primary)]/15{% elif thread.status == 'acknowledged' %}text-[var(--vipl-cyan)] bg-[var(--vipl-cyan)]/8 border border-[var(--vipl-cyan)]/15{% else %}text-[var(--vipl-text-muted)] bg-white/[0.04] border border-[var(--vipl-border)]{% endif %}"
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase tracking-wider
+                {% if thread.status == 'new' %}text-[var(--vipl-primary)] bg-[var(--vipl-primary)]/15 border border-[var(--vipl-primary)]/25{% elif thread.status == 'acknowledged' %}text-[var(--vipl-cyan)] bg-[var(--vipl-cyan)]/15 border border-[var(--vipl-cyan)]/25{% elif thread.status == 'reopened' %}text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/15 border border-[var(--vipl-gold)]/25{% elif thread.status == 'closed' %}text-[var(--vipl-text-muted)] bg-white/[0.06] border border-[var(--vipl-border)]{% else %}text-[var(--vipl-text-muted)] bg-white/[0.06] border border-[var(--vipl-border)]{% endif %}"
                 title="{{ thread.status|status_tooltip }}">
-                <span class="w-1.5 h-1.5 rounded-full {% if thread.status == 'new' %}bg-[var(--vipl-primary)] shadow-[0_0_4px_var(--vipl-primary)]{% elif thread.status == 'acknowledged' %}bg-[var(--vipl-cyan)] shadow-[0_0_4px_var(--vipl-cyan)]{% else %}bg-[var(--vipl-text-muted)]{% endif %}"></span>
+                <span class="w-1.5 h-1.5 rounded-full {% if thread.status == 'new' %}bg-[var(--vipl-primary)] shadow-[0_0_6px_var(--vipl-primary)]{% elif thread.status == 'acknowledged' %}bg-[var(--vipl-cyan)] shadow-[0_0_6px_var(--vipl-cyan)]{% elif thread.status == 'reopened' %}bg-[var(--vipl-gold)] shadow-[0_0_6px_var(--vipl-gold)]{% elif thread.status == 'closed' %}bg-[var(--vipl-text-muted)]{% else %}bg-[var(--vipl-text-muted)]{% endif %}"></span>
                 {{ thread.get_status_display }}
             </span>
 
@@ -85,14 +85,23 @@
 
             <!-- Assignee -->
             {% if thread.assigned_to %}
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold font-mono text-[var(--vipl-primary)] bg-[var(--vipl-primary)]/8 border border-[var(--vipl-primary)]/15">
-                <span class="w-4 h-4 rounded border border-[var(--vipl-primary)]/30 bg-[var(--vipl-primary)]/10 flex items-center justify-center text-[var(--vipl-primary)] text-[7px] font-bold shrink-0">{{ thread.assigned_to.first_name.0|default:thread.assigned_to.username.0|upper }}</span>
-                {{ thread.assigned_to.first_name|default:thread.assigned_to.username|truncatechars:10 }}
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold font-mono text-[var(--vipl-primary)] bg-[var(--vipl-primary)]/15 border border-[var(--vipl-primary)]/25">
+                {% if thread.assigned_to.avatar_url %}
+                <img src="{{ thread.assigned_to.avatar_url }}" alt="" class="w-5 h-5 rounded-full object-cover shrink-0 border border-[var(--vipl-primary)]/30" referrerpolicy="no-referrer">
+                {% else %}
+                <span class="w-5 h-5 rounded-full bg-[var(--vipl-primary)] flex items-center justify-center text-white text-[8px] font-bold shrink-0">{{ thread.assigned_to.first_name.0|default:thread.assigned_to.username.0|upper }}</span>
+                {% endif %}
+                {{ thread.assigned_to.first_name|default:thread.assigned_to.username|truncatechars:12 }}
+                {% if thread.is_auto_assigned %}
+                <span class="font-pixel text-[6px] text-[var(--vipl-text-muted)] bg-white/[0.06] px-1 py-0.5 rounded">AUTO</span>
+                {% endif %}
             </span>
             {% else %}
-            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium font-mono text-[var(--vipl-text-muted)] bg-white/[0.03] border border-[var(--vipl-border)]">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                ---
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold font-mono text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/12 border border-[var(--vipl-gold)]/20">
+                <span class="w-5 h-5 rounded-full bg-[var(--vipl-gold)]/20 flex items-center justify-center shrink-0">
+                    <svg class="w-3 h-3 text-[var(--vipl-gold)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                </span>
+                Unassigned
             </span>
             {% endif %}
         </div>

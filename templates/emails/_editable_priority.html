@@ -5,7 +5,7 @@ Context: thread, priorities (list of valid priorities).
 {% endcomment %}
 <div class="group/pri relative inline-flex items-center" id="editable-priority">
     <!-- Display mode: colored pill -->
-    <span class="pri-pill inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer bg-{{ thread.priority|priority_base }}-50 text-{{ thread.priority|priority_base }}-700 border border-{{ thread.priority|priority_base }}-200/50 hover:ring-2 hover:ring-{{ thread.priority|priority_base }}-300/30 transition-all"
+    <span class="pri-pill inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer bg-{{ thread.priority|priority_base }}-100 text-{{ thread.priority|priority_base }}-800 border border-{{ thread.priority|priority_base }}-300/50 hover:ring-2 hover:ring-{{ thread.priority|priority_base }}-400/30 transition-all"
           onclick="this.closest('#editable-priority').querySelector('.pri-edit').classList.remove('hidden'); this.closest('.pri-display').classList.add('hidden');"
           title="{{ thread.priority|priority_tooltip }}">
         <span class="w-1.5 h-1.5 rounded-full bg-{{ thread.priority|priority_base }}-500"></span>

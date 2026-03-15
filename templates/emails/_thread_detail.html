@@ -147,13 +147,17 @@
                     </form>
                     {% else %}
                         {% if thread.assigned_to %}
-                        <div class="flex items-center gap-2 px-2.5 py-1 bg-[var(--vipl-card)] rounded border border-[var(--vipl-border)]">
-                            <div class="w-5 h-5 rounded border border-[var(--vipl-primary)]/30 bg-[var(--vipl-primary)]/10 flex items-center justify-center text-[var(--vipl-primary)] text-[8px] font-bold">
+                        <div class="flex items-center gap-2.5 px-3 py-1.5 bg-[var(--vipl-primary)]/8 rounded border border-[var(--vipl-primary)]/20">
+                            {% if thread.assigned_to.avatar_url %}
+                            <img src="{{ thread.assigned_to.avatar_url }}" alt="" class="w-6 h-6 rounded-full object-cover shrink-0 border border-[var(--vipl-primary)]/30" referrerpolicy="no-referrer">
+                            {% else %}
+                            <div class="w-6 h-6 rounded-full bg-[var(--vipl-primary)] flex items-center justify-center text-white text-[9px] font-bold shrink-0">
                                 {{ thread.assigned_to.first_name.0|default:thread.assigned_to.username.0|upper }}
                             </div>
-                            <span class="text-[10px] font-semibold font-mono text-[var(--vipl-text)]">{{ thread.assigned_to.get_full_name|default:thread.assigned_to.username }}</span>
+                            {% endif %}
+                            <span class="text-[11px] font-semibold font-mono text-[var(--vipl-text)]">{{ thread.assigned_to.get_full_name|default:thread.assigned_to.username }}</span>
                             {% if thread.is_auto_assigned %}
-                            <span class="font-pixel text-[6px] text-[var(--vipl-text-muted)] bg-white/[0.04] px-1.5 py-0.5 rounded">AUTO</span>
+                            <span class="font-pixel text-[6px] text-[var(--vipl-text-muted)] bg-white/[0.06] px-1.5 py-0.5 rounded">AUTO</span>
                             {% endif %}
                         </div>
                         {% elif can_claim %}
@@ -165,7 +169,7 @@
                             </button>
                         </form>
                         {% else %}
-                        <span class="text-[10px] font-bold font-mono text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/10 px-2.5 py-1 rounded border border-[var(--vipl-gold)]/20">UNASSIGNED</span>
+                        <span class="text-[11px] font-bold font-mono text-[var(--vipl-gold)] bg-[var(--vipl-gold)]/15 px-3 py-1.5 rounded border border-[var(--vipl-gold)]/25">UNASSIGNED</span>
                         {% endif %}
                     {% endif %}
                 </div>

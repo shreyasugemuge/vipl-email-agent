@@ -24,7 +24,7 @@ VIPL Email Agent monitors Gmail shared inboxes 24/7, triages every email with Cl
 | Layer | Technology |
 |-------|-----------|
 | **Backend** | Django 4.2 LTS + PostgreSQL 12.3 |
-| **Frontend** | Django templates + HTMX 2.0 + Tailwind CSS v4 |
+| **Frontend** | Django templates + HTMX 2.0 + Tailwind CSS v4 + hand-crafted theme system |
 | **AI** | Claude Haiku (default) + Sonnet (CRITICAL escalation) |
 | **Email** | Gmail API with domain-wide delegation |
 | **Notifications** | Google Chat Cards v2 webhooks |
@@ -84,9 +84,10 @@ Every email is classified into 8 categories with priority, SLA deadline, summary
 
 | Feature | Description |
 |---------|-------------|
-| **Thread Card List** | Filterable, sortable queue with AI summary, confidence dots, spam badges |
-| **Assignment Workflow** | Admins assign emails to team members; accept/reject AI suggestions |
+| **Thread Card List** | Filterable, sortable queue with AI summary, confidence dots, spam badges, avatar assignee badges |
+| **Assignment Workflow** | Admins assign emails to team members; accept/reject AI suggestions; Google avatar on badges |
 | **Detail Panel** | Slide-out panel with email body, inline-editable attributes, and activity timeline |
+| **Dark/Light Mode** | Theme toggle (sun/moon) in sidebar; dark = retro CRT/scanlines/glow, light = clean modern; persisted in localStorage |
 | **Inline Editing** | Category, priority, status editable via dropdowns directly in detail panel |
 | **Right-Click Menu** | Context menu on thread cards for quick actions (assign, status, priority, spam) |
 | **Read/Unread Tracking** | Per-user read state, unread badges, mark-as-unread, bold styling |
@@ -148,7 +149,7 @@ Fresh installs default to **off** mode — no external API calls, no Gmail polli
 ### Testing
 
 ```bash
-pytest -v                              # All 734 tests (no API keys needed)
+pytest -v                              # All 753 tests (no API keys needed)
 python manage.py test_pipeline         # Smoke test with fake data (no external calls)
 python manage.py test_pipeline --with-ai   # Real Claude triage (~$0.001/email)
 python manage.py run_scheduler --once --dry-run  # Simulated poll cycle
@@ -219,6 +220,8 @@ sudo docker compose exec web python manage.py set_mode production   # Full pipel
 
 | Version | Date | Highlights |
 |:---:|:---:|------------|
+| **v2.6.1** | Mar 2026 | Prominent assignee & status badges: avatar image support, solid colored initials, gold "Unassigned" state, bolder status with reopened color, editable badge bump. 753 tests. |
+| **v2.6.0** | Mar 2026 | Full UI revamp: dark/light theme toggle, VIPL brand rose palette, hand-crafted CSS design system (no external framework), all pages themed, v2 design as default, Chart.js theme-aware. 753 tests. |
 | **v2.5.4** | Mar 2026 | UI/UX polish: 24 fixes — expanded cards, pill dropdowns, claim button, retro login, grouped settings, thread-grouped activity, dev inspector overhaul, QA bug fixes. 734 tests. |
 | **v2.5.0** | Mar 2026 | Intelligence + UX: AI confidence scoring, auto-assign, spam learning, read/unread tracking, inline editing, context menu, reports module. 729 tests. |
 | **v2.4.0** | Mar 2026 | Dashboard UX overhaul: single sidebar, settings validation, poll persistence, test consolidation. 555 tests. |
@@ -229,6 +232,21 @@ sudo docker compose exec web python manage.py set_mode production   # Full pipel
 | **v1.0.0** | Feb 2026 | Initial production: Gmail polling, Claude triage, Google Sheets, Chat alerts |
 
 ---
+
+## Design System
+
+The UI uses a **hand-crafted CSS design system** — no external framework. The retro aesthetic (scanlines, CRT vignette, pixel corners, glow effects) is pure CSS in `templates/base.html`.
+
+| Aspect | Details |
+|--------|---------|
+| **Theme** | Dark/light mode via `data-theme` attribute + CSS variables |
+| **Color Tokens** | `--vipl-primary` (rose), `--vipl-cyan`, `--vipl-gold`, `--vipl-red`, `--vipl-purple` |
+| **Dark Mode** | Deep dark bg, retro scanlines/CRT glow, JetBrains Mono body font |
+| **Light Mode** | Clean white/slate, subtle dot grid, Plus Jakarta Sans body font |
+| **Pixel Font** | Press Start 2P for headings and labels (both themes) |
+| **Components** | `.vipl-card`, `.vipl-nav-active`, `.vipl-select`, `.vipl-pill-*`, `.vipl-stat-active` |
+| **Toggle** | Sun/moon icon in sidebar footer, persisted in `localStorage('vipl-theme')` |
+| **Dependencies** | Tailwind CSS v4 (utilities only) — zero external design libraries |
 
 ## Documentation
 

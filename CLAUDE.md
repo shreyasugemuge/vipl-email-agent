@@ -6,12 +6,13 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v2.5.4** (fixes branch) | **Complete** — 24 UI/UX fixes, pending merge + deploy | Self-hosted VM (Docker Compose) |
-| **v2.5.0** (main branch) | **Deployed** — intelligence + UX milestone | Self-hosted VM (Docker Compose) |
+| **v2.6.1** (main branch) | **Complete** — prominent assignee/status badges | Self-hosted VM (Docker Compose) |
+| **v2.6.0** (main branch) | **Complete** — full UI revamp, dark/light mode | Self-hosted VM (Docker Compose) |
+| **v2.5.4** (merged) | **Complete** — 24 UI/UX fixes | Self-hosted VM (Docker Compose) |
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.5.0 (latest deployed, 2026-03-15)
+**GitHub Release**: v2.5.11 (latest deployed)
 
 ## Active Branches
 
@@ -138,6 +139,22 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **v2.5.4 Phase 5** (Dev Inspector): Force poll inline results, poll history with intervals/dimming/timestamps
 - **v2.5.4 Phase 6** (QA Bug Fixes): Thread count OOB filter sync, search view preservation, mobile drawer close, Escape key detail close
 - **v2.5.4 Phase 7** (QA Cosmetic): Action button flex-wrap, reports title format, SLA chart zero-value handling
+- **v2.6.0** (Full UI Revamp): V2 retro design becomes default for all pages, dark/light theme toggle (`data-theme` + localStorage), VIPL brand rose palette (`--vipl-*` CSS variables), CRT/scanline/glow effects dark-only, Chart.js theme-aware re-render, all templates themed (activity, reports, settings, team, login, inspector, partials), v1 templates moved to `to_delete/`, v2 views/routes removed
+- **v2.6.1** (Prominent Badges): Bolder assignee badges with avatar image support and solid colored initials, gold "Unassigned" state, status badges with increased opacity/font weight/uppercase, `reopened` status gets gold color, editable status/priority badges bumped to `-100`/`-700` Tailwind shades
+
+### Design System
+
+The UI is a **100% hand-crafted CSS design system** — there is no external PxlKit or design framework dependency. The retro aesthetic (scanlines, CRT vignette, pixel corners, glow effects, custom color palette) is pure CSS written inline in `templates/base.html` (~220 lines of `<style>` block).
+
+**Stack**: Django templates + HTMX 2.0 + Tailwind CSS v4 (utility classes only) + hand-crafted theme CSS.
+
+**Theme system**: Dual dark/light mode via `data-theme="dark|light"` on `<html>`, CSS variables scoped per theme (`[data-theme="dark"] { --vipl-*: ... }`), persisted in `localStorage('vipl-theme')`, anti-FOUC script in `<head>`.
+
+**Color tokens** (CSS variables in `base.html`): `--vipl-bg`, `--vipl-surface`, `--vipl-card`, `--vipl-card-hover`, `--vipl-border`, `--vipl-primary` (brand rose), `--vipl-primary-dim`, `--vipl-cyan`, `--vipl-gold`, `--vipl-red`, `--vipl-purple`, `--vipl-text`, `--vipl-text-dim`, `--vipl-text-muted`.
+
+**Class conventions**: `.vipl-card` (card hover), `.vipl-card-selected`, `.vipl-nav-active`, `.vipl-view-active`, `.vipl-pill-active`/`.vipl-pill-inactive`, `.vipl-select`, `.vipl-stat-active`, `.vipl-filter-toggle`.
+
+**Fonts**: Press Start 2P (pixel headings), JetBrains Mono (dark mode body), Plus Jakarta Sans (light mode body).
 
 ### Email Pipeline Architecture
 ```
@@ -313,6 +330,10 @@ gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl >
 - Right-click context menu: quick actions on thread cards (assign, status, priority, spam, unread)
 - Reports module: 4-tab dashboard (Overview, Categories, Performance, SLA) with Chart.js charts, date range picker
 - Feedback distillation: user corrections aggregated into AI prompt correction rules via scheduler
+- Dark/light theme toggle: sun/moon button in sidebar footer, persisted in localStorage, anti-FOUC
+- Assignee badges: Google avatar image (w-5 card / w-6 detail), solid rose initial fallback, gold "Unassigned" state
+- Status badges: bolder colors (bg/15 opacity, uppercase, font-bold), reopened=gold, glow dots
+- Editable priority/status: bumped to Tailwind -100/-700 shades for more visual weight
 
 ### Common Tasks
 
