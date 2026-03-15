@@ -101,7 +101,7 @@ Plans:
   3. Context menu is role-aware (admin sees Assign, members see Claim)
   4. Long-press on mobile triggers the same context menu
   5. Every context menu action is also available via the primary UI (no menu-only actions)
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 05-01-PLAN.md -- Inline edit endpoints, dropdown partials, detail panel integration
 - [ ] 05-02-PLAN.md -- Context menu component, JS handler, mobile long-press, role-aware rendering
@@ -131,5 +131,5 @@ Plans:
 | 2. AI Confidence + Auto-Assign | 4/4 | Complete   | 2026-03-15 |
 | 3. Spam Learning + Bug Fixes | 2/2 | Complete    | 2026-03-15 |
 | 4. Read/Unread Tracking | 2/2 | Complete    | 2026-03-15 |
-| 5. Editable Attributes + Context Menu | 0/2 | Planning complete | - |
+| 5. Editable Attributes + Context Menu | 1/2 | In Progress|  |
 | 6. Reports Module | 0/2 | Planning complete | - |

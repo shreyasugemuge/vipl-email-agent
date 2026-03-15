@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md (backfill)
-last_updated: "2026-03-15T14:08:44.388Z"
-last_activity: 2026-03-15 -- Completed 04-02 (read/unread UI indicators)
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-15T14:10:30.000Z"
+last_activity: 2026-03-15 -- Completed 05-01 (inline editable attributes)
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 13
-  completed_plans: 9
-  percent: 62
+  completed_plans: 10
+  percent: 69
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-03-15)
 
 ## Current Position
 
-Phase: 4 of 6 (Read/Unread Tracking)
-Plan: 2 of 2 (04-02 complete -- phase done)
+Phase: 5 of 6 (Editable Attrs + Context Menu)
+Plan: 1 of 2 (05-01 complete)
 Status: Executing
-Last activity: 2026-03-15 -- Completed 04-02 (read/unread UI indicators)
+Last activity: 2026-03-15 -- Completed 05-01 (inline editable attributes)
 
-Progress: [██████░░░░] 62%
+Progress: [███████░░░] 69%
 
 ## Accumulated Context
 
@@ -60,6 +60,9 @@ Progress: [██████░░░░] 62%
 - Mark as Unread outside admin guard -- all users can mark their own read state
 - [Phase 02]: Suggestion bar shows for both unassigned-with-suggestion AND auto-assigned threads
 - [Phase 02]: Reject clears ai_suggested_assignee on latest email so suggestion bar disappears permanently
+- [Phase 05]: Any logged-in user can edit category/priority (not admin-only) -- quick corrections should be frictionless
+- [Phase 05]: Status edit restricted to admin or assigned user -- same permission model as existing views
+- [Phase 05]: Custom category via __custom__ sentinel with inline text input -- no server round-trip
 
 ### Pending Todos
 
@@ -71,6 +74,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T14:05:11.264Z
-Stopped at: Completed 02-03-PLAN.md (backfill)
-Next: Continue with Phase 05 (Smart Notifications)
+Last session: 2026-03-15T14:10:30.000Z
+Stopped at: Completed 05-01-PLAN.md
+Next: Continue with 05-02 (context menu)
