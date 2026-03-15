@@ -53,6 +53,13 @@ class Thread(SoftDeleteModel, TimestampedModel):
     ai_summary = models.TextField(blank=True, default="")
     ai_draft_reply = models.TextField(blank=True, default="")
 
+    # Override flags (v2.5.0) -- prevent pipeline from overwriting user edits
+    category_overridden = models.BooleanField(default=False)
+    priority_overridden = models.BooleanField(default=False)
+
+    # AI confidence tier (v2.5.0) -- HIGH/MEDIUM/LOW
+    ai_confidence = models.CharField(max_length=10, blank=True, default="")
+
     class Meta:
         ordering = ["-last_message_at"]
 
@@ -126,6 +133,7 @@ class Email(SoftDeleteModel, TimestampedModel):
     ai_model_used = models.CharField(max_length=100, blank=True, default="")
     ai_tags = models.JSONField(default=list, blank=True)
     ai_suggested_assignee = models.JSONField(default=dict, blank=True)
+    ai_confidence = models.CharField(max_length=10, blank=True, default="")  # v2.5.0
     ai_input_tokens = models.PositiveIntegerField(default=0)
     ai_output_tokens = models.PositiveIntegerField(default=0)
     gmail_link = models.URLField(max_length=500, blank=True, default="")
@@ -193,6 +201,10 @@ class ActivityLog(TimestampedModel):
         NOTE_ADDED = "note_added", "Note Added"
         MENTIONED = "mentioned", "Mentioned"
         AI_SUMMARY_EDITED = "ai_summary_edited", "AI Summary Edited"
+        SPAM_MARKED = "spam_marked", "Spam Marked"
+        SPAM_UNMARKED = "spam_unmarked", "Spam Unmarked"
+        PRIORITY_CHANGED = "priority_changed", "Priority Changed"
+        CATEGORY_CHANGED = "category_changed", "Category Changed"
 
     thread = models.ForeignKey(
         Thread,
@@ -266,6 +278,104 @@ class ThreadViewer(models.Model):
 
     def __str__(self):
         return f"{self.user} viewing {self.thread_id}"
+
+
+class ThreadReadState(SoftDeleteModel, TimestampedModel):
+    """Per-user read/unread state for each thread."""
+
+    thread = models.ForeignKey(Thread, on_delete=models.CASCADE, related_name="read_states")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="thread_read_states"
+    )
+    is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [("thread", "user")]
+
+    def __str__(self):
+        status = "read" if self.is_read else "unread"
+        return f"{self.user} - {self.thread_id} ({status})"
+
+
+class SpamFeedback(SoftDeleteModel, TimestampedModel):
+    """Records each spam/not-spam correction by a user."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="spam_feedbacks"
+    )
+    thread = models.ForeignKey(
+        Thread, on_delete=models.CASCADE, null=True, blank=True, related_name="spam_feedbacks"
+    )
+    email = models.ForeignKey(
+        Email, on_delete=models.CASCADE, null=True, blank=True, related_name="spam_feedbacks"
+    )
+    original_verdict = models.BooleanField()  # True=was spam, False=was not spam
+    user_verdict = models.BooleanField()  # True=user says spam, False=user says not spam
+
+    def __str__(self):
+        verdict = "spam" if self.user_verdict else "not-spam"
+        return f"{self.user} marked {self.thread_id or self.email_id} as {verdict}"
+
+
+class SenderReputation(SoftDeleteModel, TimestampedModel):
+    """Tracks per-sender spam ratio for auto-blocking."""
+
+    sender_address = models.EmailField(unique=True, db_index=True)
+    total_count = models.PositiveIntegerField(default=0)
+    spam_count = models.PositiveIntegerField(default=0)
+    is_blocked = models.BooleanField(default=False)
+
+    def __str__(self):
+        ratio = f"{self.spam_count}/{self.total_count}"
+        blocked = " [BLOCKED]" if self.is_blocked else ""
+        return f"{self.sender_address} ({ratio}){blocked}"
+
+    @property
+    def spam_ratio(self):
+        if self.total_count == 0:
+            return 0.0
+        return self.spam_count / self.total_count
+
+
+class AssignmentFeedback(SoftDeleteModel, TimestampedModel):
+    """Records user feedback on AI assignment suggestions."""
+
+    class FeedbackAction(models.TextChoices):
+        ACCEPTED = "accepted", "Accepted"
+        REJECTED = "rejected", "Rejected"
+        REASSIGNED = "reassigned", "Reassigned"
+        AUTO_ASSIGNED = "auto_assigned", "Auto-Assigned"
+
+    thread = models.ForeignKey(Thread, on_delete=models.CASCADE, related_name="assignment_feedbacks")
+    email = models.ForeignKey(
+        Email, on_delete=models.CASCADE, null=True, blank=True, related_name="assignment_feedbacks"
+    )
+    suggested_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="suggested_assignments",
+    )
+    actual_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="actual_assignments",
+    )
+    action = models.CharField(max_length=20, choices=FeedbackAction.choices)
+    confidence_at_time = models.CharField(max_length=10, blank=True, null=True)
+    user_who_acted = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="assignment_actions",
+    )
+
+    def __str__(self):
+        return f"{self.action} on {self.thread_id} by {self.user_who_acted_id}"
 
 
 class AttachmentMetadata(TimestampedModel):
