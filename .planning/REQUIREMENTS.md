@@ -23,11 +23,11 @@ Requirements for v2.5.0 Intelligence + UX release. Each maps to roadmap phases.
 
 ### Spam
 
-- [ ] **SPAM-01**: User can mark a thread as "Spam" or "Not Spam" from detail panel
-- [ ] **SPAM-02**: Spam/not-spam actions create SpamFeedback records with user, original verdict, and correction
-- [ ] **SPAM-03**: Sender reputation is tracked (total emails, spam count, spam ratio per sender address)
-- [ ] **SPAM-04**: Senders with spam ratio > 0.8 and >= 3 total emails are auto-blocked in future polls
-- [ ] **SPAM-05**: Marking "Not Spam" on a blocked sender auto-creates a SpamWhitelist entry
+- [x] **SPAM-01**: User can mark a thread as "Spam" or "Not Spam" from detail panel
+- [x] **SPAM-02**: Spam/not-spam actions create SpamFeedback records with user, original verdict, and correction
+- [x] **SPAM-03**: Sender reputation is tracked (total emails, spam count, spam ratio per sender address)
+- [x] **SPAM-04**: Senders with spam ratio > 0.8 and >= 3 total emails are auto-blocked in future polls
+- [x] **SPAM-05**: Marking "Not Spam" on a blocked sender auto-creates a SpamWhitelist entry
 - [x] **SPAM-06**: Spam badge displays correctly on thread cards (fix has_spam annotation bug)
 
 ### Read/Unread
@@ -99,11 +99,11 @@ Deferred beyond v2.5.0.
 | INTEL-09 | Phase 5 | Pending |
 | INTEL-10 | Phase 5 | Pending |
 | INTEL-11 | Phase 1 | Pending |
-| SPAM-01 | Phase 3 | Pending |
-| SPAM-02 | Phase 3 | Pending |
-| SPAM-03 | Phase 3 | Pending |
-| SPAM-04 | Phase 3 | Pending |
-| SPAM-05 | Phase 3 | Pending |
+| SPAM-01 | Phase 3 | Complete |
+| SPAM-02 | Phase 3 | Complete |
+| SPAM-03 | Phase 3 | Complete |
+| SPAM-04 | Phase 3 | Complete |
+| SPAM-05 | Phase 3 | Complete |
 | SPAM-06 | Phase 3 | Complete |
 | READ-01 | Phase 4 | Complete |
 | READ-02 | Phase 4 | Complete |

@@ -24,7 +24,7 @@
 
 - [ ] **Phase 1: Models + Migrations** - All new models and fields in one migration batch
 - [ ] **Phase 2: AI Confidence + Auto-Assign** - Confidence tiers, auto-assignment, and feedback loop
-- [ ] **Phase 3: Spam Learning + Bug Fixes** - Spam feedback, sender reputation, and pipeline fixes
+- [x] **Phase 3: Spam Learning + Bug Fixes** - Spam feedback, sender reputation, and pipeline fixes (completed 2026-03-15)
 - [ ] **Phase 4: Read/Unread Tracking** - Per-user read state with visual indicators
 - [ ] **Phase 5: Editable Attributes + Context Menu** - Inline edit and right-click quick actions
 - [ ] **Phase 6: Reports Module** - Analytics dashboard with Chart.js charts
@@ -72,7 +72,7 @@ Plans:
   3. Marking "Not Spam" on a blocked sender auto-whitelists them
   4. Spam badge displays correctly on thread cards (has_spam annotation fix)
   5. Gmail avatar imports correctly on OAuth login, and cross-inbox dedup works for the same email in info@ and sales@
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 03-01-PLAN.md -- Spam feedback views, pipeline block check, sender reputation, combined settings tab
 - [ ] 03-02-PLAN.md -- Bug fixes: force poll, spam badge, avatar/dedup edge cases
@@ -126,7 +126,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Models + Migrations | 0/1 | Planning complete | - |
 | 2. AI Confidence + Auto-Assign | 1/4 | In Progress|  |
-| 3. Spam Learning + Bug Fixes | 1/2 | In Progress|  |
+| 3. Spam Learning + Bug Fixes | 2/2 | Complete   | 2026-03-15 |
 | 4. Read/Unread Tracking | 1/2 | In Progress|  |
 | 5. Editable Attributes + Context Menu | 0/2 | Planning complete | - |
 | 6. Reports Module | 0/TBD | Not started | - |

@@ -49,6 +49,9 @@ Progress: [██░░░░░░░░] 20%
 - FIX-02 dedup: works correctly with proper window boundary and same-inbox exclusion
 - No ThreadReadState row = treated as read -- avoids wall-of-bold on first deploy
 - Unread detection via Exists subquery: is_read=False OR read_at < last_message_at
+- All users can mark spam (not admin-only) -- SpamFeedback records user identity
+- Pipeline block order: whitelist -> block check -> spam filter -> AI (cheapest path)
+- Auto-block threshold: spam_ratio > 0.8 AND total_count >= 3
 
 ### Pending Todos
 
