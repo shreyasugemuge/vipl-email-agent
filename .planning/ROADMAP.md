@@ -59,8 +59,8 @@ Plans:
 Plans:
 - [x] 02-01-PLAN.md -- Confidence in AI triage: DTO, schema, pipeline save, template filters
 - [x] 02-02-PLAN.md -- Inline auto-assign in pipeline with threshold config
-- [ ] 02-03-PLAN.md -- Accept/reject suggestion UI, feedback recording, confidence dots
-- [ ] 02-04-PLAN.md -- Distillation service: correction rules into AI prompt
+- [x] 02-03-PLAN.md -- Accept/reject suggestion UI, feedback recording, confidence dots
+- [x] 02-04-PLAN.md -- Distillation service: correction rules into AI prompt
 
 ### Phase 3: Spam Learning + Bug Fixes
 **Goal**: Users can correct spam verdicts, sender reputation auto-blocks repeat spammers, and known bugs are fixed
