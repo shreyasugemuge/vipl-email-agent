@@ -9,12 +9,12 @@ Requirements for UI/UX polish & bug fixes. Each maps to roadmap phases.
 
 ### Bug Fixes
 
-- [ ] **BUG-01**: AI suggestion displays clean name text, not raw XML markup (`<parameter name="name">`)
+- [x] **BUG-01**: AI suggestion displays clean name text, not raw XML markup (`<parameter name="name">`)
 - [x] **BUG-02**: Mobile detail panel slides in reliably when tapping email card, with scroll lock and back button
 - [x] **BUG-03**: Mobile filter bar displays as stacked vertical layout with full-width touch-friendly selects
 - [x] **BUG-04**: Activity page filter chips don't truncate ("Priority Bump" fully visible)
-- [ ] **BUG-05**: Email count updates accurately when switching between All/Unassigned/My Emails views
-- [ ] **BUG-06**: All pages have consistent title pattern "VIPL Triage | {Page Name}"
+- [x] **BUG-05**: Email count updates accurately when switching between All/Unassigned/My Emails views
+- [x] **BUG-06**: All pages have consistent title pattern "VIPL Triage | {Page Name}"
 - [x] **BUG-07**: Toast notifications position below header on mobile, with touch-friendly close buttons
 
 ### Polish
@@ -50,12 +50,12 @@ None deferred — all scoped items included.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | Phase 1 | Pending |
+| BUG-01 | Phase 1 | Complete |
 | BUG-02 | Phase 1 | Complete |
 | BUG-03 | Phase 1 | Complete |
 | BUG-04 | Phase 1 | Complete |
-| BUG-05 | Phase 1 | Pending |
-| BUG-06 | Phase 1 | Pending |
+| BUG-05 | Phase 1 | Complete |
+| BUG-06 | Phase 1 | Complete |
 | BUG-07 | Phase 1 | Complete |
 | UX-01 | Phase 2 | Pending |
 | UX-02 | Phase 2 | Pending |
