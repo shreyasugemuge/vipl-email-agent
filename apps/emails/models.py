@@ -188,6 +188,8 @@ class ActivityLog(TimestampedModel):
         NEW_EMAIL_RECEIVED = "new_email_received", "New Email Received"
         REOPENED = "reopened", "Reopened"
         THREAD_CREATED = "thread_created", "Thread Created"
+        NOTE_ADDED = "note_added", "Note Added"
+        MENTIONED = "mentioned", "Mentioned"
 
     thread = models.ForeignKey(
         Thread,
@@ -223,6 +225,30 @@ class ActivityLog(TimestampedModel):
 
     def __str__(self):
         return f"{self.action} on {self.email_id} by {self.user_id}"
+
+
+class InternalNote(SoftDeleteModel, TimestampedModel):
+    """Internal team note on a thread -- never visible to the email sender."""
+
+    thread = models.ForeignKey(Thread, on_delete=models.CASCADE, related_name="notes")
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="internal_notes",
+    )
+    body = models.TextField()
+    mentioned_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="mentioned_in_notes",
+    )
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Note by {self.author} on {self.thread_id}"
 
 
 class AttachmentMetadata(TimestampedModel):

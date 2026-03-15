@@ -6,6 +6,7 @@ everyone gets notified via Chat and email.
 
 import logging
 import os
+import re
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -18,6 +19,75 @@ from apps.emails.models import ActivityLog, AssignmentRule, CategoryVisibility, 
 from apps.emails.services.chat_notifier import ChatNotifier
 
 logger = logging.getLogger(__name__)
+
+
+# ===========================================================================
+# @mention utilities
+# ===========================================================================
+
+
+def parse_mentions(body):
+    """Extract @mentioned usernames from note body text.
+
+    Pattern: @username where username contains word chars and dots.
+    Returns a deduplicated list of username strings (not User objects).
+    """
+    if not body:
+        return []
+    matches = re.findall(r"@([\w.]+)", body)
+    # Deduplicate while preserving order
+    seen = set()
+    result = []
+    for m in matches:
+        if m not in seen:
+            seen.add(m)
+            result.append(m)
+    return result
+
+
+def notify_mention(thread, note_author, mentioned_user):
+    """Send @mention notification via Google Chat and email. Fire-and-forget.
+
+    Never raises -- logs errors and returns silently.
+    """
+    author_name = note_author.get_full_name() or note_author.username
+    subject_line = thread.subject or "(no subject)"
+
+    # Chat notification (lightweight text, not full Cards v2)
+    try:
+        webhook_url = (
+            SystemConfig.get("chat_webhook_url", "")
+            or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
+        )
+        if webhook_url:
+            notifier = ChatNotifier(webhook_url=webhook_url)
+            text = f"{author_name} mentioned you in a note on: {subject_line}"
+            notifier._post({"text": text})
+    except Exception:
+        logger.exception(
+            "Chat mention notification failed for thread %s, user %s",
+            thread.pk, mentioned_user.username,
+        )
+
+    # Email notification
+    try:
+        if mentioned_user.email:
+            from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "triage@vidarbhainfotech.com")
+            send_mail(
+                subject=f"{author_name} mentioned you: {subject_line[:60]}",
+                message=(
+                    f"{author_name} mentioned you in a note on thread: {subject_line}\n\n"
+                    f"View in dashboard: /emails/\n"
+                ),
+                from_email=from_email,
+                recipient_list=[mentioned_user.email],
+                fail_silently=False,
+            )
+    except Exception:
+        logger.exception(
+            "Email mention notification failed for thread %s, user %s",
+            thread.pk, mentioned_user.username,
+        )
 
 
 def _send_assignment_chat(email, assignee):
