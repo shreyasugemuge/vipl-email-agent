@@ -34,12 +34,11 @@ Declared values (must be multiples of 4):
 | xs | 4px | Icon gaps (`gap-1`), inline padding (`py-0.5`) |
 | sm | 8px | Compact element spacing (`gap-2`, `py-2`) |
 | md | 16px | Default element spacing (`gap-4`, `px-4`) |
-| lg | 20px | Section padding (`px-5` -- matches existing detail panel) |
-| xl | 24px | Layout gaps (`gap-6`) |
-| 2xl | 32px | Modal internal padding |
-| 3xl | 48px | Not used in this phase |
+| lg | 24px | Layout gaps (`gap-6`), modal internal padding (`p-6`) |
+| xl | 32px | Large layout spacing |
+| 2xl | 48px | Not used in this phase |
 
-Exceptions: Detail panel uses `px-5` (20px) consistently -- this phase follows that convention rather than strict 16px.
+Inherited layout constraint: Detail panel uses `px-5` (20px) throughout the existing codebase. This phase follows that convention for detail panel horizontal padding. 20px is NOT a new spacing token -- it is an inherited codebase convention outside this scale.
 
 ---
 
@@ -47,10 +46,12 @@ Exceptions: Detail panel uses `px-5` (20px) consistently -- this phase follows t
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
-| Body | 12px (`text-[12px]`) | 400 (regular) | 1.625 (`leading-relaxed`) |
-| Label | 11px (`text-[11px]`) | 600 (semibold) | 1.5 |
+| Body / Modal heading | 12px (`text-[12px]`) | 400 (regular) / 700 (bold for heading) | 1.625 (`leading-relaxed`) |
+| Label | 11px (`text-[11px]`) | 700 (bold) | 1.5 |
 | Small/Badge | 9px (`text-[9px]`) | 700 (bold) | 1.0 |
 | Button | 10px (`text-[10px]`) | 700 (bold) | 1.0 |
+
+Declared weights: 400 (regular) and 700 (bold). No other weights used.
 
 Note: Matches existing codebase conventions exactly. No new type scales introduced.
 
@@ -120,7 +121,7 @@ Accent reserved for: Primary CTA buttons (Assign, Save), active sidebar states, 
 
 **Modal content:**
 ```
-<h3> "Mark as Irrelevant" -- text-[14px] font-bold text-slate-900
+<h3> "Mark as Irrelevant" -- text-[12px] font-bold text-slate-900
 <p> helper text -- text-[12px] text-slate-500 mt-1
 <textarea> reason input -- mt-4, rows="3"
 <div> button row -- mt-4, flex justify-end gap-2
@@ -128,7 +129,7 @@ Accent reserved for: Primary CTA buttons (Assign, Save), active sidebar states, 
   <button> "Mark Irrelevant" -- amber primary, disabled until textarea non-empty
 ```
 
-**Textarea:** `w-full text-[12px] border border-slate-200 rounded-md px-3 py-2 bg-slate-50 text-slate-700 resize-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-300` (matches note textarea focus ring pattern but amber instead of amber -- consistent)
+**Textarea:** `w-full text-[12px] border border-slate-200 rounded-md px-3 py-2 bg-slate-50 text-slate-700 resize-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-300`
 
 **Cancel button:** `px-3 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-100 rounded-md hover:bg-slate-200 transition-colors cursor-pointer`
 
@@ -180,7 +181,7 @@ Accent reserved for: Primary CTA buttons (Assign, Save), active sidebar states, 
 <div class="flex items-start gap-2 px-5 py-2.5 bg-amber-50 border-l-2 border-amber-400 mx-2 my-1 rounded-r-md">
   <div class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5"></div>
   <div class="flex-1 min-w-0">
-    <div class="text-[11px] font-semibold text-amber-800">
+    <div class="text-[11px] font-bold text-amber-800">
       Marked as irrelevant by [User Name]
     </div>
     <p class="text-[11px] text-amber-700 mt-0.5 leading-relaxed">[Full reason text]</p>
@@ -196,7 +197,7 @@ Accent reserved for: Primary CTA buttons (Assign, Save), active sidebar states, 
 <div class="flex items-start gap-2 px-5 py-2.5 bg-blue-50 border-l-2 border-blue-400 mx-2 my-1 rounded-r-md">
   <div class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 mt-1.5"></div>
   <div class="flex-1 min-w-0">
-    <div class="text-[11px] font-semibold text-blue-800">
+    <div class="text-[11px] font-bold text-blue-800">
       Reverted to New by [User Name]
     </div>
     <span class="text-[10px] text-blue-500 tabular-nums mt-0.5">[timestamp]</span>
@@ -246,6 +247,8 @@ Accent reserved for: Primary CTA buttons (Assign, Save), active sidebar states, 
 | Revert confirmation | "Revert this thread to New? It will return to the triage queue." |
 | Toast after marking | "Thread marked as irrelevant" |
 | Toast after reverting | "Thread reverted to New" |
+| Toast on mark error | "Could not mark thread as irrelevant -- please try again" |
+| Toast on revert error | "Could not revert thread -- please try again" |
 | Empty state (irrelevant filter) | Heading: "No irrelevant threads" / Body: "Threads marked as irrelevant will appear here" |
 
 ---
@@ -271,13 +274,31 @@ Accent reserved for: Primary CTA buttons (Assign, Save), active sidebar states, 
 | Any status (NEW/ACK/CLOSED) | Mark Irrelevant | Status = IRRELEVANT, hidden from default views |
 | IRRELEVANT | Revert to New | Status = NEW, assigned_to = null, visible in triage queue |
 
+### Error Handling
+
+| Scenario | Behavior |
+|----------|----------|
+| HTMX POST fails (mark irrelevant) | Close modal, show amber error toast: "Could not mark thread as irrelevant -- please try again" (auto-dismiss 4s) |
+| HTMX POST fails (revert) | Show amber error toast: "Could not revert thread -- please try again" (auto-dismiss 4s) |
+| Network timeout | Same error toast behavior, button re-enabled via `hx-disabled-elt` release |
+
 ### Toast Messages
 
-Use the existing toast pattern (fade-out animation after 3s):
+Use the existing toast pattern (fade-out animation after 3s for success, 4s for errors):
+
+Success toast:
 ```html
-<div class="px-5 py-2 bg-amber-50 border-b border-amber-200/60 text-xs font-medium text-amber-700"
+<div class="px-5 py-2 bg-amber-50 border-b border-amber-200/60 text-xs font-bold text-amber-700"
      style="animation: fadeOut 1s ease-out 3s forwards;">
     Thread marked as irrelevant
+</div>
+```
+
+Error toast:
+```html
+<div class="px-5 py-2 bg-red-50 border-b border-red-200/60 text-xs font-bold text-red-700"
+     style="animation: fadeOut 1s ease-out 4s forwards;">
+    Could not mark thread as irrelevant -- please try again
 </div>
 ```
 
