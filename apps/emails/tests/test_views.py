@@ -387,6 +387,70 @@ class TestFilterIndicators:
         assert "?view=all" in content
 
 
+class TestKeyboardNav:
+    """UX-04: Keyboard navigation between email cards."""
+
+    def test_response_contains_arrow_down_handler(self, admin_client, db):
+        """Response JS contains ArrowDown key handling."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "ArrowDown" in content
+
+    def test_response_contains_arrow_up_handler(self, admin_client, db):
+        """Response JS contains ArrowUp key handling."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "ArrowUp" in content
+
+    def test_response_contains_escape_close_detail(self, admin_client, db):
+        """Response JS contains Escape key handler referencing closeDetail."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "Escape" in content
+        assert "closeDetail" in content
+
+    def test_response_contains_form_field_guard(self, admin_client, db):
+        """Response JS guards against keyboard nav when in form fields."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "INPUT" in content
+        assert "activeElement" in content
+
+    def test_response_contains_role_article_selector(self, admin_client, db):
+        """Response JS uses role=article selector for email cards."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert 'role="article"' in content or "role=\\\"article\\\"" in content
+
+
+class TestLoadingSkeleton:
+    """UX-05: Loading skeleton for detail panel."""
+
+    def test_response_contains_before_request_listener(self, admin_client, db):
+        """Response JS has htmx:beforeRequest event listener."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "htmx:beforeRequest" in content
+
+    def test_skeleton_targets_detail_panel(self, admin_client, db):
+        """Skeleton injection logic targets detail-panel specifically."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "detail-panel" in content
+
+    def test_skeleton_has_animate_pulse(self, admin_client, db):
+        """Skeleton HTML contains animate-pulse class."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "animate-pulse" in content
+
+    def test_skeleton_has_slate_placeholder_blocks(self, admin_client, db):
+        """Skeleton HTML uses bg-slate-200 placeholder blocks."""
+        response = admin_client.get(reverse("emails:email_list"))
+        content = response.content.decode()
+        assert "bg-slate-200" in content
+
+
 class TestScrollSnap:
     """UX-03: Scroll-snap on stat cards for mobile."""
 
