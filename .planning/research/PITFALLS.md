@@ -1,206 +1,208 @@
-# Pitfalls Research
+# Domain Pitfalls
 
-**Domain:** Adding SSO, settings UI, branding, spam learning, and notification improvements to existing Django 4.2 email triage system
-**Researched:** 2026-03-14
-**Confidence:** HIGH (codebase directly inspected + official docs verified)
+**Domain:** UI/UX polish, mobile responsiveness, toast notifications, and bug fixes for existing Django 4.2 + HTMX 2.0 + Tailwind v4 CDN email triage dashboard
+**Researched:** 2026-03-15
+**Confidence:** HIGH (direct codebase inspection of all templates, base.html, email_list.html, _email_detail.html, _email_card.html, activity_log.html)
 
 ---
 
-> **Note:** This file covers v2.2 feature-addition pitfalls only. Migration-era pitfalls (v1 -> v2) are in the archived `PITFALLS.md` above commit f52cb60.
+> **Scope:** v2.2.1 UI/UX Polish & Bug Fixes pitfalls only. For v2.2 feature-addition pitfalls (OAuth, spam whitelist, branding), see git history.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Google OAuth Auto-Connect Silently Grants Access to Non-VIPL Accounts
+### Pitfall 1: Mobile Detail Panel Z-Index War With Toast Container and Sidebar Overlay
 
-**What goes wrong:**
-Django-allauth's `SOCIALACCOUNT_EMAIL_AUTHENTICATION` setting, if set to `True`, allows any Google account whose email matches an existing Django `User` email to silently log in as that user. If the existing user was created with a password (as all current VIPL users are), and if `pre_social_login` domain enforcement is missing or misconfigured, a Google account from `attacker@gmail.com` whose email happens to match can gain access. Separately, the `hd` OAuth parameter (Google's hosted domain hint) is only a UI hint — it does not block sign-in from non-VIPL accounts at the OAuth protocol level.
+**What goes wrong:** The codebase currently has three overlapping fixed-position layers: sidebar overlay (`z-40`), sidebar (`z-50`), detail panel (`z-50`), and toast container (`z-[100]`). The HTMX progress bar sits at `z-[9999]`. When the mobile detail panel slides in (`fixed inset-0 z-50`), it covers the sidebar overlay (`z-40`) correctly, but toasts at `z-[100]` float above the detail panel. If a toast fires during detail panel interaction (e.g., after assigning an email), the dismiss button on the toast is clickable but the detail panel behind it is not -- the toast blocks interaction with the panel's action buttons. Worse, if the sidebar is also open (`z-50`), the detail panel and sidebar share the same z-index and render in DOM order, creating unpredictable stacking.
 
-**Why it happens:**
-Tutorials show `SOCIALACCOUNT_AUTO_SIGNUP = True` and `SOCIALACCOUNT_EMAIL_AUTHENTICATION = True` as the happy path for "link social to existing account." Developers test with their own VIPL account, confirm it works, and ship. Nobody tests with a personal Gmail.
+**Why it happens:** Z-index values were added incrementally as features shipped across phases. Nobody tested the three-layer overlap scenario (sidebar open + detail panel open + toast fires) because it requires a specific mobile interaction sequence.
 
-**How to avoid:**
-- Leave `SOCIALACCOUNT_EMAIL_AUTHENTICATION = False` (the default). Do NOT rely on email-matching for account linking.
-- Enforce domain server-side via a custom `SocialAccountAdapter` that overrides `pre_social_login` and raises `ImmediateHttpResponse` for any email not ending in `@vidarbhainfotech.com`.
-- Check both `email_verified == True` AND `hd == 'vidarbhainfotech.com'` in the extra data Google returns. The `hd` claim in the Google ID token is authoritative (it reflects the Workspace domain), unlike the UI hint.
-- Verify that rejected social logins do NOT create orphaned `User` or `SocialAccount` DB rows.
+**Consequences:** On mobile, users cannot interact with the detail panel action bar when a toast is visible. Dismissing the toast requires tapping its tiny X button. If the toast auto-dismisses (4 seconds), the user waits. If multiple toasts stack, the entire right side of the screen is blocked.
 
-**Warning signs:**
-- Login succeeds with a `@gmail.com` account during testing.
-- `SocialAccount` rows appear in Django admin for non-VIPL emails.
-- `SOCIALACCOUNT_EMAIL_AUTHENTICATION = True` in settings with no custom adapter.
+**Prevention:**
+- Establish a z-index scale and document it in a comment at the top of `base.html`:
+  - `z-30`: top bar (already correct)
+  - `z-40`: overlays/backdrops
+  - `z-50`: sidebar, detail panel
+  - `z-60`: toast container (move DOWN from `z-[100]`)
+  - `z-[9999]`: progress bar (keep)
+- Move toast container to bottom-center on mobile (`bottom-4 left-1/2 -translate-x-1/2`) so it does not overlap the detail panel's action bar at the top.
+- Close the sidebar when opening the detail panel on mobile -- never allow both to be open simultaneously.
 
-**Phase to address:** Phase 1 (Google OAuth SSO) — must be in the same PR as the OAuth setup, not added later.
+**Detection:** Open sidebar on mobile, then tap an email card. Both the sidebar and detail panel appear. Open dev tools, check which element receives click events.
 
----
-
-### Pitfall 2: Existing Password Users Locked Out When OAuth Is Added
-
-**What goes wrong:**
-Current users (Shreyas + team) have accounts created with `createsuperuser` — they have a username, a hashed password, and likely no `email` field set (AbstractUser has `email` as optional blank). When allauth is installed with `ACCOUNT_LOGIN_METHODS = {'email'}` or `ACCOUNT_EMAIL_REQUIRED = True`, existing users without emails on their accounts either cannot log in at all or get stuck in an email verification loop. The login page may redirect to allauth's email confirmation flow even for the password path.
-
-**Why it happens:**
-allauth's installation affects ALL authentication views, including the existing password login. If allauth replaces Django's built-in `login` view (which it does by default when added to `INSTALLED_APPS`), and the existing users have blank `email` fields, allauth's email-required validation fires on the password form.
-
-**How to avoid:**
-- Before installing allauth, set a real email address on every existing user in the database (migration + one-off data script).
-- Keep `ACCOUNT_LOGIN_METHODS = {'username'}` or keep the existing Django login view for password auth and add allauth only for the social path. The two approaches can coexist — allauth's `allauth.account.auth_backends.AuthenticationBackend` alongside `django.contrib.auth.backends.ModelBackend` in `AUTHENTICATION_BACKENDS`.
-- Keep `ACCOUNT_EMAIL_VERIFICATION = 'none'` during the migration period to avoid existing users being asked to verify emails they already use.
-- Test the password login flow with the existing user accounts in a staging database before deploying.
-
-**Warning signs:**
-- After installing allauth, the login page redirects to `/accounts/confirm-email/` for password-login attempts.
-- Existing user can no longer authenticate via the `/accounts/login/` form.
-- 500 error on login with "User has no email address" or similar.
-
-**Phase to address:** Phase 1 (Google OAuth SSO) — test with the actual production user list, not just newly created test accounts.
+**Phase to address:** Phase 1 (Mobile Responsive) -- must be resolved before any new overlay/modal work.
 
 ---
 
-### Pitfall 3: Spam Whitelist Bypasses Regex Patterns Entirely, Including Security-Relevant Ones
+### Pitfall 2: Tailwind v4 CDN Play Script Does Not Re-Process HTMX-Swapped HTML
 
-**What goes wrong:**
-The spam whitelist (senders marked "not spam" by a user action) is intended to fast-track legitimate vendors. But if the whitelist check runs before `is_spam()` in `pipeline.py`, a spoofed email from a whitelisted sender address bypasses all 13 regex patterns — including phishing patterns like `kindly verify your account` and `your account will be suspended`. Email `From:` headers are trivially forged. An attacker who knows a whitelisted domain (e.g., a real vendor) can impersonate it.
+**What goes wrong:** The project uses `@tailwindcss/browser@4` (the CDN play script). This script scans the DOM at page load and generates a `<style>` tag with only the utility classes found in the initial HTML. When HTMX swaps in new HTML (email cards after filtering, detail panel content, activity feed after filter click), any Tailwind classes in the swapped HTML that were NOT present in the initial page load will have no corresponding CSS rules. The styles simply do not apply.
 
-**Why it happens:**
-Whitelist-first logic feels right — "if I trust this sender, skip all checks." But spam regex patterns serve dual purposes: detecting spam AND detecting phishing. Phishing against the VIPL team is the higher risk, not spam volume.
+Currently this works because the partials use the same class names as the initial HTML. But any new utility classes added only to partials (e.g., a new `ring-offset-2` on a focus state, or `backdrop-blur-md` on a new overlay) will silently fail -- no error, just unstyled elements.
 
-**How to avoid:**
-- The whitelist should ONLY skip the `is_spam()` pre-filter (which blocks obvious bulk spam). It must NOT skip AI triage.
-- Keep AI triage mandatory for all emails, even whitelisted senders. The whitelist only affects whether the email goes through the spam bucket, not whether Claude analyzes it.
-- In `pipeline.py`, the whitelist check should set a flag like `skip_spam_filter=True` but still run `ai_processor.triage()`.
-- Whitelist by domain, not by full email address. Whitelisting `vendor@bigcompany.com` is acceptable. Whitelisting `bigcompany.com` is riskier — it covers all senders at that domain.
-- Log whitelist hits at `INFO` level so the pattern is visible in production logs.
+**Why it happens:** The Tailwind CDN play script is designed for prototyping, not production HTMX apps. It runs once on DOMContentLoaded. It does have a MutationObserver that watches for DOM changes, but it only processes NEW class names if they map to Tailwind utilities it knows about. Custom `@theme` variables defined in `<style type="text/tailwindcss">` in base.html ARE available because they modify the theme config before the observer runs. But the observer's re-scan has edge cases with dynamically inserted `<style>` elements and complex selectors.
 
-**Warning signs:**
-- Pipeline code with `if is_whitelisted: return fast_pass_result` before `ai_processor.triage()`.
-- Whitelist entry created by user action on an email that was later found to be phishing.
-- No visibility into which emails hit the whitelist vs. which were AI-triaged.
+**Consequences:** New mobile-responsive classes added to partials (e.g., `md:hidden`, `sm:grid-cols-1`) may not render. The developer sees them working on full page reload but they disappear after an HTMX swap. This is the single most confusing debugging experience because the same HTML works on reload but not on HTMX navigation.
 
-**Phase to address:** Phase 3 (Spam Learning / Whitelist) — must define whitelist semantics in the design before writing code.
+**Prevention:**
+- **Test every new class by triggering an HTMX swap**, not just by reloading the page. The test flow is: load page -> trigger HTMX action -> inspect swapped element.
+- Prefer classes that already exist somewhere in the initial page load. If you need `sm:px-2` in a partial, also include it (even hidden) in `base.html` so the CDN script generates the rule.
+- For the v2.2.1 milestone, this is manageable because changes are small. But if the project grows, migrate to the Tailwind CLI with a build step.
+- The MutationObserver in `@tailwindcss/browser@4` DOES handle most cases -- this pitfall is about edge cases with classes that use custom theme values or complex variants. Standard responsive prefixes (`sm:`, `md:`, `lg:`) work correctly with the observer.
+
+**Detection:** After adding a new class to a partial, trigger an HTMX swap. If the element is unstyled, check the browser's `<style>` tag generated by Tailwind -- search for the class name. If missing, the CDN script did not generate it.
+
+**Phase to address:** All phases -- every template change must be HTMX-swap-tested.
 
 ---
 
-### Pitfall 4: Settings Page Overwrites SystemConfig With Wrong Types, Silently Breaking the Pipeline
+### Pitfall 3: AI Summary XML Markup Rendering as Raw Text in Email Cards
 
-**What goes wrong:**
-`SystemConfig` stores values as `TextField` with a `value_type` column (`str/int/bool/float/json`). The settings page POSTs form data as strings. If the form saves `"false"` (string) to a key with `value_type='bool'`, `SystemConfig.typed_value` returns `False` correctly (it checks `.lower() in ('true','1','yes')`). But if the form saves `"False"` capitalized, or an empty string `""` for an integer field, `typed_value` falls back to the raw string with a warning log. The pipeline then gets `"False"` where it expected `False`, and the condition `if config_value:` evaluates as `True`.
+**What goes wrong:** The `ai_summary` field from Claude AI triage sometimes contains XML-like markup (e.g., `<suggestion>assign to sales</suggestion>` or `<priority>HIGH</priority>`) because the AI prompt instructs structured output. In `_email_card.html` line 34, `{{ email.ai_summary }}` is auto-escaped by Django's template engine, so `<suggestion>` renders as the literal text `&lt;suggestion&gt;` in the browser. This is safe (no XSS) but ugly -- users see raw XML tags in the card summary.
 
-**Why it happens:**
-Forms deal in strings. The type-aware casting in `SystemConfig.typed_value` is lenient (returns raw string on error rather than raising). A settings form that doesn't validate input types before saving can silently corrupt config values that the pipeline trusts.
+**Why it happens:** The triage prompt returns structured data mixed with natural language. The `ai_summary` field stores the raw AI response without stripping XML tags. Django's auto-escaping correctly prevents injection but does not strip the markup.
 
-**How to avoid:**
-- Build type-specific form widgets per `value_type`: checkboxes for bool, number inputs for int/float, textarea for json.
-- Validate on submit: attempt `int(value)` / `float(value)` / `json.loads(value)` before saving, return form errors if they fail.
-- For booleans, store `"true"` or `"false"` (lowercase), not `"True"` / `"False"` / `"1"` / `"0"`. Standardize on write.
-- Add a migration to normalize existing values to the canonical format before the settings page goes live.
-- Write tests that POST bad values to the settings endpoint and assert the DB retains the previous valid value.
+**Consequences:** Cards show cluttered summaries with visible XML tags. This is the bug explicitly called out in the milestone requirements.
 
-**Warning signs:**
-- `SystemConfig: failed to cast 'poll_interval_minutes' as int` in logs after settings save.
-- Pipeline disables AI triage even though the settings page shows it as enabled.
-- `chat_notifications_enabled` returns a string `"false"` (truthy) instead of `False`.
+**Prevention:**
+- Strip XML/HTML tags from `ai_summary` before saving to the database, or in the template via a custom filter. A simple regex `re.sub(r'<[^>]+>', '', text)` in a template filter or in the `ai_processor` service before saving is sufficient.
+- Do NOT use `|safe` on `ai_summary` -- that would execute the XML as HTML, creating injection risk if the AI ever outputs `<script>` (prompt injection).
+- Add a `strip_tags` template filter (Django has a built-in `striptags` filter: `{{ email.ai_summary|striptags }}`). This is the simplest fix.
+- Long-term, fix the AI prompt to return plain text summaries separate from structured data.
 
-**Phase to address:** Phase 2 (Settings Page Overhaul) — type validation must be in the form layer, not just the model.
+**Detection:** Search for emails where `ai_summary` contains `<` characters.
+
+**Phase to address:** Phase 1 (Bug Fixes) -- simple template filter fix.
 
 ---
 
-### Pitfall 5: Branding Changes in base.html Break HTMX Partial Renders That Bypass base.html
+## Moderate Pitfalls
 
-**What goes wrong:**
-This codebase has 10+ partial templates (`_email_card.html`, `_email_detail.html`, `_activity_feed.html`, etc.) that are rendered standalone by HTMX requests — they do NOT extend `base.html`. Branding changes to `base.html` (new logo, Tailwind theme variables, new nav component) will NOT cascade into partials. Result: the full page load looks branded, but after any HTMX swap the card list, detail panel, or activity feed reverts to unbranded styles.
+### Pitfall 4: Mobile Filter Toggle Creates Inline Layout Bugs
 
-**Why it happens:**
-Developers make changes to `base.html`, visually verify the page looks correct on full load, and mark branding as done. HTMX partial swaps are not part of the visual QA pass.
+**What goes wrong:** The current `toggleFilters()` function in `email_list.html` (line 205-214) toggles `hidden`/`flex` on the `#mobile-filters` div and dynamically adds `flex-wrap`, `py-2`, `border-t`, `border-slate-100` classes. But the filters container is a child of a `flex items-center gap-5` parent. When filters expand on mobile, the flex parent does not wrap -- filters overflow horizontally off-screen because the parent has no `flex-wrap`. The search input and 4 `<select>` elements need ~600px minimum width but a mobile screen is 375px.
 
-**How to avoid:**
-- Identify every partial that has inline Tailwind classes (all files in `templates/emails/_*.html`). Branding colors applied as CSS classes (e.g., `bg-indigo-600`) must be updated in each partial, not just in `base.html`.
-- Tailwind v4 CDN (play script) regenerates classes client-side from all elements, so a theme variable defined in `<style type="text/tailwindcss">` in `base.html` is NOT available in partial HTML fragments that arrive via HTMX after the page load — the script already ran.
-- Use standard Tailwind utility classes for branding colors rather than custom CSS variables where possible. If using custom `@theme` variables, ensure the Tailwind play script CDN covers them. For production, this is a reason to move to a proper Tailwind CLI build step.
-- After any branding change, test the full user flow: load page, trigger an HTMX action, inspect the swapped partial's styling.
+**Prevention:**
+- On mobile, show filters as a stacked column below the tab bar, not inline. Use `flex-col` inside the filters container, and make each `<select>` full-width (`w-full`).
+- Better: use a slide-down panel or bottom sheet pattern for mobile filters instead of toggling visibility inside a horizontal flex row.
+- The search input needs special handling -- on mobile it should be full-width, not `w-44` (line 115).
 
-**Warning signs:**
-- Email cards look correct on initial load but lose styling after filtering or pagination.
-- The detail panel uses old colors after being opened.
-- Login page branding updated but dashboard cards still show old colors.
-
-**Phase to address:** Phase 4 (VIPL Branding) — audit partials before making base.html changes, update all files in the same commit.
+**Phase to address:** Phase 1 (Mobile Responsive Filters).
 
 ---
 
-## Technical Debt Patterns
+### Pitfall 5: HTMX Target Mismatch After Assignment From Card vs Detail Panel
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Keep password auth + add OAuth as separate path | Fastest route to SSO without disrupting existing logins | Two auth code paths to maintain, confusing for new users | Acceptable for this 4-user team during v2.2; revisit in v3 |
-| Tailwind CDN play script instead of CLI build | Zero build step, works with Django templates | Theme variables in `base.html` don't apply to HTMX partial fragments; large JS download per user | Never in production if HTMX partials need shared theme tokens |
-| Whitelist stored as simple `SystemConfig` JSON key | No new model needed | No audit trail, no per-entry metadata, hard to display/edit in UI | Only for MVP; move to a dedicated `SpamWhitelist` model if whitelist > 20 entries |
-| Settings form with one input type for all `value_type`s | Faster to build | Silent type coercion bugs destroy pipeline config | Never acceptable for production settings UI |
-| Hardcoded VIPL brand colors in CSS | Fast, no tokens needed | Colors drift across partials; design changes require find-and-replace | Acceptable if all colors defined in one CSS file; never if scattered across templates |
+**What goes wrong:** The assign form in `_email_card.html` (line 137) targets `hx-target="#card-{{ email.pk }}"` with `hx-swap="outerHTML"`. The assign form in `_email_detail.html` (line 137) targets `hx-target="#card-{{ email.pk }}"` -- the CARD element in the list, not the detail panel. After assignment from the detail panel, the card updates but the detail panel still shows the old assignment state. The user sees stale data in the panel they are actively looking at.
 
----
+**Why it happens:** The card and detail panel are separate HTMX targets. Updating one does not update the other. The `hx-swap-oob` attribute on cards (line 4 of `_email_card.html`) enables out-of-band swaps, but the assignment response only returns the updated card HTML, not the updated detail HTML.
 
-## Integration Gotchas
+**Prevention:**
+- When assignment happens from the detail panel, the response should return BOTH the updated detail panel HTML AND an OOB-swapped card. The Django view should detect whether the request came from the detail panel (via an `HX-Target` header check or a hidden input) and include the card with `hx-swap-oob="outerHTML"` in the response.
+- Alternatively, after a successful assignment from the detail panel, re-fetch the detail panel content via a client-side `htmx.trigger()` event.
+- Test: assign from detail panel, then check -- does the detail panel show the new assignee? Does the card in the list update?
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| django-allauth + existing `AbstractUser` | Installing allauth replaces Django's auth views immediately, breaking existing password login before OAuth is ready | Add allauth in `INSTALLED_APPS` but explicitly keep `LOGIN_URL = '/accounts/login/'` pointed at the Django built-in view until the OAuth flow is fully tested |
-| Google OAuth `hd` parameter | Setting `AUTH_PARAMS = {'hd': 'vidarbhainfotech.com'}` and assuming this blocks non-VIPL logins | This is only a UI hint. Enforce server-side in `pre_social_login` via a custom adapter that checks the `hd` claim in `account.extra_data` |
-| Google Chat Cards v2 webhook | Adding new fields (e.g., SLA badge) to existing card structure without checking `cardsV2` schema | Google Chat will silently ignore unknown card fields but will reject malformed widget arrays with a 400. Test card payloads in the Card Builder at https://gw-card-builder.web.app/chat before deploying |
-| SystemConfig as settings form backend | POSTing form string `"true"`/`"false"` and assuming `typed_value` handles it | Standardize boolean values to `"true"`/`"false"` (lowercase) on write; the model's bool check covers this but mixed-case input from browsers is a real hazard |
-| Spam whitelist + existing `is_spam()` | Treating whitelist as "skip all checks" | Whitelist only skips the regex pre-filter; AI triage must still run. Whitelist = "do not bin as spam," not "fully trusted" |
-| Tailwind v4 CDN `@theme` tokens + HTMX | Defining custom color tokens in `<style type="text/tailwindcss">` in `base.html` | Those tokens are unavailable to HTMX-swapped HTML fragments loaded after page init; use only standard Tailwind utility classes in partials |
+**Phase to address:** Phase 2 (HTMX Integration Polish).
 
 ---
 
-## Performance Traps
+### Pitfall 6: Toast Auto-Dismiss Timer Fires During Page Transitions
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| `SystemConfig.get()` called per-request inside template context processors | Settings page shows stale values; DB hit on every request | Cache `SystemConfig` values in `django.core.cache` with a 30s TTL; invalidate on save | Breaks at >20 requests/minute if DB is on same host — negligible for this team |
-| Spam whitelist stored as JSON in a single `SystemConfig` key and loaded per email poll cycle | Slow poll cycle if whitelist grows; single-row DB lock on every poll | Use a dedicated indexed model if whitelist > 50 entries; for now, load once per poll cycle and cache in memory | Never a problem at 4 users + 2 inboxes |
-| Branding assets (logo PNG from Drive) loaded via direct Drive link | CDN changes, auth required, slow fetch | Download logo once, commit to `static/images/`, serve via WhiteNoise | Breaks immediately if Drive link requires auth or becomes private |
+**What goes wrong:** The toast auto-dismiss script (base.html line 292-298) sets `setTimeout` at 4000ms + 500ms per toast index. If the user navigates away via HTMX before the timeout fires, the callback runs against a DOM element that has been removed or replaced by the HTMX swap. This causes a silent error (`Cannot read properties of null: 'style'`) that breaks subsequent JavaScript on the page. Additionally, Django messages are session-based -- after an HTMX swap that returns a full page (not a partial), the messages may re-render, creating duplicate toasts.
 
----
+**Prevention:**
+- Check if the toast element still exists before animating: `if (toast && toast.parentNode) { ... }`.
+- Clear all toast timeouts on `htmx:beforeSwap` to prevent callbacks firing on stale DOM.
+- For HTMX responses, use `HX-Trigger` response headers to fire client-side toast events instead of relying on Django's `messages` framework (which is session-based and persists across requests until rendered).
 
-## Security Mistakes
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| `SOCIALACCOUNT_EMAIL_AUTHENTICATION = True` without custom adapter | Any Google user whose email matches an existing VIPL user account can log in without a password | Never enable this setting; enforce domain in `pre_social_login` hook instead |
-| Spam whitelist stored by email address (not domain), whitelisting spoofable `From:` headers | Phishing email from spoofed `vendor@trusted.com` bypasses spam filter | Whitelist logic must use both domain AND DKIM verification signal from Gmail API where available; mark whitelist entries as "unverified" vs "DKIM-verified" |
-| Settings page accessible to all logged-in users | Team member (non-admin) changes `poll_interval_minutes` or disables AI triage | Settings views must check `request.user.role == 'admin'` or `request.user.is_admin_role`; raise 403 for non-admins |
-| OAuth callback URL registered in Google Cloud Console only for production domain | SSO broken in local dev (callback mismatch error) | Register both `https://triage.vidarbhainfotech.com/accounts/google/login/callback/` and `http://triage.local/accounts/google/login/callback/` in GCP OAuth app authorized redirect URIs |
-| `state` parameter not verified in OAuth callback | CSRF on OAuth flow | django-allauth handles this automatically; do NOT implement a custom OAuth callback view that skips state verification |
+**Phase to address:** Phase 1 (Toast Improvements).
 
 ---
 
-## UX Pitfalls
+### Pitfall 7: Welcome Toast / First-Login Onboarding Overlay Accessibility
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| "Sign in with Google" button appears but password form disappears | Existing users with passwords can no longer log in via their credentials | Keep both forms: password form + Google SSO button on the same login page during transition |
-| Settings page saves each field individually (one POST per field) | With HTMX inline editing, a failed save of one field leaves the page in a partial-save state | Save all settings in a category as one grouped POST; show success/error for the whole group, not individual fields |
-| Spam whitelist shown as raw key-value JSON in SystemConfig admin | Manager cannot read or manage whitelist entries | Build a dedicated whitelist management UI in the settings page, not in Django admin |
-| Chat notification cards redesigned mid-day | Team sees mixed old and new card formats in the same Chat space; confusing | Deploy notification format changes outside business hours; the space history shows old cards permanently |
-| VIPL logo loaded from external Drive URL on login page | Login page blank/broken if Drive link changes or requires auth; CSP violation if Drive domain not allowlisted | Serve logo as static file; never hotlink from Drive or any external service |
+**What goes wrong:** A welcome toast or onboarding overlay for first-time users needs to be dismissible via keyboard (Escape key), announced by screen readers (`role="dialog"`, `aria-modal="true"`), and must not trap focus if it is non-modal. The current toast container has `role="status"` and `aria-live="polite"` (correct for transient notifications) but an onboarding overlay is NOT a status message -- it is a dialog that requires user interaction.
+
+**Prevention:**
+- If building a welcome toast (auto-dismissing): keep `role="status"` and `aria-live="polite"`. Add `aria-label` with the message text.
+- If building an onboarding overlay/modal: use `role="dialog"`, `aria-modal="true"`, trap focus inside the dialog, dismiss on Escape key, return focus to the trigger element on close.
+- Do NOT reuse the toast container for modal-like overlays. They have fundamentally different ARIA semantics.
+- Track "has seen onboarding" server-side on the User model (a `BooleanField`), not in `localStorage` -- the user may log in from a different device.
+
+**Phase to address:** Phase 2 (Welcome / Onboarding Experience).
+
+---
+
+### Pitfall 8: Email Count Accuracy Across View Filters
+
+**What goes wrong:** The stat counters in the stats bar (Total, Unassigned, Urgent, Pending) are computed from `dash_stats` context variable which reflects the UNFILTERED queryset. But the "X emails" label at the right of the filter bar (line 156: `{{ total_count }} email{{ total_count|pluralize }}`) reflects the FILTERED queryset. When a user selects "Status: New" filter, the stat cards still show total counts across all statuses, while the email count shows only "new" emails. This is confusing -- are there 47 total emails or 12?
+
+**Prevention:**
+- Make it clear that stat cards are always "all emails" summaries (add a subtle "all" label) and the filter count is the filtered result.
+- OR update stat cards to reflect the current filter state -- but this adds complexity and may confuse users who expect the dashboard to show the big picture.
+- The simplest fix: add "of X total" to the filtered count label, e.g., "12 of 47 emails".
+
+**Phase to address:** Phase 1 (Email Count Accuracy).
+
+---
+
+## Minor Pitfalls
+
+### Pitfall 9: CSS Animation Performance on Low-End Mobile
+
+**What goes wrong:** The codebase uses `box-shadow` transitions on card hover (`.card-hover`), `backdrop-blur-sm` on the sidebar overlay, and `animate-pulse` on the "Online" indicator. `backdrop-blur` is expensive on mobile GPUs and causes frame drops during sidebar open/close transitions on older Android devices. `box-shadow` transitions trigger paint operations and can cause jank during scroll if many cards are visible.
+
+**Prevention:**
+- Replace `backdrop-blur-sm` with a solid semi-transparent background (`bg-slate-900/60` is already there, remove the blur).
+- Use `will-change: transform` on the sidebar and detail panel to promote them to compositor layers.
+- The `animate-pulse` on the online indicator is fine -- it is a single small element.
+- Test on a throttled CPU (Chrome DevTools > Performance > 4x slowdown) to simulate low-end mobile.
+
+**Phase to address:** Phase 2 (Visual Polish).
+
+---
+
+### Pitfall 10: Page Title Inconsistency Across Templates
+
+**What goes wrong:** Some pages override `{% block title %}` and `{% block page_title %}` separately (e.g., `email_list.html` sets both), while others may only set one. The `<title>` tag (browser tab) and the header `<h1>` can show different text. This is not a bug but a polish issue that undermines the "premium feel" goal.
+
+**Prevention:**
+- Audit all templates extending `base.html`. Ensure every template sets both `{% block title %}VIPL Triage | [Page Name]{% endblock %}` and `{% block page_title %}[Page Name]{% endblock %}`.
+- Consider a pattern where `page_title` drives both: define `page_title` as a template variable and use it in both blocks.
+
+**Phase to address:** Phase 1 (Page Title Consistency) -- simple find-and-fix.
+
+---
+
+## Phase-Specific Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Mobile responsive detail panel | Z-index collision with toast and sidebar (Pitfall 1) | Establish z-index scale, close sidebar on detail open |
+| Mobile responsive filters | Filters overflow horizontally (Pitfall 4) | Stack filters vertically on mobile, full-width inputs |
+| AI summary XML bug fix | Using `|safe` instead of `|striptags` creates XSS risk (Pitfall 3) | Use Django's built-in `striptags` filter, never `|safe` on AI output |
+| Toast improvements | Auto-dismiss fires on stale DOM after HTMX swap (Pitfall 6) | Null-check elements, clear timeouts on `htmx:beforeSwap` |
+| Welcome / onboarding | Wrong ARIA role on modal overlay (Pitfall 7) | Toast = `role="status"`, modal = `role="dialog"` with focus trap |
+| Email count accuracy | Stat cards vs filter count confusion (Pitfall 8) | Add "of X total" to filtered count label |
+| HTMX assignment sync | Detail panel shows stale data after card assignment (Pitfall 5) | Return OOB-swapped card + updated detail panel in assignment response |
+| CSS animation polish | `backdrop-blur` causes mobile frame drops (Pitfall 9) | Remove blur, use solid semi-transparent overlay |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Google OAuth:** Verify a `@gmail.com` (non-VIPL) account cannot log in — test this explicitly, not just with VIPL accounts.
-- [ ] **Google OAuth:** Existing password users can still log in with their username/password after allauth is installed.
-- [ ] **Google OAuth:** The OAuth callback redirect URI is registered for both production and local dev in GCP Console.
-- [ ] **Settings page:** Bool fields save as `"true"`/`"false"` (lowercase), not `"True"` / `"1"`. Verify with `SystemConfig.objects.get(key='ai_triage_enabled').value` in shell.
-- [ ] **Settings page:** Non-admin users get 403, not a blank form or 500.
-- [ ] **Branding:** HTMX partial swaps (filter by status, paginate, open detail panel) render with updated brand colors, not the old indigo.
-- [ ] **Branding:** Logo is served from `/static/`, not hotlinked from Drive or any external URL.
-- [ ] **Spam whitelist:** Whitelisted sender's email still goes through AI triage — check the pipeline log shows `ai_processor` ran, not just `spam_filter bypassed`.
-- [ ] **Spam whitelist:** Whitelisted domain does not whitelist ALL senders at that domain (e.g., whitelisting `vendor@trusted.com` should not whitelist `ceo@trusted.com`).
-- [ ] **Chat notifications:** Existing notification methods (`notify_assignment`, `notify_new_emails`, `notify_breach_summary`) still post successfully after card redesign — run `test_pipeline --with-chat` against the new card structure.
-- [ ] **Chat notifications:** New card fields don't cause 400 errors from the Google Chat API — test with Card Builder first.
+- [ ] **Mobile detail panel:** Open detail panel on mobile, then open sidebar -- they must NOT overlap. Close one before opening the other.
+- [ ] **Mobile filters:** Toggle filters on a 375px screen -- all 4 dropdowns and search must be usable without horizontal scroll.
+- [ ] **AI summary:** Find an email with XML in `ai_summary` (search DB for `<` in that field) and verify tags are stripped in the card view.
+- [ ] **Toast + detail panel:** On mobile, trigger a toast while the detail panel is open -- toast must not block the panel's action buttons.
+- [ ] **Toast dismiss:** Navigate via HTMX while a toast is visible -- no console errors after navigation.
+- [ ] **HTMX assignment:** Assign from detail panel, verify BOTH the card in the list AND the detail panel update.
+- [ ] **Tailwind classes:** Add a new responsive class to a partial, trigger an HTMX swap, verify it renders (not just on page reload).
+- [ ] **Page titles:** Check every page's browser tab title AND header h1 -- they must be consistent.
+- [ ] **Activity filter overflow:** On mobile, the filter chips row must scroll horizontally without pushing content off-screen (currently uses `overflow-x-auto` -- verify it works).
+- [ ] **Email count:** Apply a filter, verify the count label matches the visible emails, not the unfiltered total.
 
 ---
 
@@ -208,40 +210,23 @@ Developers make changes to `base.html`, visually verify the page looks correct o
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| OAuth lets non-VIPL user in | MEDIUM | Disable Google OAuth immediately (`SOCIALACCOUNT_PROVIDERS` remove Google), audit `SocialAccount` and `User` tables for unauthorized entries, add server-side domain check, re-enable |
-| Existing user locked out by allauth | LOW | Add user's email via `User.objects.filter(username=X).update(email='...')` in shell, or temporarily set `ACCOUNT_EMAIL_VERIFICATION = 'none'` |
-| Settings page corrupts a SystemConfig bool | LOW | `python manage.py shell` → `SystemConfig.objects.filter(key='ai_triage_enabled').update(value='true')` |
-| Spam whitelist allows phishing through | MEDIUM | Remove whitelist entry immediately, re-process affected emails manually, audit what the email did (if it prompted any action from the team) |
-| Branding breaks HTMX partials | LOW | Revert `base.html` change, audit all `_*.html` partials, update in single commit with full-flow test |
-| Chat card redesign causes 400 from Google | LOW | Revert `chat_notifier.py`, use Card Builder to validate new structure, redeploy |
-
----
-
-## Pitfall-to-Phase Mapping
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| OAuth lets non-VIPL user in (Pitfall 1) | Phase 1: Google OAuth SSO | Test login with personal Gmail — must fail with domain error |
-| Existing users locked out by allauth (Pitfall 2) | Phase 1: Google OAuth SSO | Test password login with existing user accounts after allauth install |
-| Spam whitelist bypasses phishing checks (Pitfall 3) | Phase 3: Spam Learning | Inspect pipeline logs — AI triage must appear even for whitelisted senders |
-| Settings page corrupts SystemConfig types (Pitfall 4) | Phase 2: Settings Page Overhaul | POST bad types (string for int field) — form must reject, DB must retain previous value |
-| Branding breaks HTMX partials (Pitfall 5) | Phase 4: VIPL Branding | Click through all HTMX interactions after branding — no style regression |
-| Chat card redesign breaks existing webhooks | Phase 5: Chat Notification UX | Run `test_pipeline --with-chat` against all 4 notification methods after changes |
-| Settings accessible to non-admins | Phase 2: Settings Page Overhaul | Log in as a member-role user, attempt GET/POST to settings — must get 403 |
+| Z-index collision blocks interaction | LOW | Adjust z-index values in base.html, redeploy |
+| Tailwind class not rendering after HTMX swap | LOW | Add class to base.html hidden element as a "seed", or use inline style as fallback |
+| `|safe` used on AI summary (XSS) | HIGH | Immediately revert to `|striptags`, audit for any stored XSS payloads in `ai_summary` field |
+| Toast timeout causes JS error, breaks page | LOW | Add null-check guard, redeploy |
+| Onboarding overlay traps keyboard | LOW | Add Escape key handler and focus return logic |
+| Detail panel stale after assignment | LOW | Add OOB swap to assignment view response |
 
 ---
 
 ## Sources
 
-- [django-allauth SOCIALACCOUNT_EMAIL_AUTHENTICATION docs](https://docs.allauth.org/en/dev/socialaccount/configuration.html) — HIGH confidence (official)
-- [django-allauth Google provider docs](https://docs.allauth.org/en/dev/socialaccount/providers/google.html) — HIGH confidence (official)
-- [django-allauth social account auto-connect security issue #418](https://github.com/pennersr/django-allauth/issues/418) — HIGH confidence (maintainer comment)
-- [Trustwave: Spammers exploiting whitelists via spoofed From headers](https://www.trustwave.com/en-us/resources/blogs/spiderlabs-blog/spammers-are-taking-advantage-of-your-whitelists-by-spoofing-legitimate-brands/) — MEDIUM confidence
-- [Hornetsecurity: Email whitelisting risks](https://www.hornetsecurity.com/en/blog/email-whitelisting-risks/) — MEDIUM confidence
-- [Google Chat Card Builder](https://gw-card-builder.web.app/chat) — HIGH confidence (official tool)
-- [Tailwind CSS v4 CDN usage limitations](https://tailkits.com/blog/tailwind-css-v4-cdn-setup/) — MEDIUM confidence
-- Direct codebase inspection: `apps/emails/services/spam_filter.py`, `apps/emails/services/chat_notifier.py`, `apps/accounts/models.py`, `apps/core/models.py`, `config/settings/base.py` — HIGH confidence
+- Direct codebase inspection: `templates/base.html` (z-index values, toast system, progress bar), `templates/emails/email_list.html` (mobile detail panel, filter toggle, stats bar), `templates/emails/_email_detail.html` (assignment form targets), `templates/emails/_email_card.html` (OOB swap, HTMX targets), `templates/emails/activity_log.html` (filter chips) -- HIGH confidence
+- [Tailwind CSS v4 CDN play script source](https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4) -- MutationObserver behavior verified via source inspection -- HIGH confidence
+- [HTMX documentation: hx-swap-oob](https://htmx.org/attributes/hx-swap-oob/) -- HIGH confidence
+- [WAI-ARIA Authoring Practices: Dialog Modal](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/) -- HIGH confidence
+- [MDN: backdrop-filter performance](https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter) -- HIGH confidence
 
 ---
-*Pitfalls research for: v2.2 Polish & Hardening feature additions*
-*Researched: 2026-03-14*
+*Pitfalls research for: v2.2.1 UI/UX Polish & Bug Fixes*
+*Researched: 2026-03-15*

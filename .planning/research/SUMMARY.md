@@ -1,160 +1,150 @@
 # Project Research Summary
 
-**Project:** VIPL Email Agent v2.2 — Polish & Hardening
-**Domain:** Django internal tooling — SSO, settings UX, spam learning, notification polish
-**Researched:** 2026-03-14
+**Project:** VIPL Email Agent v2.2.1 UI/UX Polish & Bug Fixes
+**Domain:** Django + HTMX + Tailwind v4 email triage dashboard — mobile responsiveness, bug fixes, and polish
+**Researched:** 2026-03-15
 **Confidence:** HIGH
 
 ## Executive Summary
 
-v2.2 is a polish milestone on a live, stable system. The research confirms this is incremental feature work, not architectural change — only one new library (`django-allauth[socialaccount]`) is needed, two new DB tables (`SpamWhitelist` and allauth social tables), and the rest of the scope is service-layer and template modifications. All 4 researchers had direct access to the production codebase, so findings are grounded in actual code rather than speculation. The recommended stack and architecture are already proven in production; the question is only where to attach new features.
+This milestone is a polish-and-fix pass on a fully functional v2.2 dashboard. The codebase is a server-rendered Django 4.2 app with HTMX 2.0 for partial updates and Tailwind CSS v4 via CDN browser script. All research confirms zero new dependencies are required — every feature in scope is achievable with template/CSS/JS changes to existing files. The most important finding is that the existing implementation is nearly correct on mobile; the issues are CSS positioning bugs and missing edge-case handling rather than architectural gaps.
 
-The highest-value features in order are: (1) Google OAuth SSO eliminates password friction for the 4-person team; (2) spam whitelisting fixes the only broken trust loop in the pipeline — false positives with no recovery path; (3) settings page type-aware inputs prevent silent pipeline misconfiguration; (4) VIPL branding and Chat card improvements are low-effort high-visibility polish. The research recommends shipping in this order because OAuth introduces the one real dependency (allauth migrations must run on VM before Google accounts can work), and branding changes to `base.html` are safest done last to avoid merge conflicts with the login page changes from OAuth.
+The recommended approach is to sequence work as: (1) backend data fixes first since they are independent and self-contained, (2) mobile layout fixes next since they are CSS-only and testable by resizing a browser, (3) polish features last since they are purely additive. This ordering minimizes risk — each phase can ship independently without breaking anything from the prior phase. The only genuinely new integration pattern introduced is the HTMX `HX-Trigger` response header for firing client-side toast events from HTMX partial swaps, which is a built-in HTMX 2.0 capability requiring no new library.
 
-The key risks are concentrated in Phase 1 (OAuth): two critical security pitfalls (non-VIPL accounts gaining access; existing password users locked out) that must be explicitly tested, not assumed correct. The spam whitelist has a non-obvious security implication — whitelisted senders must still go through AI triage or phishing emails can slip through. Settings form type coercion is a silent failure mode that can corrupt pipeline config. These are all preventable with the specific mitigations documented in PITFALLS.md.
+The primary risk area is z-index layering on mobile where three overlapping fixed-position layers (sidebar, detail panel, toast container) were built incrementally and have undocumented interaction bugs. This must be addressed before any other overlay work or mobile testing will produce reliable results. The secondary risk is the Tailwind v4 CDN play script's MutationObserver behavior — any new utility classes added only to HTMX-swapped partials must be tested via swap (not page reload) to confirm they render.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing stack is unchanged. Only one new package is required for v2.2: `django-allauth[socialaccount]>=65.15,<66`. The STACK researcher and ARCHITECTURE researcher diverged on library choice (allauth vs. `social-auth-app-django`) — allauth is the stronger recommendation because it is more actively maintained, has first-class Django 4.2 support, and provides the `pre_social_login` adapter hook for server-side domain enforcement. Note the `hd` param in `AUTH_PARAMS` is a UI hint only and is not a security control.
+Zero new dependencies for v2.2.1. The existing stack — Django 4.2 LTS, HTMX 2.0.8 (CDN), Tailwind CSS v4 (CDN browser script), django-htmx, nh3 — covers all feature requirements. The only new integration pattern is `HX-Trigger` response headers for HTMX-triggered toasts, which is built into HTMX 2.0 core and requires only ~20 lines of vanilla JS in `base.html`.
 
-**Core technologies (new additions only):**
-- `django-allauth[socialaccount]` 65.15.0: Google OAuth SSO — de facto Django standard, verified compatible with Django 4.2 + Python 3.11 (Docker)
-- `SpamWhitelist` model (pure Django ORM): per-sender/domain whitelist — no new library, indexed FK query is safe at this scale
-- Settings form widgets: no new library — manual Tailwind templates outperform `crispy-tailwind` which targets Tailwind v3 (incompatible with v4 CDN)
+**Core technologies:**
+- **Django 4.2 LTS**: Backend views and data layer — unchanged
+- **HTMX 2.0.8**: Partial page updates, OOB swaps, lifecycle events (`htmx:afterSwap`, `htmx:beforeSwap`) — `HX-Trigger` header is the one new pattern used
+- **Tailwind CSS v4 CDN**: All responsive utilities (sm/md/lg breakpoints, grid, flex, animate-pulse) already available
+- **Vanilla JS (inline)**: All JS lives in `{% block extra_js %}` — no framework additions
+
+**What NOT to add:** Intro.js, Alpine.js, htmx-ext-class-tools, htmx-ext-sse, django-htmx-messages-framework, Tailwind CLI/PostCSS. Each was evaluated and rejected as overkill for a 4-user internal tool.
 
 ### Expected Features
 
-**Must have (table stakes):**
-- Google OAuth SSO domain-locked to `@vidarbhainfotech.com` — all users have Google Workspace accounts; password auth is unnecessary friction
-- Preserve password login alongside OAuth during transition — superuser fallback if OAuth misconfigures
-- Settings page pre-filled values + type-aware inputs — bool fields currently require typing "true"/"false" blind; silent type coercion can break pipeline
-- Spam whitelist "Not Spam" action — no current recovery path for false positives; erodes trust in the filter
-- VIPL branding in navbar and login — generic placeholder icon on a live production tool
+**Must fix (bugs — table stakes):**
+- **AI summary XML markup stripping** — raw tags render in every email card; fix in `ai_processor.py` before DB save with `re.sub(r'<[^>]+>', '', text)`
+- **Mobile detail panel** — slide-in mechanism exists but CSS positioning has bugs; panel is non-functional on phones
+- **Mobile filter bar layout** — 5 inputs in a non-wrapping flex row overflow on 375px screens
+- **Email count label clarity** — "12 emails" vs "12 of 47 emails" confusion when filters are active
 
-**Should have (differentiators):**
-- OAuth auto-provision new users with `role=MEMBER` on first Google sign-in — eliminates manual onboarding step
-- Domain-level whitelist entries (not just per-sender) — more efficient for trusted client domains
-- Chat breach alerts with per-email direct links — one tap to the specific email vs. two
-- Spam whitelist management UI in Settings — avoids requiring Django admin for day-to-day whitelist management
-- Inline HTMX save feedback on all settings tabs — SLA Config tab currently silent on save
+**Should fix (polish users will notice):**
+- Activity page filter chip overflow — `flex-wrap` instead of horizontal scroll on mobile
+- Toast positioning on mobile — move below header bar, increase close button touch target to 44px
+- Page title consistency — audit all templates for `VIPL Triage | [Page]` pattern
 
-**Defer (post-v2.2):**
-- Interactive Chat buttons (Acknowledge/Close from Chat) — requires full Chat bot architecture, not a webhook upgrade; Google Chat webhooks are explicitly one-way
-- ML-based spam learning — overkill for under 50 emails/day; DB whitelist achieves the goal
-- Full open Google registration — explicitly anti-feature; domain lock is required
-- Password reset email flow — obsolete once OAuth is live; 4-user team uses Django admin
+**Nice to have (differentiators, defer if time-constrained):**
+- Welcome banner on first login — session flag + existing toast system, no schema change
+- Active filter indicators — count badge and clear-all link
+- Stat cards scroll snap — one CSS line (`snap-x snap-mandatory`)
+
+**Defer entirely:** PWA, client-side search, dark mode, drag-and-drop, real-time websockets, inline reply composer. All overkill for 4-5 concurrent users.
 
 ### Architecture Approach
 
-All v2.2 features hook into existing anchors: the `User` model (unchanged), `SystemConfig` KV store (unchanged), the settings view pattern (modified in-place at `/emails/settings/`), and `spam_filter.py` (gains one DB dependency). The most substantial change is adding `SpamWhitelist` to `apps/emails/models.py` and having `spam_filter.is_spam()` check it before running regex patterns. The `spam_filter.py` module will gain its first Django import, which is acceptable since it is only ever called from `pipeline.py` inside a Django context.
+The architecture is stable and well-suited to this milestone. All v2.2.1 changes are modifications to existing components — no new templates, no new URL routes, no new models, no migrations. The data flow (user action → HTMX request → Django view → partial swap + OOB sync) must be preserved for all changes. The three key patterns to follow are: (1) HTMX OOB swaps for cross-component sync after mutations, (2) mobile-first Tailwind responsive classes (base → `md:` override), (3) Django messages framework for transient feedback rather than custom notification systems.
 
-**Major components and what changes:**
-1. `apps/accounts/adapters.py` (NEW) — `VIPLSocialAccountAdapter.pre_social_login()` enforces `@vidarbhainfotech.com` server-side; the `hd` OAuth param alone is not a security control
-2. `apps/emails/models.py:SpamWhitelist` (NEW) — per-sender/domain whitelist with `added_by` FK, indexed `sender_email`, `entry_type` field (email vs domain)
-3. `apps/emails/services/spam_filter.py:is_spam()` (MODIFIED) — whitelist check before regex; non-fatal on DB failure (try/except, fall through to regex)
-4. `apps/emails/services/chat_notifier.py` (MODIFIED) — richer Cards v2 structure using `chipList`, `columns`, `decoratedText` with inline button; per-email links in `notify_personal_breach()`
-5. `templates/` (MODIFIED) — `login.html` Google button, `base.html` logo + brand colors, `_config_editor.html` type-aware inputs, email detail "Whitelist Sender" button
-6. `config/settings/base.py` + `config/urls.py` (MODIFIED) — allauth `INSTALLED_APPS`, `MIDDLEWARE`, `SOCIALACCOUNT_PROVIDERS`, `AUTHENTICATION_BACKENDS`
+**Components touched in this milestone:**
+1. `apps/emails/services/ai_processor.py` — strip XML from AI response before DB save
+2. `apps/emails/templatetags/email_tags.py` — `strip_xml` template filter as defense-in-depth
+3. `templates/emails/email_list.html` — mobile layout for stats bar, filter section, count label, body scroll lock
+4. `templates/emails/activity_log.html` — filter chip wrapping on mobile
+5. `apps/accounts/adapters.py` — welcome message on first login via Django messages
+6. `apps/emails/views.py` — `has_active_filters` context bool for count label
 
 ### Critical Pitfalls
 
-1. **OAuth lets non-VIPL Google accounts in** — `hd` param is a UI hint only; a personal Gmail can bypass it at the protocol level. Enforce domain in `pre_social_login` adapter AND check `hd` claim in Google's ID token `extra_data`. Test explicitly with a `@gmail.com` account — must fail with a domain error, not a generic 500.
+1. **Z-index collision on mobile (sidebar + detail panel + toast)** — three `z-50` elements were built incrementally with no documented scale. Establish a z-index scale in `base.html` comments: overlays=`z-40`, panels/sidebar=`z-50`, toasts=`z-60`. Move toast container to bottom-center on mobile. Close sidebar when opening detail panel.
 
-2. **Existing password users locked out by allauth** — allauth replaces Django's auth views on install and can enforce email requirements that existing `createsuperuser` accounts (with blank `email` fields) don't satisfy. Keep both `ModelBackend` and `AuthenticationBackend` in `AUTHENTICATION_BACKENDS`; set `ACCOUNT_EMAIL_VERIFICATION = 'none'` during migration period; test password login with the actual production user list.
+2. **Tailwind CDN play script does not re-process HTMX-swapped HTML** — new classes added only to partials may have no CSS rules after an HTMX swap. Prevention: test every template change by triggering an HTMX swap, not just a page reload. Add new classes to `base.html` as hidden seeds if needed.
 
-3. **Spam whitelist bypasses phishing checks** — whitelisted senders skip regex spam patterns, but phishing originates from spoofed-but-trusted addresses. Whitelist must only skip the spam pre-filter; AI triage must still run for every email. In `pipeline.py`, set `skip_spam_filter=True` flag but always call `ai_processor.triage()`.
+3. **`|safe` filter on AI summary creates XSS risk** — never use `|safe` on `ai_summary`. Use Django's built-in `striptags` filter in templates and strip at data source in `ai_processor.py`. The primary fix is at the data layer; template filter is defense-in-depth only.
 
-4. **Settings form corrupts SystemConfig types silently** — POSTing `"False"` (capitalized) or `""` for an integer causes `typed_value` to return the raw string, which is truthy. Standardize bool writes to `"true"`/`"false"` lowercase; validate `int(value)` / `json.loads(value)` before saving; write tests that POST bad values and assert the DB retains the previous valid value.
+4. **Toast auto-dismiss fires on stale DOM after HTMX navigation** — `setTimeout` callbacks run against removed elements. Guard with null-check (`if (toast && toast.parentNode)`), and clear all toast timeouts on `htmx:beforeSwap`.
 
-5. **Branding changes don't cascade to HTMX partials** — Tailwind v4 CDN play script runs on page load; `@theme` tokens defined in `base.html` are unavailable to HTMX-swapped HTML fragments loaded after initial render. Audit all `_*.html` partials and update inline classes in the same commit as `base.html` changes. Test the full click-through flow (filter, paginate, open detail panel) after branding — not just the initial page load.
+5. **HTMX assignment from detail panel leaves stale state** — assigning from the detail panel updates the card list via OOB swap but the detail panel itself shows old data. Assignment response must return both the updated card (OOB) AND the updated detail panel content.
 
 ## Implications for Roadmap
 
-Based on research, dependency analysis, and the pitfall-to-phase mapping in PITFALLS.md, the suggested structure is 4 phases:
+Based on research, a 3-phase structure matches the dependency graph and risk profile.
 
-### Phase 1: Google OAuth SSO
-**Rationale:** Highest team impact; introduces the one hard dependency (allauth migrations must run on VM before Google accounts can authenticate). Must come first so the team uses SSO from the start of v2.2, and OAuth is not bolted onto half-finished features.
-**Delivers:** Google Sign-In button on login page, domain lock to `@vidarbhainfotech.com`, auto-provision new users as `role=MEMBER`, password login preserved as fallback for superuser emergency access
-**Addresses:** "Google OAuth SSO" and "Preserve password auth" table stakes from FEATURES.md
-**Avoids:** Pitfalls 1 and 2 (non-VIPL access; lockout) — both must be explicitly tested in the same PR before merging
+### Phase 1: Data & Bug Fixes
+**Rationale:** Backend data fixes are independent of all UI work and have the highest user-visible impact. Starting here unblocks template work (the XML bug affects every email card) and carries zero risk of breaking existing functionality.
+**Delivers:** Clean data at rest, accurate email counts, consistent page titles
+**Addresses:** AI summary XML bug, email count label clarity, page title consistency
+**Avoids:** XSS risk from incorrect `|safe` usage (Pitfall 3); stale DOM toast errors (Pitfall 6)
+**Files:** `ai_processor.py`, `email_tags.py`, `views.py`, title-related templates
 
-### Phase 2: Settings Page + Spam Whitelist
-**Rationale:** These two features share a dependency: the settings page template is touched by both (whitelist management UI lives in a new settings tab), and knowing what new model/config keys v2.2 adds is required before doing a final settings page template pass. Building them together avoids double-touching the same files. Neither blocks nor is blocked by OAuth.
-**Delivers:** Type-aware settings inputs (toggle/number/text by value_type), pre-filled values from DB, `SpamWhitelist` model + migration, "Not Spam / Whitelist Sender" button in email detail panel, whitelist management tab in settings
-**Uses:** `SystemConfig.get_all_by_category()` (existing), `SpamWhitelist` model (new), HTMX per-section saves (existing pattern)
-**Implements:** Modified `spam_filter.is_spam()` — whitelist check before regex, non-fatal on DB error, AI triage always runs regardless
-**Avoids:** Pitfalls 3 (whitelist bypasses phishing) and 4 (type coercion corrupts config)
+### Phase 2: Mobile Layout
+**Rationale:** CSS and HTML restructuring — completely independent of Phase 1 data fixes (can be done in parallel or sequentially). Mobile layout changes are testable by resizing a browser window and cannot break desktop behavior if Tailwind breakpoints are applied correctly. Must address z-index scale before any overlay testing.
+**Delivers:** Functional mobile experience — usable detail panel, accessible filter bar, readable stat cards, working activity filter chips
+**Addresses:** Mobile detail panel, mobile filter bar, stats bar grid, activity filter overflow
+**Avoids:** Z-index collision (Pitfall 1), Tailwind CDN HTMX swap edge cases (Pitfall 2), filter overflow (Pitfall 4)
+**Files:** `email_list.html`, `activity_log.html`, `_email_detail.html`, `base.html` (z-index scale)
 
-### Phase 3: VIPL Branding
-**Rationale:** Zero dependencies on other v2.2 features. Done after Phase 1 (not before) to avoid merge conflicts on `login.html` which Phase 1 also modifies. Branding changes are lowest risk but require a full HTMX partial audit — safest to do as a focused standalone phase.
-**Delivers:** VIPL logo in sidebar and login page, brand color swap from indigo to VIPL brand palette, logo served from `/static/img/` (not a Drive link)
-**Avoids:** Pitfall 5 (HTMX partial styling regression) — all `_*.html` partials updated in the same commit as `base.html`, full click-through flow tested
-
-### Phase 4: Chat Notification Polish
-**Rationale:** Purely service-layer work in `chat_notifier.py`: no model changes, no migrations, no URL changes, zero dependencies on other v2.2 features. Placed last because it is incremental improvement to a working feature, not a broken workflow.
-**Delivers:** Per-email "Open Email" direct links in `notify_personal_breach()` breach alerts, richer card structure using `chipList`/`columns`/`decoratedText` with inline button, consistent SLA urgency display across card types
-**Implements:** Modifications to `chat_notifier.py` only; validates via `test_pipeline --with-chat` against all 4 notify methods
-**Avoids:** Chat card 400 errors — validate card payloads in Card Builder (`https://gw-card-builder.web.app/chat`) before deploying; deploy outside business hours to avoid mixed old/new card formats in the Chat space
+### Phase 3: Polish & UX Improvements
+**Rationale:** Purely additive features — cannot break anything in Phase 1 or 2. Welcome experience depends on the toast system working correctly (established in Phase 2). Active filter indicators build on the filter layout from Phase 2.
+**Delivers:** Toast improvements (mobile positioning, HTMX-triggered toasts), welcome banner for new team members, active filter indicators, stat card scroll snap
+**Addresses:** Toast positioning, welcome experience, active filter indicators, stat cards scroll snap
+**Avoids:** Wrong ARIA role on onboarding overlay (Pitfall 7); detail panel stale after assignment (Pitfall 5); backdrop-blur mobile performance (Pitfall 9)
+**Files:** `base.html` (toast JS), `adapters.py`, `email_list.html` (filter indicators)
 
 ### Phase Ordering Rationale
 
-- OAuth first because it introduces migrations that must run on VM, and the team should not be on password auth for the entire v2.2 development window
-- Settings + Whitelist grouped because the Settings page template is touched by both features, and whitelist management UI lives in settings — building them together avoids two separate template passes on the same file
-- Branding after OAuth because both touch `login.html`; sequential order avoids merge conflicts
-- Chat last because it is a pure internal service refactor with no dependency on anything else in v2.2
+- Data fix first because the XML bug is visible on every email card and fixing it at the source (`ai_processor.py`) makes template work cleaner
+- Mobile layout second because it is CSS-only and completely reversible — no state, no migrations, no service calls
+- Polish third because it depends on Phase 2's mobile layout (filter indicators, toast positioning) being stable
+- This order also matches risk profile: backend fix (lowest risk) → CSS (low risk) → additive JS features (lowest risk)
 
 ### Research Flags
 
-All 4 phases have standard, well-documented patterns. No `/gsd:research-phase` runs are needed before planning.
+No phase requires a `/gsd:research-phase` deep dive. All patterns are either already in the codebase or documented with working code examples in STACK.md.
 
-Areas that need validation during implementation (not additional research):
-- **Phase 1:** Existing production users may have blank `email` fields (created via `createsuperuser`). Set real email addresses on all users via Django shell before installing allauth, or allauth's email validation will break password login. Test with actual production user list, not just newly created test accounts.
-- **Phase 1:** Register OAuth callback URI for local dev (`http://triage.local/accounts/google/login/callback/`) in GCP Console in addition to the production URI — otherwise local OAuth testing is impossible.
-- **Phase 2:** Normalize existing `SystemConfig` bool values to lowercase `"true"`/`"false"` via a data migration before the settings page goes live, to prevent `typed_value` mismatch on the first load.
-- **Phase 3:** Audit all `templates/emails/_*.html` partials for hardcoded `indigo-*` / `violet-*` Tailwind classes before changing `base.html` `@theme` block.
+Phases with well-documented patterns (skip research-phase for planning):
+- **Phase 1 (Data Fixes):** Pure Python regex strip and Django template filters — standard, no research needed
+- **Phase 2 (Mobile Layout):** Tailwind responsive classes and HTMX lifecycle events — thoroughly documented in existing codebase
+- **Phase 3 (Polish):** `HX-Trigger` pattern is new but fully documented in HTMX 2.0 docs — STACK.md has the exact code pattern
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | One new library; allauth docs verified against Django 4.2 + Python 3.11; version 65.15.0 confirmed latest stable as of 2026-03-14 |
-| Features | HIGH | Codebase directly inspected; feature gaps identified from running system, not from spec assumptions |
-| Architecture | HIGH | Integration points are exact file paths and line references from real code; two researchers converged on the same integration map (minor library disagreement resolved in favor of allauth) |
-| Pitfalls | HIGH | Security pitfalls sourced from allauth official docs and maintainer GitHub issues; codebase inspection confirmed which pitfalls apply to this specific setup |
+| Stack | HIGH | Firsthand codebase analysis; all existing packages verified; zero new deps needed |
+| Features | HIGH | Features derived from direct code inspection + WCAG standards; no guesswork |
+| Architecture | HIGH | Complete template and view analysis; component boundaries verified from running code |
+| Pitfalls | HIGH | Pitfalls identified via direct inspection of z-index values, JS timers, and HTMX targets |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Library disagreement (minor, resolved):** STACK.md recommends `django-allauth`; ARCHITECTURE.md recommends `social-auth-app-django`. Use `django-allauth` — it is the community standard, has better docs, and FEATURES.md also references it. The ARCHITECTURE.md integration map is equivalent with allauth (adapters instead of a pipeline file; same domain enforcement logic).
-- **GCP OAuth credentials:** Requires manual work in GCP Console — create OAuth 2.0 credentials, set consent screen to Internal type, add redirect URIs. Not automatable via code. Must be completed before Phase 1 can be tested end-to-end.
-- **Logo asset:** VIPL logo from Google Drive is an external dependency for Phase 3. Must be obtained and committed to `static/img/` before Phase 3 starts. If unavailable, a text-based SVG logo is the fallback.
-- **Existing user email fields:** Production users created via `createsuperuser` may have blank `email` fields. Requires a one-off data fix before installing allauth — can be done in the same Phase 1 migration.
+- **Tailwind CDN MutationObserver edge cases:** STACK.md notes the observer handles standard responsive prefixes correctly but has edge cases with custom `@theme` variables and complex variants. Validate each new responsive class in a real HTMX swap during implementation.
+- **Welcome toast vs. onboarding banner decision:** Research documents both approaches (Django messages = simple, localStorage cookie = richer). Decision deferred to planning — either works; choose based on desired richness.
+- **HTMX assignment OOB fix scope:** Pitfall 5 (stale detail panel after assignment) may affect multiple views (assign, claim, status change). Scope of fix needs verification during Phase 3 implementation.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Direct codebase inspection: `apps/emails/services/spam_filter.py`, `apps/emails/services/chat_notifier.py`, `apps/accounts/models.py`, `apps/core/models.py`, `config/settings/base.py`, `templates/base.html`, `templates/registration/login.html`
-- [django-allauth Google provider docs](https://docs.allauth.org/en/dev/socialaccount/providers/google.html) — `hd` param, `OAUTH_PKCE_ENABLED`, `SCOPE`, adapter pattern
-- [django-allauth SOCIALACCOUNT_EMAIL_AUTHENTICATION docs](https://docs.allauth.org/en/dev/socialaccount/configuration.html) — security configuration
-- [django-allauth social account adapter](https://docs.allauth.org/en/dev/socialaccount/adapter.html) — `pre_social_login()` hook for server-side enforcement
-- [django-allauth requirements](https://docs.allauth.org/en/dev/installation/requirements.html) — Django 4.2+, Python 3.10+ compatibility
-- [Google Chat Cards v2 reference](https://developers.google.com/workspace/chat/api/reference/rest/v1/cards) — widget inventory including `chipList`, `columns`, `decoratedText`
-- [Google Chat webhook limitations](https://developers.google.com/workspace/chat/quickstart/webhooks) — one-way webhook confirmed; no interactive callbacks
+- Direct codebase analysis: `base.html`, `email_list.html`, `_email_card.html`, `_email_detail.html`, `_email_list_body.html`, `activity_log.html`, `views.py`, `ai_processor.py`, `adapters.py`
+- [HTMX 2.0 Animations and Class Lifecycle](https://htmx.org/examples/animations/) — htmx-settling, htmx-swapping, htmx-added behavior
+- [HTMX hx-swap-oob](https://htmx.org/attributes/hx-swap-oob/) — out-of-band swap behavior
+- [Tailwind CSS v4 Responsive Design](https://tailwindcss.com/docs/responsive-design) — sm/md/lg/xl/2xl breakpoints
+- [WAI-ARIA Dialog Modal Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/) — ARIA semantics for welcome overlay
 
 ### Secondary (MEDIUM confidence)
-- [social-auth-app-django Django config docs](https://python-social-auth.readthedocs.io/en/latest/configuration/django.html) — reviewed and rejected in favor of allauth
-- [Google Chat new widgets Oct 2024](https://workspaceupdates.googleblog.com/2024/10/new-widgets-google-chat-app-cards.html) — `chipList`, `columns` widget availability confirmed
-- [Tailwind CSS v4 CDN usage limitations](https://tailkits.com/blog/tailwind-css-v4-cdn-setup/) — `@theme` tokens unavailable to dynamically loaded HTMX fragments
-- [django-allauth security issue #418](https://github.com/pennersr/django-allauth/issues/418) — auto-connect pitfall documented by maintainer
-- [crispy-tailwind PyPI](https://pypi.org/project/crispy-tailwind/) — version 0.5 targets Tailwind v3; confirmed incompatible with v4 CDN
+- [Django HTMX Toast Pattern](https://blog.benoitblanchon.fr/django-htmx-toasts/) — HX-Trigger header pattern for toast notifications
+- [Django HTMX Messages Framework](https://joshkaramuth.com/blog/django-messages-toast-htmx/) — pattern reference (library not recommended)
 
 ### Tertiary (LOW confidence)
-- [Trustwave: Spammers exploiting whitelists via spoofed From headers](https://www.trustwave.com/en-us/resources/blogs/spiderlabs-blog/) — confirms whitelist bypass risk; motivates keeping AI triage mandatory even for whitelisted senders
-- [Hornetsecurity: Email whitelisting risks](https://www.hornetsecurity.com/en/blog/email-whitelisting-risks/) — secondary source for same finding
+- Tailwind CDN play script MutationObserver behavior — inferred from source inspection; edge cases in complex variants not fully documented
 
 ---
-*Research completed: 2026-03-14*
+*Research completed: 2026-03-15*
 *Ready for roadmap: yes*

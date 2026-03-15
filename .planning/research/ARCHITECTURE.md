@@ -1,440 +1,297 @@
-# Architecture Research — v2.2 Integration Points
+# Architecture Patterns
 
-**Domain:** Django 4.2 LTS app — adding SSO, settings UI, branding, spam learning, Chat UX
-**Researched:** 2026-03-14
-**Confidence:** HIGH (firsthand codebase analysis + verified library docs)
-
----
-
-## Context: What Already Exists
-
-This is a subsequent milestone. The system is live. Research here answers only: "how do the new
-features hook into what's already built?" Not what to build — where to attach it.
-
-Existing anchors that every new feature must integrate with:
-
-| Anchor | Location | Notes |
-|--------|----------|-------|
-| Custom User model | `apps/accounts/models.py:User` | `AbstractUser` + `role` + `can_see_all_emails` |
-| Auth URL config | `config/settings/base.py` | `LOGIN_URL`, `LOGIN_REDIRECT_URL`, `LOGOUT_REDIRECT_URL` |
-| Auth URL routing | `apps/accounts/urls.py` | Currently only `LoginView` + `LogoutView` |
-| SystemConfig KV store | `apps/core/models.py:SystemConfig` | typed get/set, seeded via migrations, category-grouped |
-| Settings view (multi-section) | `apps/emails/views.py:settings_view` + 6 save endpoints | Already exists — one page, multiple POST targets |
-| Spam filter | `apps/emails/services/spam_filter.py` | Module-level compiled regex, returns `TriageResult` or `None` |
-| ChatNotifier | `apps/emails/services/chat_notifier.py` | Cards v2 webhook, 4 notify methods, quiet hours via SystemConfig |
-| Base template | `templates/base.html` | Tailwind v4 CDN, HTMX 2.0 CDN, Plus Jakarta Sans, sidebar nav |
-| Pipeline entry | `apps/emails/services/pipeline.py` | Calls `spam_filter.is_spam()` before AI |
+**Domain:** UI/UX polish and bug fixes for Django + HTMX + Tailwind email triage dashboard
+**Researched:** 2026-03-15
+**Confidence:** HIGH (firsthand codebase analysis of all templates, views, and models)
 
 ---
 
-## Feature Integration Map
+## Current Architecture Summary
 
-### 1. Google OAuth SSO
+Server-rendered Django 4.2 app. HTMX 2.0 for partial page updates. Tailwind CSS v4 browser CDN for styling. Zero JavaScript build step -- all JS is inline `<script>` blocks in template `{% block extra_js %}`. HTMX handles all async interactions via `hx-get`/`hx-post` with `hx-target`/`hx-swap`. OOB (out-of-band) swaps keep card list and detail panel in sync after mutations.
 
-**What changes:** Authentication backend only. No model migrations required if using `social-auth-app-django`.
+### Component Boundaries
 
-**Architecture decision:** Use `social-auth-app-django` (not `django-allauth`). Rationale:
-- `social-auth-app-django` stores social tokens in its own tables — no migration to existing `User` model
-- Domain restriction via `SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS` is a single settings line
-- `django-allauth` v65+ requires `django.contrib.sites` and additional app installs; more surface area
-- `social-auth-app-django` has a documented custom pipeline pattern for `hd` claim enforcement as a second safety layer
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| `base.html` | Shell: sidebar, top bar, toast container, progress bar, sidebar toggle JS | All page templates extend this |
+| `email_list.html` | Stats bar, tab bar, filters, search, list+detail split layout | `_email_list_body.html`, `_email_detail.html` |
+| `_email_card.html` | Single email card with priority border, badges, claim/assign | Detail panel (via `hx-get` to `#detail-panel`) |
+| `_email_detail.html` | Full email view: header, SLA, AI suggestion, actions, body, activity | Card list (via OOB swap on `#card-{pk}`) |
+| `_email_list_body.html` | Card loop + pagination, swapped into `#email-list` | Individual `_email_card.html` instances |
+| `activity_log.html` | MIS stats grid, filter chips, activity feed | `_activity_feed.html` |
+| `views.py` | All view logic, HTMX detection via `request.htmx`, OOB response assembly | Templates, models, assignment service |
 
-**Integration points:**
-
-```
-config/settings/base.py
-  → INSTALLED_APPS: add 'social_django'
-  → AUTHENTICATION_BACKENDS: add 'social_core.backends.google.GoogleOAuth2'
-  → MIDDLEWARE: add 'social_django.middleware.SocialAuthExceptionMiddleware'
-  → SOCIAL_AUTH_GOOGLE_OAUTH2_KEY / SECRET (from env)
-  → SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS = ['vidarbhainfotech.com']
-  → SOCIAL_AUTH_PIPELINE: add custom domain enforcer after auth_allowed
-  → SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {'hd': 'vidarbhainfotech.com'}
-
-config/urls.py
-  → path('social/', include('social_django.urls', namespace='social'))
-
-apps/accounts/urls.py
-  → No change (existing LoginView stays for fallback)
-  → Optional: redirect login page to show Google button
-
-apps/accounts/models.py
-  → No change to User model (social-auth creates UserSocialAuth linked to existing User)
-
-apps/accounts/
-  → New: pipeline.py — custom pipeline step that enforces @vidarbhainfotech.com
-  → New or modified: login template to show "Sign in with Google" button
-
-templates/registration/login.html
-  → Add Google SSO button linking to {% url 'social:begin' 'google-oauth2' %}
-  → Keep password form as fallback (Shreyas may need it for emergency access)
-```
-
-**Data flow:**
+### Data Flow
 
 ```
-User clicks "Sign in with Google"
-  → /social/login/google-oauth2/   (social_django URL)
-  → Google OAuth consent screen
-  → Callback: /social/complete/google-oauth2/
-  → social-auth pipeline runs:
-      1. auth (fetch identity from Google)
-      2. social_uid (build UID)
-      3. auth_allowed (default check)
-      4. custom enforce_domain() — blocks non-@vidarbhainfotech.com accounts
-      5. social_user (find existing UserSocialAuth)
-      6. get_username (derive username from email)
-      7. create_user (create User if new) ← auto-creates member role
-      8. associate_user / associate_by_email
-      9. load_extra_data
-      10. user_details (copy name/email from Google profile)
-  → Django session created
-  → Redirect to LOGIN_REDIRECT_URL (/emails/)
-```
-
-**New files:**
-- `apps/accounts/pipeline.py` — `enforce_domain()` pipeline step
-- Modified: `templates/registration/login.html` — Google button
-
-**No new migrations required** (social_django creates its own tables via `python manage.py migrate`).
-
----
-
-### 2. Settings Page Overhaul
-
-**What changes:** The settings page already exists (`apps/emails/views.py:settings_view` + 6 save endpoints). This is a UI overhaul, not a new page.
-
-**Current state:** Settings renders all SystemConfig entries. The overhaul groups them visually, adds type-aware inputs (toggle for bool, number for int, textarea for JSON), and pre-fills from DB.
-
-**Integration points:**
-
-```
-apps/emails/views.py
-  → settings_view(): already uses SystemConfig.get_all_by_category()
-  → No new view functions likely needed — modify existing save endpoints if input types change
-  → May add one new endpoint if a new category is added (e.g., for OAuth config display)
-
-templates/emails/settings.html (or equivalent)
-  → Full template rewrite — grouped sections per category
-  → Type-aware inputs: <input type="number"> for int, <input type="checkbox"> for bool
-  → Use HTMX for per-section saves (already the pattern from v2.1)
-
-apps/core/models.py:SystemConfig
-  → No model changes — category field already exists
-  → May add new SystemConfig rows via migration for any new v2.2 settings
-```
-
-**Key constraint:** The settings view is admin-only (guarded by `user.is_staff or user.is_admin_role`). This does not change.
-
-**New files:**
-- Template update only (no new Python files)
-- Possibly a new migration to seed additional SystemConfig rows (e.g., `branding_logo_url`)
-
----
-
-### 3. VIPL Branding
-
-**What changes:** Visual only — logo, colors, name. No model changes, no new views.
-
-**Integration points:**
-
-```
-templates/base.html
-  → Sidebar logo block (lines 72-91): replace SVG icon + "VIPL Triage" text with actual logo
-  → Logo source: served from /static/ (download from Drive, commit to static/)
-    OR served from a URL stored in SystemConfig('branding_logo_url')
-  → Color theme: @theme block (lines 13-25) — change primary-* CSS custom properties
-    to match VIPL brand colors (currently indigo/violet)
-
-static/
-  → New: vipl-logo.svg or vipl-logo.png
-
-apps/core/models.py (optional)
-  → Add SystemConfig row: branding_logo_url (str) — allows logo change without redeploy
-```
-
-**Recommendation:** Store logo in `static/img/vipl-logo.svg` (committed). Use SystemConfig for
-the URL only if the logo needs to change without redeployment — for a 4-person internal tool,
-a static file is simpler and avoids the Drive API dependency at render time.
-
-**Build order note:** Branding depends on nothing — it can be done first or last. Defer until
-the other features are working to avoid merge conflicts on base.html.
-
----
-
-### 4. Spam Whitelisting / Learning
-
-**What changes:** New model + modified spam filter + settings UI integration. Most substantial data model change in v2.2.
-
-**Current spam filter:** `apps/emails/services/spam_filter.py` — module-level compiled regex
-`_SPAM_RE`. Stateless. No DB interaction. Called from `pipeline.py`.
-
-**New architecture:**
-
-```
-apps/emails/models.py
-  → New: SpamWhitelist model
-      sender_email (EmailField, unique, db_index)
-      sender_domain (CharField, blank — derived from email on save)
-      added_by (FK -> User, null=True)
-      reason (CharField — 'user_action' | 'manual')
-      created_at (auto)
-
-apps/emails/services/spam_filter.py
-  → Modify is_spam():
-      1. Check SpamWhitelist FIRST (DB query): if sender in whitelist, return None (not spam)
-      2. Then run regex patterns as before
-  → New function: add_to_whitelist(email_address, added_by, reason)
-
-apps/emails/views.py
-  → Email detail panel POST handler (assign/status): when user marks "not spam" (new action),
-    call add_to_whitelist(email.from_address, request.user, 'user_action')
-  → Settings page: show whitelist table, allow manual add/remove
-
-apps/emails/models.py:ActivityLog.Action
-  → New choice: WHITELIST_ADDED = 'whitelist_added', 'Whitelisted'
-
-templates/emails/_email_card.html or detail panel
-  → "Not Spam / Whitelist Sender" button (only shown if email.is_spam=True)
-  → HTMX POST to new endpoint: /emails/<pk>/whitelist/
-
-apps/emails/urls.py
-  → New: path('<int:pk>/whitelist/', views.whitelist_sender, name='whitelist_sender')
-```
-
-**Data flow:**
-
-```
-Pipeline poll cycle
-  → spam_filter.is_spam(email_msg) called
-  → [NEW] check SpamWhitelist.objects.filter(sender_email=from_address).exists()
-      → if True: return None (skip spam filter entirely, go to AI)
-  → [EXISTING] run _SPAM_RE regex
-      → if match: return TriageResult(is_spam=True)
-  → return None (clean email)
-
-User marks email "not spam" in dashboard
-  → POST /emails/<pk>/whitelist/
-  → whitelist_sender view:
-      1. SpamWhitelist.objects.get_or_create(sender_email=email.from_address, ...)
-      2. ActivityLog.objects.create(action='whitelist_added', ...)
-      3. HTMX partial response: remove "not spam" button, show "Whitelisted" badge
-```
-
-**Performance note:** The whitelist DB query on every email is safe at this scale (~50 emails/day,
-whitelist likely <100 entries). Use `db_index=True` on `sender_email`. No caching needed.
-
-**New migrations:** 1 (SpamWhitelist model)
-
----
-
-### 5. Chat Notification UX Improvements
-
-**What changes:** `apps/emails/services/chat_notifier.py` internals only. No model changes, no URL changes, no template changes. Purely service-layer work.
-
-**Current state:** 4 notify methods, all building Cards v2 dicts manually inline. Cards are functional but sparse.
-
-**Integration points:**
-
-```
-apps/emails/services/chat_notifier.py
-  → Modify notify_new_emails(): richer card — add category breakdown widget, SLA urgency indicator
-  → Modify notify_assignment(): add SLA deadline widget to card
-  → Modify notify_personal_breach(): improve urgency formatting — hours/minutes, color coding via emoji
-  → Modify notify_breach_summary(): add per-category breakdown section
-  → Optional refactor: extract _build_email_widget() helper to DRY up repeated widget patterns
-  → Optional: move card-building into separate builder functions for testability
-
-SystemConfig (read path only — no new keys unless adding new notification triggers)
-  → Existing: quiet_hours_start, quiet_hours_end, tracker_url — no change
-  → New if needed: sla_alert_threshold_minutes (when to post SLA warnings)
-```
-
-**SLA alert notification (new trigger, if in scope):**
-
-```
-apps/emails/management/commands/run_scheduler.py
-  → Existing SLA check job may call ChatNotifier.notify_breach_summary()
-  → New: per-assignee breach alerts (notify_personal_breach) if not already wired up
-  → No new scheduler jobs needed — attach to existing SLA check interval
-```
-
-**No new models, no new URLs, no migrations.**
-
----
-
-## System Overview — v2.2 Component Map
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         Browser (4-5 users)                          │
-├──────────────────────────────────────────────────────────────────────┤
-│  Login (password + Google SSO)   Dashboard   Settings   Email Detail │
-└──────────────┬───────────────────────┬────────────┬──────────────────┘
-               │ HTTPS                 │ HTMX       │ HTMX
-┌──────────────▼───────────────────────▼────────────▼──────────────────┐
-│                    Django 4.2 (Gunicorn, web container)               │
-│                                                                       │
-│  apps/accounts/         apps/emails/              apps/core/          │
-│  ┌──────────────┐       ┌────────────────────┐    ┌───────────────┐  │
-│  │ User model   │       │ Email, ActivityLog │    │ SystemConfig  │  │
-│  │ pipeline.py  │       │ AssignmentRule     │    │ SoftDelete    │  │
-│  │  (NEW: SSO   │       │ SpamWhitelist(NEW) │    │ TimestampedM  │  │
-│  │  enforcer)   │       │ SLAConfig          │    └───────────────┘  │
-│  └──────────────┘       └────────────────────┘                       │
-│                                                                       │
-│  social_django (NEW)    services/                                     │
-│  ┌──────────────┐       ┌─────────────────────────────────────────┐  │
-│  │ UserSocial   │       │ spam_filter.py  (+ whitelist check)     │  │
-│  │ Auth tables  │       │ chat_notifier.py (richer cards)         │  │
-│  └──────────────┘       │ pipeline.py     (unchanged)             │  │
-│                          │ ai_processor.py (unchanged)             │  │
-│                          │ gmail_poller.py (unchanged)             │  │
-│                          └─────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────┘
-               │
-┌──────────────▼──────────────────────────────────────────────────────┐
-│           PostgreSQL 12.3 (taiga-docker-taiga-db-1)                 │
-│  + social_django tables (new)                                        │
-│  + emails_spamwhitelist (new)                                        │
-│  + existing: emails_email, core_systemconfig, accounts_user, etc.   │
-└─────────────────────────────────────────────────────────────────────┘
+User Action (click/filter/submit)
+    |
+    v
+HTMX Request (hx-get or hx-post with CSRF header from body attribute)
+    |
+    v
+Django View (detects request.htmx, returns partial or full page)
+    |
+    v
+HTMX swaps target element (innerHTML or outerHTML)
+    + OOB swaps for cross-component sync (card + detail panel)
+    |
+    v
+JS event listeners (htmx:afterSwap) trigger side effects
+    (e.g., mobile detail panel slide-in, progress bar)
 ```
 
 ---
 
-## Component Responsibilities — New vs Modified
+## Integration Points for v2.2.1 Changes
 
-| Component | Status | Responsibility |
-|-----------|--------|----------------|
-| `apps/accounts/pipeline.py` | NEW | Social-auth pipeline step — enforce @vidarbhainfotech.com |
-| `apps/emails/models.py:SpamWhitelist` | NEW | Per-sender whitelist, FK to User |
-| `apps/emails/views.py:whitelist_sender` | NEW | POST endpoint for "not spam" action |
-| `social_django` tables | NEW (via migrate) | Store Google OAuth tokens, link to User |
-| `templates/registration/login.html` | MODIFIED | Add Google SSO button |
-| `templates/base.html` | MODIFIED | Logo + brand colors |
-| `templates/emails/settings.html` | MODIFIED | Grouped sections, type-aware inputs |
-| `apps/emails/services/spam_filter.py:is_spam()` | MODIFIED | Check whitelist before regex |
-| `apps/emails/services/chat_notifier.py` | MODIFIED | Richer card widgets, better SLA display |
-| `config/settings/base.py` | MODIFIED | social_django apps + OAuth settings |
-| `config/urls.py` | MODIFIED | Add social_django URL include |
-| `apps/emails/views.py:settings_view` | MODIFIED | New settings sections / inputs |
-| All other files | UNCHANGED | Pipeline, gmail_poller, ai_processor, etc. |
+### 1. AI Suggestion XML Markup Bug
 
----
+**Problem:** `email.ai_suggested_assignee` is a JSONField (`dict`). The card template on line 59-61 of `_email_card.html` renders `{{ email.ai_suggested_assignee.name }}`. If Claude's response includes XML tags in the name (e.g., `<name>Shreyas</name>`), Django's auto-escaping shows the raw escaped markup to users.
 
-## Build Order and Dependencies
+**Root cause:** `ai_processor.py` does not strip XML/markup from parsed assignee name before storing.
 
-Dependencies drive order. Features that require no other v2.2 feature can go first.
+**Fix approach -- data sanitization at source (recommended):**
+- Strip XML tags in `ai_processor.py` when parsing Claude's response into the `ai_suggested_assignee` dict
+- Add a `strip_xml` template filter in `email_tags.py` as defense-in-depth
+- No template structure changes needed -- `{{ email.ai_suggested_assignee.name }}` continues to work
 
-```
-Phase 1 — Foundation (no inter-feature dependencies)
-  ├── Google OAuth SSO
-  │     → Blocks nothing, but other features depend on having real users to test
-  │     → Must be first: team will use SSO from day 1 of v2.2
-  └── VIPL Branding
-        → Zero dependencies, purely visual
-        → Can overlap with Phase 1 (different files)
+**Files modified:**
+| File | Change | Type |
+|------|--------|------|
+| `apps/emails/services/ai_processor.py` | Strip XML from assignee name before saving to JSONField | Modified |
+| `apps/emails/templatetags/email_tags.py` | Add `strip_xml` filter (optional safety net) | Modified |
+| Templates | None | Unchanged |
 
-Phase 2 — Data + UX
-  ├── Spam Whitelisting
-  │     → Depends on: User model (for added_by FK) — already exists
-  │     → New model + migration + view + template change
-  │     → Can be built independently of SSO (doesn't need OAuth users)
-  └── Settings Page Overhaul
-        → Depends on: knowing what new SystemConfig keys v2.2 adds (whitelist settings?)
-        → Build after spam whitelist model is defined (if whitelist settings surface here)
-
-Phase 3 — Polish
-  └── Chat Notification UX
-        → Zero dependencies on other v2.2 features
-        → Pure internal service refactor
-        → Best done last: least risk, can ship incrementally
-```
-
-**Recommended build order:**
-
-1. SSO (OAuth plumbing + domain enforcement + login template)
-2. Branding (logo + color swap in base.html — parallel with SSO if different developer)
-3. Spam Whitelist model + migration + spam_filter.py integration
-4. Whitelist "not spam" action in dashboard detail panel
-5. Settings page overhaul (now knows all new config keys from steps 1-4)
-6. Chat notification card improvements
+**Integration pattern:** Pure backend data fix. No HTMX or template architecture changes.
 
 ---
 
-## Integration Risks
+### 2. Mobile Detail Panel Visibility
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| social-auth pipeline order misconfiguration allows non-VIPL Google accounts | MEDIUM | HIGH | Add `enforce_domain` pipeline step AND `WHITELISTED_DOMAINS` setting — belt + suspenders |
-| SpamWhitelist DB query adds latency to poll cycle | LOW | LOW | Indexed query, <100 rows, negligible |
-| settings_view template rewrite breaks existing save endpoints | MEDIUM | MEDIUM | Each save endpoint is an independent POST — rewrite template section by section, test each |
-| base.html brand color change breaks existing component styles | LOW | LOW | Colors defined as CSS custom properties in @theme block — change once, propagates everywhere |
-| Google OAuth redirect_uri mismatch in production | MEDIUM | HIGH | Set `SOCIAL_AUTH_GOOGLE_OAUTH2_REDIRECT_URI` explicitly; add to GCP OAuth consent screen authorized URIs |
+**Current mechanism:** Detail panel (`#detail-panel`) is `fixed inset-0 z-50 translate-x-full` on mobile, `md:relative md:translate-x-0` on desktop. The `htmx:afterSwap` JS listener in `email_list.html` removes `translate-x-full` when content loads. `closeDetail()` adds it back.
 
----
+**What works:** The slide-in mechanism is correct. The overlay (`#detail-overlay`) syncs with panel visibility.
 
-## External Service Integration
+**What to improve:**
+- **Body scroll lock:** When detail is open on mobile, the card list behind it can still scroll. Add `document.body.classList.add('overflow-hidden')` in the afterSwap handler and remove it in `closeDetail()`.
+- **Back button visibility:** The back button in `_email_detail.html` line 5-8 uses `md:hidden` correctly -- it is only visible on mobile. This is working as intended.
+- **Safe area insets:** For notched phones, add `env(safe-area-inset-top)` padding to the detail panel header.
 
-| Service | Integration Pattern | Files Touched | Notes |
-|---------|---------------------|---------------|-------|
-| Google OAuth 2.0 | social-auth pipeline via `social_django` | settings, urls, accounts/pipeline.py | `hd` param hints domain; whitelist enforces it |
-| Google Chat | Existing webhook, card dict modification | chat_notifier.py | No new webhook URLs; modify card structure only |
-| Gmail API | Unchanged | gmail_poller.py | Domain-wide delegation not affected by SSO |
-| Claude AI | Unchanged | ai_processor.py | Not affected by any v2.2 feature |
+**Files modified:**
+| File | Change | Type |
+|------|--------|------|
+| `templates/emails/email_list.html` | Add body scroll lock in `htmx:afterSwap` and `closeDetail()` | Modified |
+| `templates/emails/_email_detail.html` | Add safe-area padding (optional) | Modified |
+
+**Integration pattern:** Extend existing JS in `{% block extra_js %}`. No new components.
 
 ---
 
-## Internal Boundaries
+### 3. Mobile Filter Toggle and Layout
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| `spam_filter.is_spam()` ↔ `SpamWhitelist` | Django ORM (DB read) | New dependency: spam_filter.py gains a Django import for the first time |
-| `social_django` ↔ `accounts.User` | social-auth pipeline creates User via `get_or_create` | New users get `role=MEMBER` by default — admin must manually set role=ADMIN post-login |
-| `whitelist_sender` view ↔ `spam_filter.py` | Function call: `add_to_whitelist()` | Keep whitelist mutation logic in spam_filter.py, not in the view |
-| Settings view ↔ `SystemConfig` | ORM read/write (existing pattern) | No change to boundary — only template changes |
+**Current state:** The tab bar and filter toggle button share a single flex row (`email_list.html` lines 66-158). Filters are `hidden md:flex` in `#mobile-filters`. `toggleFilters()` toggles visibility and adds `flex-wrap`.
 
-**Critical note on spam_filter.py:** This module currently has no Django imports (`# No Django imports` per CLAUDE.md service table). Adding a `SpamWhitelist` ORM query will change that. This is acceptable — the module is called only from `pipeline.py` which already runs inside Django — but the module-level comment and service table in CLAUDE.md should be updated.
+**Problem:** On small screens, tabs + filter button + email count all squeeze into one row, potentially causing overflow. When filters are expanded, they inline which overflows on narrow screens.
+
+**Fix approach:**
+- Split the tab bar into two rows on mobile: tabs in row 1, filters in row 2 (collapsible)
+- Use `flex-wrap` as base, `md:flex-nowrap` for desktop inline layout
+- Filter inputs need wider touch targets on mobile (min `py-2` instead of `py-1.5`)
+- The "X emails" count badge should move below filters on mobile
+
+**Files modified:**
+| File | Change | Type |
+|------|--------|------|
+| `templates/emails/email_list.html` | Restructure tab+filter section with mobile breakpoints | Modified |
+
+**Integration pattern:** Pure Tailwind responsive classes + minor HTML restructure. Existing `toggleFilters()` JS stays. HTMX `hx-include` attributes on filter inputs remain unchanged.
+
+---
+
+### 4. Stats Bar Mobile Layout
+
+**Current state:** `email_list.html` lines 12-62: four stat cards in a horizontal `flex overflow-x-auto` row. Each has `min-w-[120px]`.
+
+**Problem:** On mobile, stat cards overflow horizontally with no visual scroll cue.
+
+**Fix approach:**
+- Use `grid grid-cols-2 md:flex md:overflow-x-auto` -- 2x2 grid on mobile, horizontal flex on desktop
+- Remove `min-w-[120px]` on mobile (let grid handle sizing)
+- Compact the stat card content slightly for mobile (smaller icons, tighter padding)
+
+**Files modified:**
+| File | Change | Type |
+|------|--------|------|
+| `templates/emails/email_list.html` | Switch stats to grid on mobile | Modified |
+
+---
+
+### 5. Activity Page Filter Overflow
+
+**Current state:** `activity_log.html` line 63: filter chips are in `flex overflow-x-auto`. This scrolls horizontally but has no visual affordance on mobile.
+
+**Fix approach:**
+- Use `flex flex-wrap gap-1.5 md:flex-nowrap md:overflow-x-auto` -- wrap chips on mobile, scroll on desktop
+- Add `scrollbar-hide` class (already defined in `base.html` line 74-76) to the container on desktop
+
+**Files modified:**
+| File | Change | Type |
+|------|--------|------|
+| `templates/emails/activity_log.html` | Wrap filter chips on mobile | Modified |
+
+**Integration pattern:** Pure CSS. No JS changes. HTMX attributes on chips remain unchanged.
+
+---
+
+### 6. Welcome Toast / First-Login Experience
+
+**Current toast system:** `base.html` lines 271-299 renders Django `messages` framework messages. Auto-dismiss after 4s with staggered timing. CSS animations `toast-in`/`toast-out` defined in `<style>`. Container has `role="status"` and `aria-live="polite"` for accessibility.
+
+**Architecture for welcome toast:**
+
+**Option A -- Django messages (recommended for simplicity):**
+- In `VIPLSocialAccountAdapter.save_user()` or post-login signal: if `user.last_login` is None (first login), call `messages.info(request, "Welcome to VIPL Triage! ...")`
+- Existing toast system renders it. Zero new components.
+- Limitation: Django messages require a request object. The adapter has access to it.
+
+**Option B -- localStorage-based dismissible card (richer UX):**
+- Add a `{% if not request.COOKIES.vipl_welcome_dismissed %}` block in `email_list.html` content area
+- Render a styled welcome card with quick tips
+- Dismiss button sets `document.cookie = 'vipl_welcome_dismissed=1; ...'`
+- No backend changes needed
+
+**Recommended:** Option A for the welcome toast (works immediately). Option B only if a richer onboarding walkthrough is desired.
+
+**Files modified:**
+| File | Change | Type |
+|------|--------|------|
+| `apps/accounts/adapters.py` | Add welcome message on first login | Modified |
+| Templates | None (existing toast renders it) | Unchanged |
+
+---
+
+### 7. Email Count Accuracy
+
+**Current state:** `email_list.html` line 156 shows `{{ total_count }}` which is `paginator.count` -- the **filtered** queryset count. Stat cards show `dash_stats.total` which counts ALL completed emails globally.
+
+**This is correct behavior.** The stat cards are a global dashboard overview. The count label reflects what is currently filtered/shown. No bug here.
+
+**Optional improvement:** Make the count label more descriptive to avoid confusion. E.g., "12 emails" becomes "12 matching" when filters are active.
+
+**Files modified:**
+| File | Change | Type |
+|------|--------|------|
+| `templates/emails/email_list.html` | Clarify count label when filters active | Modified |
+| `apps/emails/views.py` | Add `has_active_filters` bool to context | Modified |
+
+---
+
+### 8. Page Title Consistency
+
+**Current state:**
+| Page | `<title>` | Top bar `page_title` |
+|------|-----------|---------------------|
+| Inbox | `VIPL Triage \| Inbox` | `Inbox` |
+| Activity | `VIPL Triage \| Activity` | `Activity` |
+| Settings | Needs verification | Needs verification |
+| Team | Needs verification | Needs verification |
+| Login | Needs verification | N/A (no sidebar) |
+
+**Fix:** Audit all templates extending `base.html`. Ensure all follow `VIPL Triage | <Page>` for `<title>`.
+
+**Files modified:**
+| File | Change | Type |
+|------|--------|------|
+| `templates/emails/settings.html` | Verify/fix title blocks | Possibly modified |
+| `templates/accounts/team.html` | Verify/fix title blocks | Possibly modified |
+| `templates/account/login.html` | Verify/fix title | Possibly modified |
+
+---
+
+## Component Map: New vs Modified
+
+| Component | Status | What Changes |
+|-----------|--------|--------------|
+| `apps/emails/services/ai_processor.py` | **Modified** | Strip XML from AI response assignee name |
+| `apps/emails/templatetags/email_tags.py` | **Modified** | Add `strip_xml` filter |
+| `templates/emails/email_list.html` | **Modified** | Mobile filter layout, stats grid, count label, body scroll lock |
+| `templates/emails/activity_log.html` | **Modified** | Filter chip wrapping on mobile |
+| `templates/emails/_email_detail.html` | **Minor** | Safe-area padding (optional) |
+| `apps/accounts/adapters.py` | **Modified** | Welcome message on first login |
+| `apps/emails/views.py` | **Minor** | Add `has_active_filters` to context |
+| `templates/emails/_email_card.html` | **Unchanged** | Already uses `.name` accessor correctly |
+| `templates/base.html` | **Unchanged** | Toast system already complete |
+| No new templates | -- | All changes fit existing component structure |
+| No new JS files | -- | All JS stays inline in template blocks |
+| No new models | -- | No migrations needed |
+| No new URL routes | -- | No `urls.py` changes |
+
+---
+
+## Patterns to Follow
+
+### Pattern 1: HTMX Partial Swap with OOB Sync
+Every user action (assign, claim, status change) returns the primary target HTML + OOB swap HTML for related components. All v2.2.1 changes must preserve this. Do not add UI elements that display email state without participating in the OOB swap chain.
+
+### Pattern 2: Mobile-First Responsive with Tailwind Breakpoints
+Use base styles for mobile, `md:` prefix for desktop overrides. **Current gap:** The filter section is desktop-first (`hidden md:flex`) -- mobile is the afterthought. Restructure to be mobile-first.
+
+### Pattern 3: Django Messages for Transient Feedback
+Use `messages.success/info/error()` in views. `base.html` toast container renders them automatically with auto-dismiss and accessibility attributes. Use this for the welcome toast rather than building a new notification system.
+
+### Pattern 4: Inline JS in Template Blocks
+All JavaScript lives in `{% block extra_js %}` or inline `<script>` tags. No external JS files. Keep this pattern -- do not introduce Alpine.js, Vue, or any JS framework for simple toggle/scroll-lock behavior.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Storing OAuth credentials in SystemConfig
+### Adding a JS Framework for Simple Interactions
+The app has zero JS dependencies beyond HTMX. Adding Alpine.js or similar for toast/drawer/toggle behavior adds load time and complexity for no gain. Inline vanilla JS is the established pattern.
 
-**What:** Putting GOOGLE_OAUTH_CLIENT_ID or CLIENT_SECRET in the SystemConfig DB table.
-**Why bad:** Secrets in the database are hard to rotate, visible to Django admin users, and not encrypted at rest.
-**Instead:** Environment variables in `.env` (prod) or Docker Compose env section. Same pattern as ANTHROPIC_API_KEY.
+### Duplicating OOB Response Assembly
+Views like `assign_email_view`, `claim_email_view`, `accept_ai_suggestion`, etc. all have near-identical OOB response patterns. If adding new actions in this milestone, consider extracting a `_respond_with_card_and_detail()` helper rather than copy-pasting.
 
-### Blocking the pipeline on whitelist DB queries
+### Using localStorage for Critical State
+`localStorage` is fine for cosmetic preferences (welcome dismissed, sidebar collapsed). Never use it for anything that must persist across devices or be visible to the backend.
 
-**What:** Making `is_spam()` raise or return errors when the DB is unavailable.
-**Why bad:** The pipeline already handles failures gracefully. A whitelist lookup failure should be non-fatal.
-**Instead:** Wrap the whitelist query in try/except, log the error, and fall through to regex check.
+### Fixing Data Bugs in Templates
+The AI suggestion XML bug should be fixed at the data source (`ai_processor.py`), not masked with template filters. Template filters are defense-in-depth, not the primary fix.
 
-### Rebuilding the settings page as a new URL
+---
 
-**What:** Creating `/settings/` as a new app or view instead of modifying `emails:settings`.
-**Why bad:** Breaks existing sidebar nav link, existing URL references, and the existing save endpoint pattern.
-**Instead:** Modify the template and view in place. The existing URL `/emails/settings/` stays.
+## Recommended Build Order
 
-### Requiring SSO exclusively (removing password login)
+Based on dependency analysis and risk profile:
 
-**What:** Removing `LoginView` from `accounts/urls.py` after SSO is deployed.
-**Why bad:** If Google OAuth is misconfigured or Google has an outage, there is no recovery path. Shreyas cannot log in to fix it.
-**Instead:** Keep password login on the existing form. SSO button is additive.
+```
+Phase 1: Data Fixes (no UI risk, backend only)
+  1. AI suggestion XML strip in ai_processor.py
+  2. strip_xml template filter as safety net in email_tags.py
+
+Phase 2: Mobile Layout (CSS/HTML, low risk, visually testable)
+  3. Stats bar: grid on mobile
+  4. Filter section: mobile restructure with collapsible filters
+  5. Activity page: filter chip wrapping
+  6. Detail panel: body scroll lock on mobile
+
+Phase 3: Polish (additive, zero breakage risk)
+  7. Page title consistency audit + fixes
+  8. Email count label clarity
+  9. Welcome toast on first login
+```
+
+**Rationale:**
+- Data fix first: affects stored data quality, independent of all other changes
+- Mobile layout second: CSS-only changes, testable by resizing browser, cannot break desktop
+- Polish last: additive features that cannot break existing functionality
 
 ---
 
 ## Sources
 
-- Firsthand codebase analysis: `apps/accounts/`, `apps/emails/services/`, `apps/core/models.py`, `templates/base.html`, `config/settings/base.py` — HIGH confidence
-- [social-auth-app-django: SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS](https://python-social-auth.readthedocs.io/en/latest/configuration/django.html) — MEDIUM confidence (docs verified via search)
-- [django-allauth Google provider docs](https://docs.allauth.org/en/latest/socialaccount/providers/google.html) — reviewed and rejected in favor of social-auth
-- Google Chat Cards v2 widget structure: verified from existing `chat_notifier.py` implementation — HIGH confidence
-
----
-
-*Architecture research for: VIPL Email Agent v2.2 Polish & Hardening*
-*Researched: 2026-03-14*
+- Direct codebase analysis of `base.html`, `email_list.html`, `_email_card.html`, `_email_detail.html`, `_email_list_body.html`, `activity_log.html`, `views.py`, `models.py` -- HIGH confidence
+- HTMX 2.0 OOB swap behavior -- HIGH confidence (verified from existing working code)
+- Tailwind CSS v4 browser CDN responsive utilities -- HIGH confidence (verified from existing `@theme` config)
