@@ -16,9 +16,9 @@
 ### Thread Cards & Detail
 
 - [x] **CARD-01**: Thread cards have more height and spacing (#18)
-- [ ] **CARD-02**: Category/priority dropdowns are elegant inline pills (#19)
+- [x] **CARD-02**: Category/priority dropdowns are elegant inline pills (#19)
 - [x] **CARD-03**: Context menu font is clearly visible (#20)
-- [ ] **CARD-04**: AI draft reply displayed in detail panel (#30)
+- [x] **CARD-04**: AI draft reply displayed in detail panel (#30)
 
 ### Workflow
 
@@ -59,9 +59,9 @@ None — this is a polish milestone.
 | BUG-04 | Phase 1 | Complete |
 | BUG-05 | Phase 1 | Complete |
 | CARD-01 | Phase 2 | Complete |
-| CARD-02 | Phase 2 | Pending |
+| CARD-02 | Phase 2 | Complete |
 | CARD-03 | Phase 2 | Complete |
-| CARD-04 | Phase 2 | Pending |
+| CARD-04 | Phase 2 | Complete |
 | FLOW-01 | Phase 3 | Pending |
 | FLOW-02 | Phase 3 | Pending |
 | PAGE-01 | Phase 4 | Complete |

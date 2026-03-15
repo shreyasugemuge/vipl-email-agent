@@ -59,6 +59,9 @@ Progress: [██████░░░░] 63%
 - [P2-01] Used CSS line-clamp-2 instead of truncatechars Django filter for AI summary
 - [P2-01] Moved all badges to row 3 for clean subject line
 - [P2-01] Unread dot sized to w-2.5 h-2.5 for visibility
+- [P2-02] Native select with appearance-none + pill styling (no custom popover)
+- [P2-02] Hover caret via group-hover SVG overlay instead of CSS background-image
+- [P2-02] Copy button in summary bar with stopPropagation to avoid toggle
 - [P4-01] mix-blend-mode: multiply on logo to hide background rectangle (CSS-only, no image editing)
 - [P4-01] APP_VERSION defaults to 'dev' locally, injected via Docker build arg in production
 - [P4-01] Context processor reads SystemConfig.operating_mode with graceful fallback to 'off'

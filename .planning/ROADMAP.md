@@ -42,7 +42,7 @@ Execution Order:
 **Wave 2 (parallel after P1):** P2 + P3 + P4
 
 - [x] **Phase 1: Bug Fixes** — Fix 5 known bugs: welcome double-show, read/unread markers, reopened status, avatar sync, AI assign (completed 2026-03-15)
-- [ ] **Phase 2: Thread Card & Detail UX** — Polish cards and detail: spacing, pill dropdowns, context menu font, AI draft display *(after P1)*
+- [x] **Phase 2: Thread Card & Detail UX** — Polish cards and detail: spacing, pill dropdowns, context menu font, AI draft display (completed 2026-03-15)
 - [ ] **Phase 3: Workflow Actions** — Claim button for unassigned threads, undo spam feedback *(after P1)*
 - [ ] **Phase 4: Page Polish** — Login logo, settings reorganization, activity redesign, sidebar version *(after P1)*
 - [ ] **Phase 5: Dev Inspector** — Poll timer, force poll fix, history table improvements *(independent)*
@@ -79,7 +79,7 @@ Plans:
 
 Plans:
 - [ ] M6-P2-01-PLAN.md — Card spacing redesign + context menu readability
-- [ ] M6-P2-02-PLAN.md — Pill-style dropdowns + AI draft copy button
+- [x] M6-P2-02-PLAN.md — Pill-style dropdowns + AI draft copy button
 
 ### Phase 3: Workflow Actions (M6-P3)
 **Goal**: Users can self-serve on common actions — claim threads and undo spam mistakes
@@ -128,7 +128,7 @@ Plans:
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
 | 1 (M6-P1) | 2/2 | Complete   | 2026-03-15 | - |
-| 2 (M6-P2) | Thread Card & Detail UX | 1/2 | In progress | - |
+| 2 (M6-P2) | Thread Card & Detail UX | 2/2 | Complete | 2026-03-15 |
 | 3 (M6-P3) | Workflow Actions | 0/1 | Planning complete | - |
 | 4 (M6-P4) | 1/2 | In Progress|  | - |
 | 5 (M6-P5) | Dev Inspector | 0/1 | Planning complete | - |
