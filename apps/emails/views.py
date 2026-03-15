@@ -764,10 +764,12 @@ def accept_thread_suggestion(request, pk):
     if not assignee and suggestion.get("name"):
         from django.db.models import Q
         name = suggestion["name"]
-        assignee = User.objects.filter(
-            Q(first_name__icontains=name) | Q(last_name__icontains=name) | Q(username__icontains=name),
-            is_active=True,
-        ).first()
+        # Try exact full-name match first, then partial on each word
+        parts = name.strip().split()
+        q = Q()
+        for part in parts:
+            q |= Q(first_name__icontains=part) | Q(last_name__icontains=part) | Q(username__icontains=part)
+        assignee = User.objects.filter(q, is_active=True).first()
     if not assignee:
         return HttpResponseForbidden(f"Could not resolve user \"{suggestion.get('name')}\".")
 

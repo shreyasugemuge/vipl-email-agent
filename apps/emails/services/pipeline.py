@@ -60,10 +60,11 @@ def _map_suggested_assignee(triage: TriageResult) -> dict:
             from django.db.models import Q
 
             name = detail["name"]
-            user = User.objects.filter(
-                Q(first_name__icontains=name) | Q(last_name__icontains=name) | Q(username__icontains=name),
-                is_active=True,
-            ).first()
+            parts = name.strip().split()
+            q = Q()
+            for part in parts:
+                q |= Q(first_name__icontains=part) | Q(last_name__icontains=part) | Q(username__icontains=part)
+            user = User.objects.filter(q, is_active=True).first()
             if user:
                 detail["user_id"] = user.pk
         except Exception:
