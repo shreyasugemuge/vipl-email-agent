@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Fix 3 cosmetic/layout issues from QA report (#39): detail panel button overflow, reports page title format, and SLA chart rendering at 100% compliance.
+Fix 3 cosmetic/layout issues from QA report: detail panel button overflow (#33), reports page title format (#37), and SLA chart rendering at 100% compliance (#38).
 
 </domain>
 
@@ -14,26 +14,26 @@ Fix 3 cosmetic/layout issues from QA report (#39): detail panel button overflow,
 ## Implementation Decisions
 
 ### QA-05: Detail panel action buttons overflow (#33)
-- Root cause: action buttons (Assign dropdown, Whitelist, Mark Spam, Mark Unread) are in a flex row that doesn't wrap at 1440px viewport width
-- Fix: add `flex-wrap: wrap` and/or reduce button padding, or convert to a more compact layout (icon-only for some actions, tooltip on hover)
-- Claude's discretion on exact approach — key requirement is nothing clips or overflows
+- Root cause: action bar uses `flex items-center justify-between gap-3` without wrapping — at 1440px, Mark Spam clips and Mark Unread hides
+- Fix: **flex-wrap to second row** — add `flex-wrap` so buttons wrap naturally when space is limited
+- Row 1: Assignment controls (dropdown + note + assign button) + status action (Acknowledge/Close)
+- Row 2: Secondary actions (Whitelist Sender, Mark Spam, Mark Unread) wrap below
+- CSS-only fix, no JS needed
 
 ### QA-06: Reports page title inconsistent (#37)
-- Root cause: `reports.html` line 2: `{% block title %}Reports - VIPL Triage{% endblock %}`
-- All other pages use `VIPL Triage | Page` format
+- Root cause: `reports.html` line 2 uses `Reports - VIPL Triage` while all others use `VIPL Triage | Page`
 - Fix: change to `{% block title %}VIPL Triage | Reports{% endblock %}` — one-line fix
 
-### QA-07: SLA chart empty at 100% (#38)
-- The SLA tab has a **doughnut** chart (not bar) — `type: 'doughnut'` with data `[met, breached]`
-- When `met > 0, breached = 0`: Chart.js renders a full green ring — this should work
-- When both are 0 (no SLA data): doughnut renders as empty — this is likely the actual bug
-- Also check the **trend line chart** — if `slaData.trend` is empty, the chart area is blank
-- Fix: handle zero-data edge cases — show "No SLA data" message when both met and breached are 0, and handle empty trend array gracefully
+### QA-07: SLA donut chart empty at 100% (#38)
+- The SLA tab has a doughnut chart (`type: 'doughnut'`) with data `[met, breached]`
+- When breached=0, Chart.js may not render the zero segment properly
+- Fix: **full green donut** — when breached is 0, either filter out the zero-value dataset entry or replace 0 with a tiny epsilon value so Chart.js renders a complete green ring with "100%" center text
+- Also handle the edge case where both met and breached are 0 (no SLA data) — show "No SLA data" message
 
 ### Claude's Discretion
-- Button overflow: icon-only vs wrap vs smaller padding — whatever prevents clipping
-- SLA chart: exact "no data" message styling
-- Whether to add a "100% Compliant" center label to the donut when breached=0
+- Exact gap/padding adjustments for wrapped button rows
+- SLA "no data" message styling
+- Whether epsilon hack or dataset filtering is cleaner for Chart.js zero-value handling
 
 </decisions>
 
@@ -48,23 +48,19 @@ No external specs — requirements fully captured in decisions above and GitHub 
 ## Existing Code Insights
 
 ### Reusable Assets
-- `_thread_detail.html` — action buttons section (~line 190-230)
-- `reports.html` — title block (line 2), SLA tab (line 224-564)
-- Chart.js createChart() wrapper with destroy-on-navigate cleanup
+- `_thread_detail.html` — action bar section (lines 115-258): outer div is `flex items-center justify-between gap-3`
+- `reports.html` — title block (line 2), SLA tab doughnut chart (lines 496-518), center text plugin (lines 283-301)
+- Chart.js `createChart()` wrapper with destroy-on-navigate cleanup
 
 ### Established Patterns
-- Title format: `VIPL Triage | {Page}` in all pages except reports
-- Donut chart center text rendered via custom plugin (`_pct` property)
-- Empty state messages used elsewhere (poll history, breaches table)
+- Title format: `VIPL Triage | {Page}` in all pages except reports (the bug)
+- Donut chart center text rendered via custom `centerText` plugin using `chart.config._pct`
+- Empty state messages used in breaches table (line 570: "No SLA breaches in this period")
 
 ### Integration Points
-- `templates/emails/_thread_detail.html` — QA-05
-- `templates/emails/reports.html` — QA-06, QA-07
-- `apps/emails/services/reports.py` — SLA data source (may return zeros)
-
-### Key Files
-- `templates/emails/_thread_detail.html` — QA-05
-- `templates/emails/reports.html` — QA-06, QA-07
+- `templates/emails/_thread_detail.html` — QA-05 (action bar div at line 116)
+- `templates/emails/reports.html` — QA-06 (line 2), QA-07 (initSLA function)
+- `apps/emails/services/reports.py` — SLA data source (may return met=N, breached=0)
 
 </code_context>
 
