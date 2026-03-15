@@ -23,7 +23,7 @@
 ### v2.5.0 Intelligence + UX
 
 - [ ] **Phase 1: Models + Migrations** - All new models and fields in one migration batch
-- [ ] **Phase 2: AI Confidence + Auto-Assign** - Confidence tiers, auto-assignment, and feedback loop
+- [x] **Phase 2: AI Confidence + Auto-Assign** - Confidence tiers, auto-assignment, and feedback loop (completed 2026-03-15)
 - [x] **Phase 3: Spam Learning + Bug Fixes** - Spam feedback, sender reputation, and pipeline fixes (completed 2026-03-15)
 - [x] **Phase 4: Read/Unread Tracking** - Per-user read state with visual indicators (completed 2026-03-15)
 - [ ] **Phase 5: Editable Attributes + Context Menu** - Inline edit and right-click quick actions
@@ -55,7 +55,7 @@ Plans:
   3. Auto-assigned threads display "(auto)" badge and assignee can reject with one click
   4. User can accept or reject an AI suggestion, and the action is recorded in AssignmentFeedback
   5. Recent corrections appear in AI prompt context, influencing subsequent triage decisions
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 Plans:
 - [x] 02-01-PLAN.md -- Confidence in AI triage: DTO, schema, pipeline save, template filters
 - [x] 02-02-PLAN.md -- Inline auto-assign in pipeline with threshold config
@@ -128,7 +128,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Models + Migrations | 0/1 | Planning complete | - |
-| 2. AI Confidence + Auto-Assign | 3/4 | In Progress|  |
+| 2. AI Confidence + Auto-Assign | 4/4 | Complete   | 2026-03-15 |
 | 3. Spam Learning + Bug Fixes | 2/2 | Complete    | 2026-03-15 |
 | 4. Read/Unread Tracking | 2/2 | Complete    | 2026-03-15 |
 | 5. Editable Attributes + Context Menu | 0/2 | Planning complete | - |

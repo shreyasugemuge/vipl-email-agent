@@ -14,8 +14,8 @@ Requirements for v2.5.0 Intelligence + UX release. Each maps to roadmap phases.
 - [x] **INTEL-03**: Threads with HIGH confidence are auto-assigned when a matching AssignmentRule exists
 - [x] **INTEL-04**: Auto-assign threshold is configurable via SystemConfig (default: HIGH only)
 - [x] **INTEL-05**: Auto-assigned threads show "(auto)" badge and can be rejected by the assignee
-- [ ] **INTEL-06**: User can accept or reject AI assignment suggestion with one click
-- [ ] **INTEL-07**: Assignment feedback (accept/reject/reassign/auto-assign) is recorded in AssignmentFeedback model
+- [x] **INTEL-06**: User can accept or reject AI assignment suggestion with one click
+- [x] **INTEL-07**: Assignment feedback (accept/reject/reassign/auto-assign) is recorded in AssignmentFeedback model
 - [x] **INTEL-08**: Recent correction history is injected into AI prompt to improve future triages
 - [ ] **INTEL-09**: User can inline-edit thread category from detail panel (dropdown with existing categories)
 - [ ] **INTEL-10**: User can inline-edit thread priority from detail panel (dropdown with CRITICAL/HIGH/MEDIUM/LOW)
@@ -93,8 +93,8 @@ Deferred beyond v2.5.0.
 | INTEL-03 | Phase 2 | Complete |
 | INTEL-04 | Phase 2 | Complete |
 | INTEL-05 | Phase 2 | Complete |
-| INTEL-06 | Phase 2 | Pending |
-| INTEL-07 | Phase 2 | Pending |
+| INTEL-06 | Phase 2 | Complete |
+| INTEL-07 | Phase 2 | Complete |
 | INTEL-08 | Phase 2 | Complete |
 | INTEL-09 | Phase 5 | Pending |
 | INTEL-10 | Phase 5 | Pending |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-15T14:04:19.431Z"
+stopped_at: Completed 02-03-PLAN.md (backfill)
+last_updated: "2026-03-15T14:05:16.335Z"
 last_activity: 2026-03-15 -- Completed 04-02 (read/unread UI indicators)
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 8
+  completed_plans: 9
   percent: 62
 ---
 
@@ -58,6 +58,8 @@ Progress: [██████░░░░] 62%
 - Distillation wrapped in double try/except for defense-in-depth -- never crashes pipeline
 - Replaced status=='new' with is_unread for bold/dot -- decouples visual state from thread status
 - Mark as Unread outside admin guard -- all users can mark their own read state
+- [Phase 02]: Suggestion bar shows for both unassigned-with-suggestion AND auto-assigned threads
+- [Phase 02]: Reject clears ai_suggested_assignee on latest email so suggestion bar disappears permanently
 
 ### Pending Todos
 
@@ -69,6 +71,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T13:58:19Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-03-15T14:05:11.264Z
+Stopped at: Completed 02-03-PLAN.md (backfill)
 Next: Continue with Phase 05 (Smart Notifications)
