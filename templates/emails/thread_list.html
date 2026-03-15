@@ -401,6 +401,10 @@
 
 <!-- Context menu container (positioned via JS) -->
 <div id="context-menu-container" class="hidden fixed z-50 transition-opacity duration-150" role="menu" aria-label="Thread actions"></div>
+
+{% if request.user.can_assign %}
+{% include "emails/_bulk_action_bar.html" %}
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -539,5 +543,137 @@ function startLongPress(event, threadPk) {
 function cancelLongPress() {
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
 }
+
+/* ---- Bulk Selection State Management ---- */
+var bulkBar = document.getElementById('bulk-action-bar');
+var bulkCountEl = document.getElementById('bulk-count');
+
+function updateBulkState() {
+    if (!bulkBar) return;
+    var checked = document.querySelectorAll('.thread-checkbox:checked');
+    var count = checked.length;
+
+    if (count > 0) {
+        bulkBar.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+        bulkBar.classList.add('translate-y-0', 'opacity-100');
+        bulkBar.setAttribute('aria-label', 'Bulk actions for ' + count + ' selected threads');
+    } else {
+        bulkBar.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+        bulkBar.classList.remove('translate-y-0', 'opacity-100');
+    }
+
+    if (bulkCountEl) bulkCountEl.textContent = count + ' selected';
+
+    ['bulk-assign-thread-ids', 'bulk-irrelevant-thread-ids'].forEach(function(containerId) {
+        var container = document.getElementById(containerId);
+        if (container) {
+            container.innerHTML = '';
+            checked.forEach(function(cb) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'thread_ids';
+                input.value = cb.value;
+                container.appendChild(input);
+            });
+        }
+    });
+}
+
+function toggleSelectAll(masterCb) {
+    document.querySelectorAll('.thread-checkbox').forEach(function(cb) {
+        cb.checked = masterCb.checked;
+    });
+    updateBulkState();
+}
+
+function clearBulkSelection() {
+    document.querySelectorAll('.thread-checkbox').forEach(function(cb) { cb.checked = false; });
+    var selectAll = document.getElementById('select-all-checkbox');
+    if (selectAll) selectAll.checked = false;
+    updateBulkState();
+    hideIrrelevantMode();
+}
+
+function showIrrelevantMode() {
+    document.getElementById('bulk-normal-mode').classList.add('hidden');
+    document.getElementById('bulk-irrelevant-mode').classList.remove('hidden');
+    document.getElementById('bulk-irrelevant-reason').focus();
+}
+
+function hideIrrelevantMode() {
+    var normalMode = document.getElementById('bulk-normal-mode');
+    var irrelevantMode = document.getElementById('bulk-irrelevant-mode');
+    var reasonInput = document.getElementById('bulk-irrelevant-reason');
+    if (normalMode) normalMode.classList.remove('hidden');
+    if (irrelevantMode) irrelevantMode.classList.add('hidden');
+    if (reasonInput) reasonInput.value = '';
+    toggleIrrelevantConfirm();
+}
+
+function toggleIrrelevantConfirm() {
+    var reason = document.getElementById('bulk-irrelevant-reason');
+    var btn = document.getElementById('bulk-irrelevant-confirm');
+    if (reason && btn) btn.disabled = !reason.value.trim();
+}
+
+/* Escape key clears bulk selection */
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && bulkBar && !bulkBar.classList.contains('pointer-events-none')) {
+        clearBulkSelection();
+    }
+});
+
+/* After HTMX swap on thread list, clear selection state */
+document.body.addEventListener('htmx:afterSwap', function(e) {
+    if (e.detail.target && e.detail.target.id === 'thread-list-body') {
+        clearBulkSelection();
+    }
+});
+
+/* ---- Undo Toast for Bulk Actions ---- */
+document.body.addEventListener('showUndoToast', function(e) {
+    var data = e.detail;
+    var payload = data.showUndoToast || data;
+
+    var toast = document.createElement('div');
+    toast.className = 'toast-item flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-lg border border-slate-200 max-w-sm';
+    toast.style.animation = 'toast-in 0.3s ease-out';
+
+    var undoData = JSON.stringify(payload.previous_states || []);
+    toast.innerHTML =
+        '<span class="text-sm text-slate-700">' + (payload.message || '') + '</span>' +
+        '<button class="undo-btn text-sm font-semibold text-blue-600 hover:text-blue-800 cursor-pointer"' +
+        ' data-undo-url="' + (payload.undo_url || '') + '"' +
+        " data-previous-states='" + undoData + "'>Undo</button>" +
+        '<button onclick="this.closest(\'.toast-item\').remove()"' +
+        ' class="text-slate-300 hover:text-slate-500 text-lg leading-none">&times;</button>';
+
+    /* Wire undo button */
+    toast.querySelector('.undo-btn').addEventListener('click', function() {
+        var formData = new FormData();
+        formData.append('previous_states', this.dataset.previousStates);
+        var csrfToken = document.querySelector('body').getAttribute('hx-headers');
+        var headers = {};
+        if (csrfToken) {
+            try { headers = JSON.parse(csrfToken); } catch(e) {}
+        }
+        fetch(this.dataset.undoUrl, { method: 'POST', body: formData, headers: headers })
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+                var target = document.getElementById('thread-list-body');
+                if (target) target.innerHTML = html;
+                toast.remove();
+            });
+    });
+
+    var container = document.getElementById('toast-container');
+    if (container) container.appendChild(toast);
+
+    /* Auto-dismiss after 10 seconds */
+    setTimeout(function() {
+        toast.style.animation = 'toast-out 0.3s ease-in forwards';
+        setTimeout(function() { toast.remove(); }, 300);
+    }, 10000);
+});
 </script>
 {% endblock %}

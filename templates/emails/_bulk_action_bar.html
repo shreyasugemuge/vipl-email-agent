@@ -1,0 +1,65 @@
+{# Floating Bulk Action Bar -- visible when >= 1 thread checkbox is checked #}
+<div id="bulk-action-bar"
+     role="toolbar"
+     aria-label="Bulk actions for selected threads"
+     class="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-lg w-[calc(100%-2rem)] z-50
+            bg-white border border-slate-200 rounded-2xl shadow-xl shadow-black/10
+            px-4 py-3
+            transition-all duration-300 ease-out
+            translate-y-full opacity-0 pointer-events-none">
+
+    {# Normal mode: assign + mark irrelevant #}
+    <div id="bulk-normal-mode" class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        <span id="bulk-count" class="text-sm font-semibold text-slate-700 whitespace-nowrap">0 selected</span>
+
+        <form id="bulk-assign-form"
+              hx-post="{% url 'emails:bulk_assign' %}"
+              hx-target="#thread-list-body"
+              hx-swap="innerHTML"
+              class="flex items-center gap-1.5 flex-1 min-w-0">
+            <div id="bulk-assign-thread-ids"></div>
+            <select name="assignee_id" class="text-sm border border-slate-200 rounded-lg px-2 py-2 min-w-0 flex-1">
+                {% for member in team_members %}
+                <option value="{{ member.pk }}">{{ member.get_full_name|default:member.username }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold px-3 py-2 rounded-lg whitespace-nowrap">
+                Assign Threads
+            </button>
+        </form>
+
+        <div class="w-px h-6 bg-slate-200 mx-1 hidden sm:block"></div>
+
+        <button id="bulk-irrelevant-btn" type="button" onclick="showIrrelevantMode()"
+                class="bg-red-50 hover:bg-red-100 text-red-700 text-sm font-semibold px-3 py-2 rounded-lg border border-red-200 whitespace-nowrap">
+            Mark Irrelevant
+        </button>
+
+        <button type="button" onclick="clearBulkSelection()" class="text-slate-400 hover:text-slate-600 text-sm underline whitespace-nowrap">
+            Clear
+        </button>
+    </div>
+
+    {# Irrelevant reason mode: replaces normal mode content #}
+    <div id="bulk-irrelevant-mode" class="hidden">
+        <form id="bulk-irrelevant-form"
+              hx-post="{% url 'emails:bulk_mark_irrelevant' %}"
+              hx-target="#thread-list-body"
+              hx-swap="innerHTML"
+              class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <div id="bulk-irrelevant-thread-ids"></div>
+            <input type="text" name="reason" placeholder="Why are these irrelevant?"
+                   id="bulk-irrelevant-reason"
+                   class="text-sm border border-red-200 rounded-lg px-3 py-2 flex-1 placeholder-slate-400 min-w-0"
+                   oninput="toggleIrrelevantConfirm()">
+            <button type="submit" id="bulk-irrelevant-confirm"
+                    disabled
+                    class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-3 py-2 rounded-lg whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
+                Mark as Irrelevant
+            </button>
+            <button type="button" onclick="hideIrrelevantMode()" class="text-sm text-slate-400 hover:text-slate-600 underline whitespace-nowrap">
+                Cancel
+            </button>
+        </form>
+    </div>
+</div>
