@@ -4,8 +4,8 @@
 
 ### AI-Powered Email Monitoring & Triage System
 
-[![Version](https://img.shields.io/badge/v2.6.1-latest-e06a97?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/releases/tag/v2.6.1)
-[![Tests](https://img.shields.io/badge/Tests-753_passing-4ECDC4?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/actions)
+[![Version](https://img.shields.io/badge/v2.7.0-latest-e06a97?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/releases)
+[![Tests](https://img.shields.io/badge/Tests-843_passing-4ECDC4?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/actions)
 [![AI](https://img.shields.io/badge/Claude_AI-Haiku_%2B_Sonnet-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://anthropic.com)
 
 [![Django](https://img.shields.io/badge/Django-4.2_LTS-092E20?style=flat-square&logo=django&logoColor=white)](https://djangoproject.com)
@@ -150,7 +150,7 @@ python manage.py runserver 8000
 Fresh installs default to **off** mode — zero external API calls.
 
 ```bash
-pytest -v                                        # 753 tests (no API keys)
+pytest -v                                        # 843 tests (no API keys)
 python manage.py test_pipeline                   # Smoke test with fake data
 python manage.py run_scheduler --once --dry-run  # Simulated poll cycle
 ```
@@ -162,7 +162,7 @@ python manage.py run_scheduler --once --dry-run  # Simulated poll cycle
 ## Deployment
 
 ```bash
-gh release create v2.6.1 --title "v2.6.1" --generate-notes
+gh release create v2.7.0 --title "v2.7.0" --generate-notes
 # → CI tests → SSH deploy to VM → done
 ```
 
@@ -187,6 +187,7 @@ Push to `main` runs tests only. Deploy only on GitHub Release — intentional, d
 
 | Version | Highlights |
 |:-------:|------------|
+| **v2.7.0** | Gatekeeper role, irrelevant email handling, bulk actions, member reassign, alerts |
 | **v2.6.1** | Prominent assignee/status badges, Google avatar support, gold "Unassigned" state |
 | **v2.6.0** | Full UI revamp: dark/light theme, VIPL brand rose palette, hand-crafted design system |
 | **v2.5.4** | 24 UI/UX fixes: expanded cards, pill dropdowns, retro login, dev inspector overhaul |

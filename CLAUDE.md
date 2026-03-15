@@ -6,21 +6,20 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v2.6.1** (main branch) | **Complete** — prominent assignee/status badges | Self-hosted VM (Docker Compose) |
-| **v2.6.0** (main branch) | **Complete** — full UI revamp, dark/light mode | Self-hosted VM (Docker Compose) |
-| **v2.5.4** (merged) | **Complete** — 24 UI/UX fixes | Self-hosted VM (Docker Compose) |
+| **v2.7.0** (main branch) | **Complete** — gatekeeper role, irrelevant emails, bulk actions, reassign | Self-hosted VM (Docker Compose) |
+| **v2.6.1** (merged) | **Complete** — prominent assignee/status badges, avatar support | Self-hosted VM (Docker Compose) |
+| **v2.6.0** (merged) | **Complete** — full UI revamp, dark/light mode | Self-hosted VM (Docker Compose) |
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.5.11 (latest deployed)
+**GitHub Release**: v2.6.1 (latest deployed)
 
 ## Active Branches
 
 | Branch | Worktree | Purpose | Status |
 |--------|----------|---------|--------|
-| `main` | `.` | Production branch, deployed to VM | v2.5.4 deployed |
+| `main` | `.` | Production branch, deployed to VM | v2.7.0 |
 | `feature/analytics-dashboard` | `../vipl-email-agent-analytics` | Analytics & reporting dashboard | Not started |
-| `feature/gatekeeper-role` | `../vipl-email-agent-gatekeeper` | Gatekeeper role feature | In progress |
 
 ## Stack
 - **Backend**: Django 4.2 LTS + PostgreSQL 12.3 (Taiga's existing DB container)
@@ -141,6 +140,10 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **v2.5.4 Phase 7** (QA Cosmetic): Action button flex-wrap, reports title format, SLA chart zero-value handling
 - **v2.6.0** (Full UI Revamp): V2 retro design becomes default for all pages, dark/light theme toggle (`data-theme` + localStorage), VIPL brand rose palette (`--vipl-*` CSS variables), CRT/scanline/glow effects dark-only, Chart.js theme-aware re-render, all templates themed (activity, reports, settings, team, login, inspector, partials), v1 templates moved to `to_delete/`, v2 views/routes removed
 - **v2.6.1** (Prominent Badges): Bolder assignee badges with avatar image support and solid colored initials, gold "Unassigned" state, status badges with increased opacity/font weight/uppercase, `reopened` status gets gold color, editable status/priority badges bumped to `-100`/`-700` Tailwind shades
+- **v2.7.0 Phase 1** (Role & Permission Foundation): Triage Lead role with category-scoped permissions, `can_assign`/`can_triage`/`can_approve_users` helpers, role-based sidebar visibility, role-aware nav guards
+- **v2.7.0 Phase 2** (Assignment Enforcement): Member reassign with reason + candidate filtering, read-only badges for non-owners, `reassigned_by_member` activity log action, context menu role guards
+- **v2.7.0 Phase 3** (Mark Irrelevant): `irrelevant` thread status, modal with required reason, revert-to-new, gold "Irrelevant" badge on cards, keyboard shortcut (I), activity timeline rendering
+- **v2.7.0 Phase 4** (Alerts & Bulk Actions): Unassigned thread alerts (scheduled), corrections digest (weekly AI feedback), checkbox multi-select on cards, bulk assign/mark-irrelevant/undo, `_bulk_action_bar.html` sticky bar
 
 ### Design System
 

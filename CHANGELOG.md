@@ -2,6 +2,26 @@
 
 All notable changes to the VIPL Email Agent are documented here.
 
+## [2.7.0] — Mar 2026
+
+Gatekeeper role with category-scoped permissions, irrelevant email handling, bulk actions, and member reassignment. 843 tests.
+
+### Added
+- **Triage Lead role** — New role between admin and member: `can_triage` (mark irrelevant, manage settings), category-scoped assignment permissions
+- **Mark Irrelevant** — Gatekeeper/admin can dismiss threads with required reason, modal UI, keyboard shortcut (I), revert-to-new
+- **Member Reassign** — Members can reassign their own threads with reason, category-filtered candidate list
+- **Bulk Actions** — Checkbox multi-select on thread cards, sticky action bar: bulk assign, mark irrelevant, undo
+- **Unassigned Alerts** — Scheduled check for threads unassigned beyond threshold, Chat notification
+- **Corrections Digest** — Weekly AI feedback summary from user corrections, scheduled delivery
+- **Irrelevant status** — New thread status with gold badge on cards, filtered from default views
+
+### Changed
+- Role-based sidebar visibility (`can_triage`, `can_assign`, `can_approve_users` helpers)
+- Context menu actions gated by user permissions
+- Editable status/priority/category badges show read-only for non-owners
+- Activity timeline renders irrelevant/revert/reassign events with distinct styling
+- `reassigned_by_member` action type in ActivityLog
+
 ## [2.6.1] — Mar 2026
 
 ### Changed
