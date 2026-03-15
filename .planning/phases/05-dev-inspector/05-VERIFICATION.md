@@ -1,27 +1,19 @@
 ---
 phase: 05-dev-inspector
 verified: 2026-03-15T18:00:00Z
-status: gaps_found
-score: 2/3 success criteria verified
-re_verification: false
-gaps:
-  - truth: "Poll countdown timer shows live seconds until next poll and resets after each cycle"
-    status: partial
-    reason: "Timer shows live seconds correctly, but does not reset after a poll cycle without a full page reload. The JS reads last_poll_epoch once on page load; neither a force poll nor a scheduled poll updates the in-page countdown variable. The PLAN explicitly scoped out timer reset for force poll ('per user decision'), but the ROADMAP criterion says 'resets after each cycle' which is not implemented for any cycle type without a page reload."
-    artifacts:
-      - path: "templates/emails/inspect.html"
-        issue: "lastEpoch JS variable is set once at page load from {{ last_poll_epoch }}. No mechanism refreshes it after a poll cycle completes. DOMParser table swap after force poll does NOT include a timer reset."
-    missing:
-      - "After force poll completes, re-fetch last_poll_epoch from the refreshed page HTML and update lastEpoch JS variable, then call update()"
-      - "OR: add a dedicated endpoint that returns current last_poll_epoch as JSON and update the JS timer variable after each force poll"
+status: passed
+score: 3/3 success criteria verified
+re_verification: true
+gaps: []
+gap_resolution: "Timer epoch gap fixed in commit f08e99b — window.__pollLastEpoch shared between IIFEs, DOMParser callback extracts new epoch from fetched page after force poll."
 ---
 
 # Phase 5: Dev Inspector Verification Report
 
 **Phase Goal:** Dev inspector provides accurate real-time poll status and readable history
 **Verified:** 2026-03-15T18:00:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Status:** passed (gap resolved in commit f08e99b)
+**Re-verification:** Yes — timer epoch gap fixed
 
 ## Goal Achievement
 
