@@ -2239,15 +2239,15 @@ def reports_view(request):
     team_data = get_team_data(start, end, **filters)
     sla_data = get_sla_data(start, end, **filters)
 
-    # Filter dropdown options
+    # Filter dropdown options (SoftDeleteManager already excludes deleted)
     distinct_inboxes = list(
-        Email.objects.filter(is_deleted=False)
+        Email.objects.all()
         .values_list("to_inbox", flat=True)
         .distinct()
         .order_by("to_inbox")
     )
     distinct_categories = list(
-        Thread.objects.filter(is_deleted=False)
+        Thread.objects.all()
         .exclude(category="")
         .values_list("category", flat=True)
         .distinct()

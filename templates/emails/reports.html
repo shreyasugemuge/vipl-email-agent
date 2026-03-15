@@ -274,6 +274,32 @@
 (function() {
     'use strict';
 
+    // ---- Global Chart.js defaults ----
+    Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#64748b';
+
+    // ---- Center text plugin for donut chart ----
+    var centerTextPlugin = {
+        id: 'centerText',
+        beforeDraw: function(chart) {
+            if (chart.config.type !== 'doughnut') return;
+            var pct = chart.config._pct;
+            if (pct === undefined) return;
+            var ctx = chart.ctx;
+            var width = chart.width;
+            var height = chart.height;
+            ctx.save();
+            ctx.font = 'bold 28px "Plus Jakarta Sans"';
+            ctx.fillStyle = '#1e293b';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(pct + '%', width / 2, height / 2);
+            ctx.restore();
+        }
+    };
+    Chart.register(centerTextPlugin);
+
     // ---- Chart instance registry (prevent memory leaks) ----
     var charts = {};
 
@@ -311,136 +337,254 @@
         }
     };
 
-    // ---- Overview Chart (same as volume but simpler) ----
-    createChart('overviewChart', {
-        type: 'bar',
-        data: { labels: volumeData.labels, datasets: volumeData.datasets },
-        options: commonOpts
-    });
+    // ---- Lazy initialization tracking ----
+    var initialized = {};
 
-    // ---- Volume Chart ----
-    createChart('volumeChart', {
-        type: 'bar',
-        data: { labels: volumeData.labels, datasets: volumeData.datasets },
-        options: Object.assign({}, commonOpts, {
-            plugins: Object.assign({}, commonOpts.plugins, {
-                title: { display: false }
-            })
-        })
-    });
+    function initTab(tab) {
+        if (initialized[tab]) return;
+        initialized[tab] = true;
 
-    // ---- Team Handle Count ----
-    createChart('teamHandleChart', {
-        type: 'bar',
-        data: {
-            labels: teamData.labels,
-            datasets: [{
-                label: 'Emails Handled',
-                data: teamData.datasets.handle_count,
-                backgroundColor: '#a83362',
-                borderRadius: 4
-            }]
-        },
-        options: Object.assign({}, commonOpts, {
-            indexAxis: 'y',
-            scales: {
-                x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true },
-                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
-            }
-        })
-    });
+        switch (tab) {
+            case 'overview': initOverview(); break;
+            case 'volume': initVolume(); break;
+            case 'team': initTeam(); break;
+            case 'sla': initSLA(); break;
+        }
+    }
 
-    // ---- Team Response Time ----
-    createChart('teamResponseChart', {
-        type: 'bar',
-        data: {
-            labels: teamData.labels,
-            datasets: [{
-                label: 'Avg Response (min)',
-                data: teamData.datasets.avg_response_minutes,
-                backgroundColor: '#3b82f6',
-                borderRadius: 4
-            }]
-        },
-        options: Object.assign({}, commonOpts, {
-            indexAxis: 'y',
-            scales: {
-                x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true },
-                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
-            }
-        })
-    });
+    // ---- Overview tab -- summary line chart ----
+    function initOverview() {
+        // Sum across all inboxes per date for total volume
+        var totals = volumeData.labels.map(function(_, i) {
+            var sum = 0;
+            volumeData.datasets.forEach(function(ds) { sum += (ds.data[i] || 0); });
+            return sum;
+        });
 
-    // ---- SLA Donut ----
-    createChart('slaDonutChart', {
-        type: 'doughnut',
-        data: {
-            labels: ['Met', 'Breached'],
-            datasets: [{
-                data: [slaData.donut_data.met, slaData.donut_data.breached],
-                backgroundColor: ['#10b981', '#ef4444'],
-                borderWidth: 0,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '65%',
-            plugins: {
-                legend: { position: 'bottom', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 20 } }
+        createChart('overviewChart', {
+            type: 'line',
+            data: {
+                labels: volumeData.labels,
+                datasets: [{
+                    label: 'Total Emails',
+                    data: totals,
+                    borderColor: '#a83362',
+                    backgroundColor: 'rgba(168, 51, 98, 0.08)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 2,
+                    pointHoverRadius: 5
+                }]
+            },
+            options: commonOpts
+        });
+
+        // Format avg response in KPI card
+        var avgMin = overviewData.avg_response_minutes;
+        var avgEl = document.getElementById('kpi-avg-response');
+        if (avgEl && avgMin !== null && avgMin !== undefined) {
+            if (avgMin >= 60) {
+                var h = Math.floor(avgMin / 60);
+                var m = Math.round(avgMin % 60);
+                avgEl.textContent = h + 'h ' + m + 'm';
+            } else if (avgMin > 0) {
+                avgEl.textContent = Math.round(avgMin) + 'm';
+            } else {
+                avgEl.textContent = '< 1m';
             }
         }
-    });
+    }
 
-    // ---- SLA Trend ----
-    var trendLabels = slaData.trend.map(function(t) { return t.date; });
-    var trendValues = slaData.trend.map(function(t) { return t.compliance_pct; });
+    // ---- Volume tab -- stacked bar chart ----
+    function initVolume() {
+        var datasets = volumeData.datasets.map(function(ds) {
+            return {
+                label: ds.label,
+                data: ds.data,
+                backgroundColor: ds.backgroundColor,
+                borderRadius: 4
+            };
+        });
 
-    createChart('slaTrendChart', {
-        type: 'line',
-        data: {
-            labels: trendLabels,
-            datasets: [{
-                label: 'SLA Compliance %',
-                data: trendValues,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.08)',
-                fill: true,
-                tension: 0.3,
-                pointRadius: 2,
-                pointHoverRadius: 5
-            }]
-        },
-        options: Object.assign({}, commonOpts, {
-            scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 10 } },
-                y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, min: 0, max: 100 }
+        createChart('volumeChart', {
+            type: 'bar',
+            data: { labels: volumeData.labels, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 16 } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ctx.dataset.label + ': ' + ctx.parsed.y;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 15 } },
+                    y: { stacked: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+                }
             }
-        })
-    });
+        });
+    }
 
-    // ---- SLA Breaches Table ----
-    var tbody = document.getElementById('sla-breaches-body');
-    if (tbody && slaData.breaches) {
-        if (slaData.breaches.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-slate-400 text-sm">No SLA breaches in this period</td></tr>';
-        } else {
-            var html = '';
-            slaData.breaches.forEach(function(b) {
-                var priorityClass = 'text-slate-600';
-                if (b.priority === 'CRITICAL') priorityClass = 'text-red-600 font-semibold';
-                else if (b.priority === 'HIGH') priorityClass = 'text-amber-600 font-semibold';
+    // ---- Team tab -- grouped bar chart ----
+    function initTeam() {
+        var useHorizontal = teamData.labels.length > 5;
 
-                html += '<tr class="hover:bg-slate-50/50">' +
-                    '<td class="px-5 py-3 text-slate-700 max-w-[250px] truncate">' + (b.subject || '(no subject)') + '</td>' +
-                    '<td class="px-5 py-3 ' + priorityClass + '">' + (b.priority || '-') + '</td>' +
-                    '<td class="px-5 py-3 text-slate-500">' + formatDate(b.deadline) + '</td>' +
-                    '<td class="px-5 py-3 text-slate-500">' + (b.actual === 'Not acknowledged' ? '<span class="text-red-500">Not acknowledged</span>' : formatDate(b.actual)) + '</td>' +
-                    '<td class="px-5 py-3 text-red-500 font-medium">' + (b.exceeded_by || '-') + '</td>' +
-                    '</tr>';
-            });
-            tbody.innerHTML = html;
+        createChart('teamHandleChart', {
+            type: 'bar',
+            data: {
+                labels: teamData.labels,
+                datasets: [{
+                    label: 'Emails Handled',
+                    data: teamData.datasets.handle_count,
+                    backgroundColor: '#a83362',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: useHorizontal ? 'y' : 'x',
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: useHorizontal ? {
+                    x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true },
+                    y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+                } : {
+                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+                }
+            }
+        });
+
+        createChart('teamResponseChart', {
+            type: 'bar',
+            data: {
+                labels: teamData.labels,
+                datasets: [{
+                    label: 'Avg Response (min)',
+                    data: teamData.datasets.avg_response_minutes,
+                    backgroundColor: '#f59e0b',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: useHorizontal ? 'y' : 'x',
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: useHorizontal ? {
+                    x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true },
+                    y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+                } : {
+                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // ---- SLA tab -- donut + trend + breaches table ----
+    function initSLA() {
+        // Donut chart with center text
+        var donutConfig = {
+            type: 'doughnut',
+            data: {
+                labels: ['Met', 'Breached'],
+                datasets: [{
+                    data: [slaData.donut_data.met, slaData.donut_data.breached],
+                    backgroundColor: ['#10b981', '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 20 } }
+                }
+            }
+        };
+        donutConfig._pct = slaData.compliance_pct;
+        createChart('slaDonutChart', donutConfig);
+
+        // Trend line chart
+        var trendLabels = slaData.trend.map(function(t) { return t.date; });
+        var trendValues = slaData.trend.map(function(t) { return t.compliance_pct; });
+
+        // 90% reference line data
+        var refLine = trendLabels.map(function() { return 90; });
+
+        createChart('slaTrendChart', {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [
+                    {
+                        label: 'SLA Compliance %',
+                        data: trendValues,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        pointHoverRadius: 5
+                    },
+                    {
+                        label: '90% Target',
+                        data: refLine,
+                        borderColor: '#ef4444',
+                        borderDash: [6, 4],
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 12 }, padding: 16 } }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 10 } },
+                    y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, min: 0, max: 100 }
+                }
+            }
+        });
+
+        // SLA Breaches Table
+        var tbody = document.getElementById('sla-breaches-body');
+        if (tbody && slaData.breaches) {
+            if (slaData.breaches.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-slate-400 text-sm">No SLA breaches in this period</td></tr>';
+            } else {
+                var html = '';
+                slaData.breaches.forEach(function(b) {
+                    var priorityClass = 'text-slate-600';
+                    if (b.priority === 'CRITICAL') priorityClass = 'text-red-600 font-semibold';
+                    else if (b.priority === 'HIGH') priorityClass = 'text-amber-600 font-semibold';
+
+                    html += '<tr class="hover:bg-slate-50/50">' +
+                        '<td class="px-5 py-3 text-slate-700 max-w-[250px] truncate"><a href="/emails/threads/' + b.thread_id + '/detail/" class="hover:text-primary-600 hover:underline">' + (b.subject || '(no subject)') + '</a></td>' +
+                        '<td class="px-5 py-3 ' + priorityClass + '">' + (b.priority || '-') + '</td>' +
+                        '<td class="px-5 py-3 text-slate-500">' + formatDate(b.deadline) + '</td>' +
+                        '<td class="px-5 py-3 text-slate-500">' + (b.actual === 'Not acknowledged' ? '<span class="text-red-500">Not acknowledged</span>' : formatDate(b.actual)) + '</td>' +
+                        '<td class="px-5 py-3 text-red-500 font-medium">' + (b.exceeded_by || '-') + '</td>' +
+                        '</tr>';
+                });
+                tbody.innerHTML = html;
+            }
         }
     }
 
@@ -453,7 +597,7 @@
         } catch (e) { return iso; }
     }
 
-    // ---- Tab Switching ----
+    // ---- Tab Switching with lazy init ----
     var tabBtns = document.querySelectorAll('[role="tab"]');
     var tabPanels = document.querySelectorAll('[role="tabpanel"]');
 
@@ -477,6 +621,9 @@
             });
             var panel = document.getElementById('tab-' + target);
             if (panel) panel.classList.remove('hidden');
+
+            // Lazy init chart for this tab
+            initTab(target);
         });
     });
 
@@ -494,18 +641,8 @@
         }
     };
 
-    // ---- Format Avg Response in KPI card ----
-    var avgMin = overviewData.avg_response_minutes;
-    var avgEl = document.getElementById('kpi-avg-response');
-    if (avgEl && avgMin !== null) {
-        if (avgMin >= 60) {
-            var h = Math.floor(avgMin / 60);
-            var m = Math.round(avgMin % 60);
-            avgEl.textContent = h + 'h ' + m + 'm';
-        } else {
-            avgEl.textContent = '< 1h';
-        }
-    }
+    // ---- Initialize default tab (overview) on page load ----
+    initTab('overview');
 
 })();
 </script>

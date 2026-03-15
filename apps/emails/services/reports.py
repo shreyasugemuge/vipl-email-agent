@@ -84,15 +84,16 @@ def get_overview_kpis(start, end, **filters):
         dict with total_emails, avg_response_minutes, sla_compliance_pct, open_threads.
     """
     # Total non-spam emails received in period
+    # SoftDeleteManager already excludes deleted_at != NULL
     email_qs = Email.objects.filter(
-        is_deleted=False, is_spam=False, received_at__gte=start, received_at__lte=end,
+        is_spam=False, received_at__gte=start, received_at__lte=end,
     )
     email_qs = _apply_filters(email_qs, "email", **filters)
     total_emails = email_qs.count()
 
     # Avg response time: thread created_at -> first ACKNOWLEDGED activity
     thread_qs = Thread.objects.filter(
-        is_deleted=False, created_at__gte=start, created_at__lte=end,
+        created_at__gte=start, created_at__lte=end,
     )
     thread_qs = _apply_filters(thread_qs, "thread", **filters)
 
@@ -118,7 +119,6 @@ def get_overview_kpis(start, end, **filters):
 
     # SLA compliance: threads with sla_ack_deadline that were acknowledged in time
     sla_threads = Thread.objects.filter(
-        is_deleted=False,
         sla_ack_deadline__isnull=False,
         created_at__gte=start,
         created_at__lte=end,
@@ -147,7 +147,7 @@ def get_overview_kpis(start, end, **filters):
         sla_compliance_pct = round((met / total_sla) * 100, 1)
 
     # Open threads (real-time, ignores date range)
-    open_qs = Thread.objects.filter(is_deleted=False).exclude(status="closed")
+    open_qs = Thread.objects.exclude(status="closed")
     open_qs = _apply_filters(open_qs, "thread", **filters)
     open_threads = open_qs.count()
 
@@ -165,7 +165,7 @@ def get_volume_data(start, end, **filters):
     Returns dict with labels (date strings) and datasets (per inbox).
     """
     email_qs = Email.objects.filter(
-        is_deleted=False, is_spam=False, received_at__gte=start, received_at__lte=end,
+        is_spam=False, received_at__gte=start, received_at__lte=end,
     )
     email_qs = _apply_filters(email_qs, "email", **filters)
 
@@ -283,7 +283,6 @@ def get_sla_data(start, end, **filters):
     now = timezone.now()
 
     sla_threads = Thread.objects.filter(
-        is_deleted=False,
         sla_ack_deadline__isnull=False,
         created_at__gte=start,
         created_at__lte=end,
