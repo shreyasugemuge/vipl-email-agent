@@ -47,7 +47,18 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ### Active
 
-(None — next milestone not yet planned)
+## Current Milestone: v2.2.1 UI/UX Polish & Bug Fixes
+
+**Goal:** Fix UI bugs, improve mobile responsiveness, and polish the dashboard experience based on live QA findings.
+
+**Target features:**
+- Fix AI suggestion XML markup rendering bug in email cards
+- Mobile responsive detail panel (currently invisible on mobile)
+- Mobile-friendly filters, search, and stat counters
+- Activity page filter overflow fix
+- Welcome toast / first-login experience
+- Email count accuracy across view filters
+- Page title consistency
 
 ### Out of Scope
 
@@ -95,4 +106,4 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | _sla_urgency_label module-level function | Cross-method reuse, consistent formatting | ✓ Good — v2.2 |
 
 ---
-*Last updated: 2026-03-14 after v2.2 milestone complete*
+*Last updated: 2026-03-15 after v2.2.1 milestone started*
