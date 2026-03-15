@@ -54,11 +54,11 @@ Plans:
   2. Member cannot see or use the "assign to others" action -- UI hides it and server rejects the request
   3. Member can self-claim an unassigned thread in their category without needing a reason
   4. Member reassigning a thread they own must provide a mandatory reason, which appears in the activity log
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md — Backend: model migration, reassign_thread service, view endpoint, URL, 14 permission tests
+- [ ] 02-02-PLAN.md — Frontend: role-conditional detail panel UI, context menu, visual checkpoint
 
 ### Phase 3: Mark Irrelevant
 **Goal**: Gatekeepers and admins can dismiss irrelevant threads from the queue with an auditable reason
@@ -100,6 +100,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Role + Permission Foundation | 0/TBD | Not started | - |
-| 2. Assignment Enforcement | 0/TBD | Not started | - |
+| 2. Assignment Enforcement | 0/2 | Planned | - |
 | 3. Mark Irrelevant | 0/TBD | Not started | - |
 | 4. Alerts + Bulk Actions | 0/TBD | Not started | - |
