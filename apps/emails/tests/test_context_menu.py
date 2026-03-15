@@ -114,3 +114,35 @@ class TestContextMenuEndpoint:
         url = reverse("emails:thread_context_menu", args=[99999])
         resp = admin_client.get(url)
         assert resp.status_code == 404
+
+    def test_admin_sees_claim_for_unassigned_thread(self, admin_client, admin_user, db):
+        """Admin should see Claim in context menu for unassigned threads."""
+        thread = create_thread()  # unassigned by default
+        url = reverse("emails:thread_context_menu", args=[thread.pk])
+        resp = admin_client.get(url)
+        # Admin sees both Assign and Claim for unassigned threads
+        assert b"Claim" in resp.content
+
+    def test_no_claim_for_assigned_thread(self, member_client, member_user, admin_user, db):
+        """Member should NOT see Claim for a thread assigned to someone else."""
+        thread = create_thread(assigned_to=admin_user)
+        CategoryVisibility.objects.create(user=member_user, category=thread.category)
+        url = reverse("emails:thread_context_menu", args=[thread.pk])
+        resp = member_client.get(url)
+        assert b"Claim" not in resp.content
+
+    def test_no_claim_for_closed_thread(self, member_client, member_user, db):
+        """No Claim option on a closed unassigned thread."""
+        thread = create_thread(status=Thread.Status.CLOSED)
+        CategoryVisibility.objects.create(user=member_user, category=thread.category)
+        url = reverse("emails:thread_context_menu", args=[thread.pk])
+        resp = member_client.get(url)
+        assert b"Claim" not in resp.content
+
+    def test_member_no_claim_without_category_visibility(self, member_client, member_user, db):
+        """Member without CategoryVisibility should NOT see Claim."""
+        thread = create_thread()
+        # No CategoryVisibility created
+        url = reverse("emails:thread_context_menu", args=[thread.pk])
+        resp = member_client.get(url)
+        assert b"Claim" not in resp.content
