@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-02-PLAN.md (Permission Refactor + Category Scoping)
-last_updated: "2026-03-15T19:26:05.613Z"
-last_activity: 2026-03-15 -- Completed 01-02 (Permission Refactor + Category Scoping)
+stopped_at: Completed 03-01-PLAN.md (Mark Irrelevant Backend)
+last_updated: "2026-03-15T19:33:49Z"
+last_activity: 2026-03-16 -- Completed 03-01 (Mark Irrelevant Backend)
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 6
-  completed_plans: 2
-  percent: 33
+  completed_plans: 3
+  percent: 50
 ---
 
 # Project State
@@ -21,28 +21,29 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** v2.6.0 Phase 2 -- Assignment Enforcement
+**Current focus:** v2.6.0 Phase 3 -- Mark Irrelevant
 
 ## Current Position
 
-Phase: 2 of 4 (Assignment Enforcement)
-Plan: 1 of 2 in current phase
+Phase: 3 of 4 (Mark Irrelevant)
+Plan: 1 of 1 in current phase
 Status: Executing
-Last activity: 2026-03-15 -- Completed 01-02 (Permission Refactor + Category Scoping)
+Last activity: 2026-03-16 -- Completed 03-01 (Mark Irrelevant Backend)
 
-Progress: [███░░░░░░░] 33%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
+- Total plans completed: 3
 - Average duration: 5 min
-- Total execution time: 0.17 hours
+- Total execution time: 0.27 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 01 | 01 | 4 min | 2 | 8 |
 | 01 | 02 | 6 min | 3 | 13 |
+| 03 | 01 | 6 min | 2 | 5 |
 
 ## Accumulated Context
 
@@ -63,6 +64,8 @@ Progress: [███░░░░░░░] 33%
 - Context processor for lead_categories ensures sidebar pills work on all pages
 - Settings page read-only (not hidden) for Triage Lead
 - Force poll admin-only; inspector view accessible to can_triage users
+- Explicit ?status= query param overrides view-level status filtering for irrelevant threads
+- Revert irrelevant clears all assignment fields to fully reset thread
 
 ### Blockers/Concerns
 
@@ -70,6 +73,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T19:16:53Z
-Stopped at: Completed 01-02-PLAN.md (Permission Refactor + Category Scoping)
-Next: Execute 02-01-PLAN.md (Assignment Enforcement)
+Last session: 2026-03-15T19:33:49Z
+Stopped at: Completed 03-01-PLAN.md (Mark Irrelevant Backend)
+Next: Execute next plan in phase

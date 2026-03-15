@@ -16,12 +16,12 @@
 
 ### Triage Actions
 
-- [ ] **TRIAGE-01**: Gatekeeper/admin can mark a thread as irrelevant with mandatory free-text reason
-- [ ] **TRIAGE-02**: Irrelevant threads are closed immediately and excluded from unassigned count
+- [x] **TRIAGE-01**: Gatekeeper/admin can mark a thread as irrelevant with mandatory free-text reason
+- [x] **TRIAGE-02**: Irrelevant threads are closed immediately and excluded from unassigned count
 - [ ] **TRIAGE-03**: Mark-irrelevant available via button in detail panel and right-click context menu
 - [ ] **TRIAGE-04**: Gatekeeper/admin can select multiple threads via checkboxes and bulk-assign to a user
 - [ ] **TRIAGE-05**: Gatekeeper/admin can bulk mark-irrelevant with a single reason for all selected
-- [ ] **TRIAGE-06**: Irrelevant reason stored in ActivityLog and visible in thread detail activity timeline
+- [x] **TRIAGE-06**: Irrelevant reason stored in ActivityLog and visible in thread detail activity timeline
 
 ### Alerts & Monitoring
 
@@ -55,12 +55,12 @@ None deferred — all scoped features included in this milestone.
 | ROLE-04 | Phase 2 | Pending |
 | ROLE-05 | Phase 2 | Pending |
 | ROLE-06 | Phase 1 | Complete |
-| TRIAGE-01 | Phase 3 | Pending |
-| TRIAGE-02 | Phase 3 | Pending |
+| TRIAGE-01 | Phase 3 | Complete |
+| TRIAGE-02 | Phase 3 | Complete |
 | TRIAGE-03 | Phase 3 | Pending |
 | TRIAGE-04 | Phase 4 | Pending |
 | TRIAGE-05 | Phase 4 | Pending |
-| TRIAGE-06 | Phase 3 | Pending |
+| TRIAGE-06 | Phase 3 | Complete |
 | ALERT-01 | Phase 4 | Pending |
 | ALERT-02 | Phase 4 | Pending |
 | ALERT-03 | Phase 4 | Pending |
