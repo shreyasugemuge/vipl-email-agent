@@ -11,7 +11,7 @@ from apps.core.models import SystemConfig
 from apps.emails.models import (
     AssignmentRule, CategoryVisibility, Email, SLAConfig, SpamWhitelist,
 )
-from conftest import create_email
+from conftest import create_email, create_thread
 
 
 @pytest.fixture
@@ -238,6 +238,28 @@ class TestClaimEndpoint:
         assert response.status_code == 200
         email.refresh_from_db()
         assert email.assigned_to == admin_user
+
+
+# ---------------------------------------------------------------------------
+# Thread claim endpoint
+# ---------------------------------------------------------------------------
+
+
+class TestThreadClaimEndpoint:
+    def test_claim_thread_shows_toast(self, member_client, member_user, db):
+        """POST to claim thread returns 'Thread claimed' toast."""
+        thread = create_thread()
+        CategoryVisibility.objects.create(user=member_user, category=thread.category)
+        response = member_client.post(reverse("emails:claim_thread", args=[thread.pk]))
+        assert response.status_code == 200
+        assert b"Thread claimed" in response.content
+
+    def test_admin_claim_thread_shows_toast(self, admin_client, admin_user, db):
+        """Admin claiming thread also gets toast."""
+        thread = create_thread()
+        response = admin_client.post(reverse("emails:claim_thread", args=[thread.pk]))
+        assert response.status_code == 200
+        assert b"Thread claimed" in response.content
 
 
 # ---------------------------------------------------------------------------

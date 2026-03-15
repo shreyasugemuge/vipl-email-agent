@@ -21,6 +21,7 @@ STATUS_BASE = {
     "acknowledged": "violet",
     "replied": "emerald",
     "closed": "slate",
+    "reopened": "amber",
     # ActivityLog actions (Phase 3)
     "assigned": "blue",
     "reassigned": "amber",
@@ -68,7 +69,7 @@ def priority_color(value):
 @register.filter
 def status_color(value):
     """Return Tailwind bg color class for solid status badges."""
-    colors = {"new": "blue-500", "acknowledged": "violet-500", "replied": "emerald-500", "closed": "slate-400"}
+    colors = {"new": "blue-500", "acknowledged": "violet-500", "replied": "emerald-500", "closed": "slate-400", "reopened": "amber-500"}
     return colors.get(value, "slate-400")
 
 
@@ -178,6 +179,7 @@ STATUS_TOOLTIPS = {
     "new": "Awaiting acknowledgment",
     "acknowledged": "Team member has seen this",
     "closed": "Resolved and archived",
+    "reopened": "Thread reopened by new message",
 }
 
 PRIORITY_TOOLTIPS = {

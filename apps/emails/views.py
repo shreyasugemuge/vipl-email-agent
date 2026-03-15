@@ -16,7 +16,7 @@ from datetime import timedelta
 import nh3
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.http import HttpResponse as _HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
@@ -40,7 +40,6 @@ from apps.emails.services.assignment import claim_thread as _claim_thread
 from apps.emails.services.assignment import reassign_thread as _reassign_thread
 from apps.emails.services.assignment import notify_mention as _notify_mention
 from apps.emails.services.assignment import parse_mentions
-from apps.emails.services.dtos import VALID_CATEGORIES, VALID_PRIORITIES
 from apps.emails.services.reports import (
     get_overview_kpis,
     get_volume_data,
@@ -66,6 +65,20 @@ SAFE_ATTRIBUTES = {
 # ---------------------------------------------------------------------------
 # Unread annotation helper
 # ---------------------------------------------------------------------------
+
+
+def _member_visible_threads(qs, user):
+    """Restrict queryset to threads a member can see: assigned-to-them OR unassigned."""
+    from django.db.models import Q
+    return qs.filter(Q(assigned_to=user) | Q(assigned_to__isnull=True))
+
+
+def _check_member_thread_access(thread, user):
+    """Return HttpResponseForbidden if a non-admin member shouldn't access this thread."""
+    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    if not is_admin and thread.assigned_to is not None and thread.assigned_to != user:
+        return HttpResponseForbidden("Access denied.")
+    return None
 
 
 def annotate_unread(qs, user):
@@ -103,21 +116,19 @@ def thread_list(request):
 
     # Base queryset — annotate email_count to avoid N+1 on thread.message_count
     # Prefetch emails with only to_inbox + is_spam to avoid N+1 on thread_inbox_badges
-    from django.db.models import Count, Exists, OuterRef, Prefetch, Subquery
-    from django.db.models.fields.json import KeyTextTransform
+    from django.db.models import Count, Exists, OuterRef, Prefetch
     qs = Thread.objects.select_related("assigned_to").prefetch_related(
-        Prefetch("emails", queryset=Email.objects.only("id", "thread_id", "to_inbox", "is_spam"), to_attr="_prefetched_emails"),
+        Prefetch(
+            "emails",
+            queryset=Email.objects.only(
+                "id", "thread_id", "to_inbox", "is_spam",
+                "ai_suggested_assignee", "processing_status", "received_at",
+            ),
+            to_attr="_prefetched_emails",
+        ),
     ).annotate(
         email_count=Count("emails"),
         has_spam=Exists(Email.objects.filter(thread=OuterRef("pk"), is_spam=True)),
-        ai_suggested_assignee_name=Subquery(
-            Email.objects.filter(
-                thread=OuterRef("pk"),
-                processing_status=Email.ProcessingStatus.COMPLETED,
-            ).annotate(
-                _suggestion_name=KeyTextTransform("name", "ai_suggested_assignee"),
-            ).exclude(_suggestion_name__isnull=True).exclude(_suggestion_name="").order_by("-received_at").values("_suggestion_name")[:1]
-        ),
     ).order_by("-last_message_at")
 
     # Annotate per-user unread state
@@ -140,6 +151,10 @@ def thread_list(request):
     default_view = "all_open" if can_assign else "mine"
     view = request.GET.get("view", default_view)
 
+    # Members can only see their own threads + unclaimed
+    if not can_assign and view not in ("mine", "unassigned"):
+        view = default_view
+
     # If an explicit status filter is set, skip view-level status constraints
     # (e.g., ?status=irrelevant should show irrelevant threads regardless of view)
     has_explicit_status = bool(request.GET.get("status", ""))
@@ -147,12 +162,12 @@ def thread_list(request):
     if view == "unassigned":
         qs = qs.filter(assigned_to__isnull=True)
         if not has_explicit_status:
-            qs = qs.filter(status__in=["new", "acknowledged"])
+            qs = qs.filter(status__in=["new", "acknowledged", "reopened"])
     elif view == "mine":
         qs = qs.filter(assigned_to=user)
     elif view == "all_open":
         if not has_explicit_status:
-            qs = qs.filter(status__in=["new", "acknowledged"])
+            qs = qs.filter(status__in=["new", "acknowledged", "reopened"])
     elif view == "closed":
         if not has_explicit_status:
             qs = qs.filter(status="closed")
@@ -206,10 +221,12 @@ def thread_list(request):
             base_threads = base_threads.filter(category__in=lead_categories)
         else:
             base_threads = base_threads.none()
+    elif not can_assign:
+        base_threads = _member_visible_threads(base_threads, user)
     if inbox:
         base_threads = base_threads.filter(emails__to_inbox=inbox).distinct()
 
-    open_q = Q(status__in=["new", "acknowledged"])
+    open_q = Q(status__in=["new", "acknowledged", "reopened"])
     sidebar_counts = base_threads.aggregate(
         unassigned=Count("pk", filter=open_q & Q(assigned_to__isnull=True)),
         mine=Count("pk", filter=open_q & Q(assigned_to=user)),
@@ -229,10 +246,10 @@ def thread_list(request):
         unread_base = unread_base.filter(emails__to_inbox=inbox).distinct()
     sidebar_counts["unread_mine"] = unread_base.filter(assigned_to=user).count()
     sidebar_counts["unread_unassigned"] = unread_base.filter(
-        assigned_to__isnull=True, status__in=["new", "acknowledged"]
+        assigned_to__isnull=True, status__in=["new", "acknowledged", "reopened"]
     ).count()
     sidebar_counts["unread_open"] = unread_base.filter(
-        status__in=["new", "acknowledged"]
+        status__in=["new", "acknowledged", "reopened"]
     ).count()
     sidebar_counts["unread_closed"] = unread_base.filter(status="closed").count()
 
@@ -261,10 +278,42 @@ def thread_list(request):
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
+    # Compute ai_suggested_assignee_name from prefetched emails (avoids SQLite
+    # json_extract bug with KeyTextTransform on TEXT columns).
+    for thread in page_obj:
+        thread.ai_suggested_assignee_name = None
+        for email in getattr(thread, "_prefetched_emails", []):
+            if email.processing_status == Email.ProcessingStatus.COMPLETED:
+                name = (email.ai_suggested_assignee or {}).get("name", "")
+                if name:
+                    thread.ai_suggested_assignee_name = name
+                    break
+
     # Team members for assignment dropdown
     team_members = []
     if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
+
+    # --- View-scoped stat counts for the stat cards bar ---
+    # Must match the exact same filter applied to `qs` above so counts are consistent.
+    stat_base = base_threads
+    if view == "unassigned":
+        stat_base = stat_base.filter(assigned_to__isnull=True, status__in=["new", "acknowledged", "reopened"])
+    elif view == "mine":
+        stat_base = stat_base.filter(assigned_to=user)
+    elif view == "all_open":
+        stat_base = stat_base.filter(status__in=["new", "acknowledged", "reopened"])
+    elif view == "closed":
+        stat_base = stat_base.filter(status="closed")
+    elif view.isdigit() and is_admin:
+        stat_base = stat_base.filter(assigned_to_id=int(view))
+
+    view_stats = stat_base.aggregate(
+        total=Count("pk"),
+        unassigned_count=Count("pk", filter=Q(assigned_to__isnull=True) & open_q),
+        urgent=Count("pk", filter=Q(priority__in=["CRITICAL", "HIGH"])),
+        new_count=Count("pk", filter=Q(status="new")),
+    )
 
     # Build current query params (without page) for pagination links
     query_params = request.GET.copy()
@@ -281,6 +330,7 @@ def thread_list(request):
         "page_obj": page_obj,
         "total_count": paginator.count,
         "sidebar_counts": sidebar_counts,
+        "view_stats": view_stats,
         "current_view": view,
         "current_inbox": inbox,
         "current_priority": priority,
@@ -297,9 +347,11 @@ def thread_list(request):
         "unread_total": unread_total,
         "lead_categories": lead_categories,
         "corrections_digest": corrections_digest,
+        "default_view": default_view,
     }
 
     if getattr(request, "htmx", False):
+        context["is_htmx"] = True
         return render(request, "emails/_thread_list_body.html", context)
     return render(request, "emails/thread_list.html", context)
 
@@ -495,10 +547,9 @@ def _build_detail_context(email, request, can_assign, team_members):
         if can_assign:
             can_claim = True
         else:
-            can_claim = CategoryVisibility.objects.filter(
-                user=request.user,
-                category=email.category,
-            ).exists()
+            # Default-open: if user has NO CategoryVisibility rows, allow all categories
+            user_vis = CategoryVisibility.objects.filter(user=request.user)
+            can_claim = not user_vis.exists() or user_vis.filter(category=email.category).exists()
 
     # AI suggestion dict (if present and non-empty)
     ai_suggestion = None
@@ -712,6 +763,40 @@ def reject_ai_suggestion(request, pk):
 # ---------------------------------------------------------------------------
 
 
+def _resolve_user_by_name(full_name: str):
+    """Resolve a User from a full name like 'Jyotsna Ugemuge'.
+
+    Strategy:
+    1. Try first_name + last_name exact match (case-insensitive)
+    2. Try first_name only (handles single-name suggestions like 'Aniket')
+    3. Try username icontains as fallback
+    """
+    from django.db.models import Q
+
+    parts = full_name.strip().split()
+    if not parts:
+        return None
+
+    first = parts[0]
+    last = parts[-1] if len(parts) > 1 else None
+
+    # 1. Exact first+last match
+    if last:
+        user = User.objects.filter(
+            first_name__iexact=first, last_name__iexact=last, is_active=True,
+        ).first()
+        if user:
+            return user
+
+    # 2. First name only
+    user = User.objects.filter(first_name__iexact=first, is_active=True).first()
+    if user:
+        return user
+
+    # 3. Username fallback
+    return User.objects.filter(username__iexact=first, is_active=True).first()
+
+
 @login_required
 @require_POST
 def accept_thread_suggestion(request, pk):
@@ -732,10 +817,17 @@ def accept_thread_suggestion(request, pk):
         .first()
     )
     suggestion = getattr(latest_email, "ai_suggested_assignee", None) or {}
-    if not isinstance(suggestion, dict) or not suggestion.get("user_id"):
+    if not isinstance(suggestion, dict) or not suggestion.get("name"):
         return HttpResponseForbidden("No valid AI suggestion to accept.")
 
-    assignee = get_object_or_404(User, pk=suggestion["user_id"])
+    # Resolve user_id — may already be present or need runtime lookup
+    assignee = None
+    if suggestion.get("user_id"):
+        assignee = User.objects.filter(pk=suggestion["user_id"], is_active=True).first()
+    if not assignee and suggestion.get("name"):
+        assignee = _resolve_user_by_name(suggestion["name"])
+    if not assignee:
+        return HttpResponseForbidden(f"Could not resolve user \"{suggestion.get('name')}\".")
 
     # Assign thread
     thread.assigned_to = assignee
@@ -763,11 +855,8 @@ def accept_thread_suggestion(request, pk):
         detail=f"Accepted AI suggestion — assigned to {assignee.get_full_name() or assignee.username}",
     )
 
-    # Re-render detail panel
-    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
-    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-    context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
-    return render(request, "emails/_thread_detail.html", context)
+    # Re-render detail panel + OOB card swap
+    return _render_thread_detail_with_oob_card(thread, request, user)
 
 
 @login_required
@@ -817,11 +906,8 @@ def reject_thread_suggestion(request, pk):
         latest_email.ai_suggested_assignee = {}
         latest_email.save(update_fields=["ai_suggested_assignee", "updated_at"])
 
-    # Re-render detail panel
-    thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
-    team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-    context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
-    return render(request, "emails/_thread_detail.html", context)
+    # Re-render detail panel + OOB card swap
+    return _render_thread_detail_with_oob_card(thread, request, user)
 
 
 # ---------------------------------------------------------------------------
@@ -945,14 +1031,16 @@ def _build_thread_detail_context(thread, request, can_assign, team_members):
         if can_assign:
             can_claim = True
         else:
-            has_visibility = CategoryVisibility.objects.filter(
-                user=request.user,
-                category=thread.category,
-            ).exists()
-            if has_visibility:
-                can_claim = True
+            # Default-open: if user has NO CategoryVisibility rows, allow all categories
+            user_vis = CategoryVisibility.objects.filter(user=request.user)
+            if user_vis.exists():
+                has_visibility = user_vis.filter(category=thread.category).exists()
+                if has_visibility:
+                    can_claim = True
+                else:
+                    claim_disabled = True
             else:
-                claim_disabled = True
+                can_claim = True
 
     # Reassign candidates (category-filtered active users for member reassign form)
     reassign_candidates = []
@@ -998,9 +1086,10 @@ def _build_thread_detail_context(thread, request, can_assign, team_members):
 
     # Determine if suggestion bar should show:
     # (1) unassigned thread with valid ai_suggested_assignee, or (2) auto-assigned thread
+    # Show bar if AI suggested a name — user_id is optional (resolve on accept)
     show_suggestion_bar = False
     suggested_assignee_name = ""
-    if ai_suggested_assignee and ai_suggested_assignee.get("user_id"):
+    if ai_suggested_assignee and ai_suggested_assignee.get("name"):
         if thread.assigned_to is None or thread.is_auto_assigned:
             show_suggestion_bar = True
             suggested_assignee_name = ai_suggested_assignee.get("name", "")
@@ -1069,6 +1158,12 @@ def thread_detail(request, pk):
 
     user = request.user
     can_assign = user.can_assign
+
+    # Members can only view threads assigned to them or unclaimed
+    denied = _check_member_thread_access(thread, user)
+    if denied:
+        return denied
+
     team_members = []
     if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
@@ -1106,6 +1201,9 @@ def thread_detail(request, pk):
 def mark_thread_unread(request, pk):
     """Mark a thread as unread for the current user."""
     thread = get_object_or_404(Thread, pk=pk)
+    denied = _check_member_thread_access(thread, request.user)
+    if denied:
+        return denied
     ThreadReadState.objects.update_or_create(
         thread=thread, user=request.user,
         defaults={"is_read": False, "read_at": None},
@@ -1178,8 +1276,9 @@ def edit_category(request, pk):
         pk=pk,
     )
 
-    if not user.can_assign and thread.assigned_to != user:
-        return HttpResponseForbidden("You can only edit threads assigned to you.")
+    denied = _check_member_thread_access(thread, user)
+    if denied:
+        return denied
 
     category = (request.POST.get("category") or "").strip()
     if category == "__custom__":
@@ -1216,8 +1315,9 @@ def edit_priority(request, pk):
         pk=pk,
     )
 
-    if not user.can_assign and thread.assigned_to != user:
-        return HttpResponseForbidden("You can only edit threads assigned to you.")
+    denied = _check_member_thread_access(thread, user)
+    if denied:
+        return denied
 
     new_priority = (request.POST.get("priority") or "").strip()
     if new_priority not in VALID_PRIORITIES:
@@ -1274,6 +1374,9 @@ def thread_context_menu(request, pk):
         Thread.objects.select_related("assigned_to"),
         pk=pk,
     )
+    denied = _check_member_thread_access(thread, user)
+    if denied:
+        return denied
 
     # Can claim: unassigned thread, member has CategoryVisibility (or can_assign)
     can_claim = False
@@ -1281,10 +1384,9 @@ def thread_context_menu(request, pk):
         if can_assign:
             can_claim = True
         else:
-            can_claim = CategoryVisibility.objects.filter(
-                user=user,
-                category=thread.category,
-            ).exists()
+            # Default-open: if user has NO CategoryVisibility rows, allow all categories
+            user_vis = CategoryVisibility.objects.filter(user=user)
+            can_claim = not user_vis.exists() or user_vis.filter(category=thread.category).exists()
 
     # Status actions: only for owner or can_assign
     is_owner_or_assigner = (thread.assigned_to == user or can_assign)
@@ -1305,6 +1407,9 @@ def thread_context_menu(request, pk):
 def add_note_view(request, pk):
     """Add an internal note to a thread. Any authenticated user."""
     thread = get_object_or_404(Thread, pk=pk)
+    denied = _check_member_thread_access(thread, request.user)
+    if denied:
+        return denied
     body = (request.POST.get("body") or "").strip()
 
     if not body:
@@ -1372,7 +1477,7 @@ def assign_thread_view(request, pk):
     assignee_id = request.POST.get("assignee_id")
 
     if not assignee_id:
-        return HttpResponseForbidden("Missing assignee_id.")
+        return HttpResponseBadRequest("Please select a team member first.")
 
     assignee = get_object_or_404(User, pk=assignee_id)
     note = request.POST.get("note", "")
@@ -1472,6 +1577,7 @@ def claim_thread_view(request, pk):
 
     # Primary: updated detail panel
     detail_context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
+    detail_context["toast_msg"] = "Thread claimed"
     detail_html = render_to_string(
         "emails/_thread_detail.html", detail_context, request=request,
     )
@@ -1628,6 +1734,9 @@ def mark_spam(request, pk):
         Thread.objects.select_related("assigned_to", "assigned_by"),
         pk=pk,
     )
+    denied = _check_member_thread_access(thread, request.user)
+    if denied:
+        return denied
     sender = (thread.last_sender_address or "").strip().lower()
 
     with transaction.atomic():
@@ -1676,6 +1785,9 @@ def mark_not_spam(request, pk):
         Thread.objects.select_related("assigned_to", "assigned_by"),
         pk=pk,
     )
+    denied = _check_member_thread_access(thread, request.user)
+    if denied:
+        return denied
     sender = (thread.last_sender_address or "").strip().lower()
 
     toast_msg = "Marked as not spam"
@@ -2665,7 +2777,7 @@ def activity_log(request):
     user = request.user
     can_assign = user.can_assign
 
-    qs = ActivityLog.objects.select_related("email", "user").order_by("-created_at")
+    qs = ActivityLog.objects.select_related("email", "user", "thread").order_by("-created_at")
 
     # Non-admin members without can_see_all_emails: own activity or activity on own emails
     if not can_assign and not getattr(user, "can_see_all_emails", False):
@@ -2687,13 +2799,22 @@ def activity_log(request):
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
-    # Group entries by date for display
-    from itertools import groupby
+    # Group entries by thread for display
+    from collections import OrderedDict
     from django.utils import timezone
 
-    grouped_entries = []
-    for date_key, entries in groupby(page_obj, key=lambda e: timezone.localdate(e.created_at)):
-        grouped_entries.append((date_key, list(entries)))
+    thread_buckets = OrderedDict()
+    for log in page_obj:
+        key = log.thread_id or 0  # 0 = no thread
+        if key not in thread_buckets:
+            thread_buckets[key] = {"thread": log.thread, "entries": []}
+        thread_buckets[key]["entries"].append(log)
+
+    # Build thread_groups: list of (thread_or_None, entries) sorted by most-recent first
+    thread_groups = [
+        (bucket["thread"], bucket["entries"])
+        for bucket in thread_buckets.values()
+    ]
 
     today = timezone.localdate()
     from datetime import timedelta
@@ -2714,7 +2835,7 @@ def activity_log(request):
 
     context = {
         "page_obj": page_obj,
-        "grouped_entries": grouped_entries,
+        "thread_groups": thread_groups,
         "total_count": paginator.count,
         "mis_stats": mis_stats,
         "action_filter": action_filter,
@@ -2786,8 +2907,29 @@ def inspect(request):
     last_poll_epoch = SystemConfig.get("last_poll_epoch", "")
     poll_interval = SystemConfig.get("poll_interval_minutes", "5")
 
-    # Poll history
-    poll_logs = PollLog.objects.all()[:50]
+    # Poll history (last 25, with interval annotations)
+    poll_logs = list(PollLog.objects.all()[:25])
+    poll_interval_seconds = int(poll_interval) * 60
+    for i, log in enumerate(poll_logs):
+        if i < len(poll_logs) - 1:
+            delta = log.started_at - poll_logs[i + 1].started_at
+            secs = int(delta.total_seconds())
+            log.interval_seconds = secs
+            log.interval_gap = secs > (poll_interval_seconds * 2)
+            # Pre-format interval for template
+            if secs < 60:
+                log.interval_display = f"{secs}s"
+            elif secs < 3600:
+                m, s = divmod(secs, 60)
+                log.interval_display = f"{m}m {s}s" if s else f"{m}m"
+            else:
+                h, rem = divmod(secs, 3600)
+                m = rem // 60
+                log.interval_display = f"{h}h {m}m"
+        else:
+            log.interval_seconds = None
+            log.interval_gap = False
+            log.interval_display = "--"
 
     # Pipeline MIS stats (last 7 days)
     from django.db.models import Sum, Avg, Count
@@ -2815,23 +2957,45 @@ def inspect(request):
 @login_required
 @require_POST
 def force_poll(request):
-    """Trigger a single poll cycle. Admin only."""
+    """Trigger a single poll cycle. Admin only. Works in all operating modes."""
     if not request.user.is_admin_only:
         return HttpResponseForbidden("Admin access required.")
 
     import subprocess
     from django.conf import settings
+
+    # Record the latest PollLog ID before running, so we can find the new one
+    latest_before = PollLog.objects.order_by('-started_at').values_list('pk', flat=True).first()
+
     try:
         result = subprocess.run(
             ["python", "manage.py", "run_scheduler", "--once"],
             capture_output=True, text=True, timeout=120,
             cwd=str(settings.BASE_DIR),
         )
-        return JsonResponse({
-            "status": "ok",
-            "output": result.stdout[-500:],
-            "errors": result.stderr[-500:],
-        })
+        # Try to get the PollLog created during this poll
+        poll_log_qs = PollLog.objects.order_by('-started_at')
+        if latest_before:
+            poll_log_qs = poll_log_qs.exclude(pk=latest_before)
+        poll_log = poll_log_qs.first()
+
+        if poll_log:
+            return JsonResponse({
+                "status": poll_log.status,
+                "emails_found": poll_log.emails_found,
+                "emails_processed": poll_log.emails_processed,
+                "spam_filtered": poll_log.spam_filtered,
+                "duration_ms": poll_log.duration_ms,
+            })
+        else:
+            return JsonResponse({
+                "status": "ok",
+                "emails_found": 0,
+                "emails_processed": 0,
+                "spam_filtered": 0,
+                "duration_ms": 0,
+                "output": result.stdout[-500:],
+            })
     except subprocess.TimeoutExpired:
         return JsonResponse({"error": "Poll timed out after 120s"}, status=504)
 

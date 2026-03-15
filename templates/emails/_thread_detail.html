@@ -87,26 +87,32 @@
                 <span class="w-1.5 h-1.5 rounded-full bg-{{ thread.ai_confidence|confidence_base }}-500"></span>
                 {% endif %}
                 <div class="ml-auto flex items-center gap-1.5">
-                    <button hx-post="{% url 'emails:accept_thread_suggestion' thread.pk %}"
-                            hx-target="#thread-detail-panel" hx-swap="innerHTML"
-                            hx-disabled-elt="this"
-                            class="p-1 rounded hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer"
-                            title="Accept suggestion">
+                    <form hx-post="{% url 'emails:accept_thread_suggestion' thread.pk %}"
+                          hx-target="#thread-detail-panel" hx-swap="innerHTML"
+                          class="inline">
                         {% csrf_token %}
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                        </svg>
-                    </button>
-                    <button hx-post="{% url 'emails:reject_thread_suggestion' thread.pk %}"
-                            hx-target="#thread-detail-panel" hx-swap="innerHTML"
-                            hx-disabled-elt="this"
-                            class="p-1 rounded hover:bg-red-100 text-red-400 transition-colors cursor-pointer"
-                            title="Dismiss suggestion">
+                        <button type="submit"
+                                hx-disabled-elt="this"
+                                class="p-1 rounded hover:bg-emerald-100 text-emerald-600 transition-colors cursor-pointer"
+                                title="Accept suggestion">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </button>
+                    </form>
+                    <form hx-post="{% url 'emails:reject_thread_suggestion' thread.pk %}"
+                          hx-target="#thread-detail-panel" hx-swap="innerHTML"
+                          class="inline">
                         {% csrf_token %}
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
+                        <button type="submit"
+                                hx-disabled-elt="this"
+                                class="p-1 rounded hover:bg-red-100 text-red-400 transition-colors cursor-pointer"
+                                title="Dismiss suggestion">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -114,7 +120,7 @@
 
         <!-- Action bar -->
         <div class="px-5 py-2 border-t border-slate-200/60">
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
                 <!-- Assignment -->
                 <div class="flex flex-col gap-2">
                     {# Branch 1: Admin/Gatekeeper -- full assign dropdown #}
@@ -403,12 +409,23 @@
                     </svg>
                     Draft Reply
                 </div>
-                <svg class="w-3.5 h-3.5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                </svg>
+                <div class="flex items-center gap-2">
+                    <button type="button"
+                            class="text-[11px] text-slate-400 hover:text-primary-600 transition-colors flex items-center gap-1"
+                            onclick="event.stopPropagation(); navigator.clipboard.writeText(this.closest('details').querySelector('.draft-content').textContent.trim()).then(() => { this.querySelector('.copy-label').textContent = 'Copied!'; setTimeout(() => this.querySelector('.copy-label').textContent = 'Copy', 1500); })"
+                            title="Copy draft to clipboard">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                        </svg>
+                        <span class="copy-label">Copy</span>
+                    </button>
+                    <svg class="w-3.5 h-3.5 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div>
             </summary>
             <div class="px-5 pb-3">
-                <div class="bg-slate-50 border border-slate-200/60 rounded-md p-3 text-[11px] text-slate-600 leading-relaxed font-mono whitespace-pre-wrap">{{ thread.ai_draft_reply }}</div>
+                <div class="draft-content bg-slate-50 border border-slate-200/60 rounded-md p-3 text-[11px] text-slate-600 leading-relaxed font-mono whitespace-pre-wrap">{{ thread.ai_draft_reply }}</div>
             </div>
         </details>
     </div>

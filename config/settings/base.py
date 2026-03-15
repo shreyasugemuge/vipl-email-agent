@@ -14,6 +14,9 @@ SECRET_KEY = os.environ.get(
     "django-insecure-dev-only-change-in-production",
 )
 
+# App version — injected via APP_VERSION env var in Docker, defaults to "dev" locally
+APP_VERSION = os.environ.get("APP_VERSION", "dev")
+
 DEBUG = False  # Overridden in dev.py
 
 ALLOWED_HOSTS = []
@@ -67,6 +70,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.core.context_processors.vipl_context",
                 "apps.accounts.context_processors.user_permissions",
             ],
         },

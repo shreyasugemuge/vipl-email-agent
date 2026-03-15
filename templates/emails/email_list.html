@@ -263,7 +263,9 @@
     if (!banner) return;
     var dismissed = sessionStorage.getItem('vipl_welcome_dismissed');
     var permanent = localStorage.getItem('vipl_welcome_permanent');
-    if (!dismissed && !permanent) {
+    var alreadyShown = sessionStorage.getItem('vipl_welcome_shown');
+    if (!dismissed && !permanent && !alreadyShown) {
+        sessionStorage.setItem('vipl_welcome_shown', '1');
         banner.classList.remove('hidden');
         var autoTimer = setTimeout(function() {
             banner.style.animation = 'toast-out 0.3s ease forwards';

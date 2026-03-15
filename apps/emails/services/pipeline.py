@@ -27,6 +27,7 @@ from apps.emails.models import (
     PollLog,
     SenderReputation,
     Thread,
+    ThreadReadState,
 )
 from apps.emails.services.ai_processor import AIProcessor
 from apps.emails.services.assignment import update_thread_preview
@@ -59,10 +60,21 @@ def _map_suggested_assignee(triage: TriageResult) -> dict:
             from django.db.models import Q
 
             name = detail["name"]
-            user = User.objects.filter(
-                Q(first_name__icontains=name) | Q(last_name__icontains=name) | Q(username__icontains=name),
-                is_active=True,
-            ).first()
+            parts = name.strip().split()
+            first = parts[0]
+            last = parts[-1] if len(parts) > 1 else None
+            user = None
+            # Exact first+last match
+            if last:
+                user = User.objects.filter(
+                    first_name__iexact=first, last_name__iexact=last, is_active=True,
+                ).first()
+            # First name only
+            if not user:
+                user = User.objects.filter(first_name__iexact=first, is_active=True).first()
+            # Username fallback
+            if not user:
+                user = User.objects.filter(username__iexact=first, is_active=True).first()
             if user:
                 detail["user_id"] = user.pk
         except Exception:
@@ -136,6 +148,34 @@ def _try_inline_auto_assign(thread, triage):
 
     except Exception:
         logger.exception("Inline auto-assign failed for thread %s", thread.pk)
+
+
+def _create_unread_states_for_all_users(thread):
+    """Bulk-create ThreadReadState(is_read=False) for all active users.
+
+    Uses update_or_create pattern via bulk_create(ignore_conflicts=True)
+    so reopened threads reset existing read states to unread.
+    """
+    from apps.accounts.models import User
+
+    active_users = User.objects.filter(is_active=True)
+    if not active_users.exists():
+        return
+
+    # For reopened threads, reset existing read states to unread
+    ThreadReadState.objects.filter(thread=thread).update(is_read=False, read_at=None)
+
+    # Create any missing read states (new users since thread was created)
+    existing_user_ids = set(
+        ThreadReadState.objects.filter(thread=thread).values_list("user_id", flat=True)
+    )
+    new_states = [
+        ThreadReadState(thread=thread, user=u, is_read=False)
+        for u in active_users
+        if u.pk not in existing_user_ids
+    ]
+    if new_states:
+        ThreadReadState.objects.bulk_create(new_states, ignore_conflicts=True)
 
 
 def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
@@ -220,11 +260,18 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
                 detail=f"New message from {email_msg.sender_email}",
             )
 
-        # Reopen logic: any non-NEW thread reopens on new message
+        # Create ThreadReadState(is_read=False) for all active users on new threads
+        if thread_created:
+            _create_unread_states_for_all_users(thread)
+
+        # Reopen logic: any non-NEW/non-REOPENED thread reopens on new message
         is_reopen = False
-        if not thread_created and thread.status != Thread.Status.NEW:
+        if not thread_created and thread.status not in (
+            Thread.Status.NEW,
+            Thread.Status.REOPENED,
+        ):
             old_status = thread.status
-            thread.status = Thread.Status.NEW
+            thread.status = Thread.Status.REOPENED
             thread.save(update_fields=["status"])
             is_reopen = True
             ActivityLog.objects.create(
@@ -233,8 +280,10 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
                 action=ActivityLog.Action.REOPENED,
                 detail=f"Reopened by new message from {email_msg.sender_email}",
                 old_value=old_status,
-                new_value=Thread.Status.NEW,
+                new_value=Thread.Status.REOPENED,
             )
+            # Mark all users as unread on reopen
+            _create_unread_states_for_all_users(thread)
 
         # Update denormalized preview fields
         update_thread_preview(thread)

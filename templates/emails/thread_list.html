@@ -43,7 +43,7 @@
 
 <!-- TRIAGE QUEUE -->
 <div class="px-2.5 pt-3 pb-1">
-    <p class="px-3 mb-2 text-[9px] font-bold text-primary-400/70 uppercase tracking-[0.2em]">Triage Queue</p>
+    <p class="px-3 mb-2 text-[9px] font-bold text-primary-400/70 uppercase tracking-[0.2em]">{% if is_admin %}Triage Queue{% else %}Unclaimed{% endif %}</p>
     <nav class="space-y-0.5">
         <a href="{% url 'emails:thread_list' %}?view=unassigned{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
            hx-get="{% url 'emails:thread_list' %}?view=unassigned{% if current_inbox %}&inbox={{ current_inbox }}{% endif %}"
@@ -55,7 +55,7 @@
                 <svg class="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
                 </svg>
-                Unassigned
+                {% if is_admin %}Unassigned{% else %}Unclaimed{% endif %}
             </span>
             {% with ucount=sidebar_counts.unassigned %}
             {% if sidebar_counts.unread_unassigned > 0 %}
@@ -103,6 +103,7 @@
     </nav>
 </div>
 
+{% if is_admin %}
 <!-- Divider -->
 <div class="mx-3 my-1 border-t border-white/[0.04]"></div>
 
@@ -148,6 +149,7 @@
         </a>
     </nav>
 </div>
+{% endif %}
 
 <!-- Inbox pills -->
 {% if inboxes %}
@@ -247,7 +249,7 @@
 <div class="flex h-full overflow-hidden">
 
     <!-- Center panel: thread list -->
-    <div class="flex-1 flex flex-col min-w-0 md:w-[35%] md:max-w-[35%] border-r border-slate-200/60 bg-slate-50/30">
+    <div class="flex flex-col min-w-0 w-full lg:w-[35%] lg:min-w-[35%] lg:max-w-[35%] border-r border-slate-200/60 bg-slate-50/30">
 
         {# Triage Lead empty state: no categories assigned #}
         {% if user.is_triage_lead and not lead_categories %}
@@ -262,34 +264,22 @@
         </div>
         {% endif %}
 
-        <!-- Stat cards bar -->
+        <!-- Stat cards bar (scoped to current view) -->
         <div class="flex items-center gap-2 px-3 py-2 bg-white border-b border-slate-200/60 overflow-x-auto shrink-0">
-            <a href="{% url 'emails:thread_list' %}?view=all_open"
-               hx-get="{% url 'emails:thread_list' %}?view=all_open"
+            <a href="{% url 'emails:thread_list' %}?view={{ current_view }}"
+               hx-get="{% url 'emails:thread_list' %}?view={{ current_view }}"
                hx-target="#thread-list-body" hx-push-url="true"
                data-stat="all"
                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200/60 bg-slate-50 hover:shadow-md hover:border-slate-300 transition-all cursor-pointer shrink-0
-                      {% if current_view == 'all_open' and not current_status and not current_priority %}ring-2 ring-primary-500/30{% endif %}">
+                      {% if not current_status and not current_priority %}ring-2 ring-primary-500/30{% endif %}">
                 <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
-                <span class="text-[12px] font-extrabold text-slate-700 tabular-nums">{{ sidebar_counts.all_open }}</span>
+                <span class="text-[12px] font-extrabold text-slate-700 tabular-nums">{{ view_stats.total }}</span>
                 <span class="text-[9px] font-bold text-slate-400 uppercase">Total</span>
             </a>
-            <a href="{% url 'emails:thread_list' %}?view=unassigned"
-               hx-get="{% url 'emails:thread_list' %}?view=unassigned"
-               hx-target="#thread-list-body" hx-push-url="true"
-               data-stat="unassigned"
-               class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-amber-200/50 bg-amber-50/60 hover:shadow-md hover:border-amber-300 transition-all cursor-pointer shrink-0
-                      {% if current_view == 'unassigned' %}ring-2 ring-primary-500/30{% endif %}">
-                <svg class="w-3 h-3 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                </svg>
-                <span class="text-[12px] font-extrabold text-amber-700 tabular-nums">{{ sidebar_counts.unassigned }}</span>
-                <span class="text-[9px] font-bold text-amber-500/70 uppercase">Unassigned</span>
-            </a>
-            <a href="{% url 'emails:thread_list' %}?view=all_open&priority=HIGH"
-               hx-get="{% url 'emails:thread_list' %}?view=all_open&priority=HIGH"
+            <a href="{% url 'emails:thread_list' %}?view={{ current_view }}&priority=HIGH"
+               hx-get="{% url 'emails:thread_list' %}?view={{ current_view }}&priority=HIGH"
                hx-target="#thread-list-body" hx-push-url="true"
                data-stat="urgent"
                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-red-200/50 bg-red-50/60 hover:shadow-md hover:border-red-300 transition-all cursor-pointer shrink-0
@@ -297,11 +287,11 @@
                 <svg class="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
-                <span class="text-[12px] font-extrabold text-red-700 tabular-nums">{{ sidebar_counts.urgent }}</span>
+                <span class="text-[12px] font-extrabold text-red-700 tabular-nums">{{ view_stats.urgent }}</span>
                 <span class="text-[9px] font-bold text-red-500/70 uppercase">Urgent</span>
             </a>
-            <a href="{% url 'emails:thread_list' %}?view=all_open&status=new"
-               hx-get="{% url 'emails:thread_list' %}?view=all_open&status=new"
+            <a href="{% url 'emails:thread_list' %}?view={{ current_view }}&status=new"
+               hx-get="{% url 'emails:thread_list' %}?view={{ current_view }}&status=new"
                hx-target="#thread-list-body" hx-push-url="true"
                data-stat="new"
                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-blue-200/50 bg-blue-50/60 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer shrink-0
@@ -309,7 +299,7 @@
                 <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
                 </svg>
-                <span class="text-[12px] font-extrabold text-blue-700 tabular-nums">{{ sidebar_counts.new }}</span>
+                <span class="text-[12px] font-extrabold text-blue-700 tabular-nums">{{ view_stats.new_count }}</span>
                 <span class="text-[9px] font-bold text-blue-500/70 uppercase">New</span>
             </a>
             {% if request.user.can_triage and sidebar_counts.irrelevant > 0 %}
@@ -351,7 +341,7 @@
                 </div>
             </div>
             <div class="flex items-center justify-between mt-1.5 px-0.5">
-                <span class="text-[10px] font-bold text-slate-400 tabular-nums">{{ total_count }} thread{{ total_count|pluralize }}</span>
+                <span id="thread-count-label" class="text-[10px] font-bold text-slate-400 tabular-nums">{{ total_count }} thread{{ total_count|pluralize }}</span>
                 {% if user.can_assign and team_members %}
                 <select onchange="if(this.value){htmx.ajax('GET', this.value, {target:'#thread-list-body', pushUrl:true});}"
                         class="text-[10px] font-medium border border-slate-200 rounded-md px-1.5 py-0.5 bg-white text-slate-500 cursor-pointer">
@@ -376,24 +366,22 @@
     </div>
 
     <!-- Right panel: thread detail -->
-    <div class="hidden lg:flex flex-1 min-w-0">
-        <!-- Detail overlay (mobile/tablet) -->
-        <div id="thread-detail-overlay" class="fixed inset-0 bg-slate-900/60 z-40 hidden lg:hidden" onclick="closeThreadDetail()"></div>
+    <!-- Detail overlay (mobile/tablet) -->
+    <div id="thread-detail-overlay" class="fixed inset-0 bg-slate-900/60 z-40 hidden lg:hidden" onclick="closeThreadDetail()"></div>
 
-        <!-- Detail panel -->
-        <div id="thread-detail-panel"
-             class="fixed inset-0 z-50 bg-white translate-x-full transition-transform duration-300 ease-out
-                    lg:relative lg:translate-x-0 lg:flex lg:w-full lg:z-auto overflow-auto">
-            <div class="flex flex-col items-center justify-center w-full h-full">
-                <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                    <svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+    <!-- Detail panel -->
+    <div id="thread-detail-panel"
+         class="fixed inset-0 z-50 bg-white translate-x-full transition-transform duration-300 ease-out
+                lg:relative lg:translate-x-0 lg:flex lg:flex-col lg:flex-1 lg:min-w-0 lg:z-auto overflow-auto">
+        <div class="flex flex-col items-center justify-center w-full flex-1 min-h-full">
+            <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                <svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                     </svg>
-                </div>
-                <span class="text-[13px] font-semibold text-slate-400">Select a thread to view</span>
-                <span class="text-[11px] text-slate-300 mt-1">Click any conversation on the left</span>
             </div>
+            <span class="text-[13px] font-semibold text-slate-400">Select a thread to view</span>
+            <span class="text-[11px] text-slate-300 mt-1">Click any conversation on the left</span>
         </div>
     </div>
 
@@ -458,15 +446,47 @@ document.addEventListener('htmx:afterSwap', function(e) {
 });
 
 function closeThreadDetail() {
-    document.getElementById('thread-detail-panel').classList.add('translate-x-full');
-    var overlay = document.getElementById('thread-detail-overlay');
-    if (overlay) overlay.classList.add('hidden');
+    var panel = document.getElementById('thread-detail-panel');
+    if (!panel) return;
+    if (window.innerWidth < 1024) {
+        /* Mobile: slide panel off-screen */
+        panel.classList.add('translate-x-full');
+        var overlay = document.getElementById('thread-detail-overlay');
+        if (overlay) overlay.classList.add('hidden');
+    } else {
+        /* Desktop: restore placeholder content */
+        panel.innerHTML = '<div class="flex flex-col items-center justify-center w-full flex-1 min-h-full">' +
+            '<div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">' +
+            '<svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>' +
+            '</svg></div>' +
+            '<span class="text-[13px] font-semibold text-slate-400">Select a thread to view</span>' +
+            '<span class="text-[11px] text-slate-300 mt-1">Click any conversation on the left</span></div>';
+    }
 }
 
 /* Run active state manager on initial page load */
 if (typeof updateActiveStates === 'function') {
     updateActiveStates();
 }
+
+/* Sync hidden filter inputs when URL changes via HTMX navigation */
+document.body.addEventListener('htmx:pushedIntoHistory', function() {
+    var params = new URLSearchParams(window.location.search);
+    var viewInput = document.querySelector('input[name="view-hidden"]');
+    var inboxInput = document.querySelector('input[name="inbox-hidden"]');
+    if (viewInput) viewInput.value = params.get('view') || '{{ default_view }}';
+    if (inboxInput) inboxInput.value = params.get('inbox') || '';
+});
+
+/* Sync hidden filter inputs on browser back/forward */
+window.addEventListener('popstate', function() {
+    var params = new URLSearchParams(window.location.search);
+    var viewInput = document.querySelector('input[name="view-hidden"]');
+    var inboxInput = document.querySelector('input[name="inbox-hidden"]');
+    if (viewInput) viewInput.value = params.get('view') || '{{ default_view }}';
+    if (inboxInput) inboxInput.value = params.get('inbox') || '';
+});
 
 /* ---- Context Menu ---- */
 var activeMenuThreadId = null;
@@ -508,7 +528,7 @@ document.addEventListener('click', function(e) {
 
 /* Close on Escape + arrow key navigation within menu */
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') { closeContextMenu(); return; }
+    if (e.key === 'Escape') { closeContextMenu(); closeThreadDetail(); return; }
     var menu = document.getElementById('context-menu-container');
     if (!menu || menu.classList.contains('hidden')) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {

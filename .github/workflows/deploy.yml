@@ -25,9 +25,15 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -r requirements-dev.txt
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements-dev.txt
 
       - name: Run tests
         run: pytest --tb=short -q
@@ -50,9 +56,10 @@ jobs:
             cd /opt/vipl-email-agent
             sudo git fetch --all --tags --force
             sudo git checkout ${{ github.event.release.tag_name }}
-            sudo docker compose build --no-cache
+            export APP_VERSION="${{ github.event.release.tag_name }}"
+            sudo -E docker compose build
             sudo docker compose down
-            sudo docker compose run --rm web python manage.py migrate --noinput
-            sudo docker compose run --rm web python manage.py collectstatic --noinput
-            sudo docker compose up -d --force-recreate
+            sudo -E docker compose run --rm web python manage.py migrate --noinput
+            sudo -E docker compose run --rm web python manage.py collectstatic --noinput
+            sudo -E docker compose up -d --force-recreate
             echo "Deployed ${{ github.event.release.tag_name }}"

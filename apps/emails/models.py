@@ -13,6 +13,7 @@ class Thread(SoftDeleteModel, TimestampedModel):
         NEW = "new", "New"
         ACKNOWLEDGED = "acknowledged", "Acknowledged"
         CLOSED = "closed", "Closed"
+        REOPENED = "reopened", "Reopened"
         IRRELEVANT = "irrelevant", "Irrelevant"
 
     # Thread identity

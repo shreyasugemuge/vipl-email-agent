@@ -51,7 +51,7 @@
 
             <form method="post" id="google-login-form">
                 {% csrf_token %}
-                {% if form %}{{ form.as_p }}{% endif %}
+                <div style="display:none">{% if form %}{{ form.as_p }}{% endif %}</div>
                 <button type="submit"
                         class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:ring-offset-2 transition-all shadow-sm active:scale-[0.98]">
                     <svg class="w-5 h-5" viewBox="0 0 24 24">

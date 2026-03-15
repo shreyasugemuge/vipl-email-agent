@@ -1,18 +1,52 @@
 {% load email_tags %}
 
-{% if grouped_entries %}
+{% if thread_groups %}
 <div>
-    {% for date, entries in grouped_entries %}
-    <div class="{% if not forloop.first %}border-t border-slate-100{% endif %}">
-        <!-- Date header -->
-        <div class="px-5 py-2.5 bg-slate-50/80 flex items-center justify-between">
-            <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">
-                {% if date == today %}Today{% elif date == yesterday %}Yesterday{% else %}{{ date|date:"M j, Y" }}{% endif %}
-            </h3>
-            <span class="text-[10px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-full tabular-nums">{{ entries|length }}</span>
+    {% for thread, entries in thread_groups %}
+    <div class="{% if not forloop.first %}border-t border-slate-200/60{% endif %}">
+        <!-- Thread group header -->
+        {% if thread %}
+        <a href="{% url 'emails:thread_detail' thread.pk %}"
+           class="px-5 py-3 bg-slate-50/80 flex items-center justify-between hover:bg-slate-100 transition-colors group cursor-pointer block">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center border border-primary-200/40 shrink-0">
+                    <svg class="w-3.5 h-3.5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-[13px] font-bold text-slate-700 truncate group-hover:text-primary-600 transition-colors">{{ thread.subject|truncatechars:60 }}</div>
+                    <div class="text-[10px] text-slate-400 font-medium">{{ thread.last_sender|default:thread.last_sender_address }}</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <span class="text-[10px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-full tabular-nums">{{ entries|length }}</span>
+                <svg class="w-3.5 h-3.5 text-slate-300 group-hover:text-primary-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </div>
+        </a>
+        {% else %}
+        <div class="px-5 py-3 bg-slate-50/80 flex items-center justify-between">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200/40 shrink-0">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-[13px] font-bold text-slate-500">System Events</div>
+                    <div class="text-[10px] text-slate-400 font-medium">Events not linked to a thread</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <span class="text-[10px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-full tabular-nums">{{ entries|length }}</span>
+            </div>
         </div>
+        {% endif %}
 
-        <!-- Entries -->
+        <!-- Events within thread group -->
         <div class="relative">
             {% for log in entries %}
             <div class="flex items-start gap-3.5 px-5 py-3 hover:bg-slate-50/50 transition-colors border-b border-slate-100/80 last:border-b-0">
@@ -50,7 +84,7 @@
                     <div class="text-[13px] leading-relaxed">
                         <span class="font-bold text-slate-800">{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}System{% endif %}</span>
                         <span class="text-slate-500 font-medium">{{ log.get_action_display|lower }}</span>
-                        {% if log.email %}
+                        {% if log.email and not thread %}
                         <a href="{% url 'emails:email_list' %}?selected={{ log.email.pk }}"
                            class="font-semibold text-slate-700 hover:text-primary-600 transition-colors">{{ log.email.subject|truncatechars:50 }}</a>
                         {% endif %}
@@ -77,7 +111,13 @@
 
                 <!-- Time -->
                 <div class="shrink-0 text-[10px] font-bold text-slate-300 tabular-nums mt-0.5">
-                    {{ log.created_at|time:"H:i" }}
+                    {% if log.created_at|date:"Y-m-d" == today|date:"Y-m-d" %}
+                    Today {{ log.created_at|time:"H:i" }}
+                    {% elif log.created_at|date:"Y-m-d" == yesterday|date:"Y-m-d" %}
+                    Yesterday {{ log.created_at|time:"H:i" }}
+                    {% else %}
+                    {{ log.created_at|date:"M j" }} {{ log.created_at|time:"H:i" }}
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}

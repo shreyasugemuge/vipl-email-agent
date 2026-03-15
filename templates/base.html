@@ -220,7 +220,14 @@
             {% endif %}
             <div class="flex items-center gap-1.5 px-2 mt-1 text-[9px] text-slate-600 font-medium">
                 <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 animate-pulse"></div>
-                Online
+                {% if app_version and app_version != 'dev' %}v{{ app_version }}{% else %}dev{% endif %}
+                {% if operating_mode == 'production' %}
+                <span class="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">PROD</span>
+                {% elif operating_mode == 'dev' %}
+                <span class="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">DEV</span>
+                {% else %}
+                <span class="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">OFF</span>
+                {% endif %}
             </div>
         </div>
     </aside>
@@ -273,7 +280,7 @@
         el.setAttribute('aria-current', 'page');
     });
 
-    /* HTMX global progress bar */
+    /* HTMX global progress bar + error handling */
     (function() {
         var bar = document.getElementById('htmx-progress');
         document.addEventListener('htmx:beforeRequest', function() {
@@ -284,6 +291,17 @@
         document.addEventListener('htmx:afterRequest', function() {
             bar.className = 'done';
             setTimeout(function() { bar.className = ''; }, 500);
+        });
+        /* Show toast on non-2xx HTMX responses (403, 500, etc.) */
+        document.addEventListener('htmx:responseError', function(evt) {
+            var xhr = evt.detail.xhr;
+            var msg = xhr.responseText || ('Request failed: ' + xhr.status);
+            if (msg.length > 100) msg = 'Request failed (' + xhr.status + ')';
+            if (typeof showToast === 'function') {
+                showToast(msg, 'error');
+            } else {
+                alert(msg);
+            }
         });
     })();
 
@@ -296,9 +314,11 @@
         document.querySelectorAll('[data-view]').forEach(function(el) {
             var isActive = el.dataset.view === view;
             el.classList.toggle('view-active', isActive);
-            // Remove default inactive state when active
+            // Toggle inactive text color
             if (isActive) {
                 el.classList.remove('text-slate-400');
+            } else {
+                el.classList.add('text-slate-400');
             }
         });
 
