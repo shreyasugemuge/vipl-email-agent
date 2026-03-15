@@ -39,7 +39,9 @@ Declared values (must be multiples of 4):
 | 2xl | 48px | Major section breaks |
 | 3xl | 64px | Page-level spacing |
 
-Exceptions: none — existing codebase uses Tailwind's default scale (p-2.5 = 10px, gap-2.5 = 10px appear frequently; these are established patterns, not exceptions)
+| Exceptions | Justification |
+|------------|---------------|
+| p-2.5 / gap-2.5 (10px) | Inherited Tailwind utility, present in existing components not modified in Phase 1. No new 10px spacing introduced by this phase. |
 
 ---
 
@@ -49,10 +51,12 @@ Existing codebase conventions (do not introduce new sizes):
 
 | Role | Size | Weight | Line Height | Usage in Phase 1 |
 |------|------|--------|-------------|-------------------|
-| Body | 13px (`text-[13px]`) | 500 (medium) | 1.5 (snug) | Welcome banner body, nav items |
-| Label | 10-11px (`text-[10px]`, `text-[11px]`) | 600 (semibold) | 1.4 | Role badges, status pills, sidebar role label |
-| Small label | 9px (`text-[9px]`) | 700 (bold) | 1.3 | Section headers, badge text, category pills |
+| Body | 13px (`text-[13px]`) | 600 (semibold) | 1.5 (snug) | Welcome banner body, nav items |
+| Label | 11px (`text-[11px]`) | 600 (semibold) | 1.4 | Role badges, status pills, sidebar role label, category pills |
+| Small label | 9px (`text-[9px]`) | 700 (bold) | 1.3 | Section headers, badge text, uppercase tracking-wide elements |
 | Heading | 14px (`text-sm`) | 700 (bold) | 1.4 | Page titles in top bar |
+
+4 sizes: 9px, 11px, 13px, 14px. 2 weights: 600 (semibold) and 700 (bold).
 
 ---
 
@@ -76,6 +80,12 @@ Existing palette (from `input.css` @theme):
 | Category scope pills (sidebar) | `bg-white/[0.08]` | `text-slate-400` | `border border-white/[0.1]` |
 
 Accent reserved for: primary CTA buttons, active nav indicator bar, focus-visible ring, selected card left border, progress bar, toast icon fallback gradient. Triage Lead uses blue to distinguish from admin's primary/pink.
+
+---
+
+## Visual Hierarchy
+
+**Primary visual anchor for Triage Lead's main view:** The thread list card stack is the dominant element. The sidebar category scope pills orient the Triage Lead to their filtered domain. Unassigned thread count in the "Triage Queue" stat card is the single most important number on the page — it tells the Triage Lead how much work remains.
 
 ---
 
@@ -130,7 +140,7 @@ Source: CONTEXT.md locked decision.
 
 | Element | Copy |
 |---------|------|
-| Permission denied (403 on admin-only action) | `You don't have permission to perform this action.` |
+| Permission denied (403 on admin-only action) | `You don't have permission to perform this action. Contact an admin if you need access.` |
 
 ### Destructive Confirmations
 
@@ -173,7 +183,7 @@ Source: CONTEXT.md locked decision.
 - **Location:** Top of settings page, below page title
 - **Pattern:** Info banner: `bg-blue-50 border border-blue-200 rounded-xl px-4 py-3`
 - **Icon:** Info circle SVG (blue-500), left-aligned
-- **Text:** 12px, font-semibold, text-blue-700
+- **Text:** 11px, font-semibold, text-blue-700
 - **Interaction:** Static, not dismissible. All form inputs below have `disabled` attribute. Save buttons hidden or disabled with `opacity-50 cursor-not-allowed`.
 
 #### 6. Welcome Banner (Triage Lead variant)
