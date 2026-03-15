@@ -88,13 +88,48 @@ Deferred beyond v2.5.0.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| INTEL-01 | Phase 2 | Pending |
+| INTEL-02 | Phase 2 | Pending |
+| INTEL-03 | Phase 2 | Pending |
+| INTEL-04 | Phase 2 | Pending |
+| INTEL-05 | Phase 2 | Pending |
+| INTEL-06 | Phase 2 | Pending |
+| INTEL-07 | Phase 2 | Pending |
+| INTEL-08 | Phase 2 | Pending |
+| INTEL-09 | Phase 5 | Pending |
+| INTEL-10 | Phase 5 | Pending |
+| INTEL-11 | Phase 1 | Pending |
+| SPAM-01 | Phase 3 | Pending |
+| SPAM-02 | Phase 3 | Pending |
+| SPAM-03 | Phase 3 | Pending |
+| SPAM-04 | Phase 3 | Pending |
+| SPAM-05 | Phase 3 | Pending |
+| SPAM-06 | Phase 3 | Pending |
+| READ-01 | Phase 4 | Pending |
+| READ-02 | Phase 4 | Pending |
+| READ-03 | Phase 4 | Pending |
+| READ-04 | Phase 4 | Pending |
+| READ-05 | Phase 4 | Pending |
+| MENU-01 | Phase 5 | Pending |
+| MENU-02 | Phase 5 | Pending |
+| MENU-03 | Phase 5 | Pending |
+| MENU-04 | Phase 5 | Pending |
+| MENU-05 | Phase 5 | Pending |
+| RPT-01 | Phase 6 | Pending |
+| RPT-02 | Phase 6 | Pending |
+| RPT-03 | Phase 6 | Pending |
+| RPT-04 | Phase 6 | Pending |
+| RPT-05 | Phase 6 | Pending |
+| RPT-06 | Phase 6 | Pending |
+| RPT-07 | Phase 6 | Pending |
+| FIX-01 | Phase 3 | Pending |
+| FIX-02 | Phase 3 | Pending |
 
 **Coverage:**
 - v2.5.0 requirements: 30 total
-- Mapped to phases: 0
-- Unmapped: 30
+- Mapped to phases: 30
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after research synthesis*
+*Last updated: 2026-03-15 -- traceability populated by roadmapper*
