@@ -63,7 +63,10 @@
   3. Stat cards on mobile scroll horizontally with snap points so each card lands cleanly in view
   4. User can navigate between email cards with arrow keys and close the detail panel with Escape
   5. Detail panel shows a loading skeleton (pulsing placeholder) while HTMX fetches email content
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Welcome banner, filter indicators, scroll-snap stat cards
+- [ ] 02-02-PLAN.md — Keyboard navigation, loading skeleton
 
 ### Phase 3: QA & Verification
 **Goal**: All interactive elements verified working through automated browser testing
@@ -81,5 +84,5 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data & Bug Fixes | 0/? | Not started | - |
-| 2. Polish & UX | 0/? | Not started | - |
+| 2. Polish & UX | 0/2 | Planned | - |
 | 3. QA & Verification | 0/? | Not started | - |
