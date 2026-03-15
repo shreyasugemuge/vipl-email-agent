@@ -25,6 +25,12 @@ created: 2026-03-16
 
 ---
 
+## Visual Focal Point
+
+When no selection is active, the digest card is the primary visual anchor. When selection is active, the floating bar is the primary visual anchor.
+
+---
+
 ## Spacing Scale
 
 Declared values (must be multiples of 4):
@@ -32,7 +38,7 @@ Declared values (must be multiples of 4):
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px | Icon gaps, inline padding (Tailwind `gap-1`, `px-1`) |
-| sm | 8px | Compact element spacing (Tailwind `gap-2`, `px-2`) |
+| sm | 8px | Compact element spacing (Tailwind `gap-2`, `px-2`, `py-2`) |
 | md | 16px | Default element spacing, card padding (Tailwind `gap-4`, `px-4`) |
 | lg | 24px | Section padding, floating bar internal padding (Tailwind `px-6`) |
 | xl | 32px | Layout gaps (Tailwind `gap-8`) |
@@ -49,10 +55,10 @@ Exceptions: Floating action bar uses 12px vertical padding (`py-3`) to stay comp
 |------|------|--------|-------------|
 | Body | 14px (`text-sm`) | 400 (regular) | 1.5 |
 | Label | 11px (`text-[11px]`) | 600 (semibold) | 1.4 |
-| Heading | 16px (`text-base`) | 700 (bold) | 1.2 |
-| Caption | 9px-10px (`text-[9px]`/`text-[10px]`) | 700 (bold) | 1.3 |
+| Heading | 16px (`text-base`) | 600 (semibold) | 1.2 |
+| Caption | 10px (`text-[10px]`) | 600 (semibold) | 1.3 |
 
-Source: Matches existing thread card typography. Body at 14px for floating bar labels, digest card text. Caption for stat badges, counts.
+Source: Matches existing thread card typography. Body at 14px for floating bar labels, digest card text. Caption at 10px for stat badges, counts, pattern headings. Two weights only: 400 (regular) for body text, 600 (semibold) for emphasis, labels, headings, and captions.
 
 ---
 
@@ -65,7 +71,7 @@ Source: Matches existing thread card typography. Body at 14px for floating bar l
 | Accent (10%) | `primary-500` (`#c94476`) | Active ring states, selected card left border, floating bar CTA button |
 | Destructive | `red-600` (`#dc2626`) | Mark Irrelevant button in floating bar, unassigned badge at threshold |
 
-Accent reserved for: floating bar "Assign" button, selected card left-border highlight, sidebar active ring (`ring-primary-500/30`).
+Accent reserved for: floating bar "Assign Threads" button, selected card left-border highlight, sidebar active ring (`ring-primary-500/30`).
 
 ### Phase-Specific Color Tokens
 
@@ -93,7 +99,7 @@ Accent reserved for: floating bar "Assign" button, selected card left-border hig
 
 **Location:** Fixed to viewport bottom, centered horizontally.
 **Visibility:** Hidden by default. Slides up when >= 1 thread checkbox is checked. Slides down on clear or after action.
-**Layout:** Horizontal flex: `[N selected] [Assign to: dropdown] [Assign button] [|] [Mark Irrelevant button] [Clear button]`
+**Layout:** Horizontal flex: `[N selected] [Assign to: dropdown] [Assign Threads button] [|] [Mark Irrelevant button] [Clear button]`
 
 | Property | Value |
 |----------|-------|
@@ -112,11 +118,11 @@ Accent reserved for: floating bar "Assign" button, selected card left-border hig
 
 | Element | Spec |
 |---------|------|
-| Selected count | `text-sm font-bold text-slate-700` -- e.g., "3 selected" |
-| Assignee dropdown | `<select>` with `text-sm border border-slate-200 rounded-lg px-2 py-1.5` |
-| Assign button | `bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg` |
+| Selected count | `text-sm font-semibold text-slate-700` -- e.g., "3 selected" |
+| Assignee dropdown | `<select>` with `text-sm border border-slate-200 rounded-lg px-2 py-2` |
+| Assign Threads button | `bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold px-3 py-2 rounded-lg` |
 | Divider | `w-px h-6 bg-slate-200 mx-1` (vertical line) |
-| Mark Irrelevant button | `bg-red-50 hover:bg-red-100 text-red-700 text-sm font-semibold px-3 py-1.5 rounded-lg border border-red-200` |
+| Mark Irrelevant button | `bg-red-50 hover:bg-red-100 text-red-700 text-sm font-semibold px-3 py-2 rounded-lg border border-red-200` |
 | Clear selection | `text-slate-400 hover:text-slate-600 text-sm underline` -- text "Clear" |
 
 **Mobile (< 640px):** Stack vertically. Selected count on top row, buttons on bottom row. `flex-col gap-2`.
@@ -158,7 +164,7 @@ Accent reserved for: floating bar "Assign" button, selected card left-border hig
 | 3-4 | `bg-amber-100` | `text-amber-700` | Warning |
 | 5+ | `bg-red-100` | `text-red-700` | Alert threshold |
 
-Badge shape: `inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[20px] text-center` (matches existing sidebar badge pattern).
+Badge shape: `inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-semibold min-w-[20px] text-center` (matches existing sidebar badge pattern).
 
 ### 5. AI Corrections Digest Card
 
@@ -170,7 +176,7 @@ Badge shape: `inline-flex items-center justify-center px-1.5 py-0.5 rounded-full
 | Wrapper | `mx-3 mb-2 rounded-xl border border-blue-200 bg-blue-50 overflow-hidden` |
 | Header | `flex items-center justify-between px-4 py-2.5 cursor-pointer` |
 | Header icon | Lightbulb SVG, `w-4 h-4 text-blue-500` |
-| Header title | `text-[12px] font-bold text-blue-700` -- "AI Corrections (7 days)" |
+| Header title | `text-[11px] font-semibold text-blue-700` -- "AI Corrections (7 days)" |
 | Header total | `text-[11px] font-semibold text-blue-500` -- e.g., "12 corrections" |
 | Collapse chevron | `w-4 h-4 text-blue-400 transition-transform duration-200` -- rotates 180deg when collapsed |
 | Body | `px-4 pb-3` |
@@ -181,10 +187,10 @@ Badge shape: `inline-flex items-center justify-center px-1.5 py-0.5 rounded-full
 | Section | Spec |
 |---------|------|
 | Correction counts row | Horizontal flex with 3 mini-stats: `[icon] N category [icon] N priority [icon] N spam` |
-| Count labels | `text-[11px] font-medium text-slate-600` |
-| Count values | `text-[14px] font-bold` in their respective colors (amber/red/orange per color table) |
+| Count labels | `text-[11px] font-semibold text-slate-600` |
+| Count values | `text-sm font-semibold` in their respective colors (amber/red/orange per color table) |
 | Divider | `border-t border-blue-100 my-2` |
-| Patterns heading | `text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1` -- "Top Patterns" |
+| Patterns heading | `text-[10px] font-semibold text-blue-600 uppercase tracking-wider mb-1` -- "Top Patterns" |
 | Pattern items | `text-[11px] text-slate-600` -- e.g., "General -> Govt (5x)" |
 | Pattern list | `space-y-0.5`, max 5 items |
 | Empty state | `text-[11px] text-blue-400 italic` -- "No corrections in the last 7 days" |
@@ -208,15 +214,15 @@ Badge shape: `inline-flex items-center justify-center px-1.5 py-0.5 rounded-full
 ### 7. Bulk Mark-Irrelevant Reason Input
 
 **Trigger:** Clicking "Mark Irrelevant" in floating bar opens an inline text input within the bar.
-**Behavior:** Bar expands to show: `[Reason input] [Confirm button] [Cancel]`. Replaces the normal bar content.
+**Behavior:** Bar expands to show: `[Reason input] [Mark as Irrelevant button] [Cancel]`. Replaces the normal bar content.
 
 | Property | Value |
 |----------|-------|
-| Input | `text-sm border border-red-200 rounded-lg px-3 py-1.5 flex-1 placeholder-slate-400` |
+| Input | `text-sm border border-red-200 rounded-lg px-3 py-2 flex-1 placeholder-slate-400` |
 | Placeholder | "Why are these irrelevant?" |
-| Confirm button | `bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg` -- "Confirm" |
+| Confirm button | `bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-3 py-2 rounded-lg` -- "Mark as Irrelevant" |
 | Cancel | `text-sm text-slate-400 hover:text-slate-600 underline` -- "Cancel" |
-| Validation | Input must be non-empty to enable Confirm (disabled state: `opacity-50 cursor-not-allowed`) |
+| Validation | Input must be non-empty to enable confirm (disabled state: `opacity-50 cursor-not-allowed`) |
 
 ---
 
@@ -228,7 +234,7 @@ Badge shape: `inline-flex items-center justify-center px-1.5 py-0.5 rounded-full
 2. User clicks checkbox -> card gets `card-selected` class, floating bar slides up from bottom
 3. User checks more cards -> selected count updates in floating bar, hidden `thread_ids` inputs update
 4. User clicks "Select all" -> all visible thread checkboxes checked, count updates
-5. User picks assignee from dropdown + clicks "Assign" -> HTMX POST to `/emails/threads/bulk-assign/`
+5. User picks assignee from dropdown + clicks "Assign Threads" -> HTMX POST to `/emails/threads/bulk-assign/`
 6. Server returns updated `#thread-list-body` via `hx-swap="innerHTML"` + `HX-Trigger: showUndoToast`
 7. Floating bar slides down (selection cleared by DOM replacement)
 8. Undo toast appears top-right with 10-second window
@@ -239,7 +245,7 @@ Badge shape: `inline-flex items-center justify-center px-1.5 py-0.5 rounded-full
 
 1. User selects threads, clicks "Mark Irrelevant" in floating bar
 2. Bar content swaps to reason input mode (same bar, different content)
-3. User types reason, clicks "Confirm" -> HTMX POST to `/emails/threads/bulk-mark-irrelevant/`
+3. User types reason, clicks "Mark as Irrelevant" -> HTMX POST to `/emails/threads/bulk-mark-irrelevant/`
 4. Same response pattern as bulk assign (swap + undo toast)
 5. User clicks "Cancel" -> bar reverts to normal mode, selection preserved
 
@@ -262,12 +268,12 @@ Badge shape: `inline-flex items-center justify-center px-1.5 py-0.5 rounded-full
 
 | Element | Copy |
 |---------|------|
-| Primary CTA (bulk assign) | "Assign" (in floating bar, next to assignee dropdown) |
+| Primary CTA (bulk assign) | "Assign Threads" (in floating bar, next to assignee dropdown) |
 | Primary CTA (bulk irrelevant) | "Mark Irrelevant" (in floating bar) |
 | Floating bar selected count | "{N} selected" |
 | Floating bar clear | "Clear" |
 | Irrelevant reason placeholder | "Why are these irrelevant?" |
-| Irrelevant confirm button | "Confirm" |
+| Irrelevant confirm button | "Mark as Irrelevant" (reinforces destructive action) |
 | Irrelevant cancel | "Cancel" |
 | Undo toast: bulk assign | "Assigned {N} threads to {name}" |
 | Undo toast: bulk irrelevant | "Marked {N} threads as irrelevant" |
