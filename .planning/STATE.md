@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: milestone
-status: completed
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-15T06:54:45.058Z"
-last_activity: 2026-03-15 — Plan 01-01 complete (data bug fixes)
+milestone: v2.3.4
+milestone_name: UI/UX Polish
+status: in-progress
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-15T06:59:00Z"
+last_activity: 2026-03-15 — Plan 02-01 complete (dashboard UX polish)
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 33
+  total_plans: 4
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Phase 1 — Data & Bug Fixes
+**Current focus:** Phase 2 — Polish & UX
 
 ## Current Position
 
-Phase: 1 of 3 (Data & Bug Fixes) — first phase of v2.3.4
-Plan: 2 of 2 (both complete)
-Status: Phase 1 complete
-Last activity: 2026-03-15 — Plan 01-01 complete (data bug fixes)
+Phase: 2 of 3 (Polish & UX) — v2.3.4
+Plan: 1 of 2 (02-01 complete)
+Status: Phase 2 in progress
+Last activity: 2026-03-15 — Plan 02-01 complete (dashboard UX polish)
 
-Progress: [███░░░░░░░] 33%
+Progress: [███████░░░] 75%
 
 ## Performance Metrics
 
@@ -50,6 +50,9 @@ Progress: [███░░░░░░░] 33%
 - [01-02] Split closeDetail into closeDetail/closeDetailNoHistory to prevent infinite history.back loops
 - [01-02] Used flex-wrap instead of overflow-x-auto for activity chips
 - [01-02] Toast positioned top-16 on mobile using Tailwind mobile-first approach
+- [02-01] Welcome banner uses sessionStorage for session dismiss, localStorage for permanent dismiss
+- [02-01] Auto-fade banner after 8s reuses toast-out animation from base.html
+- [02-01] Filter indicator uses amber color scheme matching unassigned stat card
 
 ### QA Findings (from live site inspection)
 
@@ -71,6 +74,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-15T06:51:26.371Z
-Stopped at: Phase 3 context gathered
-Next: Phase 2 execution
+Last session: 2026-03-15T06:59:00Z
+Stopped at: Completed 02-01-PLAN.md
+Next: Plan 02-02 execution

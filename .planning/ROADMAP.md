@@ -78,7 +78,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Chrome browser automation script exercises all clickable elements, form submissions, and HTMX swaps without errors
   2. Any regressions or remaining issues discovered during automation are documented and fixed
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 03-01-PLAN.md — Phase 1+2 verification (BUG-01..07, UX-01..05) with screenshots and QA report
+- [ ] 03-02-PLAN.md — General sweep of all pages, settings, team management, viewport testing, final report
 
 ## Progress
 
@@ -87,5 +90,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data & Bug Fixes | 2/2 | Complete   | 2026-03-15 |
-| 2. Polish & UX | 0/2 | Planned | - |
-| 3. QA & Verification | 0/? | Not started | - |
+| 2. Polish & UX | 1/2 | In Progress | - |
+| 3. QA & Verification | 0/2 | Planned | - |
