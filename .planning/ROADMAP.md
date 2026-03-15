@@ -132,9 +132,9 @@ Plans:
   2. When a thread has `priority_overridden=True`, `update_thread_preview()` does NOT overwrite `thread.priority`
   3. `auto_assign_confidence_threshold` renamed to `auto_assign_confidence_tier` with clear help text in SystemConfig admin
   4. Tests cover override guard logic and config rename migration
-**Plans:** 0 plans (needs planning)
+**Plans:** 1 plan
 Plans:
-- [ ] 07-01-PLAN.md -- Override guards in update_thread_preview, config rename, tests
+- [ ] 07-01-PLAN.md -- Override guards in update_thread_preview, config rename with data migration, tests
 
 ## Progress
 
@@ -148,4 +148,4 @@ Plans:
 | 4. Read/Unread Tracking | 2/2 | Complete    | 2026-03-15 |
 | 5. Editable Attributes + Context Menu | 2/2 | Complete   | 2026-03-15 |
 | 6. Reports Module | 2/2 | Complete   | 2026-03-15 |
-| 7. Pipeline Override Guards | 0/1 | Planning needed | - |
+| 7. Pipeline Override Guards | 0/1 | Planning complete | - |
