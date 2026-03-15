@@ -49,28 +49,28 @@ None deferred — all scoped features included in this milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ROLE-01 | — | Pending |
-| ROLE-02 | — | Pending |
-| ROLE-03 | — | Pending |
-| ROLE-04 | — | Pending |
-| ROLE-05 | — | Pending |
-| ROLE-06 | — | Pending |
-| TRIAGE-01 | — | Pending |
-| TRIAGE-02 | — | Pending |
-| TRIAGE-03 | — | Pending |
-| TRIAGE-04 | — | Pending |
-| TRIAGE-05 | — | Pending |
-| TRIAGE-06 | — | Pending |
-| ALERT-01 | — | Pending |
-| ALERT-02 | — | Pending |
-| ALERT-03 | — | Pending |
-| ALERT-04 | — | Pending |
+| ROLE-01 | Phase 1 | Pending |
+| ROLE-02 | Phase 1 | Pending |
+| ROLE-03 | Phase 2 | Pending |
+| ROLE-04 | Phase 2 | Pending |
+| ROLE-05 | Phase 2 | Pending |
+| ROLE-06 | Phase 1 | Pending |
+| TRIAGE-01 | Phase 3 | Pending |
+| TRIAGE-02 | Phase 3 | Pending |
+| TRIAGE-03 | Phase 3 | Pending |
+| TRIAGE-04 | Phase 4 | Pending |
+| TRIAGE-05 | Phase 4 | Pending |
+| TRIAGE-06 | Phase 3 | Pending |
+| ALERT-01 | Phase 4 | Pending |
+| ALERT-02 | Phase 4 | Pending |
+| ALERT-03 | Phase 4 | Pending |
+| ALERT-04 | Phase 4 | Pending |
 
 **Coverage:**
 - v2.6.0 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16 ⚠️
+- Mapped to phases: 16
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after initial definition*
+*Last updated: 2026-03-15 after roadmap creation*

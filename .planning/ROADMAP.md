@@ -20,3 +20,86 @@
 - [x] Phases 1-7: v2.5.0 Intelligence + UX (shipped 2026-03-15)
 
 </details>
+
+### v2.6.0 Gatekeeper Role + Irrelevant Emails
+
+- [ ] **Phase 1: Role + Permission Foundation** - Gatekeeper role on User model, centralized permission helpers replacing 25+ scattered is_admin checks
+- [ ] **Phase 2: Assignment Enforcement** - Gatekeepers/admins control assignment; members self-claim or reassign with mandatory reason
+- [ ] **Phase 3: Mark Irrelevant** - Close-with-reason action for queue hygiene, excluded from unassigned counts
+- [ ] **Phase 4: Alerts + Bulk Actions** - Unassigned count alerts via Chat, bulk assign, bulk mark-irrelevant, AI feedback summary
+
+## Phase Details
+
+### Phase 1: Role + Permission Foundation
+**Goal**: Gatekeeper role exists in the system and all permission checks use centralized helpers instead of scattered inline checks
+**Depends on**: Nothing (first phase)
+**Requirements**: ROLE-01, ROLE-02, ROLE-06
+**Success Criteria** (what must be TRUE):
+  1. Admin can promote a user to gatekeeper from the team page and demote them back
+  2. Gatekeeper sees threads filtered to their assigned categories in the triage queue
+  3. Every permission check in the codebase uses `can_assign()` or `is_admin_only()` helpers -- zero inline `is_admin` checks remain
+  4. Gatekeeper role appears correctly in welcome banner, sidebar, user badges, and context menu
+**Plans**: TBD
+
+Plans:
+- [ ] 01-01: TBD
+- [ ] 01-02: TBD
+
+### Phase 2: Assignment Enforcement
+**Goal**: Assignment permissions are enforced so gatekeepers and admins control thread routing while members retain limited self-service
+**Depends on**: Phase 1
+**Requirements**: ROLE-03, ROLE-04, ROLE-05
+**Success Criteria** (what must be TRUE):
+  1. Gatekeeper and admin can assign any thread to any active user
+  2. Member cannot see or use the "assign to others" action -- UI hides it and server rejects the request
+  3. Member can self-claim an unassigned thread in their category without needing a reason
+  4. Member reassigning a thread they own must provide a mandatory reason, which appears in the activity log
+**Plans**: TBD
+
+Plans:
+- [ ] 02-01: TBD
+- [ ] 02-02: TBD
+
+### Phase 3: Mark Irrelevant
+**Goal**: Gatekeepers and admins can dismiss irrelevant threads from the queue with an auditable reason
+**Depends on**: Phase 2
+**Requirements**: TRIAGE-01, TRIAGE-02, TRIAGE-03, TRIAGE-06
+**Success Criteria** (what must be TRUE):
+  1. Gatekeeper/admin can mark a thread as irrelevant with a mandatory free-text reason from the detail panel
+  2. Gatekeeper/admin can mark a thread as irrelevant via the right-click context menu
+  3. Irrelevant threads disappear from the triage queue and do not count toward unassigned totals
+  4. The irrelevant reason and who marked it appear in the thread detail activity timeline
+  5. Members cannot see or use the mark-irrelevant action
+**Plans**: TBD
+
+Plans:
+- [ ] 03-01: TBD
+- [ ] 03-02: TBD
+
+### Phase 4: Alerts + Bulk Actions
+**Goal**: Proactive unassigned count monitoring and batch operations for efficient queue management
+**Depends on**: Phase 3
+**Requirements**: ALERT-01, ALERT-02, ALERT-03, ALERT-04, TRIAGE-04, TRIAGE-05
+**Success Criteria** (what must be TRUE):
+  1. Dashboard shows a visible unassigned count badge to gatekeepers and admins (excluding irrelevant threads)
+  2. Google Chat alert fires when unassigned count exceeds the configurable threshold in SystemConfig
+  3. Chat alerts respect a configurable cooldown period -- no repeated alerts within the cooldown window
+  4. Gatekeeper sees a recent AI corrections digest (feedback summary) on the triage queue page
+  5. Gatekeeper/admin can select multiple threads via checkboxes and bulk-assign them to a user or bulk mark-irrelevant with a single reason
+**Plans**: TBD
+
+Plans:
+- [ ] 04-01: TBD
+- [ ] 04-02: TBD
+- [ ] 04-03: TBD
+
+## Progress
+
+**Execution Order:** 1 -> 2 -> 3 -> 4
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Role + Permission Foundation | 0/TBD | Not started | - |
+| 2. Assignment Enforcement | 0/TBD | Not started | - |
+| 3. Mark Irrelevant | 0/TBD | Not started | - |
+| 4. Alerts + Bulk Actions | 0/TBD | Not started | - |
