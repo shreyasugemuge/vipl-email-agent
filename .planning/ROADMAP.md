@@ -69,7 +69,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Pipeline thread creation/update and reopen logic
+- [x] 02-01-PLAN.md — Pipeline thread creation/update and reopen logic
 - [ ] 02-02-PLAN.md — Inbox tracking, deduplication, and multi-inbox display
 
 ### Phase 3: Conversation UI
@@ -111,6 +111,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Thread Model + Data Migration | 2/2 | Complete | 2026-03-15 |
-| 2. Pipeline Integration + Inbox Clarity | 0/2 | Not started | - |
+| 2. Pipeline Integration + Inbox Clarity | 1/2 | In progress | - |
 | 3. Conversation UI | 0/3 | Not started | - |
 | 4. Collaboration | 0/2 | Not started | - |
