@@ -9,6 +9,7 @@ Safety: label-after-persist (Gmail label only applied after DB write succeeds)
 """
 
 import logging
+from datetime import timedelta
 from typing import Optional
 
 from django.db import close_old_connections
@@ -16,8 +17,9 @@ from django.db import close_old_connections
 from django.db import models as db_models
 
 from apps.core.models import SystemConfig
-from apps.emails.models import AttachmentMetadata, Email
+from apps.emails.models import ActivityLog, AttachmentMetadata, Email, Thread
 from apps.emails.services.ai_processor import AIProcessor
+from apps.emails.services.assignment import update_thread_preview
 from apps.emails.services.dtos import EmailMessage, TriageResult
 from apps.emails.services.sla import set_sla_deadlines
 from apps.emails.services.spam_filter import is_spam as spam_filter_fn_default
@@ -114,6 +116,60 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
     except Exception:
         logger.exception("Failed to set SLA deadlines for email %s", email_obj.pk)
 
+    # Thread create/update (THRD-04)
+    try:
+        thread_id = email_msg.thread_id or email_msg.message_id
+        thread, thread_created = Thread.objects.get_or_create(
+            gmail_thread_id=thread_id,
+            defaults={"subject": email_msg.subject},
+        )
+        email_obj.thread = thread
+        email_obj.save(update_fields=["thread"])
+
+        # Activity log
+        if thread_created:
+            ActivityLog.objects.create(
+                thread=thread,
+                email=email_obj,
+                action=ActivityLog.Action.THREAD_CREATED,
+                detail=f"Thread created from {email_msg.inbox}",
+            )
+        else:
+            ActivityLog.objects.create(
+                thread=thread,
+                email=email_obj,
+                action=ActivityLog.Action.NEW_EMAIL_RECEIVED,
+                detail=f"New message from {email_msg.sender_email}",
+            )
+
+        # Reopen logic: any non-NEW thread reopens on new message
+        is_reopen = False
+        if not thread_created and thread.status != Thread.Status.NEW:
+            old_status = thread.status
+            thread.status = Thread.Status.NEW
+            thread.save(update_fields=["status"])
+            is_reopen = True
+            ActivityLog.objects.create(
+                thread=thread,
+                email=email_obj,
+                action=ActivityLog.Action.REOPENED,
+                detail=f"Reopened by new message from {email_msg.sender_email}",
+                old_value=old_status,
+                new_value=Thread.Status.NEW,
+            )
+
+        # Update denormalized preview fields
+        update_thread_preview(thread)
+
+        # Attach metadata for notification routing
+        email_obj._thread_created = thread_created
+        email_obj._thread_reopened = is_reopen
+
+    except Exception:
+        logger.exception("Failed to handle thread for email %s", email_obj.pk)
+        email_obj._thread_created = True  # Default: treat as new thread
+        email_obj._thread_reopened = False
+
     action = "Created" if created else "Updated"
     logger.info(f"{action} email {email_msg.message_id}: {triage.category}/{triage.priority}")
     return email_obj
@@ -133,6 +189,30 @@ def _is_whitelisted(sender_email: str) -> bool:
     ).exists()
 
 
+CROSS_INBOX_DEDUP_WINDOW_MINUTES = 5
+
+
+def _detect_cross_inbox_duplicate(email_msg: EmailMessage) -> Optional[Email]:
+    """Check if this email is a cross-inbox duplicate.
+
+    Dedup key: same gmail_thread_id + same sender_email within recent window.
+    Returns the original Email if duplicate detected, None otherwise.
+    """
+    if not email_msg.thread_id:
+        return None
+
+    cutoff = email_msg.timestamp - timedelta(minutes=CROSS_INBOX_DEDUP_WINDOW_MINUTES)
+    original = Email.objects.filter(
+        gmail_thread_id=email_msg.thread_id,
+        from_address=email_msg.sender_email,
+        received_at__gte=cutoff,
+    ).exclude(
+        to_inbox=email_msg.inbox,  # Different inbox
+    ).order_by("received_at").first()
+
+    return original
+
+
 def process_single_email(
     email_msg: EmailMessage,
     ai_processor,
@@ -146,6 +226,33 @@ def process_single_email(
     Order: whitelist check -> spam filter -> AI triage -> save to DB -> label Gmail
     """
     try:
+        # Step 0: Cross-inbox dedup check
+        original = _detect_cross_inbox_duplicate(email_msg)
+        if original:
+            logger.info(
+                f"Cross-inbox duplicate detected: {email_msg.message_id} "
+                f"(original on {original.to_inbox}, duplicate on {email_msg.inbox})"
+            )
+            # Reuse original's triage result
+            triage = TriageResult(
+                category=original.category,
+                priority=original.priority,
+                summary=original.ai_summary,
+                reasoning=original.ai_reasoning,
+                language=original.language,
+                tags=original.ai_tags or [],
+                model_used=original.ai_model_used,
+                input_tokens=0,
+                output_tokens=0,
+                is_spam=original.is_spam,
+                spam_score=original.spam_score,
+            )
+            email_obj = save_email_to_db(email_msg, triage)
+            email_obj._is_cross_inbox_duplicate = True
+            email_obj._duplicate_inbox = email_msg.inbox
+            gmail_poller.mark_processed(email_msg)
+            return email_obj
+
         # Step 1: Spam filter (skip if sender is whitelisted)
         if _is_whitelisted(email_msg.sender_email):
             logger.info(f"Sender whitelisted, skipping spam filter: {email_msg.sender_email}")
@@ -155,6 +262,7 @@ def process_single_email(
         if spam_result:
             logger.info(f"Spam detected: {email_msg.subject[:50]}")
             email_obj = save_email_to_db(email_msg, spam_result)
+            email_obj._is_cross_inbox_duplicate = False
             gmail_poller.mark_processed(email_msg)
             return email_obj
 
@@ -166,6 +274,8 @@ def process_single_email(
 
         # Step 3: Save to DB (BEFORE labeling Gmail)
         email_obj = save_email_to_db(email_msg, triage)
+
+        email_obj._is_cross_inbox_duplicate = False
 
         # Step 4: Label Gmail (AFTER successful DB persist -- label-after-persist)
         gmail_poller.mark_processed(email_msg)
@@ -252,12 +362,31 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
             if email_obj:
                 processed_items.append(email_obj)
 
-        # Send Chat notifications for newly processed emails
+        # Send Chat notifications -- route new threads vs thread updates vs cross-inbox dups
         if chat_enabled and processed_items and chat_notifier:
-            try:
-                chat_notifier.notify_new_emails(processed_items)
-            except Exception as e:
-                logger.error(f"Chat notification failed: {e}")
+            cross_inbox_dups = [e for e in processed_items if getattr(e, "_is_cross_inbox_duplicate", False)]
+            non_dup_items = [e for e in processed_items if not getattr(e, "_is_cross_inbox_duplicate", False)]
+            new_thread_emails = [e for e in non_dup_items if getattr(e, "_thread_created", True)]
+            thread_update_emails = [e for e in non_dup_items if not getattr(e, "_thread_created", True)]
+
+            if new_thread_emails:
+                try:
+                    chat_notifier.notify_new_emails(new_thread_emails)
+                except Exception as e:
+                    logger.error(f"Chat notification (new threads) failed: {e}")
+
+            for e in thread_update_emails:
+                try:
+                    reopened = getattr(e, "_thread_reopened", False)
+                    chat_notifier.notify_thread_update(e, reopened=reopened)
+                except Exception as e_err:
+                    logger.error(f"Chat notification (thread update) failed: {e_err}")
+
+            for dup_email in cross_inbox_dups:
+                try:
+                    chat_notifier.notify_cross_inbox_duplicate(dup_email)
+                except Exception as e_err:
+                    logger.error(f"Cross-inbox dup notification failed: {e_err}")
 
         state_manager.reset_failures()
         logger.info(f"Poll cycle complete: {len(processed_items)} email(s) processed")

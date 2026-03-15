@@ -1,0 +1,64 @@
+{% load email_tags inbox_tags %}
+
+<div class="px-4 py-2">
+    <div class="border-l-[3px] {{ message.priority|priority_border }} bg-white rounded-lg border border-slate-200/40 overflow-hidden">
+        <!-- Message header: sender + time + inbox -->
+        <div class="flex items-center justify-between gap-3 px-4 py-2.5 bg-slate-50/40 border-b border-slate-100">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-7 h-7 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                    {{ message.from_name.0|default:"?" }}
+                </div>
+                <div class="min-w-0">
+                    <div class="text-[12px] font-semibold text-slate-800 truncate">{{ message.from_name|default:"Unknown" }}</div>
+                    <div class="text-[10px] text-slate-400 truncate">{{ message.from_address }} &middot; {{ message.received_at|time_ago }}</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+                {% inbox_badge message.to_inbox %}
+                {% if message.gmail_link %}
+                <a href="{{ message.gmail_link }}" target="_blank" rel="noopener"
+                   class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 bg-slate-50 rounded hover:bg-slate-100 transition-colors border border-slate-200/60 cursor-pointer">
+                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                    Gmail
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Message body -->
+        <div class="px-4 py-3">
+            <div class="prose prose-sm prose-slate max-w-none text-[13px] [&_p]:leading-relaxed [&_a]:text-primary-600">
+                {% if message.sanitized_body_html %}
+                    {{ message.sanitized_body_html|safe }}
+                {% elif message.body %}
+                    {{ message.body|linebreaks }}
+                {% else %}
+                    <p class="text-slate-400 italic text-sm">No body content.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Attachments -->
+        {% if message.attachments.all %}
+        <div class="px-4 py-2 border-t border-slate-100">
+            <div class="space-y-1">
+                {% for att in message.attachments.all %}
+                <div class="flex items-center gap-2 p-1.5 bg-slate-50/80 rounded border border-slate-200/40">
+                    <div class="w-5 h-5 rounded bg-white border border-slate-200/60 flex items-center justify-center text-slate-400 shrink-0">
+                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <span class="text-[10px] font-semibold text-slate-700 truncate">{{ att.filename }}</span>
+                        <span class="text-[9px] text-slate-400 ml-1">{{ att.mime_type }} &middot; {{ att.size_bytes|filesizeformat }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>

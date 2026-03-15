@@ -1,11 +1,12 @@
-"""Assignment service -- assign emails, change status, send notifications.
+"""Assignment service -- assign emails/threads, change status, send notifications.
 
-Core action layer: manager assigns emails, team members acknowledge/close,
+Core action layer: manager assigns emails/threads, team members acknowledge/close,
 everyone gets notified via Chat and email.
 """
 
 import logging
 import os
+import re
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -14,10 +15,79 @@ from django.utils import timezone
 from django.db import close_old_connections
 
 from apps.core.models import SystemConfig
-from apps.emails.models import ActivityLog, AssignmentRule, CategoryVisibility, Email
+from apps.emails.models import ActivityLog, AssignmentRule, CategoryVisibility, Email, Thread
 from apps.emails.services.chat_notifier import ChatNotifier
 
 logger = logging.getLogger(__name__)
+
+
+# ===========================================================================
+# @mention utilities
+# ===========================================================================
+
+
+def parse_mentions(body):
+    """Extract @mentioned usernames from note body text.
+
+    Pattern: @username where username contains word chars and dots.
+    Returns a deduplicated list of username strings (not User objects).
+    """
+    if not body:
+        return []
+    matches = re.findall(r"@([\w.]+)", body)
+    # Deduplicate while preserving order
+    seen = set()
+    result = []
+    for m in matches:
+        if m not in seen:
+            seen.add(m)
+            result.append(m)
+    return result
+
+
+def notify_mention(thread, note_author, mentioned_user):
+    """Send @mention notification via Google Chat and email. Fire-and-forget.
+
+    Never raises -- logs errors and returns silently.
+    """
+    author_name = note_author.get_full_name() or note_author.username
+    subject_line = thread.subject or "(no subject)"
+
+    # Chat notification (lightweight text, not full Cards v2)
+    try:
+        webhook_url = (
+            SystemConfig.get("chat_webhook_url", "")
+            or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
+        )
+        if webhook_url:
+            notifier = ChatNotifier(webhook_url=webhook_url)
+            text = f"{author_name} mentioned you in a note on: {subject_line}"
+            notifier._post({"text": text})
+    except Exception:
+        logger.exception(
+            "Chat mention notification failed for thread %s, user %s",
+            thread.pk, mentioned_user.username,
+        )
+
+    # Email notification
+    try:
+        if mentioned_user.email:
+            from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "triage@vidarbhainfotech.com")
+            send_mail(
+                subject=f"{author_name} mentioned you: {subject_line[:60]}",
+                message=(
+                    f"{author_name} mentioned you in a note on thread: {subject_line}\n\n"
+                    f"View in dashboard: /emails/\n"
+                ),
+                from_email=from_email,
+                recipient_list=[mentioned_user.email],
+                fail_silently=False,
+            )
+    except Exception:
+        logger.exception(
+            "Email mention notification failed for thread %s, user %s",
+            thread.pk, mentioned_user.username,
+        )
 
 
 def _send_assignment_chat(email, assignee):
@@ -298,3 +368,186 @@ def claim_email(email, claimed_by):
         last_log.save(update_fields=["action"])
 
     return result
+
+
+# ===========================================================================
+# Thread-level assignment functions
+# ===========================================================================
+
+
+def assign_thread(thread, assignee, assigned_by, note=""):
+    """Assign (or reassign) a thread to a team member.
+
+    Sets assigned_to, assigned_by, assigned_at on the Thread.
+    Creates an ActivityLog entry with thread FK (email=None).
+    Fires Chat + email notifications (fire-and-forget).
+
+    Returns the updated Thread instance.
+    """
+    old_assignee = thread.assigned_to
+
+    # Update thread fields
+    thread.assigned_to = assignee
+    thread.assigned_by = assigned_by
+    thread.assigned_at = timezone.now()
+    thread.save(update_fields=["assigned_to", "assigned_by", "assigned_at", "updated_at"])
+
+    # Determine action type
+    if old_assignee:
+        action = ActivityLog.Action.REASSIGNED
+        old_value = _user_display(old_assignee)
+    else:
+        action = ActivityLog.Action.ASSIGNED
+        old_value = ""
+
+    new_value = _user_display(assignee)
+
+    # Create activity log (thread-level, no email)
+    ActivityLog.objects.create(
+        thread=thread,
+        email=None,
+        user=assigned_by,
+        action=action,
+        detail=note,
+        old_value=old_value,
+        new_value=new_value,
+    )
+
+    # Fire-and-forget: Chat notification
+    # Thread has .subject, .category, .priority, .pk — same attributes ChatNotifier uses
+    try:
+        _send_assignment_chat(thread, assignee)
+    except Exception:
+        logger.exception("Chat notification failed for assignment of thread %s", thread.pk)
+
+    # Fire-and-forget: Email notification (only if enabled)
+    try:
+        if SystemConfig.get("email_notifications_enabled", False):
+            notify_assignment_email(thread, assignee)
+    except Exception:
+        logger.exception("Email notification failed for assignment of thread %s", thread.pk)
+
+    return thread
+
+
+def change_thread_status(thread, new_status, changed_by):
+    """Change the status of a thread and log the activity.
+
+    Validates new_status against Thread.Status.values.
+    Returns the updated Thread instance.
+    """
+    valid_statuses = [s.value for s in Thread.Status]
+    if new_status not in valid_statuses:
+        raise ValueError(f"Invalid status: {new_status}. Must be one of {valid_statuses}")
+
+    old_status = thread.status
+    thread.status = new_status
+    thread.save(update_fields=["status", "updated_at"])
+
+    # Map status to activity log action
+    action_map = {
+        "acknowledged": ActivityLog.Action.ACKNOWLEDGED,
+        "closed": ActivityLog.Action.CLOSED,
+    }
+    action = action_map.get(new_status, ActivityLog.Action.STATUS_CHANGED)
+
+    ActivityLog.objects.create(
+        thread=thread,
+        email=None,
+        user=changed_by,
+        action=action,
+        old_value=old_status,
+        new_value=new_status,
+    )
+
+    return thread
+
+
+def claim_thread(thread, claimed_by):
+    """Allow a team member to self-claim an unassigned thread.
+
+    Validates:
+    1. Thread is not already assigned (raises ValueError)
+    2. User has CategoryVisibility for the thread's category,
+       unless user is admin/staff (raises PermissionError)
+
+    Uses assign_thread() internally, then updates the ActivityLog
+    action to CLAIMED.
+
+    Returns the updated Thread instance.
+    """
+    if thread.assigned_to is not None:
+        raise ValueError(
+            f"Thread {thread.pk} is already assigned to {_user_display(thread.assigned_to)}"
+        )
+
+    # Admin/staff bypasses visibility check
+    if not (claimed_by.is_staff or claimed_by.role == "admin"):
+        has_visibility = CategoryVisibility.objects.filter(
+            user=claimed_by,
+            category=thread.category,
+        ).exists()
+        if not has_visibility:
+            raise PermissionError(
+                f"User {claimed_by.username} lacks category visibility for '{thread.category}'"
+            )
+
+    # Use assign_thread for the heavy lifting
+    result = assign_thread(thread, claimed_by, assigned_by=claimed_by, note="Self-claimed")
+
+    # Update the last activity log entry from ASSIGNED to CLAIMED
+    last_log = ActivityLog.objects.filter(
+        thread=thread,
+        action=ActivityLog.Action.ASSIGNED,
+    ).order_by("-created_at").first()
+
+    if last_log:
+        last_log.action = ActivityLog.Action.CLAIMED
+        last_log.save(update_fields=["action"])
+
+    return result
+
+
+def update_thread_preview(thread):
+    """Update denormalized preview fields on a thread from its emails.
+
+    Sets: last_message_at, last_sender, last_sender_address (from latest email)
+    Sets: subject (from earliest email)
+    Sets: category, priority, ai_summary, ai_draft_reply (from latest COMPLETED email)
+
+    Returns None if thread has no emails (no-op).
+    """
+    latest_email = thread.emails.order_by("-received_at").first()
+    if latest_email is None:
+        return None
+
+    # Latest email -> preview fields
+    thread.last_message_at = latest_email.received_at
+    thread.last_sender = latest_email.from_name
+    thread.last_sender_address = latest_email.from_address
+
+    # Earliest email -> subject
+    earliest_email = thread.emails.order_by("received_at").first()
+    if earliest_email:
+        thread.subject = earliest_email.subject
+
+    # Latest COMPLETED email -> triage fields
+    latest_triaged = (
+        thread.emails
+        .filter(processing_status=Email.ProcessingStatus.COMPLETED)
+        .order_by("-received_at")
+        .first()
+    )
+    if latest_triaged:
+        thread.category = latest_triaged.category
+        thread.priority = latest_triaged.priority
+        thread.ai_summary = latest_triaged.ai_summary
+        thread.ai_draft_reply = latest_triaged.ai_draft_reply
+
+    thread.save(update_fields=[
+        "last_message_at", "last_sender", "last_sender_address",
+        "subject", "category", "priority", "ai_summary", "ai_draft_reply",
+        "updated_at",
+    ])
+
+    return thread
