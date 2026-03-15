@@ -98,7 +98,7 @@ THREAD_SORT_FIELDS = {
 def thread_list(request):
     """Main thread-based dashboard -- three-panel conversation UI."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
 
     # Base queryset — annotate email_count to avoid N+1 on thread.message_count
     # Prefetch emails with only to_inbox + is_spam to avoid N+1 on thread_inbox_badges
@@ -122,8 +122,21 @@ def thread_list(request):
     # Annotate per-user unread state
     qs = annotate_unread(qs, user)
 
+    # --- Category scoping for Triage Lead ---
+    lead_categories = []
+    if user.role == User.Role.TRIAGE_LEAD:
+        lead_categories = list(
+            AssignmentRule.objects.filter(
+                assignee=user, is_active=True
+            ).values_list("category", flat=True)
+        )
+        if lead_categories:
+            qs = qs.filter(category__in=lead_categories)
+        else:
+            qs = qs.none()
+
     # --- View filtering (sidebar views) ---
-    default_view = "all_open" if is_admin else "mine"
+    default_view = "all_open" if can_assign else "mine"
     view = request.GET.get("view", default_view)
 
     if view == "unassigned":
@@ -135,8 +148,8 @@ def thread_list(request):
     elif view == "closed":
         qs = qs.filter(status="closed")
     elif view.isdigit():
-        # Admin-only: view specific team member's threads
-        if is_admin:
+        # Admin/triage_lead: view specific team member's threads
+        if can_assign:
             qs = qs.filter(assigned_to_id=int(view))
         else:
             qs = qs.filter(assigned_to=user)
@@ -178,6 +191,12 @@ def thread_list(request):
     # --- Sidebar counts (single aggregate query instead of 4 separate COUNTs) ---
     from django.db.models import Q
     base_threads = Thread.objects.all()
+    # Category scoping for Triage Lead sidebar counts
+    if user.role == User.Role.TRIAGE_LEAD:
+        if lead_categories:
+            base_threads = base_threads.filter(category__in=lead_categories)
+        else:
+            base_threads = base_threads.none()
     if inbox:
         base_threads = base_threads.filter(emails__to_inbox=inbox).distinct()
 
@@ -232,9 +251,9 @@ def thread_list(request):
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
-    # Team members for admin
+    # Team members for assignment dropdown
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     # Build current query params (without page) for pagination links
@@ -255,12 +274,12 @@ def thread_list(request):
         "current_sort": sort,
         "inboxes": inboxes,
         "categories": categories,
-        "is_admin": is_admin,
         "team_members": team_members,
         "query_params": query_params.urlencode(),
         "statuses": Thread.Status.choices,
         "priorities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
         "unread_total": unread_total,
+        "lead_categories": lead_categories,
     }
 
     if getattr(request, "htmx", False):
@@ -288,7 +307,7 @@ PER_PAGE = 25
 def email_list(request):
     """Main email dashboard -- card list with filtering, sorting, pagination."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
 
     # Base queryset: only completed (triaged) emails
     qs = Email.objects.select_related("assigned_to").filter(
@@ -296,20 +315,20 @@ def email_list(request):
     )
 
     # --- Tab / view param ---
-    default_view = "unassigned" if is_admin else "mine"
+    default_view = "unassigned" if can_assign else "mine"
     view = request.GET.get("view", default_view)
 
     if view == "all":
-        # Admin sees all; members without can_see_all_emails see only their own
-        if not is_admin and not user.can_see_all_emails:
+        # Can-assign users see all; members without can_see_all_emails see only their own
+        if not can_assign and not user.can_see_all_emails:
             qs = qs.filter(assigned_to=user)
     elif view == "unassigned":
         qs = qs.filter(assigned_to__isnull=True)
     elif view == "mine":
         qs = qs.filter(assigned_to=user)
     elif view.isdigit():
-        # Admin-only: view specific team member's emails
-        if is_admin:
+        # Can-assign users: view specific team member's emails
+        if can_assign:
             qs = qs.filter(assigned_to_id=int(view))
         else:
             qs = qs.filter(assigned_to=user)
@@ -383,13 +402,13 @@ def email_list(request):
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
-    # Team members for admin tabs
+    # Team members for assignment tabs
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     # Category visibility for claim button check on cards
-    if is_admin:
+    if can_assign:
         user_visible_categories = list(
             Email.objects.values_list("category", flat=True).distinct()
         )
@@ -415,7 +434,6 @@ def email_list(request):
         "categories": categories,
         "inboxes": inboxes,
         "team_members": team_members,
-        "is_admin": is_admin,
         "statuses": Email.Status.choices,
         "priorities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
         "query_params": query_params.urlencode(),
@@ -444,7 +462,7 @@ def email_list(request):
 # ---------------------------------------------------------------------------
 
 
-def _build_detail_context(email, request, is_admin, team_members):
+def _build_detail_context(email, request, can_assign, team_members):
     """Build shared context dict for the email detail partial."""
     sanitized_body_html = ""
     if email.body_html:
@@ -457,7 +475,7 @@ def _build_detail_context(email, request, is_admin, team_members):
     # Can this user claim the email?
     can_claim = False
     if email.assigned_to is None:
-        if is_admin:
+        if can_assign:
             can_claim = True
         else:
             can_claim = CategoryVisibility.objects.filter(
@@ -477,7 +495,6 @@ def _build_detail_context(email, request, is_admin, team_members):
         "attachments": email.attachments.all(),
         "activity_logs": email.activity_logs.select_related("user").all()[:20],
         "team_members": team_members,
-        "is_admin": is_admin,
         "can_claim": can_claim,
         "ai_suggestion": ai_suggestion,
     }
@@ -492,12 +509,12 @@ def email_detail(request, pk):
     )
 
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
-    context = _build_detail_context(email, request, is_admin, team_members)
+    context = _build_detail_context(email, request, request.user.can_assign, team_members)
     return render(request, "emails/_email_detail.html", context)
 
 
@@ -509,12 +526,11 @@ def email_detail(request, pk):
 @login_required
 @require_POST
 def assign_email_view(request, pk):
-    """Assign an email to a team member. Admin only."""
+    """Assign an email to a team member. Requires can_assign permission."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
 
-    if not is_admin:
-        return HttpResponseForbidden("Only admins can assign emails.")
+    if not user.can_assign:
+        return HttpResponseForbidden("You do not have permission to assign emails.")
 
     email = get_object_or_404(Email, pk=pk)
     assignee_id = request.POST.get("assignee_id")
@@ -535,12 +551,12 @@ def assign_email_view(request, pk):
     # Primary: updated card
     card_html = render_to_string(
         "emails/_email_card.html",
-        {"email": email, "is_admin": is_admin, "team_members": team_members},
+        {"email": email, "team_members": team_members},
         request=request,
     )
 
     # OOB: update detail panel if it's open
-    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    detail_context = _build_detail_context(email, request, True, team_members)
     detail_html = render_to_string(
         "emails/_email_detail.html", detail_context, request=request,
     )
@@ -571,20 +587,20 @@ def claim_email_view(request, pk):
     email = Email.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
 
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     # Primary: updated card
     card_html = render_to_string(
         "emails/_email_card.html",
-        {"email": email, "is_admin": is_admin, "team_members": team_members},
+        {"email": email, "team_members": team_members},
         request=request,
     )
 
     # OOB: update detail panel
-    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    detail_context = _build_detail_context(email, request, request.user.can_assign, team_members)
     detail_html = render_to_string(
         "emails/_email_detail.html", detail_context, request=request,
     )
@@ -596,7 +612,7 @@ def claim_email_view(request, pk):
 
 
 # ---------------------------------------------------------------------------
-# AI suggestion accept/reject endpoints (POST, admin only)
+# AI suggestion accept/reject endpoints (POST, requires can_assign)
 # ---------------------------------------------------------------------------
 
 
@@ -605,9 +621,8 @@ def claim_email_view(request, pk):
 def accept_ai_suggestion(request, pk):
     """Accept AI suggested assignee -- assigns the email to that user."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
-    if not is_admin:
-        return HttpResponseForbidden("Only admins can accept AI suggestions.")
+    if not user.can_assign:
+        return HttpResponseForbidden("You do not have permission to accept AI suggestions.")
 
     email = get_object_or_404(
         Email.objects.select_related("assigned_to", "assigned_by"), pk=pk,
@@ -627,11 +642,11 @@ def accept_ai_suggestion(request, pk):
     # Primary: updated card
     card_html = render_to_string(
         "emails/_email_card.html",
-        {"email": email, "is_admin": is_admin, "team_members": team_members},
+        {"email": email, "team_members": team_members},
         request=request,
     )
     # OOB: update detail panel
-    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    detail_context = _build_detail_context(email, request, True, team_members)
     detail_html = render_to_string(
         "emails/_email_detail.html", detail_context, request=request,
     )
@@ -646,9 +661,8 @@ def accept_ai_suggestion(request, pk):
 def reject_ai_suggestion(request, pk):
     """Dismiss AI suggested assignee -- clears the suggestion."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
-    if not is_admin:
-        return HttpResponseForbidden("Only admins can dismiss AI suggestions.")
+    if not user.can_assign:
+        return HttpResponseForbidden("You do not have permission to dismiss AI suggestions.")
 
     email = get_object_or_404(
         Email.objects.select_related("assigned_to", "assigned_by"), pk=pk,
@@ -662,11 +676,11 @@ def reject_ai_suggestion(request, pk):
     # Primary: updated card (AI badge cleared)
     card_html = render_to_string(
         "emails/_email_card.html",
-        {"email": email, "is_admin": is_admin, "team_members": team_members},
+        {"email": email, "team_members": team_members},
         request=request,
     )
     # OOB: update detail panel
-    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    detail_context = _build_detail_context(email, request, True, team_members)
     detail_html = render_to_string(
         "emails/_email_detail.html", detail_context, request=request,
     )
@@ -686,9 +700,8 @@ def reject_ai_suggestion(request, pk):
 def accept_thread_suggestion(request, pk):
     """Accept AI suggested assignee for a thread -- assigns and records feedback."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
-    if not is_admin:
-        return HttpResponseForbidden("Only admins can accept AI suggestions.")
+    if not user.can_assign:
+        return HttpResponseForbidden("You do not have permission to accept AI suggestions.")
 
     thread = get_object_or_404(
         Thread.objects.select_related("assigned_to", "assigned_by"), pk=pk,
@@ -736,7 +749,7 @@ def accept_thread_suggestion(request, pk):
     # Re-render detail panel
     thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-    context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     return render(request, "emails/_thread_detail.html", context)
 
 
@@ -745,9 +758,8 @@ def accept_thread_suggestion(request, pk):
 def reject_thread_suggestion(request, pk):
     """Reject AI suggested assignee for a thread -- unassigns and records feedback."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
-    if not is_admin:
-        return HttpResponseForbidden("Only admins can dismiss AI suggestions.")
+    if not user.can_assign:
+        return HttpResponseForbidden("You do not have permission to dismiss AI suggestions.")
 
     thread = get_object_or_404(
         Thread.objects.select_related("assigned_to", "assigned_by"), pk=pk,
@@ -791,7 +803,7 @@ def reject_thread_suggestion(request, pk):
     # Re-render detail panel
     thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-    context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     return render(request, "emails/_thread_detail.html", context)
 
 
@@ -805,7 +817,7 @@ def reject_thread_suggestion(request, pk):
 def change_status_view(request, pk):
     """Change the status of an email. Admins can change any; members can change their own."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
 
     email = get_object_or_404(
         Email.objects.select_related("assigned_to", "assigned_by"),
@@ -813,7 +825,7 @@ def change_status_view(request, pk):
     )
 
     # Permission check: admin or assigned_to user
-    if not is_admin and email.assigned_to != user:
+    if not can_assign and email.assigned_to != user:
         return HttpResponseForbidden("You can only change status on emails assigned to you.")
 
     new_status = request.POST.get("new_status", "")
@@ -826,11 +838,11 @@ def change_status_view(request, pk):
     email = Email.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
 
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     # Primary: updated detail panel
-    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    detail_context = _build_detail_context(email, request, request.user.can_assign, team_members)
     detail_html = render_to_string(
         "emails/_email_detail.html", detail_context, request=request,
     )
@@ -838,7 +850,7 @@ def change_status_view(request, pk):
     # OOB: update the card in the list
     card_html = render_to_string(
         "emails/_email_card.html",
-        {"email": email, "is_admin": is_admin, "team_members": team_members, "oob": True},
+        {"email": email, "team_members": team_members, "oob": True},
         request=request,
     )
 
@@ -850,7 +862,7 @@ def change_status_view(request, pk):
 # ---------------------------------------------------------------------------
 
 
-def _build_thread_detail_context(thread, request, is_admin, team_members):
+def _build_thread_detail_context(thread, request, can_assign, team_members):
     """Build context dict for the thread detail partial."""
 
     # Load all emails in the thread, oldest first
@@ -912,7 +924,7 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
     # Can this user claim?
     can_claim = False
     if thread.assigned_to is None:
-        if is_admin:
+        if can_assign:
             can_claim = True
         else:
             can_claim = CategoryVisibility.objects.filter(
@@ -966,7 +978,6 @@ def _build_thread_detail_context(thread, request, is_admin, team_members):
         "timeline_items": timeline_items,
         "team_members": team_members,
         "team_members_json": team_members_json,
-        "is_admin": is_admin,
         "can_claim": can_claim,
         "ai_suggested_assignee": ai_suggested_assignee,
         "ai_reasoning": ai_reasoning,
@@ -1023,9 +1034,9 @@ def thread_detail(request, pk):
     )
 
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     # Register this user as viewing the thread
@@ -1042,7 +1053,7 @@ def thread_detail(request, pk):
 
     active_viewers = get_active_viewers(pk, exclude_user_id=user.pk)
 
-    context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     context["active_viewers"] = active_viewers
 
     # Return detail panel + OOB card swap to update read styling
@@ -1082,11 +1093,10 @@ def mark_thread_unread(request, pk):
 @login_required
 @require_POST
 def edit_ai_summary(request, pk):
-    """Edit the AI summary for a thread. Admin only."""
+    """Edit the AI summary for a thread. Requires can_assign permission."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
-    if not is_admin:
-        return HttpResponseForbidden("Only admins can edit AI summaries.")
+    if not user.can_assign:
+        return HttpResponseForbidden("You do not have permission to edit AI summaries.")
 
     thread = get_object_or_404(Thread, pk=pk)
     new_summary = (request.POST.get("ai_summary") or "").strip()
@@ -1107,18 +1117,18 @@ def edit_ai_summary(request, pk):
     # Re-render the detail panel
     thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-    context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     return render(request, "emails/_thread_detail.html", context)
 
 
 def _render_thread_detail_with_oob_card(thread, request, user):
     """Re-render the detail panel + OOB thread card after an inline edit."""
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
     thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=thread.pk)
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     detail_html = render_to_string("emails/_thread_detail.html", detail_context, request=request)
     card_html = render_to_string("emails/_thread_card.html", {"thread": thread, "oob": True}, request=request)
     return _HttpResponse(detail_html + card_html)
@@ -1189,14 +1199,14 @@ def edit_priority(request, pk):
 def edit_status(request, pk):
     """Inline edit: change thread status. Admin or assigned user."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
 
     thread = get_object_or_404(
         Thread.objects.select_related("assigned_to", "assigned_by"),
         pk=pk,
     )
 
-    if not is_admin and thread.assigned_to != user:
+    if not can_assign and thread.assigned_to != user:
         return HttpResponseForbidden("You can only change status on threads assigned to you.")
 
     new_status = request.POST.get("new_status", "")
@@ -1213,14 +1223,14 @@ def edit_status(request, pk):
 def thread_context_menu(request, pk):
     """Return context menu HTML partial with role-aware grouped actions."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
     thread = get_object_or_404(
         Thread.objects.select_related("assigned_to"),
         pk=pk,
     )
 
     can_claim = (
-        not is_admin
+        not can_assign
         and thread.assigned_to != user
         and thread.status != Thread.Status.CLOSED
     )
@@ -1229,7 +1239,6 @@ def thread_context_menu(request, pk):
 
     context = {
         "thread": thread,
-        "is_admin": is_admin,
         "can_claim": can_claim,
         "can_acknowledge": can_acknowledge,
         "can_close": can_close,
@@ -1247,11 +1256,11 @@ def add_note_view(request, pk):
     if not body:
         # Re-render detail without creating a note
         user = request.user
-        is_admin = user.is_staff or user.role == User.Role.ADMIN
+        can_assign = user.can_assign
         team_members = []
-        if is_admin:
+        if can_assign:
             team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
-        context = _build_thread_detail_context(thread, request, is_admin, team_members)
+        context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
         return render(request, "emails/_thread_detail.html", context)
 
     user = request.user
@@ -1286,25 +1295,24 @@ def add_note_view(request, pk):
                 logger.exception("Mention notification failed for %s", mentioned_user.username)
 
     # Re-render the full detail panel
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
-    context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     return render(request, "emails/_thread_detail.html", context)
 
 
 @login_required
 @require_POST
 def assign_thread_view(request, pk):
-    """Assign a thread to a team member. Admin only."""
+    """Assign a thread to a team member. Requires can_assign permission."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
 
-    if not is_admin:
-        return HttpResponseForbidden("Only admins can assign threads.")
+    if not user.can_assign:
+        return HttpResponseForbidden("You do not have permission to assign threads.")
 
     thread = get_object_or_404(Thread, pk=pk)
     assignee_id = request.POST.get("assignee_id")
@@ -1328,7 +1336,7 @@ def assign_thread_view(request, pk):
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     # Primary: updated detail panel
-    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     detail_html = render_to_string(
         "emails/_thread_detail.html", detail_context, request=request,
     )
@@ -1348,7 +1356,7 @@ def assign_thread_view(request, pk):
 def change_thread_status_view(request, pk):
     """Change the status of a thread. Admins or assigned user."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
 
     thread = get_object_or_404(
         Thread.objects.select_related("assigned_to", "assigned_by"),
@@ -1356,7 +1364,7 @@ def change_thread_status_view(request, pk):
     )
 
     # Permission: admin or assigned_to user
-    if not is_admin and thread.assigned_to != user:
+    if not can_assign and thread.assigned_to != user:
         return HttpResponseForbidden("You can only change status on threads assigned to you.")
 
     new_status = request.POST.get("new_status", "")
@@ -1369,11 +1377,11 @@ def change_thread_status_view(request, pk):
     thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
 
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     # Primary: updated detail panel
-    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     detail_html = render_to_string(
         "emails/_thread_detail.html", detail_context, request=request,
     )
@@ -1403,13 +1411,13 @@ def claim_thread_view(request, pk):
     thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=pk)
 
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     # Primary: updated detail panel
-    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     detail_html = render_to_string(
         "emails/_thread_detail.html", detail_context, request=request,
     )
@@ -1458,11 +1466,10 @@ def whitelist_sender_from_thread(request, pk):
         _unspam_matching_emails(sender, "email")
         msg = f"{sender} is already whitelisted"
 
-    is_admin = True  # already checked above
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     # Re-render detail panel with feedback banner
-    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    detail_context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     detail_context["whitelist_msg"] = msg
 
     return render(request, "emails/_thread_detail.html", detail_context)
@@ -1551,9 +1558,9 @@ def mark_spam(request, pk):
         )
 
     # Re-render detail panel
-    is_admin = request.user.is_staff or request.user.role == User.Role.ADMIN
-    team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if is_admin else []
-    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    can_assign = request.user.can_assign
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if can_assign else []
+    detail_context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     detail_context["toast_msg"] = "Marked as spam"
 
     return render(request, "emails/_thread_detail.html", detail_context)
@@ -1616,9 +1623,9 @@ def mark_not_spam(request, pk):
             detail=f"Marked as not spam by {request.user.get_full_name() or request.user.username}",
         )
 
-    is_admin = request.user.is_staff or request.user.role == User.Role.ADMIN
-    team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if is_admin else []
-    detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+    can_assign = request.user.can_assign
+    team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if can_assign else []
+    detail_context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
     detail_context["toast_msg"] = toast_msg
 
     return render(request, "emails/_thread_detail.html", detail_context)
@@ -1657,9 +1664,9 @@ def undo_spam_feedback(request, pk):
     # Re-render detail panel
     if thread:
         thread = Thread.objects.select_related("assigned_to", "assigned_by").get(pk=thread.pk)
-        is_admin = request.user.is_staff or request.user.role == User.Role.ADMIN
-        team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if is_admin else []
-        detail_context = _build_thread_detail_context(thread, request, is_admin, team_members)
+        can_assign = request.user.can_assign
+        team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if can_assign else []
+        detail_context = _build_thread_detail_context(thread, request, request.user.can_assign, team_members)
         detail_context["toast_msg"] = "Spam feedback undone"
         return render(request, "emails/_thread_detail.html", detail_context)
 
@@ -1689,15 +1696,19 @@ def unblock_sender(request, pk):
 
 
 def _require_admin(user):
-    """Return True if user is admin/staff."""
-    return user.is_staff or user.role == User.Role.ADMIN
+    """Return True if user is admin/staff (is_admin_only)."""
+    return user.is_admin_only
 
 
 @login_required
 def settings_view(request):
-    """Admin settings page with tabs for rules, visibility, SLA config."""
-    if not _require_admin(request.user):
-        return HttpResponseForbidden("Admin access required.")
+    """Settings page: writable for admins, read-only for triage leads, denied for members."""
+    if request.user.is_admin_only:
+        readonly = False
+    elif request.user.can_triage:
+        readonly = True
+    else:
+        return HttpResponseForbidden("Access denied.")
 
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
     active_tab = request.GET.get("tab", "rules")
@@ -1778,6 +1789,7 @@ def settings_view(request):
         "category_webhooks": category_webhooks,
         "whitelist_entries": whitelist_entries,
         "blocked_senders": blocked_senders,
+        "readonly": readonly,
     }
     return render(request, "emails/settings.html", context)
 
@@ -2142,13 +2154,13 @@ def whitelist_sender(request, pk):
     # Reload email (is_spam may have changed)
     email.refresh_from_db()
 
-    is_admin = request.user.is_staff or request.user.role == User.Role.ADMIN
+    can_assign = request.user.can_assign
     team_members = []
-    if is_admin:
+    if can_assign:
         team_members = User.objects.filter(is_active=True).order_by("first_name", "username")
 
     # Re-render detail panel with feedback banner
-    detail_context = _build_detail_context(email, request, is_admin, team_members)
+    detail_context = _build_detail_context(email, request, request.user.can_assign, team_members)
     detail_context["whitelist_msg"] = msg
     detail_html = render_to_string(
         "emails/_email_detail.html", detail_context, request=request,
@@ -2163,7 +2175,7 @@ def whitelist_sender(request, pk):
     for affected in affected_emails:
         oob_cards += render_to_string(
             "emails/_email_card.html",
-            {"email": affected, "is_admin": is_admin, "team_members": team_members, "oob": True},
+            {"email": affected, "can_assign": can_assign, "team_members": team_members, "oob": True},
             request=request,
         )
 
@@ -2194,9 +2206,9 @@ PRESET_RANGES = {
 
 @login_required
 def reports_view(request):
-    """Reports dashboard with aggregated metrics. Admin only."""
-    if not _require_admin(request.user):
-        return HttpResponseForbidden("Admin access required.")
+    """Reports dashboard with aggregated metrics. Requires can_assign."""
+    if not request.user.can_assign:
+        return HttpResponseForbidden("Access denied.")
 
     from datetime import datetime as _dt
 
@@ -2285,12 +2297,12 @@ ACTIVITY_PER_PAGE = 50
 def activity_log(request):
     """Global activity log -- paginated list of all assignment/status events."""
     user = request.user
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
+    can_assign = user.can_assign
 
     qs = ActivityLog.objects.select_related("email", "user").order_by("-created_at")
 
     # Non-admin members without can_see_all_emails: own activity or activity on own emails
-    if not is_admin and not getattr(user, "can_see_all_emails", False):
+    if not can_assign and not getattr(user, "can_see_all_emails", False):
         from django.db.models import Q
 
         qs = qs.filter(Q(user=user) | Q(email__assigned_to=user))
@@ -2323,7 +2335,7 @@ def activity_log(request):
 
     # MIS stats
     all_logs = ActivityLog.objects.all()
-    if not is_admin and not getattr(user, "can_see_all_emails", False):
+    if not can_assign and not getattr(user, "can_see_all_emails", False):
         from django.db.models import Q as _Q
         all_logs = all_logs.filter(_Q(user=user) | _Q(email__assigned_to=user))
 
@@ -2374,8 +2386,8 @@ PRIORITY_COLOR = {
 @require_GET
 def inspect(request):
     """Render the dev inspector page with recent emails and simulated outputs."""
-    if not (request.user.is_staff or request.user.role == User.Role.ADMIN):
-        return HttpResponseForbidden("Admin access required.")
+    if not request.user.can_triage:
+        return HttpResponseForbidden("Access denied.")
     try:
         count = int(request.GET.get("count", 20))
     except (ValueError, TypeError):
@@ -2438,7 +2450,7 @@ def inspect(request):
 @require_POST
 def force_poll(request):
     """Trigger a single poll cycle. Admin only."""
-    if not (request.user.is_staff or request.user.role == User.Role.ADMIN):
+    if not request.user.is_admin_only:
         return HttpResponseForbidden("Admin access required.")
 
     import subprocess
