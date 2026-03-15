@@ -259,7 +259,10 @@ def email_list(request):
     if status:
         qs = qs.filter(status=status)
     if priority:
-        qs = qs.filter(priority=priority)
+        if priority == "URGENT":
+            qs = qs.filter(priority__in=["CRITICAL", "HIGH"])
+        else:
+            qs = qs.filter(priority=priority)
     if category:
         qs = qs.filter(category=category)
     if inbox:

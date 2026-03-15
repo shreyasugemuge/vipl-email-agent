@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3.5
-milestone_name: "Email Threads & Inbox"
+milestone: v2.3.6
+milestone_name: UI/UX Polish & Bug Fixes
 status: milestone_complete
-stopped_at: "Milestone v2.3.5 archived"
+stopped_at: Milestone v2.3.6 archived
 last_updated: "2026-03-15"
-last_activity: 2026-03-15 — Milestone v2.3.5 shipped and archived
+last_activity: 2026-03-15 -- Milestone v2.3.6 archived, ready for merge to main
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  total_phases: 3
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
   percent: 100
 ---
 
@@ -21,27 +21,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every email that lands in a shared inbox gets assigned to a person, tracked to response, and never falls through the cracks.
-**Current focus:** Planning next milestone
+**Current focus:** Milestone v2.3.6 complete — merge fix/ui-ux to main, deploy
 
 ## Current Position
 
-Milestone v2.3.5 complete and archived.
-Ready for next milestone via `/gsd:new-milestone`.
-
-Progress: [##########] 100%
-
-## Performance Metrics
-
-**v2.3.5 Velocity:**
-- Total plans completed: 8
-- Average duration: 5min
-- Total execution time: 38min
+Milestone: v2.3.6 UI/UX Polish & Bug Fixes — COMPLETE
+All 3 phases shipped, 6 plans executed, 443 tests passing.
+Next: Merge fix/ui-ux branch to main, create release, deploy.
 
 ## Accumulated Context
 
 ### Decisions
 
-Archived to .planning/milestones/v2.3.5-phases/ — see phase SUMMARY.md files for full decision log.
+(Archived in milestones/v2.3.6-ROADMAP.md)
 
 ### Pending Todos
 
@@ -54,5 +46,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-15
-Stopped at: Milestone v2.3.5 archived
-Next: `/gsd:new-milestone` to plan next version
+Stopped at: Milestone v2.3.6 archived
+Next: Merge to main, release, deploy

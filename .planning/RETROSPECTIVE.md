@@ -92,64 +92,64 @@
 
 ---
 
-## Milestone: v2.3.5 — Email Threads & Inbox
+## Milestone: v2.3.6 — UI/UX Polish & Bug Fixes
 
 **Shipped:** 2026-03-15
-**Phases:** 4 | **Plans:** 8 | **Sessions:** 1
+**Phases:** 3 | **Plans:** 6
 
 ### What Was Built
-- Thread model grouping emails by gmail_thread_id with thread-level assignment, status, and SLA
-- Thread-aware pipeline: auto-create/update threads, reopen closed threads, cross-inbox deduplication
-- Three-panel conversation UI (sidebar + thread list + detail panel) replacing card-based email list
-- Internal notes with @mentions and Chat/email notifications
-- Collision detection with "X is viewing this" polling-based presence
-- Inbox pill badges and inbox filter for multi-inbox tracking
+- AI suggested assignee XML tag cleanup at ingest + data migration for existing records
+- Mobile detail panel with history API back-button, scroll lock, swipe-to-dismiss toasts
+- Welcome banner with role-specific onboarding (admin vs member), auto-fade after 8s
+- Active filter indicators with count badge and amber "Clear all" link
+- Scroll-snap stat cards for mobile swiping
+- Keyboard navigation (Arrow Up/Down, Escape) with form field guard
+- Loading skeleton (animate-pulse) for detail panel HTMX fetches
+- Full QA verification: 13/13 requirements PASS, 3 inline bugs found and fixed
 
 ### What Worked
-- discuss-phase workflow captured precise decisions that eliminated ambiguity during planning and execution
-- Consolidating 3 planned plans to 2 in Phase 3 (sidebar integral to layout) reduced overhead without losing scope
-- All 18 requirements mapped and completed in a single session
-- Existing gmail_thread_id field meant Phase 1 was a data migration, not a pipeline rewrite
+- All 3 phases completed in a single day (executed on worktree branch fix/ui-ux)
+- TDD discipline continued: 94 new tests across phases 1+2, 443 total
+- QA phase caught 3 real bugs that would have shipped: urgent filter mismatch, JS null guards, desktop Escape behavior
+- OOB swap pattern for email count updates — clean HTMX pattern, no page reload
+- Research phase for QA created a thorough test matrix covering all 38 HTMX endpoints
 
 ### What Was Inefficient
-- gsd-tools init phase-op matched archived milestone phases instead of current — required manual workarounds
-- Phase numbering collision between archived milestones (v2.2 Phase 3) and current milestone (v2.3.5 Phase 3)
+- Phase directory split: Phase 1 in `.planning/phases/`, Phases 2+3 in `.planning/milestones/v2.3.6-phases/` — confused the CLI tools
+- Plan 03-02 (general sweep) couldn't use Chrome MCP for live browser testing, fell back to code-level audit — still valuable but didn't match the stated success criteria
+- Verifier flagged methodology gaps (no screenshots, code audit vs browser automation) — cosmetic, accepted by user
 
 ### Patterns Established
-- Thread model wraps Email model (FK relationship) — don't replace, extend
-- "Store both copies, link to one thread" for cross-inbox dedup — simple and auditable
-- Compact 2-line cards with SLA-only-when-urgent for dense thread lists
-- Polling-based presence (15s heartbeat) sufficient for <5 users, avoids WebSocket infra
+- `_clean_xml_tags`: reusable regex cleaner for Claude API response artifacts
+- OOB swap: append hx-swap-oob elements to HTMX partial responses for out-of-band UI updates
+- pushState/popstate pattern for mobile panel open/close with browser back button
+- Touch swipe gesture pattern with threshold and visual feedback for dismissable elements
+- sessionStorage/localStorage pattern for dismissible UI elements (session vs permanent)
+- Form field guard: check activeElement.tagName before handling keyboard shortcuts
+- Target-scoped htmx event handling: check e.detail.target.id before acting
 
 ### Key Lessons
-1. When extending a model hierarchy (Email → Thread), phase 1 should deliver the model + migration, phase 2 should wire the pipeline — clean separation
-2. UI phases benefit from discuss-phase more than backend phases — visual decisions (layout proportions, card density, badge placement) can't be inferred from requirements alone
+- Always test virtual filter mappings end-to-end (URGENT = CRITICAL + HIGH, not just CRITICAL)
+- Null guards needed for DOM elements that HTMX may swap out mid-interaction
+- Code-level QA audits are surprisingly thorough for template/HTMX verification — covers patterns that browser clicks might miss
 
 ### Cost Observations
-- Model mix: 100% opus (quality profile)
-- Sessions: 1 (full milestone in single conversation)
-- Notable: discuss-phase + plan-phase + execute-phase pipeline efficient — no rework cycles needed
+- Model mix: ~60% Sonnet (executors), ~30% Opus (orchestrator), ~10% Haiku
+- Single-day milestone: 3 phases in ~2 hours wall clock
+- Minimal code changes: only 2 source files changed (+28/-11 lines), all features via templates
 
 ---
 
 ## Cross-Milestone Trends
 
-| Metric | v2.1 | v2.2 | v2.3.5 |
+| Metric | v2.1 | v2.2 | v2.3.6 |
 |--------|------|------|--------|
-| Phases | 7 | 4 | 4 |
-| Plans | 18 | 6 | 8 |
+| Phases | 7 | 4 | 3 |
+| Plans | 18 | 6 | 6 |
 | Days | 6 | 1 | 1 |
-| Tests | 257 | 349 | ~400+ |
-| LOC | 16,572 | 18,763 | ~22,000 |
-| Commits | 140 | 45 | 51 |
-| Gaps found in audit | 11 (all closed) | 0 | — (skipped) |
-
-### Top Lessons (Verified Across Milestones)
-
-1. discuss-phase for UI/UX phases prevents rework — visual decisions need user input before planning
-2. Label-after-persist safety pattern holds across all pipeline extensions (threading, dedup)
-3. Fire-and-forget notifications keep the pipeline resilient — never block on external calls
-4. Ask the user's mental model before designing config structures — saves redesign cycles
+| Tests | 257 | 349 | 443 |
+| Commits | 140 | 45 | 8 |
+| Gaps found in audit | 11 (all closed) | 0 | 2 (accepted) |
 
 ---
-*Updated: 2026-03-15 after v2.3.5 milestone*
+*Updated: 2026-03-15 after v2.3.6 milestone*

@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An AI-powered shared inbox management system for Vidarbha Infotech Private Limited. Monitors Gmail inboxes (info@ and sales@), triages incoming emails with Claude AI, auto-assigns them to team members based on category rules, tracks SLA compliance, and provides a threaded conversation UI with Google OAuth SSO for management oversight. Emails are grouped into threads with thread-level assignment, internal notes with @mentions, and collision detection — matching Gmelius/Hiver-level shared inbox UX.
+An AI-powered shared inbox management system for Vidarbha Infotech Private Limited. Monitors Gmail inboxes (info@ and sales@), triages incoming emails with Claude AI, auto-assigns them to team members based on category rules, tracks SLA compliance, and provides a branded dashboard with Google OAuth SSO for management oversight. Every email gets owned, acknowledged, and responded to.
 
 ## Core Value
 
@@ -44,27 +44,20 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - ✓ Google Chat card branding (header icon + footer) — v2.2
 - ✓ Inline Open buttons in Chat notification cards — v2.2
 - ✓ Consistent SLA urgency labels across all card types — v2.2
-- ✓ AI suggestion XML cleanup + data migration — v2.3.4
-- ✓ Mobile detail panel slide-in + history API — v2.3.4
-- ✓ Welcome banner, filter indicators, scroll-snap stats — v2.3.4
-- ✓ Keyboard navigation + loading skeleton — v2.3.4
-- ✓ Accessibility: skip-to-content, aria-labels, focus-visible — v2.3.4
-- ✓ Thread/conversation model — group emails by `gmail_thread_id`, thread-level assignment + status — v2.3.5
-- ✓ Conversation UI — three-panel layout, thread list, full message history detail — v2.3.5
-- ✓ Internal notes with @mentions and Chat/email notifications — v2.3.5
-- ✓ Collision detection — "X is viewing this" indicator (polling-based) — v2.3.5
-- ✓ Pipeline thread-awareness — auto-create/update threads, reopen closed threads, fresh SLA — v2.3.5
-- ✓ Cross-inbox deduplication — same email on info@+sales@ linked to single thread — v2.3.5
-- ✓ Inbox pill badges — colored badges showing receiving inbox on threads and messages — v2.3.5
-- ✓ Inbox filter in sidebar — filter conversations by receiving inbox — v2.3.5
+- ✓ AI suggested assignee XML tag cleanup at ingest + data migration — v2.3.6
+- ✓ Mobile detail panel with history API, scroll lock, back button — v2.3.6
+- ✓ Mobile filter stacking, activity chip wrap, toast positioning — v2.3.6
+- ✓ Email count OOB update on view switch — v2.3.6
+- ✓ Consistent page titles "VIPL Triage | {Page}" — v2.3.6
+- ✓ Welcome banner with role-specific onboarding — v2.3.6
+- ✓ Active filter indicators with count badge and clear-all — v2.3.6
+- ✓ Scroll-snap stat cards for mobile — v2.3.6
+- ✓ Keyboard navigation (Arrow keys + Escape) on email cards — v2.3.6
+- ✓ Loading skeleton for detail panel HTMX fetches — v2.3.6
 
 ### Active
 
-- [ ] Contact history — see all threads from same sender in sidebar
-- [ ] Snooze — temporarily hide a thread, resurface later
-- [ ] Response templates — canned replies for repetitive emails
-- [ ] Keyboard shortcuts — `j/k` navigate, `a` assign, `e` close, `n` note
-- [ ] Batch operations — select multiple threads, assign/close in bulk
+(No active requirements — planning next milestone)
 
 ### Out of Scope
 
@@ -74,17 +67,10 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - Multi-tenant / SaaS — single company tool
 - Round-robin assignment — category rules more accurate for 3-person team
 - Ticket numbering — nobody references ticket numbers, email subject is identifier
-- Kanban board view — threads as cards on columns, overkill for 3-person team
-- Analytics dashboards — volume/response time charts, defer to future milestone
-- Shared drafts — collaborative reply editing, low value when team replies from Gmail
-
-## Current Milestone: Planning next
-
-**Previous:** v2.3.5 Email Threads & Inbox — shipped 2026-03-15
 
 ## Context
 
-**Current state (v2.3.5 shipped):** Production at triage.vidarbhainfotech.com. Full pipeline: Gmail polling → spam filter → Claude AI triage → auto-assign → SLA tracking → Google Chat notifications. Three-panel conversation UI with threaded email view, internal notes with @mentions, collision detection, cross-inbox deduplication, and inbox filtering. Google OAuth SSO with domain lock. VIPL brand identity. ~22,000 LOC Python/HTML, Django 4.2 LTS + PostgreSQL 12.3.
+**Current state (v2.3.6 shipped):** Production at triage.vidarbhainfotech.com since 2026-03-14. Full pipeline: Gmail polling → spam filter (13 regex + whitelist) → Claude AI triage → auto-assign → SLA tracking → Google Chat notifications (branded cards with deep links). Google OAuth SSO with domain lock. VIPL brand identity across all pages and Chat cards. UI/UX polish: mobile-responsive detail panel, keyboard navigation, welcome onboarding, filter indicators, loading skeletons. 443 tests passing, Django 4.2 LTS + PostgreSQL 12.3.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
@@ -117,12 +103,10 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | Plum brand palette (#a83362) | Derived from VIPL logo, consistent with corporate identity | ✓ Good — v2.2 |
 | decoratedText.button for inline links | Cards v2 union field constraint, no endIcon conflict | ✓ Good — v2.2 |
 | _sla_urgency_label module-level function | Cross-method reuse, consistent formatting | ✓ Good — v2.2 |
-| Thread model wraps existing Email model | gmail_thread_id already stored, data migration groups existing emails | ✓ Good — v2.3.5 |
-| Three-panel layout (sidebar + list + detail) | Replaces card-based list, matches Gmelius/Front UX | ✓ Good — v2.3.5 |
-| Compact 2-line thread cards | Fits 15-20 threads visible, SLA only when near-breach | ✓ Good — v2.3.5 |
-| Store both copies for cross-inbox dedup | Both Email records kept, linked to same Thread, skip AI on duplicate | ✓ Good — v2.3.5 |
-| Polling-based collision detection (not WebSocket) | 15s heartbeat sufficient for 3-5 users, no infra complexity | ✓ Good — v2.3.5 |
-| Reopen both Closed and Acknowledged threads | Any new message reopens to New with "Reopened" badge, fresh SLA | ✓ Good — v2.3.5 |
+| XML cleanup at ingest (not display layer) | Clean data at source, simpler templates | ✓ Good — v2.3.6 |
+| OOB swap for email count updates | No page reload, HTMX out-of-band pattern | ✓ Good — v2.3.6 |
+| pushState/popstate for mobile detail panel | Browser back button works naturally | ✓ Good — v2.3.6 |
+| sessionStorage + localStorage for welcome banner | Session dismiss + permanent "don't show again" | ✓ Good — v2.3.6 |
 
 ---
-*Last updated: 2026-03-15 after v2.3.5 milestone shipped*
+*Last updated: 2026-03-15 after v2.3.6 milestone complete*
