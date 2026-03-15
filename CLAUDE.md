@@ -6,20 +6,20 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v2.0** (main branch) | **Live** — deployed to VM, all phases complete | Self-hosted VM (Docker Compose) |
+| **v2.3.4** (main branch) | **Live** — deployed to VM, all phases complete | Self-hosted VM (Docker Compose) |
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.3.3.1
+**GitHub Release**: v2.3.4
 
 ## Active Branches
 
-| Branch | Owner | Purpose | Status |
-|--------|-------|---------|--------|
-| `main` | — | Production branch, deployed to VM | Stable, v2.3.3.1 |
-| `feature/email-threads-inbox` | Dev 1 | Email threading & conversation grouping (milestone v2.3.5) | In progress — roadmap + requirements defined |
-| `fix/ui-ux` | Dev 2 | UI/UX polish & bug fixes (milestone v2.2.1) | In progress — research complete |
-| `feature/analytics-dashboard` | Dev 3 | Analytics & reporting dashboard | Not started — worktree at `../vipl-email-agent-analytics` |
+| Branch | Worktree | Purpose | Status |
+|--------|----------|---------|--------|
+| `main` | `.` | Production branch, deployed to VM | Stable, v2.3.4 |
+| `feature/email-threads-inbox` | `../vipl-email-agent-threads` | Email threading & conversation grouping (milestone v2.3.5) | In progress — roadmap + requirements defined |
+| `feature/analytics-dashboard` | `../vipl-email-agent-analytics` | Analytics & reporting dashboard | Not started |
+| `fix/ui-ux` | `../vipl-email-agent-ui-ux` | Merged into main via v2.3.4 — can be deleted | Complete |
 
 ## Stack
 - **Backend**: Django 4.2 LTS + PostgreSQL 12.3 (Taiga's existing DB container)
@@ -117,6 +117,8 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **Phase 5** (Reporting + Admin): EOD reporter, SystemConfig admin, Sheets sync mirror
 - **Phase 6** (Migration + Cutover): Deploy to VM, merge v2→main, go live
 - **Phase 7** (UI/UX Polish): HTMX loading indicator, button loading states, accessibility (skip-to-content, aria-labels, keyboard nav, focus-visible), mobile responsive (detail drawer, filter toggle, settings tab scroll, team table), toast improvements, visual polish
+- **Phase 8** (OAuth Hardening): Google avatar fetch fix, `_update_avatar()` helper, structured OAuth logging, 22 edge case tests
+- **Phase 9** (UI/UX v2 — PR #6): XML assignee cleanup, mobile detail panel with history API, clickable stat cards, welcome banner, collapsible filter panel with badge, keyboard nav (arrow keys), loading skeleton, scroll-snap, underline tabs, search icon
 
 ### Email Pipeline Architecture
 ```
@@ -184,7 +186,7 @@ Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled` (false), `eod
 source .venv/bin/activate
 
 # --- Unit Tests (no API keys needed) ---
-pytest -v                           # All 381 tests
+pytest -v                           # All 443 tests
 pytest apps/accounts -v             # Account/auth tests
 pytest apps/emails -v               # Email + dashboard + assignment + EOD tests
 pytest apps/core -v                 # Core model + health + config tests
@@ -243,8 +245,15 @@ gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl >
 - Global HTMX progress bar (top-of-page, auto show/hide on requests)
 - Button loading states (`hx-disabled-elt`) prevent double-submission
 - Accessibility: skip-to-content, aria-labels, keyboard nav on cards, focus-visible rings, aria-current
-- Mobile responsive: detail panel as slide-over drawer, filter toggle, scrollable settings tabs, responsive team table
-- Toast notifications: stacked, auto-dismiss with stagger, close buttons
+- Mobile responsive: detail panel as slide-over drawer with history API, scrollable settings tabs, responsive team table
+- Toast notifications: stacked, auto-dismiss with stagger, close buttons, swipe-to-dismiss on mobile
+- Clickable stat cards: Total→all, Unassigned→queue, Urgent→HIGH, Pending→new (with scroll-snap on mobile)
+- Collapsible filter panel with badge count, search icon, "Clear all" link
+- Underline-style view tabs (All / Unassigned / My Emails)
+- Welcome banner with role-specific guidance (dismissible, persistent via localStorage)
+- Keyboard navigation: arrow keys between cards, Escape closes detail
+- Loading skeleton in detail panel during HTMX fetch
+- OOB email count update on view switch
 
 ### Common Tasks
 

@@ -44,6 +44,11 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - ✓ Google Chat card branding (header icon + footer) — v2.2
 - ✓ Inline Open buttons in Chat notification cards — v2.2
 - ✓ Consistent SLA urgency labels across all card types — v2.2
+- ✓ AI suggestion XML cleanup + data migration — v2.3.4
+- ✓ Mobile detail panel slide-in + history API — v2.3.4
+- ✓ Welcome banner, filter indicators, scroll-snap stats — v2.3.4
+- ✓ Keyboard navigation + loading skeleton — v2.3.4
+- ✓ Accessibility: skip-to-content, aria-labels, focus-visible — v2.3.4
 - ✓ Thread/conversation model — group emails by `gmail_thread_id`, thread-level assignment + status — v2.3.5
 - ✓ Conversation UI — three-panel layout, thread list, full message history detail — v2.3.5
 - ✓ Internal notes with @mentions and Chat/email notifications — v2.3.5
