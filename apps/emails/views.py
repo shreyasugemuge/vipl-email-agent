@@ -264,6 +264,7 @@ def thread_list(request):
     }
 
     if getattr(request, "htmx", False):
+        context["is_htmx"] = True
         return render(request, "emails/_thread_list_body.html", context)
     return render(request, "emails/thread_list.html", context)
 

@@ -1,10 +1,12 @@
 {% load email_tags %}
 
+{% if is_htmx %}
 <script id="title-updater" hx-swap-oob="true">
     document.title = '{% if unread_total %}({{ unread_total }}) {% endif %}VIPL Triage | Inbox';
 </script>
 
 <span id="thread-count-label" hx-swap-oob="true" class="text-[10px] font-bold text-slate-400 tabular-nums">{{ total_count }} thread{{ total_count|pluralize }}</span>
+{% endif %}
 
 {% if threads %}
 <div class="py-0.5">
