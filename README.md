@@ -50,10 +50,12 @@ Vidarbha Infotech receives 30-80 emails daily across shared inboxes. Before this
 
 ```
 Gmail Inboxes → GmailPoller (domain-wide delegation)
-    → SpamFilter (13 regex patterns, $0 cost)
-    → AIProcessor (Haiku default, Sonnet for CRITICAL, prompt caching)
+    → SpamFilter (13 regex patterns + blocked senders, $0 cost)
+    → AIProcessor (Haiku default, Sonnet for CRITICAL, confidence scoring)
+    → Auto-Assign (HIGH confidence → assign by category rules)
     → Pipeline (save to PostgreSQL → label Gmail)
     → ChatNotifier (Google Chat Cards v2, quiet hours)
+    → Feedback Loop (spam corrections → SenderReputation, AI corrections → distillation)
     → Dead Letter Retry (every 30min, max 3 attempts)
     → Circuit Breaker (3 consecutive failures → skip cycles)
 ```
@@ -70,7 +72,11 @@ Every email is classified into 8 categories with priority, SLA deadline, summary
 |---------|-------------|
 | **AI Email Triage** | Every email classified with category, priority, SLA deadline, summary, and draft reply |
 | **Two-Tier AI** | Haiku for routine emails (~$0.001/ea), Sonnet only for CRITICAL (~$0.01/ea) |
-| **Spam Pre-Filter** | 13 regex patterns skip Claude entirely ($0 cost) |
+| **Confidence Scoring** | AI returns HIGH/MEDIUM/LOW confidence; visual dots on cards |
+| **Auto-Assign** | HIGH confidence (>80%) triggers automatic assignment by category rules |
+| **Spam Pre-Filter** | 13 regex patterns + blocked sender list skip Claude entirely ($0 cost) |
+| **Spam Learning** | Mark spam/not-spam feedback updates SenderReputation; auto-blocks repeat offenders |
+| **Feedback Distillation** | User corrections aggregated into AI prompt rules via nightly scheduler |
 | **Multi-Language** | Detects Hindi, Marathi, Mixed emails; summaries in English; replies in original language |
 | **PDF Analysis** | Extracts text from PDF attachments (first 3 pages) for context-aware triage |
 
@@ -78,10 +84,14 @@ Every email is classified into 8 categories with priority, SLA deadline, summary
 
 | Feature | Description |
 |---------|-------------|
-| **Email Card List** | Filterable, sortable email queue with status badges and priority indicators |
-| **Assignment Workflow** | Admins assign emails to team members; members acknowledge and close |
-| **Detail Panel** | Slide-out panel with email body, draft reply, and activity timeline |
-| **Activity Log** | Full audit trail of assignments, status changes, and notes |
+| **Thread Card List** | Filterable, sortable queue with AI summary, confidence dots, spam badges |
+| **Assignment Workflow** | Admins assign emails to team members; accept/reject AI suggestions |
+| **Detail Panel** | Slide-out panel with email body, inline-editable attributes, and activity timeline |
+| **Inline Editing** | Category, priority, status editable via dropdowns directly in detail panel |
+| **Right-Click Menu** | Context menu on thread cards for quick actions (assign, status, priority, spam) |
+| **Read/Unread Tracking** | Per-user read state, unread badges, mark-as-unread, bold styling |
+| **Reports Dashboard** | 4-tab analytics (Overview, Categories, Performance, SLA) with Chart.js charts |
+| **Activity Log** | Full audit trail of assignments, status changes, spam feedback, and notes |
 | **SLA Tracking** | Visual SLA indicators with breach detection and deadline monitoring |
 | **Email Threads** | Conversation view grouping related emails, cross-inbox dedup |
 | **Internal Notes** | Team-only notes on threads for internal collaboration |
@@ -138,7 +148,7 @@ Fresh installs default to **off** mode — no external API calls, no Gmail polli
 ### Testing
 
 ```bash
-pytest -v                              # All 555 tests (no API keys needed)
+pytest -v                              # All 729 tests (no API keys needed)
 python manage.py test_pipeline         # Smoke test with fake data (no external calls)
 python manage.py test_pipeline --with-ai   # Real Claude triage (~$0.001/email)
 python manage.py run_scheduler --once --dry-run  # Simulated poll cycle
@@ -209,6 +219,7 @@ sudo docker compose exec web python manage.py set_mode production   # Full pipel
 
 | Version | Date | Highlights |
 |:---:|:---:|------------|
+| **v2.5.0** | Mar 2026 | Intelligence + UX: AI confidence scoring, auto-assign, spam learning, read/unread tracking, inline editing, context menu, reports module. 729 tests. |
 | **v2.4.0** | Mar 2026 | Dashboard UX overhaul: single sidebar, settings validation, poll persistence, test consolidation. 555 tests. |
 | **v2.3.6** | Mar 2026 | Email threads & conversation UI, UI/UX v3 QA, OAuth hardening. 556 tests. |
 | **v2.3.4** | Mar 2026 | OAuth avatar fix, UI/UX v2 merge (stat cards, keyboard nav, welcome banner). 443 tests. |

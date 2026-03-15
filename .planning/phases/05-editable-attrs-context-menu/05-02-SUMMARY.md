@@ -68,7 +68,7 @@ Each task was committed atomically:
 1. **Task 1: Context menu endpoint and JS component (TDD)** - `ad6ccce` (test) + `7a78490` (feat)
 2. **Task 2: Visual and functional verification** - checkpoint:human-verify, approved by user
 
-**Plan metadata:** (pending final commit)
+**Plan metadata:** `d83bac8` (docs: complete context menu plan)
 
 ## Files Created/Modified
 - `templates/emails/_context_menu.html` - Floating menu partial with grouped actions and keyboard shortcut hints
