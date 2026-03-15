@@ -53,29 +53,29 @@ None — this is a polish milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | TBD | Pending |
-| BUG-02 | TBD | Pending |
-| BUG-03 | TBD | Pending |
-| BUG-04 | TBD | Pending |
-| BUG-05 | TBD | Pending |
-| CARD-01 | TBD | Pending |
-| CARD-02 | TBD | Pending |
-| CARD-03 | TBD | Pending |
-| CARD-04 | TBD | Pending |
-| FLOW-01 | TBD | Pending |
-| FLOW-02 | TBD | Pending |
-| PAGE-01 | TBD | Pending |
-| PAGE-02 | TBD | Pending |
-| PAGE-03 | TBD | Pending |
-| PAGE-04 | TBD | Pending |
-| DEV-01 | TBD | Pending |
-| DEV-02 | TBD | Pending |
+| BUG-01 | Phase 8 | Pending |
+| BUG-02 | Phase 8 | Pending |
+| BUG-03 | Phase 8 | Pending |
+| BUG-04 | Phase 8 | Pending |
+| BUG-05 | Phase 8 | Pending |
+| CARD-01 | Phase 9 | Pending |
+| CARD-02 | Phase 9 | Pending |
+| CARD-03 | Phase 9 | Pending |
+| CARD-04 | Phase 9 | Pending |
+| FLOW-01 | Phase 10 | Pending |
+| FLOW-02 | Phase 10 | Pending |
+| PAGE-01 | Phase 11 | Pending |
+| PAGE-02 | Phase 11 | Pending |
+| PAGE-03 | Phase 11 | Pending |
+| PAGE-04 | Phase 11 | Pending |
+| DEV-01 | Phase 12 | Pending |
+| DEV-02 | Phase 12 | Pending |
 
 **Coverage:**
 - v2.5.4 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17 ⚠️
+- Mapped to phases: 17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after initial definition*
+*Last updated: 2026-03-15 after roadmap creation*
