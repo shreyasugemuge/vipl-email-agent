@@ -53,6 +53,15 @@ def _heartbeat_job():
 def _poll_job(gmail_poller, ai_processor, chat_notifier, state_manager):
     """Run one poll cycle."""
     close_old_connections()
+
+    # Distill correction rules before processing emails
+    try:
+        from apps.emails.services.distillation import distill_correction_rules
+
+        distill_correction_rules()
+    except Exception:
+        logger.warning("Distillation failed -- continuing with poll")
+
     try:
         from apps.emails.services.pipeline import process_poll_cycle
 

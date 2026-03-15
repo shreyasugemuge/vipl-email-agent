@@ -208,3 +208,79 @@ class TestRulesStorage:
         assert config.value_type == "str"
         assert config.category == "ai"
         assert "Rahul" in config.value
+
+
+# ----------------------------------------------------------------
+# AI Processor prompt injection
+# ----------------------------------------------------------------
+
+class TestAIProcessorPromptInjection:
+    """Test that correction rules from SystemConfig are injected into the AI system prompt."""
+
+    def test_correction_rules_in_prompt(self, db):
+        """When correction_rules exist in SystemConfig, they appear in the system prompt."""
+        SystemConfig.objects.update_or_create(
+            key="correction_rules",
+            defaults={
+                "value": "- STPI emails: assign to Priya\n- Sales leads: assign to Rahul",
+                "value_type": "str",
+                "category": "ai",
+            },
+        )
+        # Clear cache so AIProcessor picks up the new value
+        SystemConfig.invalidate_cache()
+
+        from apps.emails.services.ai_processor import AIProcessor
+
+        processor = AIProcessor(anthropic_api_key="test-key-fake")
+        prompt_text = processor.system_prompt[0]["text"]
+
+        assert "<correction_rules>" in prompt_text
+        assert "STPI emails: assign to Priya" in prompt_text
+        assert "Sales leads: assign to Rahul" in prompt_text
+        assert "</correction_rules>" in prompt_text
+
+    def test_no_correction_rules_no_block(self, db):
+        """When correction_rules is empty, no <correction_rules> block in prompt."""
+        # Ensure no correction_rules key exists
+        SystemConfig.objects.filter(key="correction_rules").delete()
+        SystemConfig.invalidate_cache()
+
+        from apps.emails.services.ai_processor import AIProcessor
+
+        processor = AIProcessor(anthropic_api_key="test-key-fake")
+        prompt_text = processor.system_prompt[0]["text"]
+
+        assert "<correction_rules>" not in prompt_text
+
+    def test_no_correction_rules_placeholder_excluded(self, db):
+        """When correction_rules is 'No correction rules yet.', no block injected."""
+        SystemConfig.objects.update_or_create(
+            key="correction_rules",
+            defaults={
+                "value": "No correction rules yet.",
+                "value_type": "str",
+                "category": "ai",
+            },
+        )
+        SystemConfig.invalidate_cache()
+
+        from apps.emails.services.ai_processor import AIProcessor
+
+        processor = AIProcessor(anthropic_api_key="test-key-fake")
+        prompt_text = processor.system_prompt[0]["text"]
+
+        assert "<correction_rules>" not in prompt_text
+
+    def test_cache_control_still_applied(self, db):
+        """Prompt cache_control is still present after rules injection."""
+        SystemConfig.objects.update_or_create(
+            key="correction_rules",
+            defaults={"value": "- Some rule", "value_type": "str", "category": "ai"},
+        )
+        SystemConfig.invalidate_cache()
+
+        from apps.emails.services.ai_processor import AIProcessor
+
+        processor = AIProcessor(anthropic_api_key="test-key-fake")
+        assert processor.system_prompt[0]["cache_control"] == {"type": "ephemeral"}

@@ -203,6 +203,22 @@ class AIProcessor:
 
         raw_prompt = self._load_system_prompt(system_prompt_path)
 
+        # Inject correction rules from SystemConfig (if any)
+        try:
+            from apps.core.models import SystemConfig
+
+            correction_rules = SystemConfig.get("correction_rules", "")
+            if correction_rules and correction_rules != "No correction rules yet.":
+                raw_prompt += (
+                    "\n\n<correction_rules>\n"
+                    "The following rules are based on past corrections by the team. "
+                    "Follow these when making assignment suggestions:\n"
+                    f"{correction_rules}\n"
+                    "</correction_rules>"
+                )
+        except Exception:
+            logger.debug("Could not load correction rules (expected in tests without DB)")
+
         # Build system prompt with cache_control for Anthropic prompt caching
         self.system_prompt = [
             {
