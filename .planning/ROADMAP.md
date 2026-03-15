@@ -86,12 +86,12 @@ Plans:
   3. Chat alerts respect a configurable cooldown period -- no repeated alerts within the cooldown window
   4. Gatekeeper sees a recent AI corrections digest (feedback summary) on the triage queue page
   5. Gatekeeper/admin can select multiple threads via checkboxes and bulk-assign them to a user or bulk mark-irrelevant with a single reason
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
-- [ ] 04-03: TBD
+- [ ] 04-01-PLAN.md — Alert backend: rising-edge Chat alerts with cooldown, sidebar badge coloring, Settings config
+- [ ] 04-02-PLAN.md — Bulk actions: checkbox selection UI, floating action bar, bulk assign/mark-irrelevant endpoints, undo toast
+- [ ] 04-03-PLAN.md — AI corrections digest: collapsible card on triage queue with correction counts and top patterns
 
 ## Progress
 
@@ -102,4 +102,4 @@ Plans:
 | 1. Role + Permission Foundation | 0/2 | Planned | - |
 | 2. Assignment Enforcement | 0/2 | Planned | - |
 | 3. Mark Irrelevant | 0/2 | Planned | - |
-| 4. Alerts + Bulk Actions | 0/TBD | Not started | - |
+| 4. Alerts + Bulk Actions | 0/3 | Planned | - |
