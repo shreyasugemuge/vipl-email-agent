@@ -1,5 +1,27 @@
 # Milestones
 
+## v2.7.1 QA + Bug Fixes (Shipped: 2026-03-17)
+
+**Phases completed:** 3 phases, 8 requirements
+**Stats:** 5 commits, 50 files changed, +4,613/-5,941 lines, 816 tests
+**Timeline:** 1 day (2026-03-17)
+
+**Key accomplishments:**
+- Irrelevant threads treated as closed everywhere: excluded from open views/counts, included in Closed tab
+- Deactivate teammate cascade: unassign open threads, remove AssignmentRules, clear ThreadViewers
+- OOB-swap sidebar counts and stat cards on status change and reassignment
+- Closed thread cards with muted styling
+- Poll countdown timer fix in dev inspector
+- Activity page click-through to thread detail
+- GitHub Wiki user manual + in-app Help link
+- v2.8.0 follow-up: split monolithic views.py, remove legacy code, consolidate tests (849→816)
+
+**Archives:**
+- `milestones/v2.7.1-ROADMAP.md`
+- `milestones/v2.7.1-REQUIREMENTS.md`
+
+---
+
 ## v2.7.0 Gatekeeper Role + Irrelevant Emails (Shipped: 2026-03-16)
 
 **Phases completed:** 4 phases, 9 plans

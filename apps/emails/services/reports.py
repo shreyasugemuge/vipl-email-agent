@@ -11,11 +11,11 @@ import logging
 from collections import defaultdict
 from datetime import timedelta
 
-from django.db.models import Avg, Count, F, Q
-from django.db.models.functions import TruncDate
+from django.db.models import Avg, Count, F, Q, Case, When, IntegerField
+from django.db.models.functions import TruncDate, TruncWeek
 from django.utils import timezone
 
-from apps.emails.models import ActivityLog, Email, Thread
+from apps.emails.models import ActivityLog, AssignmentFeedback, Email, Thread
 
 logger = logging.getLogger(__name__)
 
@@ -424,4 +424,179 @@ def get_sla_data(start, end, **filters):
         "donut_data": {"met": met, "breached": breached_count},
         "trend": trend,
         "breaches": breaches,
+    }
+
+
+def get_ai_performance_data(start, end, **filters):
+    """AI confidence calibration and accuracy metrics.
+
+    Returns calibration per confidence tier, assignment feedback stats,
+    model comparison, weekly accuracy trend, and correction counts.
+    """
+    # --- Calibration per confidence tier ---
+    thread_qs = Thread.objects.filter(
+        created_at__gte=start, created_at__lte=end,
+        ai_confidence__in=["HIGH", "MEDIUM", "LOW"],
+    )
+    thread_qs = _apply_filters(thread_qs, "thread", **filters)
+
+    tier_stats = (
+        thread_qs.values("ai_confidence")
+        .annotate(
+            total=Count("pk"),
+            overridden=Count(
+                "pk",
+                filter=Q(category_overridden=True) | Q(priority_overridden=True),
+            ),
+        )
+    )
+
+    calibration = {}
+    total_all = 0
+    accurate_all = 0
+    for row in tier_stats:
+        tier = row["ai_confidence"]
+        total = row["total"]
+        overridden = row["overridden"]
+        accurate = total - overridden
+        calibration[tier] = {
+            "total": total,
+            "accurate": accurate,
+            "overridden": overridden,
+            "accuracy_pct": round((accurate / total) * 100, 1) if total else 0,
+        }
+        total_all += total
+        accurate_all += accurate
+
+    # Ensure all tiers present
+    for tier in ["HIGH", "MEDIUM", "LOW"]:
+        if tier not in calibration:
+            calibration[tier] = {"total": 0, "accurate": 0, "overridden": 0, "accuracy_pct": 0}
+
+    overall_accuracy = round((accurate_all / total_all) * 100, 1) if total_all else 0
+
+    # --- Assignment feedback ---
+    feedback_qs = AssignmentFeedback.objects.filter(
+        created_at__gte=start, created_at__lte=end,
+    )
+    feedback_counts = dict(
+        feedback_qs.values("action").annotate(c=Count("pk")).values_list("action", "c")
+    )
+    total_feedback = sum(feedback_counts.values())
+    accepted = feedback_counts.get(AssignmentFeedback.FeedbackAction.ACCEPTED, 0)
+    rejected = feedback_counts.get(AssignmentFeedback.FeedbackAction.REJECTED, 0)
+    reassigned = feedback_counts.get(AssignmentFeedback.FeedbackAction.REASSIGNED, 0)
+    auto_assigned = feedback_counts.get(AssignmentFeedback.FeedbackAction.AUTO_ASSIGNED, 0)
+
+    assignment = {
+        "total": total_feedback,
+        "accepted": accepted,
+        "rejected": rejected,
+        "reassigned": reassigned,
+        "auto_assigned": auto_assigned,
+        "acceptance_rate_pct": round((accepted / total_feedback) * 100, 1) if total_feedback else 0,
+    }
+
+    # --- Model comparison ---
+    email_qs = Email.objects.filter(
+        is_spam=False,
+        received_at__gte=start,
+        received_at__lte=end,
+        ai_model_used__isnull=False,
+    ).exclude(ai_model_used="")
+    email_qs = _apply_filters(email_qs, "email", **filters)
+
+    model_stats = (
+        email_qs.values("ai_model_used")
+        .annotate(
+            total=Count("pk"),
+            overridden=Count(
+                "pk",
+                filter=Q(thread__category_overridden=True) | Q(thread__priority_overridden=True),
+            ),
+        )
+    )
+
+    model_comparison = {}
+    for row in model_stats:
+        model_name = row["ai_model_used"]
+        # Simplify model name: "claude-haiku-4-5-20251001" -> "Haiku"
+        if "haiku" in model_name.lower():
+            label = "Haiku"
+        elif "sonnet" in model_name.lower():
+            label = "Sonnet"
+        else:
+            label = model_name
+        total = row["total"]
+        overridden = row["overridden"]
+        accurate = total - overridden
+        # Merge if same label (e.g., multiple haiku versions)
+        if label in model_comparison:
+            model_comparison[label]["total"] += total
+            model_comparison[label]["overridden"] += overridden
+            model_comparison[label]["accurate"] += accurate
+        else:
+            model_comparison[label] = {
+                "total": total,
+                "accurate": accurate,
+                "overridden": overridden,
+            }
+    # Calculate percentages after merging
+    for label in model_comparison:
+        m = model_comparison[label]
+        m["accuracy_pct"] = round((m["accurate"] / m["total"]) * 100, 1) if m["total"] else 0
+
+    # --- Weekly accuracy trend ---
+    weekly_qs = (
+        thread_qs.annotate(week=TruncWeek("created_at"))
+        .values("week")
+        .annotate(
+            total=Count("pk"),
+            overridden=Count(
+                "pk",
+                filter=Q(category_overridden=True) | Q(priority_overridden=True),
+            ),
+        )
+        .order_by("week")
+    )
+
+    weekly_trend = []
+    for row in weekly_qs:
+        total = row["total"]
+        overridden = row["overridden"]
+        accurate = total - overridden
+        weekly_trend.append({
+            "week": row["week"].strftime("%b %d"),
+            "accuracy_pct": round((accurate / total) * 100, 1) if total else 0,
+            "total": total,
+        })
+
+    # --- Correction counts ---
+    correction_actions = [
+        ActivityLog.Action.CATEGORY_CHANGED,
+        ActivityLog.Action.PRIORITY_CHANGED,
+    ]
+    correction_qs = ActivityLog.objects.filter(
+        action__in=correction_actions,
+        created_at__gte=start,
+        created_at__lte=end,
+    )
+    correction_counts = dict(
+        correction_qs.values("action").annotate(c=Count("pk")).values_list("action", "c")
+    )
+
+    corrections = {
+        "category_changes": correction_counts.get(ActivityLog.Action.CATEGORY_CHANGED, 0),
+        "priority_changes": correction_counts.get(ActivityLog.Action.PRIORITY_CHANGED, 0),
+        "total": sum(correction_counts.values()),
+    }
+
+    return {
+        "calibration": calibration,
+        "overall_accuracy": overall_accuracy,
+        "total_analyzed": total_all,
+        "assignment": assignment,
+        "model_comparison": model_comparison,
+        "weekly_trend": weekly_trend,
+        "corrections": corrections,
     }

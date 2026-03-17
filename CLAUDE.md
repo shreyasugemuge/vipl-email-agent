@@ -6,19 +6,20 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v2.7.0** (main branch) | **Complete** — gatekeeper role, irrelevant emails, bulk actions, reassign | Self-hosted VM (Docker Compose) |
+| **v2.8.1** (main branch) | **Complete** — To/Cc display, AI performance dashboard, Artifact Registry cleanup | Self-hosted VM (Docker Compose) |
+| **v2.8.0** (merged) | **Complete** — codebase cleanup, split views, consolidate tests, deploy fix | Self-hosted VM (Docker Compose) |
 | **v2.6.1** (merged) | **Complete** — prominent assignee/status badges, avatar support | Self-hosted VM (Docker Compose) |
 | **v2.6.0** (merged) | **Complete** — full UI revamp, dark/light mode | Self-hosted VM (Docker Compose) |
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.6.1 (latest deployed)
+**GitHub Release**: v2.8.1 (latest deployed)
 
 ## Active Branches
 
 | Branch | Worktree | Purpose | Status |
 |--------|----------|---------|--------|
-| `main` | `.` | Production branch, deployed to VM | v2.7.0 |
+| `main` | `.` | Production branch, deployed to VM | v2.8.1 |
 | `feature/analytics-dashboard` | `../vipl-email-agent-analytics` | Analytics & reporting dashboard | Not started |
 
 ## Stack
@@ -144,6 +145,9 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **v2.7.0 Phase 2** (Assignment Enforcement): Member reassign with reason + candidate filtering, read-only badges for non-owners, `reassigned_by_member` activity log action, context menu role guards
 - **v2.7.0 Phase 3** (Mark Irrelevant): `irrelevant` thread status, modal with required reason, revert-to-new, gold "Irrelevant" badge on cards, keyboard shortcut (I), activity timeline rendering
 - **v2.7.0 Phase 4** (Alerts & Bulk Actions): Unassigned thread alerts (scheduled), corrections digest (weekly AI feedback), checkbox multi-select on cards, bulk assign/mark-irrelevant/undo, `_bulk_action_bar.html` sticky bar
+- **v2.7.1** (QA Bug Fixes): Bug fixes + user manual wiki
+- **v2.8.0** (Codebase Cleanup): Split monolithic views.py into view modules, remove legacy code, consolidate duplicate tests (849→816), deploy.yml secrets fix for if-conditions, chat notification quoting fix
+- **v2.8.1** (To/Cc + AI Calibration): To/Cc recipient display on thread detail (parsed from Gmail headers), AI Performance dashboard tab (accuracy per confidence tier, weekly trend, assignment feedback, model comparison), Artifact Registry cleanup
 
 ### Design System
 
@@ -331,7 +335,9 @@ gcloud secrets versions access latest --secret=sa-key --project=utilities-vipl >
 - Keyboard shortcut: U to mark thread unread
 - Inline editable attributes: category, priority, status dropdowns in detail panel (overrides pipeline)
 - Right-click context menu: quick actions on thread cards (assign, status, priority, spam, unread)
-- Reports module: 4-tab dashboard (Overview, Categories, Performance, SLA) with Chart.js charts, date range picker
+- Reports module: 5-tab dashboard (Overview, Volume, Team, SLA, AI Performance) with Chart.js charts, date range picker
+- AI Performance tab: accuracy per confidence tier, weekly trend, assignment feedback donut, model comparison
+- To/Cc recipients displayed on thread detail messages (parsed from Email.headers JSONField)
 - Feedback distillation: user corrections aggregated into AI prompt correction rules via scheduler
 - Dark/light theme toggle: sun/moon button in sidebar footer, persisted in localStorage, anti-FOUC
 - Assignee badges: Google avatar image (w-5 card / w-6 detail), solid rose initial fallback, gold "Unassigned" state

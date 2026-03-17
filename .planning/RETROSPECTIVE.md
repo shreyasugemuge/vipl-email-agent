@@ -187,16 +187,61 @@
 
 ---
 
-## Cross-Milestone Trends
+## Milestone: v2.7.1 — QA + Bug Fixes
 
-| Metric | v2.1 | v2.2 | v2.3.6 | v2.5.0 | v2.7.0 |
-|--------|------|------|--------|--------|--------|
-| Phases | 7 | 4 | 3 | 7 | 4 |
-| Plans | 18 | 6 | 6 | 14 | 9 |
-| Days | 6 | 1 | 1 | 1 | 1 |
-| Tests | 257 | 349 | 443 | 626 | 824 |
-| Commits | 140 | 45 | 8 | 90 | 78 |
-| Gaps found in audit | 11 (all closed) | 0 | 2 (accepted) | 0 | 1 (fixed) |
+**Shipped:** 2026-03-17
+**Phases:** 3 | **Requirements:** 8
+
+### What Was Built
+- Irrelevant threads treated as closed everywhere (open views, counts, Closed tab)
+- Deactivate teammate cascade: unassign open threads, remove AssignmentRules, clear ThreadViewers
+- OOB-swap sidebar counts and stat cards on close/reopen and reassign
+- Closed thread card muted styling
+- Poll countdown timer fix in dev inspector
+- Activity page click-through to thread detail
+- GitHub Wiki user manual + in-app Help link
+- v2.8.0 follow-up: split monolithic views.py into modules, remove legacy code, consolidate tests (849→816)
+
+### What Worked
+- All bug fixes shipped in a single squash-merge PR (#49) — clean, reviewable
+- Requirements-first approach: all 6 bugs had GitHub issues before coding started
+- v2.8.0 codebase cleanup as a separate follow-up kept the bug-fix PR focused
+- Deploy.yml secrets fix caught in CI before production (if-condition env var syntax)
+
+### What Was Inefficient
+- GSD plans created but never formally executed — work was done directly on main
+- Phase directories archived before milestone completion, confusing the progress tracker
+- Traceability table in REQUIREMENTS.md showed "Pending" even though requirements were checked off
+
+### Patterns Established
+- Split view modules: monolithic views.py → thread_views.py, report_views.py, inspector_views.py, team_views.py
+- OOB-swap for sidebar counts: `_sidebar_counts.html` partial with `hx-swap-oob="true"` on every status/assignment change
+- GitHub Wiki for user documentation (not in-repo markdown)
+
+### Key Lessons
+- For small QA milestones, GSD formal execution adds overhead — direct implementation + squash-merge is faster
+- Always update traceability table status when checking off requirements
+- Deploy.yml `if:` conditions need `env.SECRET` not `secrets.SECRET` syntax
+
+### Cost Observations
+- Model mix: ~90% Opus (direct work, no GSD agents)
+- Single-day milestone: all fixes in ~2 hours
+- Minimal GSD overhead: plans created but not executed through workflow
 
 ---
-*Updated: 2026-03-16 after v2.7.0 milestone*
+
+## Cross-Milestone Trends
+
+| Metric | v2.1 | v2.2 | v2.3.6 | v2.5.0 | v2.7.0 | v2.7.1 |
+|--------|------|------|--------|--------|--------|--------|
+| Phases | 7 | 4 | 3 | 7 | 4 | 3 |
+| Plans | 18 | 6 | 6 | 14 | 9 | 2* |
+| Days | 6 | 1 | 1 | 1 | 1 | 1 |
+| Tests | 257 | 349 | 443 | 626 | 824 | 816 |
+| Commits | 140 | 45 | 8 | 90 | 78 | 5 |
+| Gaps found in audit | 11 (all closed) | 0 | 2 (accepted) | 0 | 1 (fixed) | n/a |
+
+*v2.7.1: 2 formal plans + manual fixes outside GSD workflow
+
+---
+*Updated: 2026-03-17 after v2.7.1 milestone*

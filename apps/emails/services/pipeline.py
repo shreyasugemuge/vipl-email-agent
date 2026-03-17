@@ -195,6 +195,7 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
             "subject": email_msg.subject,
             "body": email_msg.body,
             "body_html": email_msg.body_html,
+            "headers": email_msg.headers,
             "received_at": email_msg.timestamp,
             "gmail_link": email_msg.gmail_link,
             # AI triage fields
