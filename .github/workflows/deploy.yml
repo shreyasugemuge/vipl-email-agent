@@ -76,10 +76,9 @@ jobs:
       - name: Notify Chat — deployed
         if: success() && env.CHAT_WEBHOOK != ''
         run: |
-          BODY=$(echo '${{ github.event.release.body }}' | head -c 500 | sed 's/"/\\"/g' | tr '\n' ' ')
           curl -s -X POST "$CHAT_WEBHOOK" \
             -H 'Content-Type: application/json' \
-            -d "{\"text\": \"✅ *${{ github.event.release.tag_name }}* deployed successfully\\n\\n${BODY}\"}"
+            -d '{"text": "✅ *${{ github.event.release.tag_name }}* deployed to triage.vidarbhainfotech.com\n\nRelease: https://github.com/${{ github.repository }}/releases/tag/${{ github.event.release.tag_name }}"}'
 
       - name: Notify Chat — deploy failed
         if: failure() && env.CHAT_WEBHOOK != ''
