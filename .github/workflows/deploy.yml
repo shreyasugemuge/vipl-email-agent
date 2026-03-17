@@ -46,6 +46,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Notify Chat — deploying
+        if: secrets.GOOGLE_CHAT_WEBHOOK_URL != ''
+        run: |
+          curl -s -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
+            -H 'Content-Type: application/json' \
+            -d '{"text": "🚀 *Deploying ${{ github.event.release.tag_name }}* to triage.vidarbhainfotech.com …"}'
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -63,3 +70,18 @@ jobs:
             sudo -E docker compose run --rm web python manage.py collectstatic --noinput
             sudo -E docker compose up -d --force-recreate
             echo "Deployed ${{ github.event.release.tag_name }}"
+
+      - name: Notify Chat — deployed
+        if: success() && secrets.GOOGLE_CHAT_WEBHOOK_URL != ''
+        run: |
+          BODY=$(echo '${{ github.event.release.body }}' | head -c 500 | sed 's/"/\\"/g' | tr '\n' ' ')
+          curl -s -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\": \"✅ *${{ github.event.release.tag_name }}* deployed successfully\\n\\n${BODY}\"}"
+
+      - name: Notify Chat — deploy failed
+        if: failure() && secrets.GOOGLE_CHAT_WEBHOOK_URL != ''
+        run: |
+          curl -s -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
+            -H 'Content-Type: application/json' \
+            -d '{"text": "❌ *Deploy ${{ github.event.release.tag_name }} FAILED* — check https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'

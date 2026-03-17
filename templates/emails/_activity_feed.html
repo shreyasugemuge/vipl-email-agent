@@ -84,9 +84,11 @@
                     <div class="text-[13px] leading-relaxed font-mono">
                         <span class="font-bold text-[var(--vipl-text)]">{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}System{% endif %}</span>
                         <span class="text-[var(--vipl-text-dim)] font-medium">{{ log.get_action_display|lower }}</span>
-                        {% if log.email and not thread %}
-                        <a href="{% url 'emails:email_list' %}?selected={{ log.email.pk }}"
-                           class="font-semibold text-[var(--vipl-text)] hover:text-[var(--vipl-primary)] transition-colors">{{ log.email.subject|truncatechars:50 }}</a>
+                        {% if log.thread and not thread %}
+                        <a href="{% url 'emails:thread_list' %}?open={{ log.thread.pk }}"
+                           class="font-semibold text-[var(--vipl-text)] hover:text-[var(--vipl-primary)] transition-colors">{{ log.thread.subject|truncatechars:50 }}</a>
+                        {% elif log.email and not thread %}
+                        <span class="font-semibold text-[var(--vipl-text)]">{{ log.email.subject|truncatechars:50 }}</span>
                         {% endif %}
                     </div>
                     {% if log.old_value or log.new_value %}
