@@ -153,15 +153,21 @@ class TestZeroInlineIsAdmin:
     """ROLE-06: Verify no inline is_admin patterns remain."""
 
     def test_no_is_admin_variable_in_emails_views(self):
-        """No is_admin = ... pattern in emails/views.py."""
-        with open("apps/emails/views.py") as f:
-            content = f.read()
+        """No is_admin = ... pattern in emails/views/ package."""
+        import glob
+        content = ""
+        for path in glob.glob("apps/emails/views/*.py"):
+            with open(path) as f:
+                content += f.read()
         matches = re.findall(r"is_admin\s*=\s*request\.user\.is_staff", content)
         assert len(matches) == 0, f"Found {len(matches)} inline is_admin patterns"
 
     def test_no_is_admin_context_variable_in_emails_views(self):
         """No 'is_admin' key in template context dicts."""
-        with open("apps/emails/views.py") as f:
-            content = f.read()
+        import glob
+        content = ""
+        for path in glob.glob("apps/emails/views/*.py"):
+            with open(path) as f:
+                content += f.read()
         matches = re.findall(r'"is_admin"\s*:', content)
         assert len(matches) == 0, f"Found {len(matches)} is_admin context variables"

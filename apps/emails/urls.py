@@ -1,5 +1,4 @@
 from django.urls import path
-from django.views.generic import RedirectView
 
 from . import views
 
@@ -8,8 +7,6 @@ app_name = "emails"
 urlpatterns = [
     path("", views.thread_list, name="thread_list"),
     path("sidebar-counts/", views.sidebar_counts_view, name="sidebar_counts"),
-    path("v2/", RedirectView.as_view(url="/emails/", permanent=False)),
-    path("legacy/", views.email_list, name="email_list"),
     # Bulk action endpoints (before threads/<int:pk>/ to avoid URL conflicts)
     path("threads/bulk-assign/", views.bulk_assign, name="bulk_assign"),
     path("threads/bulk-mark-irrelevant/", views.bulk_mark_irrelevant, name="bulk_mark_irrelevant"),
@@ -38,12 +35,6 @@ urlpatterns = [
     path("threads/<int:pk>/revert-irrelevant/", views.revert_irrelevant, name="revert_irrelevant"),
     path("spam-feedback/<int:pk>/undo/", views.undo_spam_feedback, name="undo_spam_feedback"),
     path("settings/sender/<int:pk>/unblock/", views.unblock_sender, name="unblock_sender"),
-    path("<int:pk>/detail/", views.email_detail, name="email_detail"),
-    path("<int:pk>/assign/", views.assign_email_view, name="assign_email"),
-    path("<int:pk>/status/", views.change_status_view, name="change_status"),
-    path("<int:pk>/claim/", views.claim_email_view, name="claim_email"),
-    path("<int:pk>/accept-ai/", views.accept_ai_suggestion, name="accept_ai_suggestion"),
-    path("<int:pk>/reject-ai/", views.reject_ai_suggestion, name="reject_ai_suggestion"),
     path("settings/", views.settings_view, name="settings"),
     path("settings/rules/", views.settings_rules_save, name="settings_rules_save"),
     path("settings/visibility/", views.settings_visibility_save, name="settings_visibility_save"),
@@ -54,7 +45,6 @@ urlpatterns = [
     path("settings/webhooks/", views.settings_webhooks_save, name="settings_webhooks_save"),
     path("settings/whitelist/add/", views.whitelist_add, name="whitelist_add"),
     path("settings/whitelist/<int:pk>/delete/", views.whitelist_delete, name="whitelist_delete"),
-    path("<int:pk>/whitelist-sender/", views.whitelist_sender, name="whitelist_sender"),
     path("reports/", views.reports_view, name="reports"),
     path("activity/", views.activity_log, name="activity_log"),
     path("inspect/", views.inspect, name="inspect"),

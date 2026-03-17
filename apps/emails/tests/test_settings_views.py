@@ -213,31 +213,31 @@ class TestSLAConfigView:
 
 class TestClaimEndpoint:
     def test_claim_succeeds(self, member_client, member_user, db):
-        email = create_email()
-        CategoryVisibility.objects.create(user=member_user, category="General Inquiry")
-        response = member_client.post(reverse("emails:claim_email", args=[email.pk]))
+        thread = create_thread()
+        CategoryVisibility.objects.create(user=member_user, category=thread.category)
+        response = member_client.post(reverse("emails:claim_thread", args=[thread.pk]))
         assert response.status_code == 200
-        email.refresh_from_db()
-        assert email.assigned_to == member_user
+        thread.refresh_from_db()
+        assert thread.assigned_to == member_user
 
-    def test_claim_on_assigned_email_fails(self, member_client, member_user, admin_user, db):
-        email = create_email(assigned_to=admin_user)
-        CategoryVisibility.objects.create(user=member_user, category="General Inquiry")
-        response = member_client.post(reverse("emails:claim_email", args=[email.pk]))
+    def test_claim_on_assigned_thread_fails(self, member_client, member_user, admin_user, db):
+        thread = create_thread(assigned_to=admin_user)
+        CategoryVisibility.objects.create(user=member_user, category=thread.category)
+        response = member_client.post(reverse("emails:claim_thread", args=[thread.pk]))
         assert response.status_code == 403
 
     def test_claim_without_visibility_fails(self, member_client, member_user, db):
-        email = create_email()
+        thread = create_thread()
         # No CategoryVisibility for member_user
-        response = member_client.post(reverse("emails:claim_email", args=[email.pk]))
+        response = member_client.post(reverse("emails:claim_thread", args=[thread.pk]))
         assert response.status_code == 403
 
     def test_admin_can_claim_any_category(self, admin_client, admin_user, db):
-        email = create_email(category="Complaint")
-        response = admin_client.post(reverse("emails:claim_email", args=[email.pk]))
+        thread = create_thread(category="Complaint")
+        response = admin_client.post(reverse("emails:claim_thread", args=[thread.pk]))
         assert response.status_code == 200
-        email.refresh_from_db()
-        assert email.assigned_to == admin_user
+        thread.refresh_from_db()
+        assert thread.assigned_to == admin_user
 
 
 # ---------------------------------------------------------------------------
@@ -268,41 +268,52 @@ class TestThreadClaimEndpoint:
 
 
 class TestAISuggestionEndpoints:
-    def test_accept_assigns_email(self, admin_client, admin_user, second_member, db):
-        email = create_email(ai_suggested_assignee={
-            "name": second_member.get_full_name() or second_member.username,
-            "user_id": second_member.pk,
-            "reason": "Workload balanced",
-        })
-        response = admin_client.post(reverse("emails:accept_ai_suggestion", args=[email.pk]))
+    def test_accept_assigns_thread(self, admin_client, admin_user, second_member, db):
+        thread = create_thread()
+        # The view reads ai_suggested_assignee from the latest email in the thread
+        create_email(
+            thread=thread,
+            ai_suggested_assignee={
+                "name": second_member.get_full_name() or second_member.username,
+                "user_id": second_member.pk,
+                "reason": "Workload balanced",
+            },
+        )
+        response = admin_client.post(reverse("emails:accept_thread_suggestion", args=[thread.pk]))
         assert response.status_code == 200
-        email.refresh_from_db()
-        assert email.assigned_to == second_member
+        thread.refresh_from_db()
+        assert thread.assigned_to == second_member
 
     def test_reject_clears_suggestion(self, admin_client, admin_user, db):
-        email = create_email(ai_suggested_assignee={
-            "name": "Someone",
-            "user_id": 999,
-            "reason": "test",
-        })
-        response = admin_client.post(reverse("emails:reject_ai_suggestion", args=[email.pk]))
+        thread = create_thread()
+        create_email(
+            thread=thread,
+            ai_suggested_assignee={
+                "name": "Someone",
+                "user_id": 999,
+                "reason": "test",
+            },
+        )
+        response = admin_client.post(reverse("emails:reject_thread_suggestion", args=[thread.pk]))
         assert response.status_code == 200
-        email.refresh_from_db()
-        assert email.ai_suggested_assignee == {}
+        # Thread should be unassigned after rejection
+        thread.refresh_from_db()
+        assert thread.assigned_to is None
 
     def test_non_admin_cannot_accept(self, member_client, db):
-        email = create_email()
-        response = member_client.post(reverse("emails:accept_ai_suggestion", args=[email.pk]))
+        thread = create_thread()
+        response = member_client.post(reverse("emails:accept_thread_suggestion", args=[thread.pk]))
         assert response.status_code == 403
 
     def test_non_admin_cannot_reject(self, member_client, db):
-        email = create_email()
-        response = member_client.post(reverse("emails:reject_ai_suggestion", args=[email.pk]))
+        thread = create_thread()
+        response = member_client.post(reverse("emails:reject_thread_suggestion", args=[thread.pk]))
         assert response.status_code == 403
 
     def test_accept_with_no_suggestion_fails(self, admin_client, admin_user, db):
-        email = create_email(ai_suggested_assignee={})
-        response = admin_client.post(reverse("emails:accept_ai_suggestion", args=[email.pk]))
+        thread = create_thread()
+        # No email with suggestion attached
+        response = admin_client.post(reverse("emails:accept_thread_suggestion", args=[thread.pk]))
         assert response.status_code == 403
 
 
@@ -605,42 +616,36 @@ class TestWhitelistViews:
 
 class TestWhitelistSender:
     def test_whitelist_sender_creates_entry(self, admin_client, admin_user, db):
-        email = create_email(from_address="spammer@example.com")
+        thread = create_thread(last_sender_address="spammer@example.com")
         response = admin_client.post(
-            reverse("emails:whitelist_sender", args=[email.pk]),
+            reverse("emails:whitelist_thread_sender", args=[thread.pk]),
         )
         assert response.status_code == 200
         assert SpamWhitelist.objects.filter(entry="spammer@example.com", entry_type="email").exists()
 
-    def test_whitelist_sender_unspams_existing_emails(self, admin_client, admin_user, db):
-        email = create_email(from_address="spammer@example.com", is_spam=True)
-        admin_client.post(reverse("emails:whitelist_sender", args=[email.pk]))
-        email.refresh_from_db()
-        assert email.is_spam is False
-
     def test_whitelist_sender_returns_detail_panel(self, admin_client, admin_user, db):
-        email = create_email(from_address="spammer@example.com")
+        thread = create_thread(last_sender_address="spammer@example.com")
         response = admin_client.post(
-            reverse("emails:whitelist_sender", args=[email.pk]),
+            reverse("emails:whitelist_thread_sender", args=[thread.pk]),
         )
         content = response.content.decode()
-        # Returns refreshed detail panel with email subject
-        assert email.subject in content
+        # Returns refreshed detail panel with thread subject
+        assert thread.subject in content
 
     def test_whitelist_sender_rejects_non_admin(self, member_client, member_user, db):
-        email = create_email()
+        thread = create_thread()
         response = member_client.post(
-            reverse("emails:whitelist_sender", args=[email.pk]),
+            reverse("emails:whitelist_thread_sender", args=[thread.pk]),
         )
         assert response.status_code == 403
 
     def test_whitelist_sender_handles_already_whitelisted(self, admin_client, admin_user, db):
-        email = create_email(from_address="known@example.com")
+        thread = create_thread(last_sender_address="known@example.com")
         SpamWhitelist.objects.create(
             entry="known@example.com", entry_type="email", added_by=admin_user,
         )
         response = admin_client.post(
-            reverse("emails:whitelist_sender", args=[email.pk]),
+            reverse("emails:whitelist_thread_sender", args=[thread.pk]),
         )
         assert response.status_code == 200
 

@@ -55,10 +55,13 @@ def notify_mention(thread, note_author, mentioned_user):
 
     # Chat notification (lightweight text, not full Cards v2)
     try:
-        webhook_url = (
-            SystemConfig.get("chat_webhook_url", "")
-            or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
-        )
+        if not SystemConfig.get("chat_notifications_enabled", False):
+            webhook_url = ""
+        else:
+            webhook_url = (
+                SystemConfig.get("chat_webhook_url", "")
+                or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
+            )
         if webhook_url:
             notifier = ChatNotifier(webhook_url=webhook_url)
             text = f"{author_name} mentioned you in a note on: {subject_line}"
@@ -95,7 +98,11 @@ def _send_assignment_chat(email, assignee):
 
     Routing: category webhook (if configured) → global webhook (fallback).
     Both fire if both are set and different.
+    Skipped entirely when chat_notifications_enabled is false.
     """
+    if not SystemConfig.get("chat_notifications_enabled", False):
+        return
+
     global_webhook = SystemConfig.get("chat_webhook_url", "") or os.environ.get("GOOGLE_CHAT_WEBHOOK_URL", "")
     category = getattr(email, "category", "") or ""
     category_webhook = ""

@@ -54,7 +54,8 @@ class TestCheckUnassignedAlert:
         """Alert does nothing when threshold config key does not exist."""
         from apps.emails.management.commands.run_scheduler import _check_unassigned_alert
 
-        # Don't seed any config -- key doesn't exist
+        # Remove seeded config so key doesn't exist
+        SystemConfig.objects.filter(key="unassigned_alert_threshold").delete()
         _create_unassigned_threads(10)
 
         with patch("apps.emails.services.chat_notifier.ChatNotifier._post") as mock_post:
