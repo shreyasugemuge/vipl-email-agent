@@ -7,17 +7,17 @@
 
 ### Bug Fixes
 
-- [ ] **BUG-01**: Treat `irrelevant` as closed everywhere — exclude from open views/counts, include in Closed tab, fix sidebar/stat/unread counts (GH #48)
-- [ ] **BUG-02**: Deactivating teammate unassigns their open threads, shows pending count warning, cascades cleanup of AssignmentRules and ThreadViewers (GH #47)
-- [ ] **BUG-03**: Close/reopen status changes OOB-swap sidebar counts + stat cards, visually distinguish closed thread cards (GH #44)
-- [ ] **BUG-04**: Reassign/assign OOB-swaps sidebar counts + stat cards + detail panel assignee without page refresh (GH #46)
-- [ ] **BUG-05**: Fix inspector poll countdown stuck at "due now" — timer reset and interval calculation (GH #45)
+- [x] **BUG-01**: Treat `irrelevant` as closed everywhere — exclude from open views/counts, include in Closed tab, fix sidebar/stat/unread counts (GH #48)
+- [x] **BUG-02**: Deactivating teammate unassigns their open threads, shows pending count warning, cascades cleanup of AssignmentRules and ThreadViewers (GH #47)
+- [x] **BUG-03**: Close/reopen status changes OOB-swap sidebar counts + stat cards, visually distinguish closed thread cards (GH #44)
+- [x] **BUG-04**: Reassign/assign OOB-swaps sidebar counts + stat cards + detail panel assignee without page refresh (GH #46)
+- [x] **BUG-05**: Fix inspector poll countdown stuck at "due now" — timer reset and interval calculation (GH #45)
 - [x] **BUG-06**: Activity page click-through — non-HTMX redirect to thread list with auto-open (GH #43)
 
 ### Documentation
 
-- [ ] **DOCS-01**: Create user manual on GitHub Wiki covering setup, daily workflows, roles, and features
-- [ ] **DOCS-02**: Add "Help / User Manual" link in app sidebar pointing to the GitHub Wiki
+- [x] **DOCS-01**: Create user manual on GitHub Wiki covering setup, daily workflows, roles, and features
+- [x] **DOCS-02**: Add "Help / User Manual" link in app sidebar pointing to the GitHub Wiki
 
 ## Out of Scope
 
