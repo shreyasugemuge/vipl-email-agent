@@ -44,6 +44,7 @@ class EmailMessage:
     attachment_details: list = field(default_factory=list)
     gmail_link: str = ""
     body_html: str = ""
+    headers: dict = field(default_factory=dict)
 
 
 @dataclass

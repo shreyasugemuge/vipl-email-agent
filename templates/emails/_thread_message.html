@@ -11,6 +11,24 @@
                 <div class="min-w-0">
                     <div class="text-[11px] font-semibold font-mono text-[var(--vipl-text)] truncate">{{ message.from_name|default:"Unknown" }}</div>
                     <div class="text-[9px] font-mono text-[var(--vipl-text-muted)] truncate">{{ message.from_address }} &middot; {{ message.received_at|time_ago }}</div>
+                    {% with to_list=message.headers|parse_recipients:"to" cc_list=message.headers|parse_recipients:"cc" %}
+                    {% if to_list %}
+                    <div class="text-[9px] font-mono text-[var(--vipl-text-muted)] truncate mt-0.5">
+                        <span class="text-[var(--vipl-text-dim)]">To:</span>
+                        {% with first=to_list.0 %}
+                        {{ first.name|default:first.address }}{% if to_list|length > 1 %}<span class="ml-1 px-1 py-px rounded bg-[var(--vipl-surface)] text-[8px] text-[var(--vipl-text-muted)] border border-[var(--vipl-border)]">+{{ to_list|length|add:"-1" }}</span>{% endif %}
+                        {% endwith %}
+                    </div>
+                    {% endif %}
+                    {% if cc_list %}
+                    <div class="text-[9px] font-mono text-[var(--vipl-text-muted)] truncate">
+                        <span class="text-[var(--vipl-text-dim)]">Cc:</span>
+                        {% with first=cc_list.0 %}
+                        {{ first.name|default:first.address }}{% if cc_list|length > 1 %}<span class="ml-1 px-1 py-px rounded bg-[var(--vipl-surface)] text-[8px] text-[var(--vipl-text-muted)] border border-[var(--vipl-border)]">+{{ cc_list|length|add:"-1" }}</span>{% endif %}
+                        {% endwith %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
                 </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">

@@ -359,6 +359,7 @@ def reports_view(request):
     from datetime import datetime as _dt
 
     from apps.emails.services.reports import (
+        get_ai_performance_data,
         get_overview_kpis,
         get_volume_data,
         get_team_data,
@@ -403,6 +404,7 @@ def reports_view(request):
     volume_data = get_volume_data(start, end, **filters)
     team_data = get_team_data(start, end, **filters)
     sla_data = get_sla_data(start, end, **filters)
+    ai_perf_data = get_ai_performance_data(start, end, **filters)
 
     # Filter dropdown options (SoftDeleteManager already excludes deleted)
     distinct_inboxes = list(
@@ -425,6 +427,7 @@ def reports_view(request):
         "volume_data": volume_data,
         "team_data": team_data,
         "sla_data": sla_data,
+        "ai_perf_data": ai_perf_data,
         "preset": preset,
         "custom_start": custom_start or "",
         "custom_end": custom_end or "",

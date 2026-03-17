@@ -151,6 +151,7 @@ class GmailPoller:
                 attachment_details=attachment_details,
                 gmail_link=gmail_link,
                 body_html=html_body,
+                headers=headers,
             )
         except Exception as e:
             logger.error(f"Failed to parse message: {e}")

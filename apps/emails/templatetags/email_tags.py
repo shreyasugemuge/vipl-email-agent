@@ -1,5 +1,7 @@
 """Custom template tags and filters for the email dashboard."""
 
+from email.utils import getaddresses
+
 from django import template
 from django.utils import timezone
 from django.utils.timesince import timesince
@@ -228,3 +230,28 @@ def status_tooltip(status):
 def priority_tooltip(priority):
     """Return tooltip text for a priority value."""
     return PRIORITY_TOOLTIPS.get(priority, "")
+
+
+# ---------------------------------------------------------------------------
+# Header parsing filters
+# ---------------------------------------------------------------------------
+
+
+@register.filter
+def parse_recipients(headers, header_name):
+    """Parse a header (to/cc) from the headers dict into a list of recipients.
+
+    Returns list of dicts: [{"name": "...", "address": "..."}]
+    Uses email.utils.getaddresses for RFC 2822 parsing.
+    """
+    if not headers or not isinstance(headers, dict):
+        return []
+    raw = headers.get(header_name, "")
+    if not raw:
+        return []
+    parsed = getaddresses([raw])
+    return [
+        {"name": name, "address": addr}
+        for name, addr in parsed
+        if addr  # skip malformed entries with no address
+    ]
