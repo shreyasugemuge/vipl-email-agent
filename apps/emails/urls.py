@@ -7,6 +7,7 @@ app_name = "emails"
 
 urlpatterns = [
     path("", views.thread_list, name="thread_list"),
+    path("sidebar-counts/", views.sidebar_counts_view, name="sidebar_counts"),
     path("v2/", RedirectView.as_view(url="/emails/", permanent=False)),
     path("legacy/", views.email_list, name="email_list"),
     # Bulk action endpoints (before threads/<int:pk>/ to avoid URL conflicts)
