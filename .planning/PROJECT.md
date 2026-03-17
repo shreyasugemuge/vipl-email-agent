@@ -71,21 +71,18 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 - ✓ Unassigned alert: rising-edge Chat notification with cooldown, sidebar badge coloring — v2.7.0
 - ✓ Bulk actions: checkbox selection, floating bar, bulk assign/mark-irrelevant, undo toast — v2.7.0
 - ✓ AI corrections digest: 7-day correction patterns on triage queue — v2.7.0
+- ✓ Irrelevant threads treated as closed everywhere (open views, counts, Closed tab) — v2.7.1
+- ✓ Deactivate teammate cascade: unassign threads, remove rules, clear viewers — v2.7.1
+- ✓ OOB-swap sidebar counts and stat cards on status change and reassignment — v2.7.1
+- ✓ Closed thread card muted styling — v2.7.1
+- ✓ Poll countdown timer fix — v2.7.1
+- ✓ Activity page click-through to thread detail — v2.7.1
+- ✓ GitHub Wiki user manual + in-app Help link — v2.7.1
+- ✓ Codebase cleanup: split views.py, remove legacy, consolidate tests — v2.8.0
 
 ### Active
 
-## Current Milestone: v2.7.1 QA + Bug Fixes
-
-**Goal:** Fix 6 QA bugs from v2.7.0 and add user manual documentation.
-
-**Target:**
-- Fix irrelevant threads not treated as closed
-- Fix deactivate teammate cascade (unassign threads)
-- Fix closed/reopen OOB swaps (counts, cards)
-- Fix reassign OOB swaps (counts, detail panel)
-- Fix poll countdown stuck at "due now"
-- Activity click-through fix (done)
-- GitHub Wiki user manual + in-app help link
+(No active milestone — run `/gsd:new-milestone` to start next)
 
 ### Out of Scope
 
@@ -98,7 +95,7 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ## Context
 
-**Current state (v2.7.0 built, v2.6.1 deployed):** Production at triage.vidarbhainfotech.com. Full pipeline with AI confidence, auto-assign, spam learning, read/unread, inline editing, reports. Gatekeeper role with assignment enforcement, mark-irrelevant, bulk actions, unassigned alerts, corrections digest. 843 tests, Django 4.2 LTS + PostgreSQL 12.3.
+**Current state (v2.8.0 deployed):** Production at triage.vidarbhainfotech.com. Full pipeline with AI confidence, auto-assign, spam learning, read/unread, inline editing, reports. Gatekeeper role with assignment enforcement, mark-irrelevant, bulk actions, unassigned alerts, corrections digest. Clean codebase with split view modules. 816 tests, Django 4.2 LTS + PostgreSQL 12.3.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
@@ -148,4 +145,4 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | Stateless undo via HX-Trigger serialized state | No server-side undo stack, clean HTMX pattern | ✓ Good — v2.7.0 |
 
 ---
-*Last updated: 2026-03-17 after v2.7.1 milestone started*
+*Last updated: 2026-03-17 after v2.7.1 milestone completed*
