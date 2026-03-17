@@ -18,7 +18,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.http import HttpResponse as _HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
@@ -172,7 +172,7 @@ def thread_list(request):
             qs = qs.filter(status__in=["new", "acknowledged", "reopened"])
     elif view == "closed":
         if not has_explicit_status:
-            qs = qs.filter(status="closed")
+            qs = qs.filter(status__in=["closed", "irrelevant"])
     elif view.isdigit():
         # Admin/triage_lead: view specific team member's threads
         if can_assign:
@@ -233,7 +233,7 @@ def thread_list(request):
         unassigned=Count("pk", filter=open_q & Q(assigned_to__isnull=True)),
         mine=Count("pk", filter=open_q & Q(assigned_to=user)),
         all_open=Count("pk", filter=open_q),
-        closed=Count("pk", filter=Q(status="closed")),
+        closed=Count("pk", filter=Q(status__in=["closed", "irrelevant"])),
         urgent=Count("pk", filter=open_q & Q(priority__in=["CRITICAL", "HIGH"])),
         new=Count("pk", filter=Q(status="new")),
         irrelevant=Count("pk", filter=Q(status="irrelevant")),
@@ -253,7 +253,7 @@ def thread_list(request):
     sidebar_counts["unread_open"] = unread_base.filter(
         status__in=["new", "acknowledged", "reopened"]
     ).count()
-    sidebar_counts["unread_closed"] = unread_base.filter(status="closed").count()
+    sidebar_counts["unread_closed"] = unread_base.filter(status__in=["closed", "irrelevant"]).count()
 
     # Total unread for browser tab title
     unread_total = sidebar_counts["unread_open"] + sidebar_counts["unread_closed"]
@@ -306,7 +306,7 @@ def thread_list(request):
     elif view == "all_open":
         stat_base = stat_base.filter(status__in=["new", "acknowledged", "reopened"])
     elif view == "closed":
-        stat_base = stat_base.filter(status="closed")
+        stat_base = stat_base.filter(status__in=["closed", "irrelevant"])
     elif view.isdigit() and is_admin:
         stat_base = stat_base.filter(assigned_to_id=int(view))
 
@@ -1153,6 +1153,11 @@ def clear_viewer(request, pk):
 @require_GET
 def thread_detail(request, pk):
     """Return the thread detail panel partial for HTMX swap."""
+    # Non-HTMX requests (e.g. links from activity page) → redirect to thread list
+    if not getattr(request, "htmx", False):
+        from django.urls import reverse
+        return redirect(f"{reverse('emails:thread_list')}?open={pk}")
+
     thread = get_object_or_404(
         Thread.objects.select_related("assigned_to", "assigned_by"),
         pk=pk,
