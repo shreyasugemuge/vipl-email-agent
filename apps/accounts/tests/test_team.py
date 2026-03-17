@@ -4,7 +4,7 @@ import pytest
 from django.test import Client
 
 from apps.accounts.models import User
-from apps.emails.models import CategoryVisibility
+from apps.emails.models import ActivityLog, AssignmentRule, CategoryVisibility, Thread, ThreadViewer
 
 
 @pytest.fixture
@@ -78,6 +78,50 @@ class TestToggleActive:
         assert response.status_code == 200
         member_user.refresh_from_db()
         assert member_user.is_active is False
+
+    def test_deactivate_unassigns_open_threads(self, admin_client, admin_user, member_user):
+        """Deactivating a user unassigns their open threads and logs activity."""
+        t1 = Thread.objects.create(
+            gmail_thread_id="deact-1", subject="Thread 1",
+            assigned_to=member_user, status="acknowledged",
+        )
+        t2 = Thread.objects.create(
+            gmail_thread_id="deact-2", subject="Thread 2",
+            assigned_to=member_user, status="new",
+        )
+        # Closed thread should NOT be unassigned
+        t3 = Thread.objects.create(
+            gmail_thread_id="deact-3", subject="Closed",
+            assigned_to=member_user, status="closed",
+        )
+        admin_client.post(f"/accounts/team/{member_user.pk}/toggle-active/")
+
+        t1.refresh_from_db()
+        t2.refresh_from_db()
+        t3.refresh_from_db()
+        assert t1.assigned_to is None
+        assert t1.status == "new"
+        assert t2.assigned_to is None
+        assert t2.status == "new"
+        # Closed thread untouched
+        assert t3.assigned_to == member_user
+        assert t3.status == "closed"
+        # Activity log entries created
+        assert ActivityLog.objects.filter(thread=t1, action="unassigned").exists()
+        assert ActivityLog.objects.filter(thread=t2, action="unassigned").exists()
+
+    def test_deactivate_removes_assignment_rules(self, admin_client, member_user):
+        """Deactivating a user removes their AssignmentRule entries."""
+        AssignmentRule.objects.create(category="billing", assignee=member_user)
+        admin_client.post(f"/accounts/team/{member_user.pk}/toggle-active/")
+        assert AssignmentRule.objects.filter(assignee=member_user).count() == 0
+
+    def test_deactivate_clears_thread_viewers(self, admin_client, member_user):
+        """Deactivating a user clears their ThreadViewer records."""
+        t = Thread.objects.create(gmail_thread_id="viewer-1", subject="V")
+        ThreadViewer.objects.create(thread=t, user=member_user)
+        admin_client.post(f"/accounts/team/{member_user.pk}/toggle-active/")
+        assert ThreadViewer.objects.filter(user=member_user).count() == 0
 
     def test_cannot_deactivate_self(self, admin_client, admin_user):
         response = admin_client.post(f"/accounts/team/{admin_user.pk}/toggle-active/")

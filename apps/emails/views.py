@@ -18,7 +18,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.http import HttpResponse as _HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
@@ -172,7 +172,7 @@ def thread_list(request):
             qs = qs.filter(status__in=["new", "acknowledged", "reopened"])
     elif view == "closed":
         if not has_explicit_status:
-            qs = qs.filter(status="closed")
+            qs = qs.filter(status__in=["closed", "irrelevant"])
     elif view.isdigit():
         # Admin/triage_lead: view specific team member's threads
         if can_assign:
@@ -233,7 +233,7 @@ def thread_list(request):
         unassigned=Count("pk", filter=open_q & Q(assigned_to__isnull=True)),
         mine=Count("pk", filter=open_q & Q(assigned_to=user)),
         all_open=Count("pk", filter=open_q),
-        closed=Count("pk", filter=Q(status="closed")),
+        closed=Count("pk", filter=Q(status__in=["closed", "irrelevant"])),
         urgent=Count("pk", filter=open_q & Q(priority__in=["CRITICAL", "HIGH"])),
         new=Count("pk", filter=Q(status="new")),
         irrelevant=Count("pk", filter=Q(status="irrelevant")),
@@ -253,7 +253,7 @@ def thread_list(request):
     sidebar_counts["unread_open"] = unread_base.filter(
         status__in=["new", "acknowledged", "reopened"]
     ).count()
-    sidebar_counts["unread_closed"] = unread_base.filter(status="closed").count()
+    sidebar_counts["unread_closed"] = unread_base.filter(status__in=["closed", "irrelevant"]).count()
 
     # Total unread for browser tab title
     unread_total = sidebar_counts["unread_open"] + sidebar_counts["unread_closed"]
@@ -306,7 +306,7 @@ def thread_list(request):
     elif view == "all_open":
         stat_base = stat_base.filter(status__in=["new", "acknowledged", "reopened"])
     elif view == "closed":
-        stat_base = stat_base.filter(status="closed")
+        stat_base = stat_base.filter(status__in=["closed", "irrelevant"])
     elif view.isdigit() and is_admin:
         stat_base = stat_base.filter(assigned_to_id=int(view))
 
@@ -372,6 +372,67 @@ ALLOWED_SORT_FIELDS = {
 }
 
 PER_PAGE = 25
+
+
+@login_required
+def sidebar_counts_view(request):
+    """Return sidebar counts partial for HTMX OOB refresh."""
+    from django.db.models import Count, Exists, OuterRef, Q
+
+    user = request.user
+    can_assign = user.can_assign
+    inbox = request.GET.get("inbox", "")
+    current_view = request.GET.get("view", "all_open" if can_assign else "mine")
+    current_inbox = inbox
+
+    base_threads = Thread.objects.all()
+    if user.role == User.Role.TRIAGE_LEAD:
+        lead_categories = list(
+            AssignmentRule.objects.filter(assignee=user, is_active=True)
+            .values_list("category", flat=True)
+        )
+        if lead_categories:
+            base_threads = base_threads.filter(category__in=lead_categories)
+        else:
+            base_threads = base_threads.none()
+    elif not can_assign:
+        base_threads = _member_visible_threads(base_threads, user)
+    if inbox:
+        base_threads = base_threads.filter(emails__to_inbox=inbox).distinct()
+
+    open_q = Q(status__in=["new", "acknowledged", "reopened"])
+    sidebar_counts = base_threads.aggregate(
+        unassigned=Count("pk", filter=open_q & Q(assigned_to__isnull=True)),
+        mine=Count("pk", filter=open_q & Q(assigned_to=user)),
+        all_open=Count("pk", filter=open_q),
+        closed=Count("pk", filter=Q(status__in=["closed", "irrelevant"])),
+        urgent=Count("pk", filter=open_q & Q(priority__in=["CRITICAL", "HIGH"])),
+        new=Count("pk", filter=Q(status="new")),
+        irrelevant=Count("pk", filter=Q(status="irrelevant")),
+    )
+
+    unread_sq = ThreadReadState.objects.filter(
+        thread=OuterRef("pk"), user=user,
+    ).filter(Q(is_read=False) | Q(read_at__lt=OuterRef("last_message_at")))
+    unread_base = base_threads.filter(Exists(unread_sq))
+    if inbox:
+        unread_base = unread_base.filter(emails__to_inbox=inbox).distinct()
+    sidebar_counts["unread_mine"] = unread_base.filter(assigned_to=user).count()
+    sidebar_counts["unread_unassigned"] = unread_base.filter(
+        assigned_to__isnull=True, status__in=["new", "acknowledged", "reopened"]
+    ).count()
+    sidebar_counts["unread_open"] = unread_base.filter(
+        status__in=["new", "acknowledged", "reopened"]
+    ).count()
+    sidebar_counts["unread_closed"] = unread_base.filter(
+        status__in=["closed", "irrelevant"]
+    ).count()
+
+    return render(request, "emails/_sidebar_counts.html", {
+        "sidebar_counts": sidebar_counts,
+        "current_view": current_view,
+        "current_inbox": current_inbox,
+    })
 
 
 @login_required
@@ -1153,6 +1214,11 @@ def clear_viewer(request, pk):
 @require_GET
 def thread_detail(request, pk):
     """Return the thread detail panel partial for HTMX swap."""
+    # Non-HTMX requests (e.g. links from activity page) → redirect to thread list
+    if not getattr(request, "htmx", False):
+        from django.urls import reverse
+        return redirect(f"{reverse('emails:thread_list')}?open={pk}")
+
     thread = get_object_or_404(
         Thread.objects.select_related("assigned_to", "assigned_by"),
         pk=pk,
@@ -1509,7 +1575,9 @@ def assign_thread_view(request, pk):
         request=request,
     )
 
-    return _HttpResponse(detail_html + card_html)
+    response = _HttpResponse(detail_html + card_html)
+    response["HX-Trigger"] = "countsChanged"
+    return response
 
 
 @login_required
@@ -1554,7 +1622,9 @@ def change_thread_status_view(request, pk):
         request=request,
     )
 
-    return _HttpResponse(detail_html + card_html)
+    response = _HttpResponse(detail_html + card_html)
+    response["HX-Trigger"] = "countsChanged"
+    return response
 
 
 @login_required
@@ -1591,7 +1661,9 @@ def claim_thread_view(request, pk):
         request=request,
     )
 
-    return _HttpResponse(detail_html + card_html)
+    response = _HttpResponse(detail_html + card_html)
+    response["HX-Trigger"] = "countsChanged"
+    return response
 
 
 @login_required
@@ -1637,7 +1709,9 @@ def reassign_thread_view(request, pk):
     card_html = render_to_string(
         "emails/_thread_card.html", {"thread": thread, "oob": True}, request=request,
     )
-    return _HttpResponse(detail_html + card_html)
+    response = _HttpResponse(detail_html + card_html)
+    response["HX-Trigger"] = "countsChanged"
+    return response
 
 
 @login_required
@@ -1882,7 +1956,9 @@ def mark_irrelevant(request, pk):
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if can_assign else []
     detail_context = _build_thread_detail_context(thread, request, can_assign, team_members)
     detail_context["toast_msg"] = "Thread marked as irrelevant"
-    return render(request, "emails/_thread_detail.html", detail_context)
+    response = render(request, "emails/_thread_detail.html", detail_context)
+    response["HX-Trigger"] = "countsChanged"
+    return response
 
 
 @login_required
@@ -1922,7 +1998,9 @@ def revert_irrelevant(request, pk):
     team_members = User.objects.filter(is_active=True).order_by("first_name", "username") if can_assign else []
     detail_context = _build_thread_detail_context(thread, request, can_assign, team_members)
     detail_context["toast_msg"] = "Thread reverted to New"
-    return render(request, "emails/_thread_detail.html", detail_context)
+    response = render(request, "emails/_thread_detail.html", detail_context)
+    response["HX-Trigger"] = "countsChanged"
+    return response
 
 
 @login_required

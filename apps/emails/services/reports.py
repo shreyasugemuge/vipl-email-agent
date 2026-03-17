@@ -147,7 +147,7 @@ def get_overview_kpis(start, end, **filters):
         sla_compliance_pct = round((met / total_sla) * 100, 1)
 
     # Open threads (real-time, ignores date range)
-    open_qs = Thread.objects.exclude(status="closed")
+    open_qs = Thread.objects.exclude(status__in=["closed", "irrelevant"])
     open_qs = _apply_filters(open_qs, "thread", **filters)
     open_threads = open_qs.count()
 

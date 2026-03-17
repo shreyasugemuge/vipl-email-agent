@@ -44,11 +44,19 @@ def other_user(db):
 class TestMarkAsRead:
     """Opening thread_detail should upsert ThreadReadState with is_read=True."""
 
+    def test_non_htmx_redirects_to_thread_list(self, client, admin_user, thread):
+        """Non-HTMX GET to thread_detail redirects to thread list with ?open=pk."""
+        client.force_login(admin_user)
+        url = reverse("emails:thread_detail", args=[thread.pk])
+        response = client.get(url)
+        assert response.status_code == 302
+        assert f"?open={thread.pk}" in response.url
+
     def test_opening_thread_creates_read_state(self, client, admin_user, thread):
         """First open creates ThreadReadState with is_read=True and read_at set."""
         client.force_login(admin_user)
         url = reverse("emails:thread_detail", args=[thread.pk])
-        response = client.get(url)
+        response = client.get(url, HTTP_HX_REQUEST="true")
         assert response.status_code == 200
 
         rs = ThreadReadState.objects.get(thread=thread, user=admin_user)
@@ -68,7 +76,7 @@ class TestMarkAsRead:
         old_read_at = ThreadReadState.objects.get(thread=thread, user=admin_user).read_at
 
         url = reverse("emails:thread_detail", args=[thread.pk])
-        client.get(url)
+        client.get(url, HTTP_HX_REQUEST="true")
 
         rs = ThreadReadState.objects.get(thread=thread, user=admin_user)
         assert rs.is_read is True

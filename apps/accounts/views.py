@@ -8,7 +8,9 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
-from apps.emails.models import CategoryVisibility
+from apps.emails.models import (
+    ActivityLog, AssignmentRule, CategoryVisibility, Thread, ThreadViewer,
+)
 from apps.emails.services.dtos import VALID_CATEGORIES
 
 from .models import User
@@ -108,6 +110,33 @@ def toggle_active(request, pk):
 
     target.is_active = not target.is_active
     target.save(update_fields=["is_active"])
+
+    # On deactivation: unassign open threads, remove rules, clear viewers
+    if not target.is_active:
+        open_threads = Thread.objects.filter(
+            assigned_to=target,
+            status__in=["new", "acknowledged", "reopened"],
+        )
+        thread_count = open_threads.count()
+        target_name = target.get_full_name() or target.username
+
+        # Log each unassignment
+        for thread in open_threads:
+            ActivityLog.objects.create(
+                thread=thread,
+                user=request.user,
+                action="unassigned",
+                old_value=target_name,
+                new_value="",
+                detail=f"User {target_name} deactivated",
+            )
+
+        # Bulk unassign
+        open_threads.update(assigned_to=None, assigned_by=None, status="new")
+
+        # Remove assignment rules and viewer records
+        AssignmentRule.objects.filter(assignee=target).delete()
+        ThreadViewer.objects.filter(user=target).delete()
 
     return _render_user_row(request, target)
 

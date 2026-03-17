@@ -226,7 +226,7 @@
               document.getElementById('poll-history-tbody').innerHTML = newTbody.innerHTML;
               updateRelativeTimes();
               // Update countdown timer epoch from refreshed page
-              var epochMatch = html.match(/var lastEpoch = (\d+)/);
+              var epochMatch = html.match(/window\.__pollLastEpoch\s*=\s*(\d+)/);
               if (epochMatch) { window.__pollLastEpoch = parseInt(epochMatch[1]); }
             }
           });
@@ -257,6 +257,12 @@
     var lastEl = document.getElementById('poll-last');
 
     function update() {
+      if (!window.__pollLastEpoch || window.__pollLastEpoch === 0) {
+        countdownEl.textContent = 'No poll yet';
+        countdownEl.style.color = 'var(--vipl-text-muted)';
+        lastEl.textContent = 'Last poll: never';
+        return;
+      }
       var now = Math.floor(Date.now() / 1000);
       var elapsed = now - window.__pollLastEpoch;
       var remaining = intervalSec - elapsed;
