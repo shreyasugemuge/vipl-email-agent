@@ -74,7 +74,18 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ### Active
 
-(No active requirements — run `/gsd:new-milestone` to start next cycle)
+## Current Milestone: v2.7.1 QA + Bug Fixes
+
+**Goal:** Fix 6 QA bugs from v2.7.0 and add user manual documentation.
+
+**Target:**
+- Fix irrelevant threads not treated as closed
+- Fix deactivate teammate cascade (unassign threads)
+- Fix closed/reopen OOB swaps (counts, cards)
+- Fix reassign OOB swaps (counts, detail panel)
+- Fix poll countdown stuck at "due now"
+- Activity click-through fix (done)
+- GitHub Wiki user manual + in-app help link
 
 ### Out of Scope
 
@@ -87,7 +98,7 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 
 ## Context
 
-**Current state (v2.7.0 ready):** Production at triage.vidarbhainfotech.com. Full pipeline with AI confidence, auto-assign, spam learning, read/unread, inline editing, reports. Gatekeeper role with assignment enforcement, mark-irrelevant, bulk actions, unassigned alerts, corrections digest. 824 tests, Django 4.2 LTS + PostgreSQL 12.3.
+**Current state (v2.7.0 built, v2.6.1 deployed):** Production at triage.vidarbhainfotech.com. Full pipeline with AI confidence, auto-assign, spam learning, read/unread, inline editing, reports. Gatekeeper role with assignment enforcement, mark-irrelevant, bulk actions, unassigned alerts, corrections digest. 843 tests, Django 4.2 LTS + PostgreSQL 12.3.
 
 **Team:** 2-3 people handle the inboxes + 1 manager (Shreyas) who oversees.
 
@@ -137,4 +148,4 @@ Every email that lands in a shared inbox gets assigned to a person, tracked to r
 | Stateless undo via HX-Trigger serialized state | No server-side undo stack, clean HTMX pattern | ✓ Good — v2.7.0 |
 
 ---
-*Last updated: 2026-03-16 after v2.7.0 milestone complete*
+*Last updated: 2026-03-17 after v2.7.1 milestone started*

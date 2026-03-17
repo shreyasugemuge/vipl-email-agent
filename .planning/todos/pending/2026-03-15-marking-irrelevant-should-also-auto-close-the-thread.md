@@ -8,8 +8,16 @@ files:
 
 ## Problem
 
-When a gatekeeper/admin marks a thread as "irrelevant", the thread gets the `irrelevant` status but isn't treated as closed. It still appears in open views and counts toward active thread metrics. Semantically, an irrelevant thread is done — it should be auto-closed so it leaves the active queue.
+When a gatekeeper/admin marks a thread as "irrelevant", the thread gets the `irrelevant` status but isn't treated as closed. It still appears in open views and counts toward active thread metrics. Irrelevant threads should behave exactly like closed threads — excluded from open counts, and visible under the Closed tab.
 
 ## Solution
 
-In the `mark_irrelevant` view, after setting `status='irrelevant'`, also treat it as functionally closed — either by making `irrelevant` behave like `closed` in all queryset filters, or by setting both `status='irrelevant'` as a sub-state of closed. The simplest approach: update the view filters to exclude `irrelevant` from open views (same as `closed`), so irrelevant threads don't show in Triage Queue, My Inbox, or All Open.
+Treat `irrelevant` as a closed state everywhere:
+
+1. **Sidebar counts**: Add `irrelevant` alongside `closed` in the exclusion filter for open views (`open_q` should exclude both `closed` and `irrelevant`)
+2. **Closed tab**: `view=closed` filter should match `status__in=["closed", "irrelevant"]` so irrelevant threads appear under the Closed tab
+3. **Sidebar "Closed" count**: Include `irrelevant` in the closed count aggregate
+4. **Stat cards**: Exclude `irrelevant` from Total/Unassigned/Urgent/New counts (same as closed)
+5. **Unread counts**: Irrelevant threads excluded from unread badges in open views
+
+In short: everywhere the code checks `status="closed"` or filters open statuses (`new`, `acknowledged`, `reopened`), `irrelevant` should be grouped with `closed`.
