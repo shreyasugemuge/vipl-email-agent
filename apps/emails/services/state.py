@@ -8,7 +8,7 @@ failure counter (harmless). No persistent state needed.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -42,11 +42,11 @@ class StateManager:
         """Return True if an EOD report hasn't been sent in the last 10 minutes."""
         if self._last_eod_time is None:
             return True
-        return (datetime.now() - self._last_eod_time).total_seconds() > 600
+        return (datetime.now(timezone.utc) - self._last_eod_time).total_seconds() > 600
 
     def record_eod_sent(self):
         """Record that an EOD report was just sent."""
-        self._last_eod_time = datetime.now()
+        self._last_eod_time = datetime.now(timezone.utc)
 
     # --- Config change detection ---
 

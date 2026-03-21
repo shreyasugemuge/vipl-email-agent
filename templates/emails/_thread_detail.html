@@ -92,7 +92,7 @@
                         {% csrf_token %}
                         <button type="submit" hx-disabled-elt="this"
                                 class="p-1 rounded hover:bg-[var(--vipl-primary)]/10 text-[var(--vipl-primary)] transition-colors cursor-pointer"
-                                title="Accept suggestion">
+                                title="Accept suggestion" aria-label="Accept AI suggestion">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                             </svg>
@@ -103,7 +103,7 @@
                         {% csrf_token %}
                         <button type="submit" hx-disabled-elt="this"
                                 class="p-1 rounded hover:bg-[var(--vipl-red)]/10 text-[var(--vipl-red)]/60 transition-colors cursor-pointer"
-                                title="Dismiss suggestion">
+                                title="Dismiss suggestion" aria-label="Reject AI suggestion">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>

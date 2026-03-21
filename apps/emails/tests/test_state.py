@@ -1,6 +1,6 @@
 """Tests for StateManager circuit breaker and EOD dedup."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from apps.emails.services.state import StateManager
 
@@ -47,12 +47,12 @@ class TestCanSendEod:
 
     def test_false_within_10_minutes(self):
         sm = StateManager()
-        sm._last_eod_time = datetime.now() - timedelta(minutes=5)
+        sm._last_eod_time = datetime.now(timezone.utc) - timedelta(minutes=5)
         assert sm.can_send_eod() is False
 
     def test_true_after_10_minutes(self):
         sm = StateManager()
-        sm._last_eod_time = datetime.now() - timedelta(minutes=11)
+        sm._last_eod_time = datetime.now(timezone.utc) - timedelta(minutes=11)
         assert sm.can_send_eod() is True
 
 
@@ -62,7 +62,12 @@ class TestRecordEodSent:
         assert sm._last_eod_time is None
         sm.record_eod_sent()
         assert sm._last_eod_time is not None
-        assert (datetime.now() - sm._last_eod_time).total_seconds() < 2
+        assert (datetime.now(timezone.utc) - sm._last_eod_time).total_seconds() < 2
+
+    def test_timestamp_is_timezone_aware(self):
+        sm = StateManager()
+        sm.record_eod_sent()
+        assert sm._last_eod_time.tzinfo is not None
 
 
 class TestDetectConfigChanges:

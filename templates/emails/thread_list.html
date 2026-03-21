@@ -405,6 +405,7 @@ document.addEventListener('scroll', closeContextMenu, true);
 
 var longPressTimer = null;
 function startLongPress(event, threadPk) {
+    if (!event.touches || !event.touches.length) return;
     longPressTimer = setTimeout(function() {
         var touch = event.touches[0];
         showContextMenu({ preventDefault: function(){}, stopPropagation: function(){},

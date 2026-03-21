@@ -14,7 +14,7 @@ DEBUG = False
 # SECRET_KEY must be set in production -- crash on startup if missing
 SECRET_KEY = os.environ["SECRET_KEY"]
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 # Database from DATABASE_URL (required in production)
 DATABASES = {

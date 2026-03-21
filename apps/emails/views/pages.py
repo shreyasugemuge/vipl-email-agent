@@ -238,7 +238,7 @@ def thread_list(request):
         stat_base = stat_base.filter(status__in=["new", "acknowledged", "reopened"])
     elif view == "closed":
         stat_base = stat_base.filter(status__in=["closed", "irrelevant"])
-    elif view.isdigit() and is_admin:
+    elif view.isdigit() and can_assign:
         stat_base = stat_base.filter(assigned_to_id=int(view))
 
     view_stats = stat_base.aggregate(
