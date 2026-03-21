@@ -256,7 +256,7 @@ def get_team_data(start, end, **filters):
         # Calculate avg response for this user's ack actions
         total_minutes = 0
         count = 0
-        for act in ack_activities.select_related("thread"):
+        for act in ack_activities.select_related("thread", "email"):
             if act.thread and act.thread.created_at:
                 delta = act.created_at - act.thread.created_at
                 total_minutes += delta.total_seconds() / 60

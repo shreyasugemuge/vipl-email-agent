@@ -159,13 +159,16 @@ def reject_thread_suggestion(request, pk):
 @require_POST
 def viewer_heartbeat(request, pk):
     """Update viewer presence and return the viewer badge partial."""
-    ThreadViewer.objects.update_or_create(
-        thread_id=pk, user=request.user,
-        defaults={"last_seen": timezone.now()},
-    )
-    # Opportunistic cleanup of stale records
-    cutoff = timezone.now() - timedelta(seconds=30)
-    ThreadViewer.objects.filter(thread_id=pk, last_seen__lt=cutoff).delete()
+    from django.db import transaction
+
+    with transaction.atomic():
+        ThreadViewer.objects.update_or_create(
+            thread_id=pk, user=request.user,
+            defaults={"last_seen": timezone.now()},
+        )
+        # Opportunistic cleanup of stale records
+        cutoff = timezone.now() - timedelta(seconds=30)
+        ThreadViewer.objects.filter(thread_id=pk, last_seen__lt=cutoff).delete()
 
     active_viewers = get_active_viewers(pk, exclude_user_id=request.user.pk)
     html = render_to_string("emails/_viewer_badge.html", {"active_viewers": active_viewers}, request=request)
@@ -789,16 +792,14 @@ def mark_not_spam(request, pk):
 
             # Auto-whitelist if sender was blocked (SPAM-05)
             if was_blocked:
-                from django.db import IntegrityError
-                try:
-                    SpamWhitelist.objects.create(
-                        entry=sender,
-                        entry_type="email",
-                        added_by=request.user,
-                        reason="Auto-whitelisted: user marked not-spam on blocked sender",
-                    )
-                except IntegrityError:
-                    pass  # Already whitelisted
+                SpamWhitelist.objects.get_or_create(
+                    entry=sender,
+                    entry_type="email",
+                    defaults={
+                        "added_by": request.user,
+                        "reason": "Auto-whitelisted: user marked not-spam on blocked sender",
+                    },
+                )
 
                 SenderReputation.objects.filter(sender_address__iexact=sender).update(is_blocked=False)
                 toast_msg = "Marked as not spam and sender unblocked"

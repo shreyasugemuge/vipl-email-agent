@@ -882,3 +882,62 @@ class TestSchedulerCommand:
         signal_calls = [c[0][0] for c in mock_signal.call_args_list]
         assert signal.SIGTERM in signal_calls
         assert signal.SIGINT in signal_calls
+
+
+@pytest.mark.django_db
+class TestPollEpochOnEmptyPoll:
+    """Test that last_poll_epoch updates even when no new emails are found (Step 1b fix)."""
+
+    def test_empty_poll_updates_last_poll_epoch(self):
+        from apps.emails.services.pipeline import process_poll_cycle
+        from apps.core.models import SystemConfig
+
+        mock_poller = MagicMock()
+        mock_poller.poll_all.return_value = []  # No new emails
+
+        mock_ai = MagicMock()
+        mock_state = MagicMock()
+        mock_state.consecutive_failures = 0
+
+        with patch("apps.emails.services.pipeline.SystemConfig") as mock_config:
+            # Use real SystemConfig for epoch persistence, mock for other config reads
+            mock_config.get.side_effect = lambda key, default=None: {
+                "ai_triage_enabled": True,
+                "chat_notifications_enabled": False,
+                "monitored_inboxes": "info@vidarbhainfotech.com",
+                "max_consecutive_failures": 3,
+                "operating_mode": "dev",
+            }.get(key, default)
+            # Let update_or_create work on real DB
+            mock_config.objects = SystemConfig.objects
+            mock_config.ValueType = SystemConfig.ValueType
+
+            process_poll_cycle(mock_poller, mock_ai, None, mock_state)
+
+        # Verify last_poll_epoch was persisted
+        epoch_config = SystemConfig.objects.filter(key="last_poll_epoch").first()
+        assert epoch_config is not None
+        assert epoch_config.value != ""
+        assert int(epoch_config.value) > 0
+
+
+@pytest.mark.django_db
+class TestThreadListIsAdminFix:
+    """Test that admin viewing a team member's thread list doesn't crash (Step 1a fix)."""
+
+    def test_admin_views_member_threads_no_crash(self, admin_user, client):
+        """Admin viewing a numeric view (team member's threads) should not raise NameError."""
+        from conftest import create_thread
+        from apps.accounts.models import User
+
+        member = User.objects.create_user(
+            username="team_member_view",
+            password="testpass123",
+            email="tmv@vidarbhainfotech.com",
+            role=User.Role.MEMBER,
+        )
+        thread = create_thread(assigned_to=member)
+
+        client.force_login(admin_user)
+        response = client.get(f"/emails/?view={member.pk}")
+        assert response.status_code == 200

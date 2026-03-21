@@ -13,7 +13,7 @@ import time
 from datetime import timedelta
 from typing import Optional
 
-from django.db import close_old_connections
+from django.db import close_old_connections, transaction
 
 from django.db import models as db_models
 
@@ -184,119 +184,120 @@ def save_email_to_db(email_msg: EmailMessage, triage: TriageResult) -> Email:
     Uses update_or_create with message_id as lookup key for dedup.
     Also saves AttachmentMetadata for each attachment.
     """
-    email_obj, created = Email.objects.update_or_create(
-        message_id=email_msg.message_id,
-        defaults={
-            "gmail_id": email_msg.message_id,
-            "gmail_thread_id": email_msg.thread_id,
-            "from_address": email_msg.sender_email,
-            "from_name": email_msg.sender_name,
-            "to_inbox": email_msg.inbox,
-            "subject": email_msg.subject,
-            "body": email_msg.body,
-            "body_html": email_msg.body_html,
-            "headers": email_msg.headers,
-            "received_at": email_msg.timestamp,
-            "gmail_link": email_msg.gmail_link,
-            # AI triage fields
-            "category": triage.category,
-            "priority": triage.priority,
-            "ai_summary": triage.summary,
-            "ai_reasoning": triage.reasoning,
-            "ai_model_used": triage.model_used,
-            "ai_tags": triage.tags,
-            "ai_suggested_assignee": _map_suggested_assignee(triage),
-            "ai_input_tokens": triage.input_tokens,
-            "ai_output_tokens": triage.output_tokens,
-            "language": triage.language,
-            "is_spam": triage.is_spam,
-            "spam_score": triage.spam_score,
-            "ai_confidence": triage.confidence,
-            "processing_status": Email.ProcessingStatus.COMPLETED,
-        },
-    )
-
-    # Save attachment metadata (clear old ones on update, re-create)
-    if email_msg.attachment_details:
-        if not created:
-            email_obj.attachments.all().delete()
-        for att in email_msg.attachment_details:
-            AttachmentMetadata.objects.create(
-                email=email_obj,
-                filename=att.get("filename", ""),
-                size_bytes=att.get("size", 0),
-                mime_type=att.get("mime_type", ""),
-                gmail_attachment_id=att.get("attachment_id", ""),
-            )
-
-    # Set SLA deadlines (non-critical -- failure should not crash pipeline)
-    try:
-        set_sla_deadlines(email_obj)
-    except Exception:
-        logger.exception("Failed to set SLA deadlines for email %s", email_obj.pk)
-
-    # Thread create/update (THRD-04)
-    try:
-        thread_id = email_msg.thread_id or email_msg.message_id
-        thread, thread_created = Thread.objects.get_or_create(
-            gmail_thread_id=thread_id,
-            defaults={"subject": email_msg.subject},
+    with transaction.atomic():
+        email_obj, created = Email.objects.update_or_create(
+            message_id=email_msg.message_id,
+            defaults={
+                "gmail_id": email_msg.message_id,
+                "gmail_thread_id": email_msg.thread_id,
+                "from_address": email_msg.sender_email,
+                "from_name": email_msg.sender_name,
+                "to_inbox": email_msg.inbox,
+                "subject": email_msg.subject,
+                "body": email_msg.body,
+                "body_html": email_msg.body_html,
+                "headers": email_msg.headers,
+                "received_at": email_msg.timestamp,
+                "gmail_link": email_msg.gmail_link,
+                # AI triage fields
+                "category": triage.category,
+                "priority": triage.priority,
+                "ai_summary": triage.summary,
+                "ai_reasoning": triage.reasoning,
+                "ai_model_used": triage.model_used,
+                "ai_tags": triage.tags,
+                "ai_suggested_assignee": _map_suggested_assignee(triage),
+                "ai_input_tokens": triage.input_tokens,
+                "ai_output_tokens": triage.output_tokens,
+                "language": triage.language,
+                "is_spam": triage.is_spam,
+                "spam_score": triage.spam_score,
+                "ai_confidence": triage.confidence,
+                "processing_status": Email.ProcessingStatus.COMPLETED,
+            },
         )
-        email_obj.thread = thread
-        email_obj.save(update_fields=["thread"])
 
-        # Activity log
-        if thread_created:
-            ActivityLog.objects.create(
-                thread=thread,
-                email=email_obj,
-                action=ActivityLog.Action.THREAD_CREATED,
-                detail=f"Thread created from {email_msg.inbox}",
+        # Save attachment metadata (clear old ones on update, re-create)
+        if email_msg.attachment_details:
+            if not created:
+                email_obj.attachments.all().delete()
+            for att in email_msg.attachment_details:
+                AttachmentMetadata.objects.create(
+                    email=email_obj,
+                    filename=att.get("filename", ""),
+                    size_bytes=att.get("size", 0),
+                    mime_type=att.get("mime_type", ""),
+                    gmail_attachment_id=att.get("attachment_id", ""),
+                )
+
+        # Set SLA deadlines (non-critical -- failure should not crash pipeline)
+        try:
+            set_sla_deadlines(email_obj)
+        except Exception:
+            logger.exception("Failed to set SLA deadlines for email %s", email_obj.pk)
+
+        # Thread create/update (THRD-04)
+        try:
+            thread_id = email_msg.thread_id or email_msg.message_id
+            thread, thread_created = Thread.objects.get_or_create(
+                gmail_thread_id=thread_id,
+                defaults={"subject": email_msg.subject},
             )
-        else:
-            ActivityLog.objects.create(
-                thread=thread,
-                email=email_obj,
-                action=ActivityLog.Action.NEW_EMAIL_RECEIVED,
-                detail=f"New message from {email_msg.sender_email}",
-            )
+            email_obj.thread = thread
+            email_obj.save(update_fields=["thread"])
 
-        # Create ThreadReadState(is_read=False) for all active users on new threads
-        if thread_created:
-            _create_unread_states_for_all_users(thread)
+            # Activity log
+            if thread_created:
+                ActivityLog.objects.create(
+                    thread=thread,
+                    email=email_obj,
+                    action=ActivityLog.Action.THREAD_CREATED,
+                    detail=f"Thread created from {email_msg.inbox}",
+                )
+            else:
+                ActivityLog.objects.create(
+                    thread=thread,
+                    email=email_obj,
+                    action=ActivityLog.Action.NEW_EMAIL_RECEIVED,
+                    detail=f"New message from {email_msg.sender_email}",
+                )
 
-        # Reopen logic: any non-NEW/non-REOPENED thread reopens on new message
-        is_reopen = False
-        if not thread_created and thread.status not in (
-            Thread.Status.NEW,
-            Thread.Status.REOPENED,
-        ):
-            old_status = thread.status
-            thread.status = Thread.Status.REOPENED
-            thread.save(update_fields=["status"])
-            is_reopen = True
-            ActivityLog.objects.create(
-                thread=thread,
-                email=email_obj,
-                action=ActivityLog.Action.REOPENED,
-                detail=f"Reopened by new message from {email_msg.sender_email}",
-                old_value=old_status,
-                new_value=Thread.Status.REOPENED,
-            )
-            # Mark all users as unread on reopen
-            _create_unread_states_for_all_users(thread)
+            # Create ThreadReadState(is_read=False) for all active users on new threads
+            if thread_created:
+                _create_unread_states_for_all_users(thread)
 
-        # Update denormalized preview fields
-        update_thread_preview(thread)
+            # Reopen logic: any non-NEW/non-REOPENED thread reopens on new message
+            is_reopen = False
+            if not thread_created and thread.status not in (
+                Thread.Status.NEW,
+                Thread.Status.REOPENED,
+            ):
+                old_status = thread.status
+                thread.status = Thread.Status.REOPENED
+                thread.save(update_fields=["status"])
+                is_reopen = True
+                ActivityLog.objects.create(
+                    thread=thread,
+                    email=email_obj,
+                    action=ActivityLog.Action.REOPENED,
+                    detail=f"Reopened by new message from {email_msg.sender_email}",
+                    old_value=old_status,
+                    new_value=Thread.Status.REOPENED,
+                )
+                # Mark all users as unread on reopen
+                _create_unread_states_for_all_users(thread)
 
-        # Attach metadata for notification routing
-        email_obj._thread_created = thread_created
-        email_obj._thread_reopened = is_reopen
+            # Update denormalized preview fields
+            update_thread_preview(thread)
 
-    except Exception:
-        logger.exception("Failed to handle thread for email %s", email_obj.pk)
-        email_obj._thread_created = True  # Default: treat as new thread
-        email_obj._thread_reopened = False
+            # Attach metadata for notification routing
+            email_obj._thread_created = thread_created
+            email_obj._thread_reopened = is_reopen
+
+        except Exception:
+            logger.exception("Failed to handle thread for email %s", email_obj.pk)
+            email_obj._thread_created = True  # Default: treat as new thread
+            email_obj._thread_reopened = False
 
     action = "Created" if created else "Updated"
     logger.info(f"{action} email {email_msg.message_id}: {triage.category}/{triage.priority}")
@@ -544,6 +545,20 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
         if not new_emails:
             logger.debug("No new emails found")
             state_manager.reset_failures()
+            # Persist last_poll_epoch even on empty polls (keeps inspector countdown accurate)
+            try:
+                now_epoch = str(int(time.time()))
+                SystemConfig.objects.update_or_create(
+                    key="last_poll_epoch",
+                    defaults={
+                        "value": now_epoch,
+                        "value_type": SystemConfig.ValueType.INT,
+                        "description": "Epoch timestamp of last successful poll cycle (deploy safety)",
+                        "category": "scheduler",
+                    },
+                )
+            except Exception as cfg_err:
+                logger.warning(f"Failed to persist last_poll_epoch: {cfg_err}")
             _create_poll_log(
                 started_at=poll_started_at,
                 status="success",
@@ -657,6 +672,9 @@ def _create_poll_log(*, started_at, status, emails_found=0, emails_processed=0,
         logger.warning(f"Failed to create PollLog: {log_err}")
 
 
+RETRY_BATCH_SIZE = 10
+
+
 def retry_failed_emails(ai_processor, gmail_poller):
     """Retry emails with processing_status='failed' and retry_count < 3.
 
@@ -669,7 +687,7 @@ def retry_failed_emails(ai_processor, gmail_poller):
             processing_status=Email.ProcessingStatus.FAILED,
             retry_count__lt=3,
         )
-        .order_by("created_at")[:10]
+        .order_by("created_at")[:RETRY_BATCH_SIZE]
     )
 
     for email_obj in failed_emails:

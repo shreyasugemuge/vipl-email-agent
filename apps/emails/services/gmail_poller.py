@@ -28,6 +28,9 @@ from .dtos import EmailMessage
 
 logger = logging.getLogger(__name__)
 
+# Number of emails to fetch on the first poll per inbox
+FIRST_POLL_LIMIT = 5
+
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.labels",
@@ -293,7 +296,7 @@ class GmailPoller:
 
         if not self._first_poll_done:
             query = "in:inbox"
-            max_results = 5
+            max_results = FIRST_POLL_LIMIT
             logger.info(f"First poll for {inbox_email}: fetching latest {max_results} emails")
         else:
             query = f"in:inbox after:{self._start_epoch} -label:{self.processed_label}"

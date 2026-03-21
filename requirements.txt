@@ -1,18 +1,18 @@
 # VIPL Email Agent v2 -- Production Dependencies
 django>=4.2,<4.3
-psycopg[binary]>=3.2
+psycopg[binary]>=3.2,<4.0
 gunicorn>=23.0
 whitenoise>=6.8
 dj-database-url>=2.3
 python-dotenv>=1.0
 
 # Phase 2: Email pipeline dependencies
-anthropic>=0.49
+anthropic>=0.49,<1.0
 google-api-python-client>=2.150
 google-auth>=2.35
 tenacity>=9.0
 APScheduler>=3.10,<4.0
-httpx>=0.27
+httpx>=0.27,<1.0
 pypdf>=5.0
 pytz>=2024.1
 

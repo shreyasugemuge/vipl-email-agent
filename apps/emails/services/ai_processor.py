@@ -136,7 +136,7 @@ def _get_team_workload() -> list:
             })
         return result
     except Exception:
-        logger.debug("Could not fetch team workload (expected in tests without DB)")
+        logger.warning("Could not fetch team workload", exc_info=True)
         return []
 
 
@@ -209,13 +209,23 @@ class AIProcessor:
 
             correction_rules = SystemConfig.get("correction_rules", "")
             if correction_rules and correction_rules != "No correction rules yet.":
-                raw_prompt += (
-                    "\n\n<correction_rules>\n"
-                    "The following rules are based on past corrections by the team. "
-                    "Follow these when making assignment suggestions:\n"
-                    f"{correction_rules}\n"
-                    "</correction_rules>"
-                )
+                # Sanitize: strip XML/HTML tags and limit length to prevent prompt injection
+                sanitized_rules = re.sub(r'<[^>]+>', '', correction_rules)
+                sanitized_rules = sanitized_rules[:2000]
+                # Prefix each line with "- " delimiter for safe injection
+                rule_lines = [
+                    f"- {line.strip()}"
+                    for line in sanitized_rules.split("\n")
+                    if line.strip()
+                ]
+                if rule_lines:
+                    raw_prompt += (
+                        "\n\n<correction_rules>\n"
+                        "The following rules are based on past corrections by the team. "
+                        "Follow these when making assignment suggestions:\n"
+                        + "\n".join(rule_lines) + "\n"
+                        "</correction_rules>"
+                    )
         except Exception:
             logger.debug("Could not load correction rules (expected in tests without DB)")
 
