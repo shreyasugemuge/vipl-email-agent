@@ -6,14 +6,15 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 
 | Version | Status | Platform |
 |---------|--------|----------|
-| **v2.8.1** (main branch) | **Complete** — To/Cc display, AI performance dashboard, Artifact Registry cleanup | Self-hosted VM (Docker Compose) |
+| **v2.8.2** (main branch) | **Complete** — Triage Lead bug fixes (empty inbox, detail 403, stat card filter, poll epoch), code quality | Self-hosted VM (Docker Compose) |
+| **v2.8.1** (merged) | **Complete** — To/Cc display, AI performance dashboard, Artifact Registry cleanup | Self-hosted VM (Docker Compose) |
 | **v2.8.0** (merged) | **Complete** — codebase cleanup, split views, consolidate tests, deploy fix | Self-hosted VM (Docker Compose) |
 | **v2.6.1** (merged) | **Complete** — prominent assignee/status badges, avatar support | Self-hosted VM (Docker Compose) |
 | **v2.6.0** (merged) | **Complete** — full UI revamp, dark/light mode | Self-hosted VM (Docker Compose) |
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.8.1 (latest deployed)
+**GitHub Release**: v2.8.1 (latest deployed — v2.8.2 pending release)
 
 ## Active Branches
 
@@ -148,6 +149,7 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **v2.7.1** (QA Bug Fixes): Bug fixes + user manual wiki
 - **v2.8.0** (Codebase Cleanup): Split monolithic views.py into view modules, remove legacy code, consolidate duplicate tests (849→816), deploy.yml secrets fix for if-conditions, chat notification quoting fix
 - **v2.8.1** (To/Cc + AI Calibration): To/Cc recipient display on thread detail (parsed from Gmail headers), AI Performance dashboard tab (accuracy per confidence tier, weekly trend, assignment feedback, model comparison), Artifact Registry cleanup
+- **v2.8.2** (Triage Lead Fixes): Triage Lead role bug fixes (empty inbox for non-admin, detail 403 for members, stat card filter), poll epoch persistence on empty polls (fixes #60), pipeline code quality improvements, requirements pinning
 
 ### Design System
 
