@@ -3,8 +3,6 @@
 *.json
 !tests/sample_emails.json
 !package.json
-!.planning/**/*.json
-!.planning/*.json
 service-account*.json
 *-sa-key.json
 .taiga-credentials
@@ -48,8 +46,8 @@ to_delete/
 .swarm/
 .mcp.json
 
-# QA media (screenshots, GIFs — ephemeral)
-.planning/qa/
+# GSD planning (local-only — keep off main, OK in feature branches/worktrees)
+.planning/
 
 # Node (Tailwind CSS build only)
 node_modules/
