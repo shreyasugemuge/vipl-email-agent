@@ -115,8 +115,7 @@ def _member_visible_threads(qs, user):
 
 def _check_member_thread_access(thread, user):
     """Return HttpResponseForbidden if a non-admin member shouldn't access this thread."""
-    is_admin = user.is_staff or user.role == User.Role.ADMIN
-    if not is_admin and thread.assigned_to is not None and thread.assigned_to != user:
+    if not user.can_assign and thread.assigned_to is not None and thread.assigned_to != user:
         return HttpResponseForbidden("Access denied.")
     return None
 
