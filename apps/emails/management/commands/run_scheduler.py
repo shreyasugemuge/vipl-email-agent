@@ -338,10 +338,13 @@ class Command(BaseCommand):
             )
             return
 
-        # Read poll interval from config (default 5 minutes)
+        # Read poll intervals from config
         poll_interval = SystemConfig.get("poll_interval_minutes", 5)
         if not isinstance(poll_interval, int) or poll_interval < 1:
             poll_interval = 5
+        night_poll_interval = SystemConfig.get("night_poll_interval_minutes", 15)
+        if not isinstance(night_poll_interval, int) or night_poll_interval < 1:
+            night_poll_interval = 15
 
         scheduler = BlockingScheduler(timezone="Asia/Kolkata")
 
@@ -355,13 +358,30 @@ class Command(BaseCommand):
             coalesce=True,
         )
 
-        # Poll: every N minutes
+        # Poll: business hours (8 AM - 8 PM IST) every N minutes
         scheduler.add_job(
             _poll_job,
-            "interval",
-            minutes=poll_interval,
+            CronTrigger(
+                hour="8-19",
+                minute=f"*/{poll_interval}",
+                timezone="Asia/Kolkata",
+            ),
             args=[gmail_poller, ai_processor, chat_notifier, state_manager],
-            id="poll",
+            id="poll_business",
+            max_instances=1,
+            coalesce=True,
+        )
+
+        # Poll: night hours (8 PM - 8 AM IST) every N minutes (slower)
+        scheduler.add_job(
+            _poll_job,
+            CronTrigger(
+                hour="0-7,20-23",
+                minute=f"*/{night_poll_interval}",
+                timezone="Asia/Kolkata",
+            ),
+            args=[gmail_poller, ai_processor, chat_notifier, state_manager],
+            id="poll_night",
             max_instances=1,
             coalesce=True,
         )
@@ -440,15 +460,15 @@ class Command(BaseCommand):
         signal.signal(signal.SIGINT, shutdown_handler)
 
         logger.info(
-            f"Starting scheduler: poll every {poll_interval}min, "
+            f"Starting scheduler: poll={poll_interval}min (day) / {night_poll_interval}min (night), "
             f"retry every 30min, auto-assign every 3min, "
             f"SLA summary at 9/13/17 IST, eod=19:00 IST, heartbeat every 1min"
             f"{sheets_sync_label}"
         )
         self.stdout.write(
             self.style.SUCCESS(
-                f"Scheduler started (poll={poll_interval}min, retry=30min, "
-                f"auto-assign=3min, SLA=9/13/17 IST, eod=19:00 IST, heartbeat=1min"
+                f"Scheduler started (poll={poll_interval}min day / {night_poll_interval}min night, "
+                f"retry=30min, auto-assign=3min, SLA=9/13/17 IST, eod=19:00 IST, heartbeat=1min"
                 f"{sheets_sync_label})"
             )
         )

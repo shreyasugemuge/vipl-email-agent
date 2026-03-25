@@ -14,7 +14,7 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.8.2 (latest deployed)
+**GitHub Release**: v2.8.2 (latest deployed — v2.8.4 pending release)
 **DeepWiki**: https://deepwiki.com/shreyasugemuge/vipl-email-agent
 
 ## Active Branches
@@ -28,7 +28,7 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 - **Backend**: Django 4.2 LTS + PostgreSQL 12.3 (Taiga's existing DB container)
 - **Frontend**: Django templates + HTMX 2.0 + Tailwind CSS v4 (server-rendered, no React/Node)
 - **Email Pipeline**: Gmail poller → spam filter → Claude AI triage → PostgreSQL → Gmail label
-- **Scheduler**: APScheduler management command (poll 5min, retry 30min, heartbeat 1min)
+- **Scheduler**: APScheduler management command (poll 5min day / 15min night, retry 30min, heartbeat 1min)
 - **Notifications**: Google Chat Cards v2 webhook with quiet hours
 - **Deployment**: Docker Compose (web + scheduler containers), Nginx on host
 - **Local Dev**: `runserver` + native Caddy (`triage.local` → `localhost:8000`)
@@ -151,6 +151,7 @@ secrets/                    # Service account key (gitignored, mounted read-only
 - **v2.8.0** (Codebase Cleanup): Split monolithic views.py into view modules, remove legacy code, consolidate duplicate tests (849→816), deploy.yml secrets fix for if-conditions, chat notification quoting fix
 - **v2.8.1** (To/Cc + AI Calibration): To/Cc recipient display on thread detail (parsed from Gmail headers), AI Performance dashboard tab (accuracy per confidence tier, weekly trend, assignment feedback, model comparison), Artifact Registry cleanup
 - **v2.8.2** (Triage Lead Fixes): Triage Lead role bug fixes (empty inbox for non-admin, detail 403 for members, stat card filter), poll epoch persistence on empty polls (fixes #60), pipeline code quality improvements, requirements pinning
+- **v2.8.4** (Polling Optimization): Adaptive night polling (15min off-hours vs 5min business hours), concurrent email processing (ThreadPoolExecutor, up to 4 parallel Claude calls), .planning/ gitignored
 
 ### Design System
 
@@ -171,12 +172,14 @@ The UI is a **100% hand-crafted CSS design system** — there is no external Pxl
 Gmail Inboxes → GmailPoller (domain-wide delegation)
     → SpamFilter (13 regex patterns + SenderReputation blocked list, $0 cost)
     → AIProcessor (Haiku default, Sonnet for CRITICAL, prompt caching, confidence scoring)
+        ↳ Concurrent processing (up to 4 parallel Claude calls via ThreadPoolExecutor)
     → Auto-Assign (HIGH confidence >80% → auto-assign by category rules)
     → Pipeline (save to PostgreSQL → label Gmail — label-after-persist safety)
     → ChatNotifier (Google Chat Cards v2, quiet hours via SystemConfig)
     → Feedback Loop (spam corrections → SenderReputation, AI corrections → distillation)
     → Dead Letter Retry (every 30min, max 3 attempts → exhausted)
     → Circuit Breaker (3 consecutive failures → skip cycles)
+    → Adaptive Polling (5min business hours / 15min night — configurable via SystemConfig)
 ```
 
 ### Service Modules (`apps/emails/services/`)
@@ -226,7 +229,7 @@ Fresh installs default to **off** mode (seeded via migration). Mode is visible i
 
 ### SystemConfig (Runtime Config)
 Replaces v1's Google Sheets config tab. Key-value store with typed casting (str/int/bool/float/json).
-Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled` (false), `eod_email_enabled`, `poll_interval_minutes`, `quiet_hours_start/end`, `business_hours_start/end`, `max_consecutive_failures`, `monitored_inboxes` (empty).
+Seeded defaults: `ai_triage_enabled`, `chat_notifications_enabled` (false), `eod_email_enabled`, `poll_interval_minutes`, `night_poll_interval_minutes` (15), `quiet_hours_start/end`, `business_hours_start/end`, `max_consecutive_failures`, `monitored_inboxes` (empty).
 Runtime keys: `last_poll_epoch` (INT, persisted after each poll cycle for deploy safety — prevents re-triaging emails on restart).
 
 **Dev-safe defaults**: `monitored_inboxes` is empty and `chat_notifications_enabled` is false in the seed migration. A fresh `migrate` on dev will not poll real inboxes or post to Chat. Production values are set via SystemConfig admin or environment variables.
