@@ -4,8 +4,8 @@
 
 ### AI-Powered Email Monitoring & Triage System
 
-[![Version](https://img.shields.io/badge/v2.8.2-latest-e06a97?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/releases)
-[![Tests](https://img.shields.io/badge/Tests-830_passing-4ECDC4?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/actions)
+[![Version](https://img.shields.io/badge/v2.8.4-latest-e06a97?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/releases)
+[![Tests](https://img.shields.io/badge/Tests-833_passing-4ECDC4?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/actions)
 [![AI](https://img.shields.io/badge/Claude_AI-Haiku_%2B_Sonnet-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://anthropic.com)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/shreyasugemuge/vipl-email-agent)
 
@@ -49,11 +49,13 @@ Every email gets a category, priority, SLA deadline, summary, draft reply, and s
 Gmail Inboxes (info@, sales@)
     → SpamFilter (13 regex + blocked senders — $0)
     → AIProcessor (Haiku ~$0.001/ea, Sonnet for CRITICAL ~$0.01/ea)
+        ↳ Up to 4 concurrent Claude calls (ThreadPoolExecutor)
     → Auto-Assign (HIGH confidence >80% → assign by category rules)
     → Pipeline (save PostgreSQL → label Gmail → notify Chat)
     → Feedback Loop (spam corrections → SenderReputation, AI corrections → distillation)
     → Dead Letter Retry (30min intervals, max 3 attempts)
     → Circuit Breaker (3 failures → pause polling)
+    → Adaptive Polling (5min day / 15min night)
 ```
 
 > Deep dive: **[Email Pipeline](https://github.com/shreyasugemuge/vipl-email-agent/wiki/Email-Pipeline)** &middot; **[AI Triage](https://github.com/shreyasugemuge/vipl-email-agent/wiki/AI-Triage)**
@@ -151,7 +153,7 @@ python manage.py runserver 8000
 Fresh installs default to **off** mode — zero external API calls.
 
 ```bash
-pytest -v                                        # 830 tests (no API keys)
+pytest -v                                        # 833 tests (no API keys)
 python manage.py test_pipeline                   # Smoke test with fake data
 python manage.py run_scheduler --once --dry-run  # Simulated poll cycle
 ```
@@ -163,7 +165,7 @@ python manage.py run_scheduler --once --dry-run  # Simulated poll cycle
 ## Deployment
 
 ```bash
-gh release create v2.8.2 --title "v2.8.2" --generate-notes
+gh release create v2.8.4 --title "v2.8.4" --generate-notes
 # → CI tests → SSH deploy to VM → done
 ```
 
@@ -188,6 +190,7 @@ Push to `main` runs tests only. Deploy only on GitHub Release — intentional, d
 
 | Version | Highlights |
 |:-------:|------------|
+| **v2.8.4** | Adaptive night polling, concurrent email processing, pipeline optimization |
 | **v2.8.2** | Triage Lead bug fixes, poll epoch fix, .planning/ removed from git |
 | **v2.8.1** | To/Cc display on thread detail, AI performance calibration dashboard |
 | **v2.8.0** | Codebase cleanup, split views, consolidated tests, deploy fix |

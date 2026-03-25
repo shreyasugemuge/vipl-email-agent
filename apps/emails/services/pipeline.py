@@ -10,6 +10,7 @@ Safety: label-after-persist (Gmail label only applied after DB write succeeds)
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import timedelta
 from typing import Optional
 
@@ -568,13 +569,19 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
 
         processed_items = []
         spam_count = 0
+
+        # Dedup first (DB check must be sequential)
+        emails_to_process = []
         for email_msg in new_emails:
-            # Dedup: skip if already in DB
             if Email.objects.filter(message_id=email_msg.message_id).exists():
                 logger.debug(f"Dedup: skipping {email_msg.message_id} (already in DB)")
                 continue
+            emails_to_process.append(email_msg)
 
-            email_obj = process_single_email(
+        # Process emails concurrently (AI triage is the bottleneck — ~2s per email)
+        def _process_one(email_msg):
+            close_old_connections()
+            return process_single_email(
                 email_msg=email_msg,
                 ai_processor=ai_processor,
                 gmail_poller=gmail_poller,
@@ -582,10 +589,32 @@ def process_poll_cycle(gmail_poller, ai_processor, chat_notifier, state_manager)
                 ai_enabled=ai_enabled,
                 chat_enabled=chat_enabled,
             )
-            if email_obj:
-                processed_items.append(email_obj)
-                if email_obj.is_spam:
-                    spam_count += 1
+
+        max_workers = min(len(emails_to_process), 4)  # Cap at 4 concurrent Claude calls
+        if max_workers <= 1:
+            # Single email — no thread overhead
+            for email_msg in emails_to_process:
+                email_obj = _process_one(email_msg)
+                if email_obj:
+                    processed_items.append(email_obj)
+                    if email_obj.is_spam:
+                        spam_count += 1
+        else:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_email = {
+                    executor.submit(_process_one, email_msg): email_msg
+                    for email_msg in emails_to_process
+                }
+                for future in as_completed(future_to_email):
+                    try:
+                        email_obj = future.result()
+                        if email_obj:
+                            processed_items.append(email_obj)
+                            if email_obj.is_spam:
+                                spam_count += 1
+                    except Exception as exc:
+                        email_msg = future_to_email[future]
+                        logger.error(f"Concurrent processing failed for {email_msg.message_id}: {exc}")
 
         # Send Chat notifications -- route new threads vs thread updates vs cross-inbox dups
         if chat_enabled and processed_items and chat_notifier:
