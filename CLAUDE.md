@@ -14,7 +14,8 @@ AI-powered shared inbox monitoring, triage, and response system for Vidarbha Inf
 | **v1.x** (archived in git history) | Frozen at v1.1.3 — Cloud Run decommissioned | Google Cloud Run (shut down) |
 
 **Live URL**: https://triage.vidarbhainfotech.com
-**GitHub Release**: v2.8.1 (latest deployed — v2.8.2 pending release)
+**GitHub Release**: v2.8.2 (latest deployed)
+**DeepWiki**: https://deepwiki.com/shreyasugemuge/vipl-email-agent
 
 ## Active Branches
 
