@@ -75,8 +75,6 @@ def thread_list(request):
         )
         if lead_categories:
             qs = qs.filter(category__in=lead_categories)
-        else:
-            qs = qs.none()
 
     # --- View filtering (sidebar views) ---
     default_view = "all_open" if can_assign else "mine"
@@ -150,8 +148,6 @@ def thread_list(request):
     if user.role == User.Role.TRIAGE_LEAD:
         if lead_categories:
             base_threads = base_threads.filter(category__in=lead_categories)
-        else:
-            base_threads = base_threads.none()
     elif not can_assign:
         base_threads = _member_visible_threads(base_threads, user)
     if inbox:
@@ -308,8 +304,6 @@ def sidebar_counts_view(request):
         )
         if lead_categories:
             base_threads = base_threads.filter(category__in=lead_categories)
-        else:
-            base_threads = base_threads.none()
     elif not can_assign:
         base_threads = _member_visible_threads(base_threads, user)
     if inbox:

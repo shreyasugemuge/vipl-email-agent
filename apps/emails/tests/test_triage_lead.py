@@ -28,15 +28,14 @@ class TestTriageLeadCategoryScoping:
         assert "Visible Thread" in content
         assert "Hidden Thread" not in content
 
-    def test_triage_lead_no_rules_sees_empty(self, client, triage_lead_user):
-        """Triage Lead with no AssignmentRules sees empty thread list."""
-        create_thread(category="General Inquiry")
+    def test_triage_lead_no_rules_sees_all_threads(self, client, triage_lead_user):
+        """Triage Lead with no AssignmentRules sees all threads (no category restriction)."""
+        create_thread(category="General Inquiry", subject="Visible Thread")
         client.force_login(triage_lead_user)
         resp = client.get("/emails/")
         assert resp.status_code == 200
         content = resp.content.decode()
-        # Should show 0 threads
-        assert "0 thread" in content
+        assert "Visible Thread" in content
 
     def test_sidebar_counts_scoped_to_categories(self, client, triage_lead_user):
         """Sidebar counts reflect only triage lead's scoped categories."""
@@ -134,6 +133,24 @@ class TestTriageLeadPermissions:
             {"ai_summary": "Updated summary"},
         )
         assert resp.status_code == 403
+
+    def test_triage_lead_can_view_others_thread_detail(self, client, triage_lead_user):
+        """Triage Lead can view threads assigned to other users."""
+        from apps.accounts.models import User
+
+        member = User.objects.create_user(
+            username="m2", password="p", email="m2@vidarbhainfotech.com",
+            role="member", is_active=True,
+        )
+        thread = create_thread()
+        thread.assigned_to = member
+        thread.save()
+        client.force_login(triage_lead_user)
+        resp = client.get(
+            f"/emails/threads/{thread.pk}/detail/",
+            HTTP_HX_REQUEST="true",
+        )
+        assert resp.status_code == 200
 
     def test_triage_lead_can_view_reports(self, client, triage_lead_user):
         """Triage Lead gets 200 on reports page."""
