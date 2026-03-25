@@ -4,9 +4,10 @@
 
 ### AI-Powered Email Monitoring & Triage System
 
-[![Version](https://img.shields.io/badge/v2.8.1-latest-e06a97?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/releases)
-[![Tests](https://img.shields.io/badge/Tests-829_passing-4ECDC4?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/actions)
+[![Version](https://img.shields.io/badge/v2.8.2-latest-e06a97?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/releases)
+[![Tests](https://img.shields.io/badge/Tests-830_passing-4ECDC4?style=for-the-badge)](https://github.com/shreyasugemuge/vipl-email-agent/actions)
 [![AI](https://img.shields.io/badge/Claude_AI-Haiku_%2B_Sonnet-cc785c?style=for-the-badge&logo=anthropic&logoColor=white)](https://anthropic.com)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/shreyasugemuge/vipl-email-agent)
 
 [![Django](https://img.shields.io/badge/Django-4.2_LTS-092E20?style=flat-square&logo=django&logoColor=white)](https://djangoproject.com)
 [![HTMX](https://img.shields.io/badge/HTMX-2.0-3366CC?style=flat-square)](https://htmx.org)
@@ -18,7 +19,7 @@
 **Autonomous email classification, SLA tracking, and team alerting**
 **for [Vidarbha Infotech Pvt. Ltd.](https://vidarbhainfotech.com)**
 
-[Live Dashboard](https://triage.vidarbhainfotech.com) &middot; [Wiki](https://github.com/shreyasugemuge/vipl-email-agent/wiki) &middot; [Changelog](CHANGELOG.md) &middot; [Releases](https://github.com/shreyasugemuge/vipl-email-agent/releases)
+[Live Dashboard](https://triage.vidarbhainfotech.com) &middot; [Wiki](https://github.com/shreyasugemuge/vipl-email-agent/wiki) &middot; [DeepWiki](https://deepwiki.com/shreyasugemuge/vipl-email-agent) &middot; [Changelog](CHANGELOG.md) &middot; [Releases](https://github.com/shreyasugemuge/vipl-email-agent/releases)
 
 </div>
 
@@ -81,7 +82,7 @@ Gmail Inboxes (info@, sales@)
 | **Detail Panel** | Slide-out with inline editing (category, priority, status, AI summary) |
 | **Assignee Badges** | Google avatar images, solid rose initials, gold "Unassigned" state |
 | **Context Menu** | Right-click cards for quick assign, status, priority, spam actions |
-| **Reports** | 4-tab analytics with Chart.js (theme-aware, re-renders on toggle) |
+| **Reports** | 5-tab analytics (Overview, Volume, Team, SLA, AI Performance) with Chart.js |
 | **Activity Log** | Full audit trail: assignments, status changes, notes, AI edits |
 | **Keyboard Nav** | Arrow keys, Enter, Escape, U (mark unread) |
 
@@ -150,7 +151,7 @@ python manage.py runserver 8000
 Fresh installs default to **off** mode — zero external API calls.
 
 ```bash
-pytest -v                                        # 843 tests (no API keys)
+pytest -v                                        # 830 tests (no API keys)
 python manage.py test_pipeline                   # Smoke test with fake data
 python manage.py run_scheduler --once --dry-run  # Simulated poll cycle
 ```
@@ -162,7 +163,7 @@ python manage.py run_scheduler --once --dry-run  # Simulated poll cycle
 ## Deployment
 
 ```bash
-gh release create v2.8.1 --title "v2.8.1" --generate-notes
+gh release create v2.8.2 --title "v2.8.2" --generate-notes
 # → CI tests → SSH deploy to VM → done
 ```
 
@@ -187,6 +188,7 @@ Push to `main` runs tests only. Deploy only on GitHub Release — intentional, d
 
 | Version | Highlights |
 |:-------:|------------|
+| **v2.8.2** | Triage Lead bug fixes, poll epoch fix, .planning/ removed from git |
 | **v2.8.1** | To/Cc display on thread detail, AI performance calibration dashboard |
 | **v2.8.0** | Codebase cleanup, split views, consolidated tests, deploy fix |
 | **v2.7.1** | QA bug fixes (6 bugs), GitHub Wiki user manual |
@@ -208,6 +210,7 @@ Push to `main` runs tests only. Deploy only on GitHub Release — intentional, d
 | Resource | Description |
 |----------|-------------|
 | **[Wiki](https://github.com/shreyasugemuge/vipl-email-agent/wiki)** | Complete documentation — architecture, guides, API, operations |
+| **[DeepWiki](https://deepwiki.com/shreyasugemuge/vipl-email-agent)** | AI-generated codebase exploration and documentation |
 | **[CLAUDE.md](CLAUDE.md)** | Architecture reference for AI-assisted development |
 | **[CHANGELOG.md](CHANGELOG.md)** | Detailed version history |
 | **[API Endpoints](https://github.com/shreyasugemuge/vipl-email-agent/wiki/API-Endpoints)** | All URL routes and HTMX endpoints |
