@@ -1,5 +1,5 @@
 # VIPL Email Agent v2 -- Production Dependencies
-django>=4.2,<4.3
+django>=4.2,<6.1
 psycopg[binary]>=3.2,<4.0
 gunicorn>=23.0
 whitenoise>=6.8
