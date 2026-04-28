@@ -1,7 +1,7 @@
 # VIPL Email Agent v2 -- Production Dependencies
 django>=4.2,<4.3
 psycopg[binary]>=3.2,<4.0
-gunicorn>=23.0
+gunicorn>=25.3.0
 whitenoise>=6.8
 dj-database-url>=2.3
 python-dotenv>=1.0
