@@ -8,7 +8,7 @@ python-dotenv>=1.0
 
 # Phase 2: Email pipeline dependencies
 anthropic>=0.49,<1.0
-google-api-python-client>=2.150
+google-api-python-client>=2.194.0
 google-auth>=2.35
 tenacity>=9.0
 APScheduler>=3.10,<4.0
